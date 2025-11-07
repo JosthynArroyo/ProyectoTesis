@@ -1,0 +1,246 @@
+@import 'tailwindcss';
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap');
+
+:root{
+  --clr-primary:#1d4ed8;
+  --clr-danger:#dc2626;
+  --clr-success:#16a34a;
+  --clr-white:#ffffff;
+  --clr-info-dark:#334155;
+  --clr-info-light:#e2e8f0;
+  --clr-dark:#0f172a;
+  --clr-warning:#f97316;
+  --clr-light:rgba(29,78,216,.12);
+  --clr-primary-variant:#1e3a8a;
+  --clr-dark-variant:#475569;
+  --clr-color-background:#f5f7fb;
+  --card-border-radius:2rem;
+  --border-radius-1:.4rem;
+  --border-radius-2:.8rem;
+  --border-radius-3:1.2rem;
+  --card-padding:1.8rem;
+  --padding-1:1.2rem;
+  --box-shadow:0 18px 38px rgba(15,23,42,.08);
+}
+
+.dark-theme-variables{
+  --clr-color-background:#181a1e;
+  --clr-white:#202528;
+  --clr-light:rgba(0,0,0,.4);
+  --clr-dark:#edeffd;
+  --clr-dark-variant:#677483;
+  --box-shadow:0 2rem 3rem var(--clr-light);
+}
+
+*{margin:0;padding:0;box-sizing:border-box;text-decoration:none;border:0;list-style:none;appearance:none}
+body{
+  font-family:"Poppins",serif;
+  font-size:.88rem;
+  user-select:none;
+  background:var(--clr-color-background);
+  width:100%;
+  min-height:100vh;
+  overflow-y:auto;
+  color:var(--clr-dark);
+}
+
+/* Animaciones */
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes fadeSlideUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeSlideIn{from{opacity:0;transform:translateX(-18px)}to{opacity:1;transform:translateX(0)}}
+
+/* Grid principal */
+.container{display:grid;width:96%;gap:1.8rem;grid-template-columns:14rem auto 14rem;margin:0 auto}
+.container.no-right{grid-template-columns:14rem auto}
+
+a{color:var(--clr-dark)}
+h1{font-weight:800;font-size:1.8rem}
+h2{font-size:1.4rem}
+h3{font-size:.87rem}
+h4{font-size:.8rem}
+h5{font-size:.77rem}
+small{font-size:.75rem}
+
+/* ===== Ajustes clave solicitados ===== */
+
+/* 1) Dar aire arriba al logo “Clínica Los Ángeles” */
+aside{background:transparent}
+aside .top{padding:12px 18px 6px} /* separa del borde superior */
+aside .logo h2{margin:0;line-height:1.1}
+aside .logo .danger{color:var(--clr-primary)}
+
+/* 2) Mostrar bien la foto en cabecera de la derecha */
+.profile-photo{width:44px;height:44px;border-radius:50%;overflow:hidden;border:2px solid var(--clr-info-light);background:#fff;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.profile-photo img{width:100%;height:100%;object-fit:cover;display:block}
+
+.right .top{display:flex;justify-content:space-between;align-items:center;gap:1rem}
+.right .right-controls{display:flex;align-items:center;gap:1rem}
+.right .top .profile{display:flex;align-items:center;gap:.8rem;text-align:left}
+.right .top .profile .info .name{margin:0;line-height:1}
+.right .top .profile .info .role{margin:0;color:var(--clr-dark-variant);font-size:.78rem}
+
+/* ===== Sidebar ===== */
+aside .logo{display:flex;gap:1rem}
+aside .top div.close{display:none}
+
+aside .sidebar{
+  background-color:var(--clr-white);
+  display:flex;flex-direction:column;justify-content:flex-start;
+  height:calc(100vh - 5rem);
+  padding:1rem 0;position:relative
+}
+aside .sidebar a{
+  display:flex;align-items:center;gap:1rem;
+  padding:.75rem 2rem;color:var(--clr-info-dark);
+  height:3.2rem;transition:all .3s ease-in-out;animation:fadeSlideIn .45s ease both
+}
+aside .sidebar a span{font-size:1.6rem;transition:margin-left .4s ease}
+aside .sidebar a:nth-child(1){animation-delay:.05s}
+aside .sidebar a:nth-child(2){animation-delay:.1s}
+aside .sidebar a:nth-child(3){animation-delay:.15s}
+aside .sidebar a:nth-child(4){animation-delay:.2s}
+aside .sidebar a:nth-child(5){animation-delay:.25s}
+aside .sidebar a:nth-child(6){animation-delay:.3s}
+
+aside .sidebar a.active{background:var(--clr-light);color:var(--clr-primary);border-left:5px solid var(--clr-primary)}
+aside .sidebar a.active::before{content:'';width:6px;height:100%;background-color:var(--clr-primary)}
+aside .sidebar a:hover{color:var(--clr-primary)}
+aside .sidebar a:hover span{margin-left:1rem}
+aside .sidebar a span.msg_count{background:var(--clr-danger);color:var(--clr-white);padding:2px 5px;font-size:11px;border-radius:var(--border-radius-1);margin-left:auto}
+
+/* ===== Main ===== */
+main{margin-top:1.4rem;width:auto}
+main input{background-color:transparent;border:0;outline:0;color:var(--clr-dark)}
+main .date{display:inline-block;background-color:var(--clr-white);border-radius:var(--border-radius-1);margin-top:1rem;padding:.5rem 1.6rem}
+
+main .insights{display:grid;grid-template-columns:repeat(3,1fr);gap:1.6rem}
+main .insights>div{
+  background-color:var(--clr-white);padding:var(--card-padding);border-radius:var(--card-border-radius);
+  margin-top:1rem;box-shadow:var(--box-shadow);transition:all .3s ease;animation:fadeSlideUp .55s ease both
+}
+main .insights>div:hover{box-shadow:none}
+main .insights>div span{background:var(--clr-primary);padding:.5rem;border-radius:50%;color:var(--clr-white);font-size:2rem}
+main .insights>div:nth-child(2){animation-delay:.1s}
+main .insights>div:nth-child(3){animation-delay:.2s}
+main .insights>div.expenses span{background:var(--clr-danger)}
+main .insights>div.income span{background:var(--clr-success)}
+main .insights>div .middle{display:flex;align-items:center;justify-content:space-between}
+main .insights>div .middle h1{font-size:1.6rem}
+main h1, main .insights h1, main .insights h3, main .insights p{color:var(--clr-dark)}
+main .insights .progress{position:relative;height:68px;width:68px;border-radius:50px}
+main .insights svg{height:150px;position:absolute;top:0}
+main .insights svg circle{fill:none;stroke:var(--clr-primary);transform:rotate(270,80,80);stroke-width:5}
+main .insights .sales svg circle{stroke-dashoffset:10;stroke-dasharray:150}
+main .insights .expenses svg circle{stroke-dashoffset:10;stroke-dasharray:150}
+main .insights .income svg circle{stroke:var(--clr-success)}
+main .insights .progress .number{position:absolute;top:5%;left:5%;height:100%;width:100%;display:flex;justify-content:center;align-items:center}
+
+main .recent_order{margin-top:2rem}
+main .recent_order h2{color:var(--clr-dark)}
+main .recent_order table{
+  background-color:var(--clr-white);width:100%;border-radius:var(--card-border-radius);
+  padding:var(--card-padding);text-align:center;box-shadow:var(--box-shadow);
+  transition:all .3s ease;color:var(--clr-dark);animation:fadeSlideUp .6s ease both
+}
+main .recent_order table:hover{box-shadow:none}
+main table tbody tr{height:3.8rem;border-bottom:1px solid var(--clr-info-light);color:var(--clr-dark-variant);transition:background .3s ease}
+main table tbody tr:hover{background:rgba(29,78,216,.06)}
+main table tbody td{height:3.8rem;border-bottom:1px solid transparent}
+main table tbody tr:last-child td{border:none}
+main .recent_order a{text-align:center;display:block;margin:1rem}
+
+/* ===== Right ===== */
+.right{margin-top:1.4rem}
+.right h2{color:var(--clr-dark)}
+.right .top button{display:none}
+.right .theme-toggler{
+  background-color:var(--clr-white);display:flex;justify-content:space-between;
+  height:1.6rem;width:4.2rem;cursor:pointer;border-radius:var(--border-radius-1)
+}
+.right .theme-toggler span{font-size:1.2rem;width:50%;height:100%;display:flex;align-items:center;justify-content:center}
+.right .theme-toggler span.active{background-color:var(--clr-primary);color:#fff}
+.right .info h3,.right .item h3{color:var(--clr-dark)}
+
+/* recent updates */
+.right .recent_updates{margin-top:1rem;margin-left:-20px}
+.right .recent_updates .updates{
+  background-color:var(--clr-white);padding:var(--card-padding);border-radius:var(--card-border-radius);
+  box-shadow:var(--box-shadow);transition:all .3s ease;animation:fadeSlideUp .6s ease both
+}
+.right .recent_updates .updates:hover{box-shadow:none}
+.right .recent_updates .update{display:grid;grid-template-columns:2.6rem auto;gap:1rem;margin-bottom:1rem;animation:fadeSlideUp .6s ease both}
+.right .recent_updates .update:nth-child(2){animation-delay:.1s}
+.right .recent_updates .update:nth-child(3){animation-delay:.2s}
+
+/* sales analytics */
+.right .sales_analytics{margin-top:2rem}
+.right .sales_analytics .item{
+  background-color:var(--clr-white);display:flex;justify-content:space-between;align-items:center;gap:1rem;
+  margin:10px 0;width:100%;margin-bottom:.8rem;padding:1.4rem var(--card-padding);
+  border-radius:var(--border-radius-3);box-shadow:var(--box-shadow);animation:fadeSlideUp .65s ease both
+}
+.right .sales_analytics .item:hover{box-shadow:none}
+.right .sales_analytics .item .icon{
+  display:flex;align-items:center;justify-content:center;background:var(--clr-primary);color:var(--clr-white);
+  border-radius:50%;height:50px;width:50px;margin-right:.8rem;flex-shrink:0
+}
+.right .sales_analytics .item .icon span{font-size:24px;line-height:1;display:inline-block}
+.right .sales_analytics .item:nth-child(3) .icon{background-color:var(--clr-success)}
+.right .sales_analytics .item:nth-child(4) .icon{background-color:var(--clr-danger)}
+.right .sales_analytics .item:nth-child(2){animation-delay:.1s}
+right .sales_analytics .item:nth-child(3){animation-delay:.2s}
+.right .sales_analytics .item:nth-child(4){animation-delay:.3s}
+.right .sales_analytics .item .right_text{flex-grow:1;display:flex;flex-direction:column;justify-content:center;gap:.3rem}
+
+/* Utilidades */
+.btn-outline{
+  background:transparent;border:1px solid var(--clr-info-light);padding:.6rem 1rem;border-radius:12px;
+  font-weight:600;cursor:pointer;transition:background .3s ease,color .3s ease,border-color .3s ease
+}
+.btn-outline:hover{background:rgba(29,78,216,.08);color:var(--clr-primary);border-color:var(--clr-primary)}
+.dark-theme-variables .insights>div small{color:#cbd5e1}
+
+.page{max-width:980px;margin:0 auto}
+.page-title{text-align:center;font-weight:800;color:var(--clr-primary);margin:.4rem 0 1.2rem}
+.card{background:var(--clr-white);border:1px solid #e7ebf3;border-radius:16px;padding:1.2rem 1.4rem;box-shadow:var(--box-shadow);animation:fadeSlideUp .6s ease both}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-grid .full{grid-column:1/-1}
+.field{padding-bottom:12px;border-bottom:1px dashed #e2e8f0}
+.field:last-child{border-bottom:none}
+.input,.select{
+  width:100%;height:44px;background:#fbfcfe;border:1.6px solid #ccd5e5;border-radius:12px;padding:0 .85rem;color:#111827;
+  transition:border .15s,box-shadow .15s;appearance:none
+}
+.input:focus,.select:focus{border-color:var(--clr-primary);box-shadow:0 0 0 4px rgba(29,78,216,.18);outline:none}
+.btn{border:0;padding:.85rem 1.2rem;border-radius:12px;font-weight:700;cursor:pointer}
+.btn-primary{background:var(--clr-primary);color:#fff}
+.btn-primary:hover{filter:brightness(.95)}
+
+/* ===== Responsivo ===== */
+@media screen and (max-width:1200px){
+  .container{width:94%;grid-template-columns:7rem auto 14rem}
+  .container.no-right{grid-template-columns:7rem auto}
+  aside .sidebar h3{display:none}
+  aside .sidebar a:last-child{position:relative;margin-top:1.8rem}
+  main .insights{grid-template-columns:repeat(1,1fr)}
+}
+
+@media screen and (max-width:768px){
+  .container{width:100%;grid-template-columns:repeat(1,1fr)}
+  aside{position:fixed;width:18rem;z-index:3;background:var(--clr-white);display:none;left:-100px;animation:menuAni 1s forwards}
+  @keyframes menuAni{to{left:0}}
+  aside .logo h2{display:inline}
+  aside .sidebar h3{display:inline}
+  aside .sidebar a{width:100%;height:3.4rem}
+  aside .top div.close{display:inline;position:absolute;right:0;margin-right:30px;font-size:35px}
+
+  .right .top{
+    position:fixed;top:0;left:0;display:flex;justify-content:space-between;align-items:center;
+    padding:0 .8rem;background:var(--clr-white);width:100%;height:4.6rem;z-index:2;
+    box-shadow:0 1rem 1rem var(--box-shadow);margin:0
+  }
+  main .insights{grid-template-columns:repeat(1,1fr);gap:1.6rem;padding:40px}
+  .main .recent_order{padding:30px;margin:0 auto}
+  .right .recent_updates,.right .sales_analytics,.add_products{padding:30px}
+  .right .top button{display:inline-block;background:transparent;cursor:pointer;color:var(--clr-dark)}
+}

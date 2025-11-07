@@ -1,0 +1,79 @@
+/* ===== Modal Login ===== */
+.modal{
+  position:fixed;inset:0;
+  display:none;
+  align-items:center;justify-content:center;
+  z-index:2147483647;padding:16px
+}
+.modal.is-open{display:flex!important}
+.modal-backdrop{
+  position:absolute;inset:0;
+  background:rgba(0,0,0,.6);
+  backdrop-filter:blur(2px);
+  z-index:0
+}
+.modal-dialog{
+  position:relative;z-index:1;
+  width:100%;max-width:520px
+}
+.panel{
+  position:relative;z-index:2;width:100%;
+  background:#fff;border-radius:14px;
+  box-shadow:0 20px 60px rgba(0,0,0,.25);
+  overflow:hidden;
+  max-height:calc(100dvh - 32px)
+}
+.panel-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 20px;border-bottom:1px solid #e5e7eb
+}
+.panel-body{
+  padding:20px;overflow:auto;
+  max-height:calc(100dvh - 72px)
+}
+.close-btn{
+  background:none;border:0;font-size:20px;line-height:1;
+  padding:6px 8px;border-radius:8px;cursor:pointer
+}
+.close-btn:hover{background:#f3f4f6}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:14px;color:#374151;margin-bottom:6px}
+.field input[type="email"],.field input[type="password"]{
+  width:100%;border:1px solid #d1d5db;border-radius:10px;
+  padding:10px 12px;font-size:15px
+}
+.error{margin-top:6px;font-size:12px;color:#b91c1c}
+.row{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:10px;font-size:14px;color:#4b5563;margin:8px 0
+}
+.submit{
+  width:100%;border:0;background:#1f2937;color:#fff;
+  font-weight:600;border-radius:12px;
+  padding:10px 14px;cursor:pointer
+}
+.submit:hover{background:#374151}
+.alert.ok{
+  background:#ecfdf5;color:#065f46;
+  border-radius:8px;padding:8px 10px;
+  margin-bottom:10px;font-size:14px
+}
+.alert.err{
+  background:#fef2f2;color:#991b1b;
+  border-radius:8px;padding:8px 10px;
+  margin-bottom:10px;font-size:14px
+}
+body.modal-open{overflow:hidden;height:100dvh}
+
+/* Modal breakpoints */
+@media (max-width:768px){
+  .modal{padding:12px}
+  .modal-dialog{max-width:520px}
+  .panel{border-radius:12px;max-height:calc(100dvh - 24px)}
+  .panel-body{max-height:calc(100dvh - 68px)}
+}
+@media (max-width:640px){
+  .modal{padding:10px}
+  .panel{border-radius:12px;max-height:calc(100dvh - 20px)}
+  .panel-body{max-height:calc(100dvh - 64px)}
+}

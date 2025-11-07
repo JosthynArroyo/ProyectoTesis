@@ -1,0 +1,124 @@
+/* resources/css/admin/cambios-citas.css */
+:root{
+  --ink:#0f172a; --muted:#64748b; --line:#e5e7eb; --bg:#f8fafc;
+  --card:#fff; --brand:#2563eb; --brand-2:#1d4ed8; --ring:rgba(37,99,235,.18);
+  --danger:#dc2626; --success:#16a34a; --warning:#f59e0b;
+  --radius:14px; --shadow:0 18px 38px rgba(15,23,42,.08);
+  --pad:1rem;
+}
+
+.page{display:grid;gap:1rem;color:var(--ink)}
+.page .hero{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:1rem;background:linear-gradient(180deg,#fff, #f7f9ff);
+  border:1px solid var(--line); border-radius:var(--radius); padding:20px;
+  box-shadow:var(--shadow)
+}
+.page .hero h2{margin:0;font-size:1.25rem}
+.page .hero p{margin:.25rem 0 0;color:var(--muted);font-size:.95rem}
+.hero-stat{
+  display:inline-flex;align-items:center;gap:.5rem;
+  padding:.45rem .7rem;border-radius:999px;border:1px solid rgba(2,6,23,.08);
+  background:#fff;color:#111827;font-weight:600
+}
+.hero-stat .material-symbols-outlined{font-size:18px}
+
+.card{
+  background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+  box-shadow:var(--shadow); overflow:hidden
+}
+.card-header,.card-footer{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:14px 16px; background:#fff; border-bottom:1px solid var(--line)
+}
+.card-footer{border-top:1px solid var(--line); border-bottom:none}
+.card-body{padding:16px}
+
+/* Controles */
+.grid{display:grid}
+.card-body .grid{
+  grid-template-columns:repeat(12,minmax(0,1fr)); gap:.8rem
+}
+.card-body .grid > *{min-width:0}
+.select,.input{
+  appearance:none; width:100%; padding:.6rem .8rem; border:1px solid var(--line);
+  border-radius:10px; background:#fff; color:var(--ink); font:inherit
+}
+.select:focus,.input:focus{outline:2px solid var(--ring); border-color:var(--brand)}
+/* columnas responsivas sin tocar Blade */
+.select[name="tipo"]      {grid-column:span 3}
+.select[name="estado"]    {grid-column:span 3}
+.select[name="doctor_id"] {grid-column:span 3}
+.input[name="paciente"]   {grid-column:span 3}
+.input[name="desde"]      {grid-column:span 3}
+.input[name="hasta"]      {grid-column:span 3}
+.input[name="q"]          {grid-column:span 6}
+
+.btn{
+  display:inline-flex; align-items:center; justify-content:center;
+  gap:.5rem; padding:.55rem .9rem; border-radius:10px; border:1px solid transparent;
+  font-weight:600; text-decoration:none; cursor:pointer; white-space:nowrap
+}
+.btn-primary{background:var(--brand); color:#fff; border-color:var(--brand)}
+.btn-primary:hover{background:var(--brand-2); border-color:var(--brand-2)}
+.btn-secondary{background:#fff; color:var(--ink); border-color:var(--line)}
+.btn-secondary:hover{border-color:#cbd5e1}
+
+/* Tabla */
+.card-body[style*="padding:0"]{padding:0} /* respeta la decisión del Blade */
+.users{border-collapse:separate; border-spacing:0; min-width:100%}
+.users thead th{
+  position:sticky; top:0; background:#f9fafb; color:#111827;
+  text-align:left; font-size:.85rem; letter-spacing:.02em; z-index:1;
+  border-bottom:1px solid var(--line); padding:.75rem .9rem
+}
+.users tbody td{
+  padding:.7rem .9rem; border-bottom:1px solid var(--line); vertical-align:middle
+}
+.users tbody tr:hover{background:#f9fbff}
+.users tbody tr:last-child td{border-bottom:none}
+.users th:nth-child(1), .users td:nth-child(1){width:150px}
+.users th:nth-child(2), .users td:nth-child(2){width:130px}
+.users th:nth-child(3), .users td:nth-child(3){width:90px}
+.users td{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Chips para estados mostrados como texto plano */
+.users td:nth-child(2){font-weight:600}
+.users td:nth-child(6), .users td:nth-child(7){
+  font-variant:all-small-caps; letter-spacing:.02em; color:#111827
+}
+
+/* Paginación y totales */
+.card-header span{color:var(--muted);font-size:.95rem}
+.card-footer > div:first-child{color:var(--muted)}
+
+/* Export botones agrupados */
+.card-header > div[style*="display:flex"]{gap:.5rem;flex-wrap:wrap}
+
+/* Scroll horizontal seguro en móviles sin cambiar HTML */
+.card-body{overflow-x:auto}
+
+/* Responsivo */
+@media (max-width: 1200px){
+  .input[name="q"]{grid-column:span 12}
+}
+@media (max-width: 920px){
+  .select[name="tipo"],
+  .select[name="estado"],
+  .select[name="doctor_id"],
+  .input[name="paciente"],
+  .input[name="desde"],
+  .input[name="hasta"],
+  .input[name="q"]{grid-column:span 12}
+  .hero{flex-direction:column;align-items:flex-start}
+}
+@media (max-width: 640px){
+  .card-header,.card-footer{flex-direction:column;align-items:flex-start;gap:.6rem}
+  .users thead th{font-size:.8rem}
+  .users tbody td{font-size:.9rem}
+}
+
+/* Accesibilidad menor */
+.select:focus-visible,.input:focus-visible,.btn:focus-visible{
+  outline:2px solid var(--ring); outline-offset:2px
+}

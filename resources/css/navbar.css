@@ -1,0 +1,98 @@
+/* resources/css/navbar.css */
+/* Fuente legible */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&display=swap");
+
+/* Vars */
+:root{
+  --cnav-h:3.5rem;
+  --cnav-bg:#ffffff;          /* navbar blanco */
+  --cnav-text:#000;        /* texto oscuro */
+  --cnav-accent:#000;      /* azul para hover/activo */
+  --cnav-line:#e5e7eb;
+  --cnav-z:9999;
+  --cnav-shadow:0 10px 24px rgba(0,0,0,.08);
+}
+
+/* Fijo arriba siempre visible */
+.cnav-header{
+  position:fixed; top:0; left:0; width:100%;
+  background:var(--cnav-bg); z-index:var(--cnav-z);
+  border-bottom:1px solid var(--cnav-line);
+  transition:box-shadow .2s ease, backdrop-filter .2s ease, background .2s ease, border-color .2s ease;
+}
+.cnav-header.cnav--scrolled{
+  backdrop-filter:saturate(140%) blur(2px);
+  box-shadow:var(--cnav-shadow);
+  border-color:rgba(0,0,0,.04);
+}
+
+.cnav{height:var(--cnav-h); display:flex; align-items:center;}
+.cnav-container{
+  width:100%; max-width:1120px; margin:0 auto; padding:0 1.5rem;
+  display:flex; align-items:center; justify-content:space-between;
+}
+.cnav__logo{
+  color:var(--cnav-text);
+  font:600 1rem 'Inter',system-ui,-apple-system,Segoe UI,Roboto,Arial;
+}
+
+/* Botones */
+.cnav__toggle,.cnav__close{
+  display:flex; align-items:center; justify-content:center;
+  color:var(--cnav-text); font-size:1.5rem; background:none; border:0; cursor:pointer;
+}
+
+/* Menú */
+.cnav__menu{display:flex; align-items:center; column-gap:2.5rem;}
+.cnav__list{display:flex; align-items:center; column-gap:2.5rem; margin:0; padding:0;}
+.cnav__item{list-style:none}
+.cnav__link{
+  position:relative; color:var(--cnav-text); font-size:.95rem; font-weight:600;
+  display:inline-flex; align-items:center; font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,Arial;
+}
+.cnav__link i{font-size:1.2rem; position:absolute; opacity:0; visibility:hidden; transition:opacity .25s}
+.cnav__link span{position:relative; transition:margin .25s}
+.cnav__link span::after{
+  content:""; position:absolute; left:0; bottom:-6px; width:0; height:2px;
+  background:var(--cnav-accent); transition:width .25s ease
+}
+.cnav__link:hover span{margin-left:2rem}
+.cnav__link:hover i{opacity:1; visibility:visible}
+.cnav__link:hover span::after{width:100%}
+.cnav__link.is-active span::after{width:100%}
+.cnav__link--button{background:none; border:0; padding:0; color:inherit; cursor:pointer; font:inherit; display:inline-flex; align-items:center}
+
+.cnav__social{display:flex; align-items:center; column-gap:1rem}
+.cnav__social-link{
+  color:var(--cnav-text); font-size:1.2rem; transition:transform .2s, color .2s;
+}
+.cnav__social-link:hover{transform:translateY(-.2rem); color:var(--cnav-accent)}
+
+/* Mobile */
+@media (max-width:1150px){
+  .cnav{height:var(--cnav-h)}
+  .cnav__menu{
+    position:fixed; left:-100%; top:0; bottom:0;
+    width:100%; height:100%; background:var(--cnav-bg);
+    padding:6rem 3.5rem 4.5rem; flex-direction:column; justify-content:space-between;
+    transition:left .35s ease; border-right:1px solid var(--cnav-line);
+  }
+  .cnav__menu.is-open{left:0}
+  .cnav__list{flex-direction:column; row-gap:3rem}
+  .cnav__item{transform:translateX(-140px); visibility:hidden; transition:transform .35s ease, visibility .35s}
+  .cnav__menu.is-open .cnav__item{transform:translateX(0); visibility:visible}
+  .cnav__toggle{display:flex}
+  .cnav__close{position:absolute; top:1rem; right:1.5rem; display:flex}
+  body.nav-open{overflow:hidden}
+}
+
+/* Desktop */
+@media (min-width:1150px){
+  .cnav__toggle,.cnav__close{display:none}
+}
+
+/* Spacer para contenido (evita que el header tape el main) */
+.cnav-spacer{height:var(--cnav-h)}
+@media (min-width:1150px){
+  .cnav-spacer{height:calc(var(--cnav-h) + 8px)}
+}

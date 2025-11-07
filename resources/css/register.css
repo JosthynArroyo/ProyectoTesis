@@ -1,0 +1,168 @@
+@import 'tailwindcss';
+
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap');
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Montserrat', sans-serif;
+}
+
+body {
+    background: linear-gradient(to bottom right, #e0f7ff, #ffffff);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+}
+
+.container {
+    background-color: #fff;
+    border-radius: 30px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.35);
+    display: flex;
+    width: 768px;
+    max-width: 100%;
+    min-height: 480px;
+    overflow: hidden;
+    position: relative;
+}
+
+/* Panel izquierdo morado con curva a la derecha */
+.toggle-container {
+    width: 50%;
+    background: linear-gradient(to right, #2563eb, #8995da);
+    color: white;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 0 30px;
+    border-radius: 0 200px 200px 0;  
+}
+
+/* Formulario Sign Up */
+.form-container.sign-up {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.form-container form {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    padding: 0 40px;
+}
+
+/* Input y botón */
+input {
+    background-color: #eee;
+    border: none;
+    margin: 8px 0;
+    padding: 10px 15px;
+    font-size: 13px;
+    border-radius: 8px;
+    width: 100%;
+    outline: none;
+}
+
+button {
+    background-color: #628ae0;
+    color: white;
+    padding: 10px 45px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    margin-top: 10px;
+    cursor: pointer;
+    font-size: 12px;
+    text-transform: uppercase;
+}
+
+a {
+    font-size: 13px;
+    text-decoration: none;
+    color: #333;
+    margin-top: 10px;
+}
+
+@media (max-width: 1024px) {
+    .container {
+        width: 90%;
+    }
+}
+
+/* Tablets y móviles */
+@media (max-width: 768px) {
+    .container {
+        flex-direction: column;
+        border-radius: 20px;
+    }
+
+    .toggle-container {
+        width: 100%;
+        border-radius: 0;
+        padding: 40px 20px;
+    }
+
+    .form-container.sign-up {
+        width: 100%;
+        padding: 40px 20px;
+    }
+}
+
+/* Móviles pequeños */
+@media (max-width: 480px) {
+    .form-container form {
+        padding: 0 20px;
+    }
+
+    h1 {
+        font-size: 22px;
+    }
+
+    button {
+        padding: 10px 30px;
+        font-size: 11px;
+    }
+
+    .toggle-container p {
+        font-size: 14px;
+    }
+}
+
+/* Ojo de contraseña — overrides para evitar heredar el estilo global de button */
+.password-field{position:relative;display:flex;align-items:center}
+.password-field input{padding-right:44px}
+
+.password-field .toggle-eye{
+  all: unset;
+  position:absolute;
+  right:10px;
+  top:50%;
+  transform:translateY(-50%);
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:32px;
+  height:32px;
+  border-radius:8px;
+  background:#dce1eb;
+  cursor:pointer;
+  line-height:1;
+  color:#1f2a44;
+}
+
+.password-field .toggle-eye:focus{outline:2px solid #2563eb; outline-offset:2px}
+.password-field .toggle-eye svg{display:block; pointer-events:none}
+
+.password-field .toggle-eye .eye-off{display:none}
+.password-field .toggle-eye.is-on .eye-on{display:none}
+.password-field .toggle-eye.is-on .eye-off{display:block}
+
+.error{color:#ff4e4c;font-size:12px;margin-top:4px;display:block}
+
