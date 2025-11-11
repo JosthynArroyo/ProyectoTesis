@@ -5,14 +5,17 @@ namespace App\Http\Controllers;
 
 use App\Models\Contacto;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Mail;
 
 class ContactoController extends Controller
 {
     public function __construct()
     {
-        // 5 envíos por minuto por IP
-        $this->middleware('throttle:contacto,5,1')->only('enviarFormulario');
+        // Usa el limiter nombrado "contacto"
+        $this->middleware('throttle:contacto')->only('enviarFormulario');
+        // Alternativa sin limiter nombrado:
+        // $this->middleware('throttle:5,1')->only('enviarFormulario');
     }
 
     public function mostrarFormulario()
@@ -24,33 +27,32 @@ class ContactoController extends Controller
     {
         // Honeypot y tiempo mínimo (>= 3s)
         $t0 = (int) $request->input('t0', 0);
-        $isBot = filled($request->input('empresa'));
+        $isBot   = filled($request->input('empresa'));
         $tooFast = $t0 > 0 && (now()->timestamp - $t0) < 3;
         if ($isBot || $tooFast) {
-            // Finge éxito para no dar feedback al bot
             return back()->with('success', 'Tu mensaje ha sido enviado correctamente.');
         }
 
         $datos = $request->validate([
-            'nombre'   => ['required','string','max:255'],
-            'email'    => ['required','email','max:255'],
-            'telefono' => ['nullable','string','max:30'],
-            'motivo'   => ['nullable','in:consulta_general,agendar_cita,reprogramacion,facturacion,otros'],
-            'asunto'   => ['nullable','string','max:255'],
-            'mensaje'  => ['required','string','max:1000'],
+            'nombre'         => ['required','string','max:255'],
+            'email'          => ['required','email','max:255'],
+            'telefono'       => ['nullable','regex:/^[0-9]{10}$/'],
+            'motivo'         => ['nullable','in:consulta_general,agendar_cita,reprogramacion,facturacion,otros'],
+            'asunto'         => ['nullable','string','max:255'],
+            'mensaje'        => ['required','string','max:1000'],
+            'consentimiento' => ['required','in:si,no'],
+            'empresa'        => ['nullable','prohibited'], 
+            't0'             => ['required','integer'],
         ]);
 
-        // Normaliza campos opcionales
-        $datos['motivo'] = $datos['motivo'] ?? null;
-        $datos['telefono'] = $datos['telefono'] ?? null;
+        $payload = Arr::only($datos, ['nombre','email','telefono','motivo','asunto','mensaje']);
+        Contacto::create($payload);
 
-        // Persistencia
-        Contacto::create($datos);
+        // Enviar email al administrador
+        Mail::to('josthynarroyo627@gmail.com')->send(
+            new \App\Mail\ContactoRecibido($datos) // ver clase abajo
+        );
 
-        // TODO: Mail::to(config('mail.from.address'))->queue(new ContactoRecibido($datos));
-        // Opcional: Log por IP/UA
-        // \Log::info('Contacto', ['ip'=>$request->ip(),'ua'=>$request->userAgent(),'id'=>Str::uuid()->toString()]);
-
-        return back()->with('success', 'Tu mensaje ha sido enviado correctamente. ¡Gracias por contactarnos!');
+        return back()->with('success', 'Tu mensaje ha sido enviado correctamente.');
     }
 }

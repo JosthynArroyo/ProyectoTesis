@@ -1,4 +1,6 @@
 @import 'tailwindcss';
+@import './navbar.css';
+@import './modal.css';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
@@ -8,4 +10,147 @@
 @theme {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
+}
+
+@layer base {
+    :root {
+        color-scheme: light;
+        --core-font: var(--font-sans);
+        --core-bg: #f8fafc;
+        --core-surface: #ffffff;
+        --core-surface-muted: #eef2ff;
+        --core-border: #e5e7eb;
+        --core-shadow-sm: 0 6px 24px rgba(15, 23, 42, 0.08);
+        --core-shadow-lg: 0 28px 80px rgba(15, 23, 42, 0.14);
+        --core-radius-sm: 0.5rem;
+        --core-radius-md: 0.75rem;
+        --core-radius-lg: 1rem;
+        --core-text: #0f172a;
+        --core-text-muted: #475569;
+        --core-accent: #0284c7;
+        --core-accent-strong: #0ea5e9;
+    }
+
+    *,
+    *::before,
+    *::after {
+        box-sizing: border-box;
+    }
+
+    body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: var(--core-font);
+        background: var(--core-bg);
+        color: var(--core-text);
+        line-height: 1.6;
+        text-rendering: optimizeLegibility;
+        -webkit-font-smoothing: antialiased;
+    }
+
+    img,
+    picture,
+    video {
+        max-width: 100%;
+        display: block;
+    }
+
+    a {
+        color: inherit;
+        text-decoration: none;
+    }
+
+    button,
+    input,
+    textarea,
+    select {
+        font: inherit;
+        color: inherit;
+        background: transparent;
+    }
+
+    :focus-visible {
+        outline: 2px solid var(--core-accent);
+        outline-offset: 3px;
+    }
+}
+
+@layer components {
+    .app-shell {
+        width: min(1120px, 100% - 2.5rem);
+        margin-inline: auto;
+    }
+
+    .app-section {
+        padding-block: clamp(3rem, 7vw, 5rem);
+        padding-inline: 1.5rem;
+    }
+
+    .surface-card {
+        background: var(--core-surface);
+        border: 1px solid var(--core-border);
+        border-radius: var(--core-radius-lg);
+        box-shadow: var(--core-shadow-sm);
+    }
+
+    .surface-card[data-elevated='true'] {
+        box-shadow: var(--core-shadow-lg);
+    }
+
+    .text-muted {
+        color: var(--core-text-muted);
+    }
+
+    .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.35rem 0.9rem;
+        border-radius: 999px;
+        background: #e0f2fe;
+        color: #0c4a6e;
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+
+    .brand-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.85rem 1.5rem;
+        border-radius: var(--core-radius-md);
+        border: none;
+        background: var(--core-accent);
+        color: #fff;
+        font-weight: 600;
+        box-shadow: 0 16px 30px rgba(2, 132, 199, 0.24);
+        cursor: pointer;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .brand-button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 26px 60px rgba(2, 132, 199, 0.28);
+    }
+}
+
+@layer utilities {
+    .stack {
+        display: flex;
+        flex-direction: column;
+        gap: var(--stack-gap, 1.5rem);
+    }
+
+    .grid-2 {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.25rem;
+    }
 }

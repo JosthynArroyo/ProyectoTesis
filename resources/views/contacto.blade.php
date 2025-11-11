@@ -79,12 +79,20 @@
           </div>
 
           <div class="form-group">
-            <label for="telefono">Teléfono (opcional)</label>
+            <label for="telefono">Teléfono (10 dígitos)</label>
             <input
-              id="telefono" type="tel" name="telefono" value="{{ old('telefono') }}"
-              autocomplete="tel" inputmode="tel"
+              id="telefono"
+              type="tel"
+              name="telefono"
+              value="{{ old('telefono') }}"
+              autocomplete="tel"
+              inputmode="numeric"
+              maxlength="10"
+              pattern="[0-9]{10}"
+              title="Debe contener exactamente 10 dígitos numéricos"
               aria-invalid="{{ $errors->has('telefono') ? 'true' : 'false' }}"
-              aria-describedby="{{ $errors->has('telefono') ? 'err-telefono' : '' }}">
+              aria-describedby="{{ $errors->has('telefono') ? 'err-telefono' : '' }}"
+              oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0,10)">
             @error('telefono')<small id="err-telefono" class="err">{{ $message }}</small>@enderror
           </div>
 
@@ -124,10 +132,15 @@
             @error('mensaje')<small id="err-mensaje" class="err">{{ $message }}</small>@enderror
           </div>
 
-          <p class="privacy">
-            Deseas que usemos tus datos de este formulario para generarte un usuario en nuestro sistema de gestión médica y así facilitar la atención en tu próxima visita?
-            
-          </p>
+          {{-- Consentimiento corto con Sí/No --}}
+          <div class="form-group">
+            <label>¿Autoriza crear una cuenta con estos datos?</label>
+            <div style="display:flex;gap:12px;align-items:center">
+              <label><input type="radio" name="consentimiento" value="si" {{ old('consentimiento')==='si' ? 'checked' : '' }}> Sí</label>
+              <label><input type="radio" name="consentimiento" value="no" {{ old('consentimiento')==='no' ? 'checked' : '' }}> No</label>
+            </div>
+            @error('consentimiento')<small class="err">{{ $message }}</small>@enderror
+          </div>
 
           <button type="submit" class="btn-submit" id="btnSubmit">Enviar</button>
         </form>

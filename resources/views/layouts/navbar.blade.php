@@ -11,7 +11,6 @@
     'resources/css/navbar.css',
     'resources/css/modal.css',
     'resources/js/navbar.js',
-    'resources/js/modal-login.js'
   ])
   @stack('head')
 </head>

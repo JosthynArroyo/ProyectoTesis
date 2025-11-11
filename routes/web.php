@@ -48,7 +48,9 @@ Route::get('/home', function () {
 
 // Contacto
 Route::get('/contacto', [ContactoController::class, 'mostrarFormulario'])->name('contacto.form');
-Route::post('/contacto', [ContactoController::class, 'enviarFormulario'])->name('contacto.enviar');
+Route::post('/contacto', [ContactoController::class, 'enviarFormulario'])
+    ->middleware('throttle:contacto')   // usa el limiter definido
+    ->name('contacto.enviar');
 
 // Servicios
 Route::get('/servicios', fn() => view('servicios'))->name('servicios.index');
@@ -70,7 +72,7 @@ Route::middleware(['auth', 'role:administrador'])
     Route::get('/perfil', [AdminDashboardController::class, 'editarPerfil'])->name('perfil.edit');
     Route::post('/perfil', [AdminDashboardController::class, 'actualizarPerfil'])->name('perfil.update');
 
-    // Usuarios (único módulo de gestión)
+    // Usuarios
     Route::get('/usuarios', [AdminDashboardController::class, 'usuarios'])->name('usuarios.index');
     Route::get('/usuarios/crear', [AdminDashboardController::class, 'usuariosCreate'])->name('usuarios.create');
     Route::post('/usuarios', [AdminDashboardController::class, 'usuariosStore'])->name('usuarios.store');
@@ -79,7 +81,7 @@ Route::middleware(['auth', 'role:administrador'])
     Route::put('/usuarios/{user}', [AdminDashboardController::class, 'usuariosUpdate'])->name('usuarios.update');
     Route::delete('/usuarios/{user}', [AdminDashboardController::class, 'usuariosDestroy'])->name('usuarios.destroy');
 
-    // Exportes usuarios (aceptan ?role=doctor|paciente|administrador)
+    // Exportes usuarios
     Route::get('/usuarios/export/excel', [AdminDashboardController::class, 'usuariosExportExcel'])->name('usuarios.export.excel');
     Route::get('/usuarios/export/pdf',   [AdminDashboardController::class, 'usuariosExportPdf'])->name('usuarios.export.pdf');
 
@@ -115,10 +117,10 @@ Route::middleware(['auth', 'role:administrador'])
     Route::put('/horarios/{horario}', [HorarioController::class, 'update'])->name('horarios.update');
     Route::delete('/horarios/{horario}', [HorarioController::class, 'destroy'])->name('horarios.destroy');
 
-    // Auditoría de cambios de citas (ADMIN)
-Route::get('/cambios-citas', [\App\Http\Controllers\Admin\CitaEventosController::class,'index'])->name('cambios-citas.index');
-Route::get('/cambios-citas/export/excel', [\App\Http\Controllers\Admin\CitaEventosController::class,'exportExcel'])->name('cambios-citas.export.excel');
-Route::get('/cambios-citas/export/pdf',   [\App\Http\Controllers\Admin\CitaEventosController::class,'exportPdf'])->name('cambios-citas.export.pdf');
+    // Auditoría de cambios de citas
+    Route::get('/cambios-citas', [\App\Http\Controllers\Admin\CitaEventosController::class,'index'])->name('cambios-citas.index');
+    Route::get('/cambios-citas/export/excel', [\App\Http\Controllers\Admin\CitaEventosController::class,'exportExcel'])->name('cambios-citas.export.excel');
+    Route::get('/cambios-citas/export/pdf',   [\App\Http\Controllers\Admin\CitaEventosController::class,'exportPdf'])->name('cambios-citas.export.pdf');
 });
 
 // ========================== PACIENTE =========================
@@ -146,8 +148,7 @@ Route::middleware(['auth', 'role:doctor'])->prefix('doctor')->group(function () 
     Route::post('/citas/{id}/aceptar', [CitaController::class, 'aceptar'])->name('doctor.citas.aceptar');
     Route::post('/citas/{id}/rechazar', [CitaController::class, 'rechazar'])->name('doctor.citas.rechazar');
     Route::post('/citas/{id}/realizar', [CitaController::class, 'realizar'])->name('doctor.citas.realizar');
-    Route::get('/agenda', [DoctorDashboardController::class, 'agenda'])
-    ->name('doctor.agenda');
+    Route::get('/agenda', [DoctorDashboardController::class, 'agenda'])->name('doctor.agenda');
 
     Route::get('/disponibilidad/check', [CitaController::class,'checkDisponibilidad'])
         ->name('doctor.disponibilidad.check');
@@ -155,10 +156,6 @@ Route::middleware(['auth', 'role:doctor'])->prefix('doctor')->group(function () 
     // Crear “próxima cita” desde una cita realizada
     Route::post('/citas/{cita}/proxima', [CitaController::class,'proximaDesdeCita'])
         ->whereNumber('cita')->name('doctor.citas.proxima');
-
-        // Chequear si el doctor tiene horarios esta semana
-    Route::get('/disponibilidad/check', [CitaController::class,'checkDisponibilidad'])
-        ->name('doctor.disponibilidad.check');
 
     // Crear próxima cita con fecha/hora elegidas en el toast
     Route::post('/citas/{cita}/proxima/planificar', [CitaController::class,'proximaPlanificada'])
@@ -174,7 +171,6 @@ Route::middleware(['auth', 'role:doctor'])->prefix('doctor')->group(function () 
     Route::get('/recetas/descargar/{cita}', [RecetaController::class, 'download'])->name('doctor.recetas.download');
 
     // Horarios
-    
     Route::get('/horario',                [DoctorHorarioController::class,'index'])->name('doctor.horario.index');
     Route::post('/horario',               [DoctorHorarioController::class,'store'])->name('doctor.horario.store');
     Route::get('/horario/{horario}/edit', [DoctorHorarioController::class,'edit'])->name('doctor.horario.edit');
