@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use App\Models\Cita;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class AdminController extends Controller
 {
@@ -167,7 +169,7 @@ class AdminController extends Controller
         $request->validate([
             'name'              => ['required','string','max:255'],
             'email'             => ['required','email','max:255', Rule::unique('users','email')->ignore($user->id)],
-            'telefono'          => ['nullable','string','max:50'],
+            'telefono'          => ['nullable','regex:/^\d{10}$/'],
             'dni'               => ['required','digits:10', Rule::unique('users','dni')->ignore($user->id)],
             'direccion'         => ['nullable','string','max:255'],
             'fecha_nacimiento'  => ['required','date','before:today'],
@@ -175,33 +177,27 @@ class AdminController extends Controller
             'avatar'            => ['nullable','image','mimes:jpg,jpeg,png,webp','max:2048'],
             'precio_consulta'   => ['nullable','numeric','min:0','max:99999999.99'],
             'moneda'            => ['nullable','in:USD'],
+
+            // cambio de contraseña (opcional): min 8, letras + números + símbolo, confirmada y distinta a la actual
+            'current_password'  => ['nullable','string'],
+            'password'          => [
+                'nullable','string','min:8','confirmed','different:current_password',
+                'regex:/^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/'
+            ],
         ], [
-            'name.required'                 => 'El nombre es obligatorio.',
-            'email.required'                => 'El correo es obligatorio.',
-            'email.email'                   => 'Formato de correo inválido.',
-            'email.unique'                  => 'Este correo ya está registrado.',
-            'dni.required'                  => 'El número de cédula es obligatorio.',
-            'dni.digits'                    => 'El número de cédula debe tener exactamente 10 dígitos.',
-            'dni.unique'                    => 'Este número de cédula ya está registrado.',
-            'fecha_nacimiento.required'     => 'La fecha de nacimiento es obligatoria.',
-            'fecha_nacimiento.before'       => 'La fecha de nacimiento debe ser anterior a hoy.',
-            'avatar.image'                  => 'El archivo debe ser una imagen.',
-            'avatar.mimes'                  => 'Formatos permitidos: JPG, JPEG, PNG o WEBP.',
-            'avatar.max'                    => 'La imagen no debe exceder 2 MB.',
-            'sexo.in'                       => 'Seleccione un sexo válido.',
-            'precio_consulta.numeric'       => 'El precio debe ser numérico.',
-            'precio_consulta.min'           => 'El precio no puede ser negativo.',
-            'moneda.in'                     => 'Moneda inválida (fijo: USD).',
+            'telefono.regex'                 => 'Teléfono: exactamente 10 dígitos.',
+            'password.regex'                 => 'La contraseña debe incluir letras, números y al menos un carácter especial.',
         ]);
 
+        // avatar
         if ($request->hasFile('avatar')) {
             if ($user->avatar) {
                 Storage::disk('public')->delete($user->avatar);
             }
-            $path = $request->file('avatar')->store('avatars', 'public');
-            $user->avatar = $path;
+            $user->avatar = $request->file('avatar')->store('avatars', 'public');
         }
 
+        // datos perfil
         $user->fill([
             'name'             => $request->name,
             'email'            => $request->email,
@@ -212,13 +208,37 @@ class AdminController extends Controller
             'sexo'             => $request->sexo,
             'precio_consulta'  => $request->precio_consulta,
             'moneda'           => 'USD',
-        ])->save();
+        ]);
+
+        // cambio de contraseña si viene nueva
+        $passwordChanged = false;
+        if ($request->filled('password')) {
+            if (!$request->filled('current_password') || !Hash::check($request->input('current_password'), $user->password)) {
+                return back()
+                    ->withErrors(['current_password' => 'La contraseña actual no es correcta.'])
+                    ->withInput();
+            }
+            $user->password = Hash::make($request->input('password'));
+            $passwordChanged = true;
+        }
+
+        $user->save();
+
+        if ($passwordChanged) {
+            // invalidar "remember me" y sesiones previas
+            $user->setRememberToken(Str::random(60));
+            $user->save();
+
+            // cerrar otras sesiones del usuario usando la NUEVA contraseña
+            Auth::logoutOtherDevices($request->input('password'));
+
+            // regenar sesión actual y volver a autenticar
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+            Auth::login($user);
+            $request->session()->regenerate();
+        }
 
         return redirect()->route('doctor.perfil.edit')->with('success', 'Perfil actualizado.');
-    }
-
-    public function agenda()
-    {
-        return view('doctor.agenda', ['current' => 'agenda']);
     }
 }

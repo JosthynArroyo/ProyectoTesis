@@ -1,5 +1,5 @@
 @extends('layouts.doctor')
-@section('title', 'Panel Doctor - Clínica Los Ángeles')
+@section('title', 'Panel Doctor - Clínica Don Bosco')
 @section('activeSidebar', 'dashboard')
 
 @push('head')

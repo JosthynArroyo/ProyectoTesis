@@ -1,27 +1,37 @@
-{{-- resources/views/admin/users/form.blade.php --}}
 @php($u = $user ?? new \App\Models\User)
 @csrf
+
+@push('head')
+  @vite('resources/css/admin/users/form.css')
+@endpush
+
 <div class="grid">
   <div>
     <label>Nombre</label>
     <input class="input" name="name" value="{{ old('name', $u->name) }}" required>
-    @error('name')<small style="color:#b91c1c">{{ $message }}</small>@enderror
+    @error('name')<small class="err">{{ $message }}</small>@enderror
   </div>
   <div>
     <label>Email</label>
     <input class="input" name="email" type="email" value="{{ old('email', $u->email) }}" required>
-    @error('email')<small style="color:#b91c1c">{{ $message }}</small>@enderror
+    @error('email')<small class="err">{{ $message }}</small>@enderror
   </div>
 
   @if(!$user)
   <div>
     <label>Contraseña</label>
-    <input class="input" name="password" type="password" required>
-    @error('password')<small style="color:#b91c1c">{{ $message }}</small>@enderror
+    <div class="password-field">
+      <input class="input" name="password" id="password" type="password" required>
+      <button type="button" class="btn-eye" data-target="#password"><span class="material-symbols-outlined">visibility</span></button>
+    </div>
+    @error('password')<small class="err">{{ $message }}</small>@enderror
   </div>
   <div>
     <label>Confirmación</label>
-    <input class="input" name="password_confirmation" type="password" required>
+    <div class="password-field">
+      <input class="input" name="password_confirmation" id="password_confirmation" type="password" required>
+      <button type="button" class="btn-eye" data-target="#password_confirmation"><span class="material-symbols-outlined">visibility</span></button>
+    </div>
   </div>
   @endif
 
@@ -39,8 +49,7 @@
   </div>
   <div>
     <label>Fecha de nacimiento</label>
-    <input class="input" name="fecha_nacimiento" type="date"
-           value="{{ old('fecha_nacimiento', $u?->fecha_nacimiento?->format('Y-m-d')) }}">
+    <input class="input" name="fecha_nacimiento" type="date" value="{{ old('fecha_nacimiento', $u?->fecha_nacimiento?->format('Y-m-d')) }}">
   </div>
   <div>
     <label>Sexo</label>
@@ -53,10 +62,9 @@
 
   <div>
     <label>Rol</label>
-    <select class="input" name="role_id" id="role_id" required onchange="toggleDoctorFields()" {{ request('role') ? 'disabled' : '' }}>
+    <select class="input" name="role_id" id="role_id" required data-preset-role="{{ strtolower((string)request('role')) }}" {{ request('role') ? 'disabled' : '' }}>
       @foreach($roles as $r)
-        <option value="{{ $r->id }}"
-          @selected(old('role_id', optional($u->roles->first())->id ?? optional($roles->firstWhere('name',request('role')))->id)==$r->id)>
+        <option value="{{ $r->id }}" @selected(old('role_id', optional($u->roles->first())->id ?? optional($roles->firstWhere('name',request('role')))->id)==$r->id)>
           {{ ucfirst($r->name) }}
         </option>
       @endforeach
@@ -83,18 +91,5 @@
 </div>
 
 @push('scripts')
-<script>
-function roleText(){
-  const sel=document.getElementById('role_id');
-  if(!sel) return '';
-  return sel.options[sel.selectedIndex]?.text?.toLowerCase() || '';
-}
-function toggleDoctorFields(){
-  const preset='{{ strtolower((string)request("role")) }}';
-  const isDoctor = preset==='doctor' || roleText().includes('doctor');
-  document.getElementById('doctor-only-esp').style.display = isDoctor ? '' : 'none';
-  document.getElementById('doctor-only-precio').style.display = isDoctor ? '' : 'none';
-}
-document.addEventListener('DOMContentLoaded', toggleDoctorFields);
-</script>
+  @vite('resources/js/admin/users/form.js')
 @endpush

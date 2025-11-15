@@ -63,13 +63,11 @@ small{font-size:.75rem}
 
 /* ===== Ajustes clave solicitados ===== */
 
-/* 1) Dar aire arriba al logo “Clínica Los Ángeles” */
 aside{background:transparent}
-aside .top{padding:12px 18px 6px} /* separa del borde superior */
+aside .top{padding:12px 18px 6px}
 aside .logo h2{margin:0;line-height:1.1}
 aside .logo .danger{color:var(--clr-primary)}
 
-/* 2) Mostrar bien la foto en cabecera de la derecha */
 .profile-photo{width:44px;height:44px;border-radius:50%;overflow:hidden;border:2px solid var(--clr-info-light);background:#fff;flex-shrink:0;display:flex;align-items:center;justify-content:center}
 .profile-photo img{width:100%;height:100%;object-fit:cover;display:block}
 
@@ -124,8 +122,8 @@ main .insights>div:nth-child(2){animation-delay:.1s}
 main .insights>div:nth-child(3){animation-delay:.2s}
 main .insights>div.expenses span{background:var(--clr-danger)}
 main .insights>div.income span{background:var(--clr-success)}
-main .insights>div .middle{display:flex;align-items:center;justify-content:space-between}
-main .insights>div .middle h1{font-size:1.6rem}
+main .insights .middle{display:flex;align-items:center;justify-content:space-between}
+main .insights .middle h1{font-size:1.6rem}
 main h1, main .insights h1, main .insights h3, main .insights p{color:var(--clr-dark)}
 main .insights .progress{position:relative;height:68px;width:68px;border-radius:50px}
 main .insights svg{height:150px;position:absolute;top:0}
@@ -161,7 +159,6 @@ main .recent_order a{text-align:center;display:block;margin:1rem}
 .right .theme-toggler span.active{background-color:var(--clr-primary);color:#fff}
 .right .info h3,.right .item h3{color:var(--clr-dark)}
 
-/* recent updates */
 .right .recent_updates{margin-top:1rem;margin-left:-20px}
 .right .recent_updates .updates{
   background-color:var(--clr-white);padding:var(--card-padding);border-radius:var(--card-border-radius);
@@ -172,7 +169,6 @@ main .recent_order a{text-align:center;display:block;margin:1rem}
 .right .recent_updates .update:nth-child(2){animation-delay:.1s}
 .right .recent_updates .update:nth-child(3){animation-delay:.2s}
 
-/* sales analytics */
 .right .sales_analytics{margin-top:2rem}
 .right .sales_analytics .item{
   background-color:var(--clr-white);display:flex;justify-content:space-between;align-items:center;gap:1rem;
@@ -216,6 +212,10 @@ right .sales_analytics .item:nth-child(3){animation-delay:.2s}
 .btn-primary{background:var(--clr-primary);color:#fff}
 .btn-primary:hover{filter:brightness(.95)}
 
+/* Topbar móvil global por defecto oculta */
+.mobile-topbar{display:none}
+.topbar-title{font-size:1rem;font-weight:800;color:#0f172a;margin:0}
+
 /* ===== Responsivo ===== */
 @media screen and (max-width:1200px){
   .container{width:94%;grid-template-columns:7rem auto 14rem}
@@ -227,6 +227,7 @@ right .sales_analytics .item:nth-child(3){animation-delay:.2s}
 
 @media screen and (max-width:768px){
   .container{width:100%;grid-template-columns:repeat(1,1fr)}
+  .container.no-right{grid-template-columns:1fr}
   aside{position:fixed;width:18rem;z-index:3;background:var(--clr-white);display:none;left:-100px;animation:menuAni 1s forwards}
   @keyframes menuAni{to{left:0}}
   aside .logo h2{display:inline}
@@ -243,4 +244,19 @@ right .sales_analytics .item:nth-child(3){animation-delay:.2s}
   .main .recent_order{padding:30px;margin:0 auto}
   .right .recent_updates,.right .sales_analytics,.add_products{padding:30px}
   .right .top button{display:inline-block;background:transparent;cursor:pointer;color:var(--clr-dark)}
+
+  /* Topbar móvil global visible en este breakpoint */
+  .mobile-topbar{
+    display:flex;align-items:center;gap:.6rem;
+    position:fixed;top:0;left:0;right:0;
+    padding:.6rem 1rem;background:var(--clr-white);
+    box-shadow:0 .5rem 1rem rgba(15,23,42,.1);z-index:5
+  }
+  .menu-toggle{background:transparent;border:0;display:inline-flex;align-items:center;justify-content:center;color:#0f172a}
+
+  /* Evitar botón duplicado en la barra derecha cuando exista */
+  .right .top button{display:none !important}
+
+  /* Separación para no tapar el contenido por la topbar fija */
+  main{padding-top:4.6rem}
 }

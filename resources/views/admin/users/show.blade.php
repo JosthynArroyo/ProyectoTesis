@@ -1,31 +1,77 @@
-{{-- resources/views/admin/users/show.blade.php --}}
 @extends('layouts.admin')
 @section('title','Usuario')
+
 @push('head')
-<style>.wrap{max-width:880px;margin:96px auto 40px;padding:0 24px}.card{background:#fff;border:1px solid #e5e7eb;border-radius:20px;box-shadow:0 18px 34px rgba(15,23,42,.08);padding:22px}dt{font-weight:800;color:#0f172a}dd{margin:0 0 10px 0}</style>
+  @vite('resources/css/admin/users/show.css')
 @endpush
+
 @section('main')
 <div class="wrap">
-  <h2 style="margin:0 0 16px 0;font-weight:800">Detalle usuario #{{ $user->id }}</h2>
-  <div class="card">
-    <dl>
-      <dt>Nombre</dt><dd>{{ $user->name }}</dd>
-      <dt>Email</dt><dd>{{ $user->email }}</dd>
-      <dt>Teléfono</dt><dd>{{ $user->telefono ?? '—' }}</dd>
-      <dt>Cédula</dt><dd>{{ $user->dni ?? '—' }}</dd>
-      <dt>Dirección</dt><dd>{{ $user->direccion ?? '—' }}</dd>
-      <dt>Fecha de nacimiento</dt><dd>{{ $user->fecha_nacimiento?->format('Y-m-d') ?? '—' }}</dd>
-      <dt>Sexo</dt><dd>{{ $user->sexo ?? '—' }}</dd>
-      <dt>Rol</dt><dd>{{ optional($user->roles->first())->name ?? '—' }}</dd>
-      <dt>Especialidades</dt><dd>{{ ($user->especialidades?->pluck('nombre')->implode(', ')) ?: '—' }}</dd>
-      <dt>Estado</dt><dd>{{ $user->status ?? 'active' }} @if($user->suspended_until) (suspendido hasta {{ $user->suspended_until->format('Y-m-d H:i') }}) @endif</dd>
-      <dt>Último acceso</dt><dd>{{ $user->last_login_at?->format('Y-m-d H:i') ?? '—' }}</dd>
-      <dt>Creado</dt><dd>{{ $user->created_at?->format('Y-m-d H:i') }}</dd>
-    </dl>
-    <div style="display:flex;gap:12px;margin-top:12px">
-      <a class="btn" href="{{ route('admin.usuarios.edit',$user) }}" style="background:#1d4ed8;color:#fff;display:inline-flex;align-items:center;gap:.4rem;border-radius:12px;padding:.7rem 1rem;font-weight:700"><span class="material-symbols-outlined">edit</span> Editar</a>
-      <a class="btn" href="{{ route('admin.usuarios.index') }}" style="background:#64748b;color:#fff;display:inline-flex;align-items:center;gap:.4rem;border-radius:12px;padding:.7rem 1rem;font-weight:700">Volver</a>
+  <header class="header">
+    <div class="actions-left">
+      <a class="btn btn-secondary" href="{{ route('admin.usuarios.index') }}">
+        <span class="material-symbols-outlined">arrow_back</span>
+        Volver
+      </a>
     </div>
-  </div>
+    <div class="title">
+      <h2>Detalle usuario #{{ $user->id }}</h2>
+      <p class="subtitle">{{ optional($user->roles->first())->name ?? '—' }}</p>
+    </div>
+    <div class="actions-right">
+      <a class="btn btn-primary" href="{{ route('admin.usuarios.edit',$user) }}">
+        <span class="material-symbols-outlined">edit</span>
+        Editar
+      </a>
+    </div>
+  </header>
+
+  <section class="card">
+    <div class="profile">
+      <div class="avatar">
+        <img src="{{ $user->avatar ? asset('storage/'.$user->avatar) : asset('img/doctor1.jpg') }}" alt="Avatar">
+      </div>
+      <div class="identity">
+        <h3>{{ $user->name }}</h3>
+        <div class="pill">{{ $user->status ?? 'active' }}</div>
+        @if($user->suspended_until)
+          <div class="muted">Suspendido hasta {{ $user->suspended_until->format('Y-m-d H:i') }}</div>
+        @endif
+      </div>
+    </div>
+
+    <dl class="grid">
+      <div class="item">
+        <dt>Email</dt>
+        <dd>
+          <span id="emailText">{{ $user->email }}</span>
+          <button class="icon-btn" data-copy="#emailText"><span class="material-symbols-outlined">content_copy</span></button>
+        </dd>
+      </div>
+
+      <div class="item">
+        <dt>Teléfono</dt>
+        <dd>
+          <span id="telText">{{ $user->telefono ?? '—' }}</span>
+          @if($user->telefono)
+            <a class="icon-btn" href="tel:{{ $user->telefono }}"><span class="material-symbols-outlined">call</span></a>
+            <button class="icon-btn" data-copy="#telText"><span class="material-symbols-outlined">content_copy</span></button>
+          @endif
+        </dd>
+      </div>
+
+      <div class="item"><dt>Cédula</dt><dd>{{ $user->dni ?? '—' }}</dd></div>
+      <div class="item full"><dt>Dirección</dt><dd>{{ $user->direccion ?? '—' }}</dd></div>
+      <div class="item"><dt>Fecha de nacimiento</dt><dd>{{ $user->fecha_nacimiento?->format('Y-m-d') ?? '—' }}</dd></div>
+      <div class="item"><dt>Sexo</dt><dd>{{ $user->sexo ?? '—' }}</dd></div>
+      <div class="item full"><dt>Especialidades</dt><dd>{{ ($user->especialidades?->pluck('nombre')->implode(', ')) ?: '—' }}</dd></div>
+      <div class="item"><dt>Último acceso</dt><dd>{{ $user->last_login_at?->format('Y-m-d H:i') ?? '—' }}</dd></div>
+      <div class="item"><dt>Creado</dt><dd>{{ $user->created_at?->format('Y-m-d H:i') }}</dd></div>
+    </dl>
+  </section>
 </div>
 @endsection
+
+@push('scripts')
+  @vite('resources/js/admin/users/show.js')
+@endpush

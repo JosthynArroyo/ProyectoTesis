@@ -128,6 +128,36 @@
               </div>
             </div>
           </section>
+
+          <section class="section">
+            <h5 class="section-title"><span class="material-symbols-outlined">lock</span>Seguridad</h5>
+            <div class="grid">
+              <div>
+                <label>Contraseña actual</label>
+                <div class="password-field">
+                  <input class="input" type="password" name="current_password" id="current_password" autocomplete="current-password" placeholder="••••••••">
+                  <button type="button" class="btn-eye" data-target="#current_password" aria-label="Mostrar u ocultar"><span class="material-symbols-outlined">visibility</span></button>
+                </div>
+                @error('current_password')<div class="error">{{ $message }}</div>@enderror
+              </div>
+              <div>
+                <label>Nueva contraseña</label>
+                <div class="password-field">
+                  <input class="input" type="password" name="password" id="password" autocomplete="new-password" minlength="8" placeholder="Min. 8 caracteres">
+                  <button type="button" class="btn-eye" data-target="#password" aria-label="Mostrar u ocultar"><span class="material-symbols-outlined">visibility</span></button>
+                </div>
+                <div class="field-help">Mínimo 8 caracteres e incluir letras, números y un carácter especial.</div>
+                @error('password')<div class="error">{{ $message }}</div>@enderror
+              </div>
+              <div>
+                <label>Confirmar nueva contraseña</label>
+                <div class="password-field">
+                  <input class="input" type="password" name="password_confirmation" id="password_confirmation" autocomplete="new-password" minlength="8" placeholder="Repite la contraseña">
+                  <button type="button" class="btn-eye" data-target="#password_confirmation" aria-label="Mostrar u ocultar"><span class="material-symbols-outlined">visibility</span></button>
+                </div>
+              </div>
+            </div>
+          </section>
         </div>
 
         <div class="perfil-actions">

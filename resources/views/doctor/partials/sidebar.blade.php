@@ -1,7 +1,7 @@
 <aside>
     <div class="top">
         <div class="logo">
-            <h2>Doctor <span class="primary">Los Ángeles</span></h2>
+            <h2>Doctor <span class="primary"> Don Bosco</span></h2>
         </div>
         <div class="close">
             <span class="material-symbols-outlined">close</span>

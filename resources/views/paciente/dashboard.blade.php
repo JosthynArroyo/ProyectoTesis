@@ -1,5 +1,5 @@
 @extends('layouts.paciente')
-@section('title', 'Panel Paciente - Clínica Los Ángeles')
+@section('title', 'Panel Paciente - Clínica Don Bosco')
 @push('head')
     @vite('resources/js/paciente/dashboard-paciente.js')
 @endpush

@@ -13,7 +13,7 @@
 
       {{-- Info + Mapa --}}
       <aside class="info">
-        <h2 class="info__title">Clínica Los Ángeles</h2>
+        <h2 class="info__title">Clínica Don Bosco</h2>
         <p class="info__desc">
           Sistema de gestión médica para agendar citas fácilmente y recibir atención especializada.
         </p>
@@ -35,7 +35,7 @@
 
         <div class="mapa">
           <iframe
-            title="Ubicación Clínica Los Ángeles"
+            title="Ubicación Clínica Don Bosco"
             src="https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d207.47773878695978!2d-78.47943247794669!3d-0.1385355730076882!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x91d5855715695e7b%3A0x2f91853277ceb246!2sConsultorio%20De%20Especialidades!5e1!3m2!1ses!2sus!4v1760994198832!5m2!1ses!2sus"
             width="100%" height="320" style="border:0"
             loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen>

@@ -16,6 +16,11 @@
 <body>
   @yield('content')
 
+  {{-- Widget del chatbot solo para visitantes no autenticados --}}
+  @guest
+    @include('chatbot.widget')
+  @endguest
+
   {{-- NECESARIO para los scripts que se pushean desde las vistas --}}
   @stack('scripts')
 </body>

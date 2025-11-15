@@ -16,6 +16,8 @@ use App\Http\Controllers\EmailCitaActionController;
 use App\Http\Controllers\Api\DoctorSlotController;
 use App\Http\Controllers\Doctor\HorarioController as DoctorHorarioController;
 use App\Models\User;
+use App\Http\Controllers\ChatBotController;
+
 
 // API tarifas
 Route::get('/api/tarifa/doctor/{id}', [TarifaController::class, 'precioDoctor'])
@@ -201,3 +203,20 @@ Route::get('/login', function () {
     session()->reflash();
     return redirect('/?login=1');
 })->name('login');
+
+
+// =========================== CHATBOT ===========================
+Route::get('/chatbot/especialidades/{especialidad}/doctores', [ChatBotController::class, 'doctoresPorEspecialidad'])
+    ->whereNumber('especialidad')
+    ->name('chatbot.especialidad.doctores');
+
+Route::get('/chatbot/doctores/{doctor}/fechas', [ChatBotController::class, 'fechasDisponibles'])
+    ->whereNumber('doctor')
+    ->name('chatbot.doctor.fechas');
+
+Route::get('/asistente', [ChatBotController::class, 'index'])->name('chatbot.index');
+Route::get('/chatbot/especialidades', [ChatBotController::class, 'especialidades'])->name('chatbot.especialidades');
+Route::post('/chatbot/agendar', [ChatBotController::class, 'agendar'])->name('chatbot.agendar');
+Route::post('/chatbot/buscar-citas', [ChatBotController::class, 'buscarCitas'])->name('chatbot.buscarCitas');
+Route::post('/chatbot/cancelar', [ChatBotController::class, 'cancelar'])->name('chatbot.cancelar');
+Route::post('/chatbot/reagendar', [ChatBotController::class, 'reagendar'])->name('chatbot.reagendar');

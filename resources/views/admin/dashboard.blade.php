@@ -1,6 +1,6 @@
 @extends('layouts.admin')
 
-@section('title','Panel Administrativo - Clínica Los Ángeles')
+@section('title','Panel Administrativo - Clínica Don Bosco')
 
 @push('head')
   <meta name="dashboard-resumen-url" content="{{ route('admin.dashboard.resumen') }}">

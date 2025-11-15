@@ -1,5 +1,4 @@
 <?php
-// app/Http/Controllers/Admin/AdminController.php
 
 namespace App\Http\Controllers\Admin;
 
@@ -17,6 +16,7 @@ use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Dompdf\Dompdf;
 use Dompdf\Options;
+use Illuminate\Support\Str;
 
 class AdminController extends Controller
 {
@@ -70,30 +70,25 @@ class AdminController extends Controller
         $user = Auth::user();
 
         $rules = [
-            'name'              => ['required', 'string', 'max:255'],
-            'email'             => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
-            'telefono'          => ['nullable', 'digits:10'],
-            'dni'               => ['required', 'digits:10', Rule::unique('users', 'dni')->ignore($user->id)],
-            'direccion'         => ['nullable', 'string', 'max:255'],
-            'fecha_nacimiento'  => ['nullable', 'date', 'before:today'],
-            'sexo'              => ['nullable', 'in:Masculino,Femenino,Otro'],
-            'avatar'            => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'name'              => ['required','string','max:255'],
+            'email'             => ['required','email','max:255', Rule::unique('users','email')->ignore($user->id)],
+            'telefono'          => ['nullable','regex:/^\d{10}$/'],
+            'dni'               => ['required','digits:10', Rule::unique('users','dni')->ignore($user->id)],
+            'direccion'         => ['nullable','string','max:255'],
+            'fecha_nacimiento'  => ['nullable','date','before:today'],
+            'sexo'              => ['nullable','in:Masculino,Femenino,Otro'],
+            'avatar'            => ['nullable','image','mimes:jpg,jpeg,png,webp','max:2048'],
+            'current_password'  => ['nullable','string'],
+            'password'          => [
+                'nullable','string','min:8','confirmed','different:current_password',
+                'regex:/^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/'
+            ],
         ];
 
         $messages = [
-            'name.required'           => 'El nombre es obligatorio.',
-            'email.required'          => 'El correo es obligatorio.',
-            'email.email'             => 'Formato de correo inválido.',
-            'email.unique'            => 'Este correo ya está registrado.',
-            'telefono.digits'         => 'El teléfono debe tener exactamente 10 dígitos.',
-            'dni.required'            => 'El número de cédula es obligatorio.',
-            'dni.digits'              => 'El número de cédula debe tener exactamente 10 dígitos.',
-            'dni.unique'              => 'Este número de cédula ya está registrado.',
-            'fecha_nacimiento.before' => 'La fecha de nacimiento debe ser anterior a hoy.',
-            'sexo.in'                 => 'Seleccione un sexo válido.',
-            'avatar.image'            => 'La foto debe ser una imagen.',
-            'avatar.mimes'            => 'Formato permitido: jpg, jpeg, png o webp.',
-            'avatar.max'              => 'La imagen no debe superar 2 MB.',
+            'telefono.regex' => 'El teléfono debe tener exactamente 10 dígitos.',
+            'dni.digits'     => 'El número de cédula debe tener exactamente 10 dígitos.',
+            'password.regex' => 'La contraseña debe incluir letras, números y al menos un carácter especial.',
         ];
 
         $data = $request->validate($rules, $messages);
@@ -102,12 +97,40 @@ class AdminController extends Controller
             if ($user->avatar) {
                 Storage::disk('public')->delete($user->avatar);
             }
-            $data['avatar'] = $request->file('avatar')->store('avatars', 'public');
+            $data['avatar'] = $request->file('avatar')->store('avatars','public');
         }
 
-        $user->update($data);
+        $user->name = $data['name'];
+        $user->email = $data['email'];
+        $user->telefono = $data['telefono'] ?? null;
+        $user->dni = $data['dni'];
+        $user->direccion = $data['direccion'] ?? null;
+        $user->fecha_nacimiento = $data['fecha_nacimiento'] ?? null;
+        $user->sexo = $data['sexo'] ?? null;
+        if (isset($data['avatar'])) $user->avatar = $data['avatar'];
 
-        return redirect()->route('admin.perfil.edit')->with('success', 'Perfil actualizado correctamente.');
+        $passwordChanged = false;
+        if ($request->filled('password')) {
+            if (!$request->filled('current_password') || !Hash::check($request->input('current_password'), $user->password)) {
+                return back()->withErrors(['current_password' => 'La contraseña actual no es correcta.'])->withInput();
+            }
+            $user->password = Hash::make($request->input('password'));
+            $passwordChanged = true;
+        }
+
+        $user->save();
+
+        if ($passwordChanged) {
+            $user->setRememberToken(Str::random(60));
+            $user->save();
+            \Auth::logoutOtherDevices($request->input('password'));
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+            \Auth::login($user);
+            $request->session()->regenerate();
+        }
+
+        return redirect()->route('admin.perfil.edit')->with('success','Perfil actualizado correctamente.');
     }
 
     // ===== Usuarios (listado + filtros) =====

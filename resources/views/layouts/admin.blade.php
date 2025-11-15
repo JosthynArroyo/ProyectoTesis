@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>@yield('title','Panel Administrativo - Clínica Los Ángeles')</title>
+  <title>@yield('title','Panel Administrativo - Clínica Don Bosco')</title>
   <link rel="icon" type="image/jpg" href="{{ asset('img/LogoClinica.jpg') }}">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" />
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Sharp" rel="stylesheet" />
@@ -19,7 +19,7 @@
   <aside>
     <div class="top">
       <div class="logo">
-        <h2>Clínica <span class="danger">Los Ángeles</span></h2>
+        <h2>Clínica <span class="danger">Don Bosco</span></h2>
       </div>
       <div class="close">
         <span class="material-symbols-outlined">close</span>
@@ -64,6 +64,14 @@
       </a>
     </div>
   </aside>
+
+  <!-- Topbar móvil persistente con el mismo id esperado por tu JS -->
+  <header class="mobile-topbar">
+    <button id="menu_bar" class="menu-toggle" aria-label="Abrir menú">
+      <span class="material-symbols-sharp">menu</span>
+    </button>
+    <h1 class="topbar-title">@yield('title','Panel Administrativo')</h1>
+  </header>
 
   <main>
     @yield('main')

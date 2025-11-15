@@ -22,6 +22,7 @@
   --card-padding: 1.8rem;
   --padding-1: 1.2rem;
   --box-shadow: 0 1.6rem 3.2rem rgba(15, 76, 117, 0.08);
+  --mobile-topbar-h: 56px;
 }
 @keyframes fade-in {
   from {

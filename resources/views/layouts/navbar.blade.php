@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>@yield('title','Clínica Los Ángeles')</title>
+  <title>@yield('title','Clínica Don Bosco')</title>
   <link rel="icon" type="image/jpg" href="{{ asset('img/LogoClinica.jpg') }}">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.2.0/remixicon.min.css">
   @vite([
@@ -13,6 +13,7 @@
     'resources/js/navbar.js',
   ])
   @stack('head')
+  @stack('styles')
 </head>
 <body class="@yield('body-class')">
 @php use Illuminate\Support\Facades\Route as R; @endphp
@@ -137,7 +138,7 @@
             <input type="email" name="email" autocomplete="email" required value="{{ old('email') }}" placeholder="correo@ejemplo.com" inputmode="email">
             @error('email') <p class="error">{{ $message }}</p> @enderror
           </div>
-          <div class="field">
+          <div div class="field">
             <label>Contraseña</label>
             <input type="password" name="password" autocomplete="current-password" required placeholder="••••••••">
             @error('password') <p class="error">{{ $message }}</p> @enderror
@@ -157,6 +158,12 @@
 @endguest
 
 <main>@yield('main')</main>
+
+{{-- Widget chatbot solo para visitantes --}}
+@guest
+  @include('chatbot.widget')
+@endguest
+
 @stack('scripts')
 </body>
 </html>

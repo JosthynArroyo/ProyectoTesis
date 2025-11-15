@@ -8,6 +8,9 @@ use App\Models\Cita;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
+
 
 class AdminController extends Controller
 {
@@ -54,33 +57,27 @@ class AdminController extends Controller
         $request->validate([
             'name'              => ['required','string','max:255'],
             'email'             => ['required','email','max:255', Rule::unique('users','email')->ignore($user->id)],
-            'telefono'          => ['nullable','string','max:50'],
+            'telefono'          => ['nullable','regex:/^\d{10}$/'],
             'dni'               => ['required','digits:10', Rule::unique('users','dni')->ignore($user->id)],
             'direccion'         => ['nullable','string','max:255'],
             'fecha_nacimiento'  => ['required','date','before:today'],
             'sexo'              => ['nullable','in:Masculino,Femenino,Otro'],
             'avatar'            => ['nullable','image','mimes:jpg,jpeg,png,webp','max:2048'],
+            'current_password'  => ['nullable','string'],
+            'password'          => [
+                'nullable','string','min:8','confirmed','different:current_password',
+                'regex:/^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/'
+            ],
         ], [
-            'name.required'                 => 'El nombre es obligatorio.',
-            'email.required'                => 'El correo es obligatorio.',
-            'email.email'                   => 'Formato de correo inválido.',
-            'email.unique'                  => 'Este correo ya está registrado.',
-            'dni.required'                  => 'El número de cédula es obligatorio.',
-            'dni.digits'                    => 'El número de cédula debe tener exactamente 10 dígitos.',
-            'dni.unique'                    => 'Este número de cédula ya está registrado.',
-            'fecha_nacimiento.required'     => 'La fecha de nacimiento es obligatoria.',
-            'fecha_nacimiento.before'       => 'La fecha de nacimiento debe ser anterior a hoy.',
-            'avatar.image'                  => 'El archivo debe ser una imagen.',
-            'avatar.mimes'                  => 'Formatos permitidos: JPG, JPEG, PNG o WEBP.',
-            'avatar.max'                    => 'La imagen no debe exceder 2 MB.',
+            'telefono.regex' => 'Teléfono: exactamente 10 dígitos.',
+            'password.regex' => 'La contraseña debe incluir letras, números y al menos un carácter especial.',
         ]);
 
         if ($request->hasFile('avatar')) {
             if ($user->avatar) {
                 Storage::disk('public')->delete($user->avatar);
             }
-            $path = $request->file('avatar')->store('avatars', 'public');
-            $user->avatar = $path;
+            $user->avatar = $request->file('avatar')->store('avatars', 'public');
         }
 
         $user->fill([
@@ -91,7 +88,28 @@ class AdminController extends Controller
             'direccion'        => $request->direccion,
             'fecha_nacimiento' => $request->fecha_nacimiento,
             'sexo'             => $request->sexo,
-        ])->save();
+        ]);
+
+        $passwordChanged = false;
+        if ($request->filled('password')) {
+            if (!$request->filled('current_password') || !Hash::check($request->input('current_password'), $user->password)) {
+                return back()->withErrors(['current_password' => 'La contraseña actual no es correcta.'])->withInput();
+            }
+            $user->password = Hash::make($request->input('password'));
+            $passwordChanged = true;
+        }
+
+        $user->save();
+
+        if ($passwordChanged) {
+            $user->setRememberToken(Str::random(60));
+            $user->save();
+            \Auth::logoutOtherDevices($request->input('password'));
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+            \Auth::login($user);
+            $request->session()->regenerate();
+        }
 
         return redirect()->route('paciente.perfil.edit')->with('success', 'Perfil actualizado.');
     }
