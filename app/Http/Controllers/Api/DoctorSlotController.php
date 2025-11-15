@@ -33,6 +33,8 @@ class DoctorSlotController extends Controller
         // Citas ocupadas del día
         $ocupadas = Cita::where('doctor_id', $doctor->id)
             ->whereDate('fecha', $date)
+            ->where('activo', true)
+            ->whereIn('estado', [Cita::ESTADO_PENDIENTE, Cita::ESTADO_CONFIRMADA])
             ->pluck('hora')
             ->map(fn ($t) => substr($t, 0, 5))   // "HH:MM"
             ->toArray();

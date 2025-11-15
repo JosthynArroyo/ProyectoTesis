@@ -216,6 +216,7 @@ Route::get('/chatbot/doctores/{doctor}/fechas', [ChatBotController::class, 'fech
 
 Route::get('/asistente', [ChatBotController::class, 'index'])->name('chatbot.index');
 Route::get('/chatbot/especialidades', [ChatBotController::class, 'especialidades'])->name('chatbot.especialidades');
+Route::post('/chatbot/verificar-paciente', [ChatBotController::class, 'verificarPaciente'])->name('chatbot.verificarPaciente');
 Route::post('/chatbot/agendar', [ChatBotController::class, 'agendar'])->name('chatbot.agendar');
 Route::post('/chatbot/buscar-citas', [ChatBotController::class, 'buscarCitas'])->name('chatbot.buscarCitas');
 Route::post('/chatbot/cancelar', [ChatBotController::class, 'cancelar'])->name('chatbot.cancelar');

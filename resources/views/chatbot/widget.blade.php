@@ -67,13 +67,41 @@
     background: #f9fafb;
   }
 
+  #chatbot-form {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
   #chatbot-input {
-    width: 100%;
+    flex: 1;
     border-radius: 999px;
     border: 1px solid #d1d5db;
     padding: 8px 12px;
     font-size: .9rem;
     outline: none;
+    background: #ffffff;
+  }
+
+  #chatbot-send-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    border: none;
+    background: linear-gradient(135deg,#2563eb,#1d4ed8);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6px 14px rgba(37,99,235,.35);
+    cursor: pointer;
+    transition: transform .15s ease, box-shadow .15s ease;
+    font-size: 1.05rem;
+  }
+
+  #chatbot-send-btn:active {
+    transform: scale(.96);
+    box-shadow: 0 4px 10px rgba(37,99,235,.45);
   }
 </style>
 @endonce
@@ -94,6 +122,9 @@
     <div id="chatbot-input-area">
       <form id="chatbot-form" autocomplete="off">
         <input id="chatbot-input" type="text" placeholder="Escribe aquí...">
+        <button id="chatbot-send-btn" type="submit" aria-label="Enviar mensaje">
+          &#10148;
+        </button>
       </form>
     </div>
   </div>
@@ -144,9 +175,13 @@ document.addEventListener('DOMContentLoaded', function () {
     especialidad_id: null,
     doctor_id: null,
     doctor_nombre: '',
+    doctor_tarifa: '',
     fecha: '',
     fecha_label: '',
     hora: '',
+    paciente_existente: false,
+    paciente_email_registrado: '',
+    paciente_email_confirmado: false,
     // colecciones
     especialidades: [],
     doctores: [],
@@ -166,6 +201,10 @@ document.addEventListener('DOMContentLoaded', function () {
     buffer: initialBuffer(),
     citasEncontradas: [],
   };
+
+  const esCedulaValida = (value) => /^\d{10}$/.test(value);
+  const esTelefonoValido = (value) => /^\d{10}$/.test(value);
+  const esCorreoValido = (value) => value.includes('@');
 
   function scrollBottom() { log.scrollTop = log.scrollHeight; }
 
@@ -228,7 +267,8 @@ document.addEventListener('DOMContentLoaded', function () {
     if (a === 'agendar') return startAgendar();
     if (a === 'cancelar') return startCancelar();
     if (a === 'reagendar') return startReagendar();
-    if (a === 'ver_citas') return startVerCitas();
+      if (a === 'ver_citas') return startVerCitas();
+      if (a === 'otra_cedula') return solicitarCedula(true);
     if (a === 'soporte') {
       state.mode = 'soporte';
       state.step = 'descripcion';
@@ -261,6 +301,126 @@ document.addEventListener('DOMContentLoaded', function () {
   // ===================
   //    FLUJO AGENDAR
   // ===================
+  function solicitarCedula(mostrarMensaje = true) {
+    state.step = 'cedula';
+    state.buffer.cedula = '';
+    state.buffer.email = '';
+    state.buffer.telefono = '';
+    state.buffer.motivo = '';
+    state.buffer.paciente_existente = false;
+    state.buffer.paciente_email_registrado = '';
+    state.buffer.paciente_email_confirmado = false;
+    if (mostrarMensaje) {
+      addMessage('bot','Ingresa tu numero de cedula (10 digitos, solo numeros):');
+    }
+  }
+
+  async function verificarPacientePorCedula(cedula) {
+    addMessage('bot','Validando tu numero de cedula...');
+    state.buffer.cedula = cedula;
+
+    try {
+      const res = await fetch(`${baseUrl}/chatbot/verificar-paciente`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': csrf,
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({ cedula }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || data.ok === false) {
+        addMessage('bot', data.message || 'Este numero de cedula no coincide con los datos registrados.');
+        addButtons([
+          { label:'Ingresar otra cedula', action:'otra_cedula' },
+          { label:'Volver al menu', action:'menu' },
+        ]);
+        state.step = 'cedula';
+        return;
+      }
+
+      if (data.existe) {
+        const paciente = data.paciente || {};
+        const nombre = paciente.nombre || state.buffer.nombre || '';
+
+        state.buffer.nombre = nombre || state.buffer.nombre;
+        state.buffer.telefono = esTelefonoValido(paciente.telefono || '') ? paciente.telefono : '';
+        state.buffer.paciente_existente = true;
+        state.buffer.paciente_email_registrado = paciente.email || '';
+        state.buffer.paciente_email_confirmado = false;
+
+        if (paciente.email) {
+          state.step = 'confirmar_email';
+          return addMessage('bot', `Esta cedula pertenece a ${nombre || 'un paciente registrado'}. Ingresa el correo con el que te registraste para confirmar tu identidad:`);
+        }
+
+        addMessage('bot','Esta cedula es de un paciente registrado, pero necesitamos tu correo electronico.');
+        state.step = 'email';
+        return addMessage('bot','Escribe tu correo (debe incluir @):');
+      }
+
+      state.buffer.paciente_existente = false;
+      addMessage('bot','No encontramos pacientes con esa cedula. Ingresa tu correo (debe incluir @):');
+      state.step = 'email';
+
+    } catch (error) {
+      console.error(error);
+      addMessage('bot','No pude verificar tu cedula en este momento. Intenta nuevamente o vuelve al menu.');
+      addButtons([
+        { label:'Ingresar otra cedula', action:'otra_cedula' },
+        { label:'Volver al menu', action:'menu' },
+      ]);
+      state.step = 'cedula';
+    }
+  }
+
+  async function confirmarCorreoRegistrado(email) {
+    if (!esCorreoValido(email)) {
+      return addMessage('bot','El correo debe incluir @ y no contener espacios.');
+    }
+
+    addMessage('bot','Verificando tu correo...');
+
+    try {
+      const res = await fetch(`${baseUrl}/chatbot/verificar-paciente`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': csrf,
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          cedula: state.buffer.cedula,
+          email,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || data.ok === false) {
+        addMessage('bot', data.message || 'El correo no coincide con el paciente registrado.');
+        return;
+      }
+
+      state.buffer.email = email;
+      state.buffer.paciente_email_confirmado = true;
+
+      if (!state.buffer.telefono) {
+        state.step = 'telefono';
+        return addMessage('bot','Necesitamos un numero de telefono de 10 digitos para continuar:');
+      }
+
+      addMessage('bot', `${state.buffer.nombre || 'Paciente'}, para que especialidad quieres agendar?`);
+      return pedirEspecialidades();
+    } catch (error) {
+      console.error(error);
+      addMessage('bot','No pude verificar tu correo en este momento. Intenta nuevamente.');
+    }
+  }
+
   function startAgendar() {
     state.mode = 'agendar';
     state.step = 'nombre';
@@ -300,7 +460,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
       state.buffer.doctores = data.doctores;
       let txt = `Médicos disponibles (${data.especialidad}):\n\n`;
-      data.doctores.forEach((d,i)=> txt += `${i+1}) ${d.nombre}\n`);
+      data.doctores.forEach((d,i)=> {
+        const tarifa = d.precio_format ? ` - ${d.precio_format}` : '';
+        txt += `${i+1}) ${d.nombre}${tarifa}\n`;
+      });
       addMessage('bot', txt.trim());
       state.step = 'doctor';
       addMessage('bot','Escribe el número del médico:');
@@ -422,6 +585,9 @@ document.addEventListener('DOMContentLoaded', function () {
       }
 
       let msg = `Cita agendada con ${state.buffer.doctor_nombre} el ${state.buffer.fecha} a las ${state.buffer.hora}.`;
+      if (state.buffer.doctor_tarifa) {
+        msg += `\nTarifa: ${state.buffer.doctor_tarifa}`;
+      }
       if (data.usuario_creado) {
         msg += '\nSe creó una cuenta y te enviamos una contraseña temporal a tu correo.';
       }
@@ -460,6 +626,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
   async function buscarCitasPorIdentificacion(text) {
     const isEmail = text.includes('@');
+    if (!isEmail && !esCedulaValida(text)) {
+      addMessage('bot','El numero de cedula debe tener 10 digitos.');
+      return;
+    }
 
     const payload = {
       email:  isEmail ? text : null,
@@ -629,7 +799,7 @@ document.addEventListener('DOMContentLoaded', function () {
   // =========================
   //  MANEJO DEL INPUT
   // =========================
-  form.addEventListener('submit', e => {
+  form.addEventListener('submit', async e => {
     e.preventDefault();
     const text = input.value.trim();
     if (!text) return;
@@ -641,33 +811,58 @@ document.addEventListener('DOMContentLoaded', function () {
     if (state.mode === 'agendar') {
       if (state.step === 'nombre') {
         state.buffer.nombre = text;
-        state.step = 'cedula';
-        return addMessage('bot','Escribe tu número de cédula:');
+        return solicitarCedula();
       }
       if (state.step === 'cedula') {
-        state.buffer.cedula = text;
-        state.step = 'email';
-        return addMessage('bot','Escribe tu correo:');
+        if (!esCedulaValida(text)) {
+          return addMessage('bot','El numero de cedula debe tener exactamente 10 digitos.');
+        }
+        return verificarPacientePorCedula(text);
+      }
+      if (state.step === 'confirmar_email') {
+        return confirmarCorreoRegistrado(text);
       }
       if (state.step === 'email') {
+        if (!esCorreoValido(text)) {
+          return addMessage('bot','El correo debe incluir un @ y no tener espacios.');
+        }
         state.buffer.email = text;
+        state.buffer.paciente_email_confirmado = state.buffer.paciente_existente;
+
+        if (state.buffer.paciente_existente) {
+          if (!state.buffer.telefono) {
+            state.step = 'telefono';
+            return addMessage('bot','Necesitamos un numero de telefono de 10 digitos para continuar:');
+          }
+          addMessage('bot', `${state.buffer.nombre || 'Paciente'}, para que especialidad quieres agendar?`);
+          return pedirEspecialidades();
+        }
+
         state.step = 'telefono';
-        return addMessage('bot','Escribe tu teléfono:');
+        return addMessage('bot','Escribe tu numero de telefono de 10 digitos:');
       }
       if (state.step === 'telefono') {
+        if (!esTelefonoValido(text)) {
+          return addMessage('bot','El telefono debe tener 10 digitos, solo numeros.');
+        }
         state.buffer.telefono = text;
+        if (state.buffer.paciente_existente) {
+          return pedirEspecialidades();
+        }
         state.step = 'motivo';
-        return addMessage('bot','Motivo de consulta (o "no" para omitir):');
+        return addMessage('bot','Motivo de consulta (o escribe "no" para omitir):');
       }
       if (state.step === 'motivo') {
-        if (text.toLowerCase() !== 'no') state.buffer.motivo = text;
+        if (text.toLowerCase() !== 'no') {
+          state.buffer.motivo = text;
+        }
         return pedirEspecialidades();
       }
       if (state.step === 'especialidad') {
         const idx = parseInt(text, 10);
         const list = state.buffer.especialidades || [];
         if (!idx || idx < 1 || idx > list.length) {
-          return addMessage('bot','Número inválido. Escribe el número de una especialidad de la lista.');
+          return addMessage('bot','Numero invalido. Escribe el numero de una especialidad de la lista.');
         }
         const esp = list[idx - 1];
         state.buffer.especialidad_id = esp.id;
@@ -677,18 +872,19 @@ document.addEventListener('DOMContentLoaded', function () {
         const idx = parseInt(text, 10);
         const list = state.buffer.doctores || [];
         if (!idx || idx < 1 || idx > list.length) {
-          return addMessage('bot','Número inválido. Escribe el número de un médico de la lista.');
+          return addMessage('bot','Numero invalido. Escribe el numero de un medico de la lista.');
         }
         const doctor = list[idx - 1];
         state.buffer.doctor_id = doctor.id;
         state.buffer.doctor_nombre = doctor.nombre;
+        state.buffer.doctor_tarifa = doctor.precio_format || '';
         return pedirFechas(doctor);
       }
       if (state.step === 'fecha') {
         const idx = parseInt(text, 10);
         const list = state.buffer.fechas || [];
         if (!idx || idx < 1 || idx > list.length) {
-          return addMessage('bot','Número inválido. Escribe el número de una fecha de la lista.');
+          return addMessage('bot','Numero invalido. Escribe el numero de una fecha de la lista.');
         }
         const fechaObj = list[idx - 1];
         state.buffer.fecha = fechaObj.value || fechaObj.fecha || '';
@@ -699,24 +895,30 @@ document.addEventListener('DOMContentLoaded', function () {
         const idx = parseInt(text, 10);
         const list = state.buffer.slots || [];
         if (!idx || idx < 1 || idx > list.length) {
-          return addMessage('bot','Número inválido. Escribe el número de un horario de la lista.');
+          return addMessage('bot','Numero invalido. Escribe el numero de un horario de la lista.');
         }
         const slot = list[idx - 1];
         state.buffer.hora = slot.hora;
         state.step = 'confirmar';
 
-        const resumen = `Vas a agendar una cita con ${state.buffer.doctor_nombre} el ${state.buffer.fecha} a las ${state.buffer.hora}.\n\n¿Confirmas? (sí/no)`;
+        let resumen = `Vas a agendar una cita con ${state.buffer.doctor_nombre} el ${state.buffer.fecha} a las ${state.buffer.hora}.`;
+        if (state.buffer.doctor_tarifa) {
+          resumen += `
+Tarifa: ${state.buffer.doctor_tarifa}`;
+        }
+        resumen += `
+
+Confirmas? (si/no)`;
         return addMessage('bot', resumen);
       }
       if (state.step === 'confirmar') {
-        if (['si','sí'].includes(text.toLowerCase())) {
+        if (text.toLowerCase().startsWith('s')) {
           return enviarAgendar();
         }
-        addMessage('bot','Se canceló el proceso de agendamiento.');
+        addMessage('bot','Se cancelo el proceso de agendamiento.');
         return showMainMenu();
       }
     }
-
     // Flujo CANCELAR / REAGENDAR / VER
     if (['cancelar','reagendar','ver_citas'].includes(state.mode)) {
       if (state.step === 'identificacion') {

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\EnviarConfirmacionCitaJob;
+use App\Jobs\NotificarCambioEstadoCitaJob;
 use App\Mail\CuentaCreadaDesdeChat;
 use App\Models\Cita;
 use App\Models\Especialidad;
@@ -9,10 +11,10 @@ use App\Models\Horario;
 use App\Models\Role;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
 
 class ChatBotController extends Controller
 {
@@ -34,22 +36,32 @@ class ChatBotController extends Controller
             ->onlyActive()
             ->whereHas('especialidades', fn($q) => $q->where('especialidades.id', $especialidad->id))
             ->orderBy('name')
-            ->get(['id', 'name']);
+            ->get(['id', 'name', 'precio_consulta', 'moneda']);
 
         if ($doctores->isEmpty()) {
             return response()->json([
                 'ok'      => false,
-                'message' => 'No contamos con médicos activos para esta especialidad de momento.',
+                'message' => 'No contamos con medicos activos para esta especialidad de momento.',
             ], 404);
         }
 
         return response()->json([
-            'ok'            => true,
-            'especialidad'  => $especialidad->nombre,
-            'doctores'      => $doctores->map(fn($d) => [
-                'id'     => $d->id,
-                'nombre' => $d->name,
-            ])->values(),
+            'ok'           => true,
+            'especialidad' => $especialidad->nombre,
+            'doctores'     => $doctores->map(function ($d) {
+                $precioDefinido = !is_null($d->precio_consulta);
+                $moneda = $d->moneda ?: 'USD';
+
+                return [
+                    'id'            => $d->id,
+                    'nombre'        => $d->name,
+                    'precio'        => $precioDefinido ? (float) $d->precio_consulta : null,
+                    'moneda'        => $moneda,
+                    'precio_format' => $precioDefinido
+                        ? sprintf('$%s %s', number_format((float) $d->precio_consulta, 2), $moneda)
+                        : 'Tarifa no disponible',
+                ];
+            })->values(),
         ]);
     }
 
@@ -100,9 +112,9 @@ class ChatBotController extends Controller
     {
         $data = $request->validate([
             'nombre'          => ['required','string','max:255'],
-            'cedula'          => ['nullable','string','max:20'],
-            'email'           => ['required','email','max:255'],
-            'telefono'        => ['required','string','max:30'],
+            'cedula'          => ['required','digits:10'],
+            'email'           => ['nullable','email','max:255'],
+            'telefono'        => ['nullable','digits:10'],
             'especialidad_id' => ['required','exists:especialidades,id'],
             'doctor_id'       => ['required','integer','exists:users,id'],
             'fecha'           => ['required','date_format:Y-m-d','after_or_equal:today'],
@@ -123,14 +135,74 @@ class ChatBotController extends Controller
         if (! $this->slotDisponible($doctor->id, $fecha, $data['hora'])) {
             return response()->json([
                 'ok'      => false,
-                'message' => 'El horario escogido ya no está disponible.',
+                'message' => 'El horario escogido ya no esta disponible.',
             ], 422);
         }
 
-        $user = User::where('email', $data['email'])->first();
         $passwordPlano = null;
+        $user = User::where('dni', $data['cedula'])->first();
 
-        if (! $user) {
+        if ($user) {
+            if (!empty($data['email'])) {
+                if (!empty($user->email) && strcasecmp($user->email, $data['email']) !== 0) {
+                    return response()->json([
+                        'ok'      => false,
+                        'message' => 'El correo no coincide con el paciente registrado para esa cedula.',
+                    ], 422);
+                }
+
+                if (empty($user->email)) {
+                    $user->email = $data['email'];
+                }
+            }
+        } else {
+            if (!empty($data['email'])) {
+                $userPorEmail = User::where('email', $data['email'])->first();
+                if ($userPorEmail) {
+                    if (!empty($userPorEmail->dni) && $userPorEmail->dni !== $data['cedula']) {
+                        return response()->json([
+                            'ok'      => false,
+                            'message' => 'Este correo ya esta vinculado a otro numero de cedula.',
+                        ], 422);
+                    }
+
+                    $userPorEmail->dni = $userPorEmail->dni ?: $data['cedula'];
+                    $user = $userPorEmail;
+                }
+            }
+        }
+
+        if ($user) {
+            if (empty($user->email) && !empty($data['email'])) {
+                $user->email = $data['email'];
+            }
+
+            $telefonoAsignado = $data['telefono'] ?: $user->telefono;
+            if (empty($telefonoAsignado)) {
+                return response()->json([
+                    'ok'      => false,
+                    'message' => 'Necesitamos un numero de telefono de 10 digitos para contactarte.',
+                ], 422);
+            }
+
+            $user->telefono = $telefonoAsignado;
+            $user->dni = $user->dni ?: $data['cedula'];
+            $user->save();
+        } else {
+            if (empty($data['email'])) {
+                return response()->json([
+                    'ok'      => false,
+                    'message' => 'Necesitamos un correo electronico valido para crear tu cuenta.',
+                ], 422);
+            }
+
+            if (empty($data['telefono'])) {
+                return response()->json([
+                    'ok'      => false,
+                    'message' => 'Ingresa un numero de telefono de 10 digitos.',
+                ], 422);
+            }
+
             $passwordPlano = Str::random(10);
 
             $user = User::create([
@@ -149,15 +221,28 @@ class ChatBotController extends Controller
             Mail::to($user->email)->queue(new CuentaCreadaDesdeChat($user, $passwordPlano));
         }
 
-        $cita = Cita::create([
-            'paciente_id'     => $user->id,
-            'doctor_id'       => $doctor->id,
-            'especialidad_id' => $data['especialidad_id'],
-            'fecha'           => $fecha,
-            'hora'            => $data['hora'],
-            'estado'          => Cita::ESTADO_PENDIENTE,
-            'activo'          => true,
-        ]);
+        try {
+            $cita = Cita::create([
+                'paciente_id'     => $user->id,
+                'doctor_id'       => $doctor->id,
+                'especialidad_id' => $data['especialidad_id'],
+                'fecha'           => $fecha,
+                'hora'            => $data['hora'],
+                'estado'          => Cita::ESTADO_PENDIENTE,
+                'activo'          => true,
+            ]);
+        } catch (QueryException $e) {
+            if ($e->getCode() === '23000' || str_contains($e->getMessage(), 'UNIQUE')) {
+                return response()->json([
+                    'ok'      => false,
+                    'message' => 'Mientras completabas el proceso, ese horario fue tomado por otro paciente. Por favor elige una nueva hora.',
+                ], 422);
+            }
+
+            throw $e;
+        }
+
+        EnviarConfirmacionCitaJob::dispatch($cita);
 
         return response()->json([
             'ok'   => true,
@@ -212,6 +297,7 @@ class ChatBotController extends Controller
         $citas = Cita::with(['doctor:id,name', 'especialidad:id,nombre'])
             ->where('paciente_id', $user->id)
             ->whereDate('fecha', '>=', $hoy)
+            ->where('estado', '!=', Cita::ESTADO_REALIZADA)
             ->where('activo', true)
             ->orderBy('fecha')
             ->orderBy('hora')
@@ -265,6 +351,8 @@ class ChatBotController extends Controller
         $cita->activo = false;
         $cita->save();
 
+        NotificarCambioEstadoCitaJob::dispatch($cita, 'cancelada', 'paciente');
+
         return response()->json([
             'ok'      => true,
             'message' => 'Tu cita fue cancelada correctamente.',
@@ -303,9 +391,53 @@ class ChatBotController extends Controller
         $cita->activo = true;
         $cita->save();
 
+        NotificarCambioEstadoCitaJob::dispatch($cita, 'reagendada', 'paciente');
+
         return response()->json([
             'ok'      => true,
             'message' => 'La cita fue reprogramada con éxito.',
+        ]);
+    }
+
+    public function verificarPaciente(Request $request)
+    {
+        $data = $request->validate([
+            'cedula' => ['required','digits:10'],
+            'email'  => ['nullable','email','max:255'],
+        ]);
+
+        $paciente = User::where('dni', $data['cedula'])->first();
+
+        if (! $paciente) {
+            return response()->json([
+                'ok'      => true,
+                'existe'  => false,
+                'message' => 'No encontramos pacientes registrados con esta cedula.',
+            ]);
+        }
+
+        if (!empty($data['email']) && !empty($paciente->email) && strcasecmp($paciente->email, $data['email']) !== 0) {
+            return response()->json([
+                'ok'      => false,
+                'existe'  => true,
+                'message' => 'Este correo no coincide con el paciente registrado para esa cedula.',
+                'paciente'=> [
+                    'nombre' => $paciente->name,
+                    'email'  => $paciente->email,
+                ],
+            ], 422);
+        }
+
+        return response()->json([
+            'ok'      => true,
+            'existe'  => true,
+            'message' => 'Paciente identificado correctamente.',
+            'paciente'=> [
+                'id'       => $paciente->id,
+                'nombre'   => $paciente->name,
+                'email'    => $paciente->email,
+                'telefono' => $paciente->telefono,
+            ],
         ]);
     }
 
@@ -352,4 +484,5 @@ class ChatBotController extends Controller
         sort($slots);
         return array_values(array_unique($slots));
     }
+
 }
