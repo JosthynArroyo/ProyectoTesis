@@ -1,4 +1,4 @@
-{{-- resources/views/layouts/navbar.blade.php --}}
+﻿{{-- resources/views/layouts/navbar.blade.php --}}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -138,9 +138,14 @@
             <input type="email" name="email" autocomplete="email" required value="{{ old('email') }}" placeholder="correo@ejemplo.com" inputmode="email">
             @error('email') <p class="error">{{ $message }}</p> @enderror
           </div>
-          <div div class="field">
+          <div class="field password-field">
             <label>Contraseña</label>
-            <input type="password" name="password" autocomplete="current-password" required placeholder="••••••••">
+            <div class="password-input">
+              <input type="password" name="password" id="loginPassword" autocomplete="current-password" required placeholder="••••••••">
+              <button type="button" id="togglePassword" aria-label="Mostrar u ocultar contraseña">
+                <i id="togglePasswordIcon" class="ri-eye-line" aria-hidden="true"></i>
+              </button>
+            </div>
             @error('password') <p class="error">{{ $message }}</p> @enderror
           </div>
           <div class="row">

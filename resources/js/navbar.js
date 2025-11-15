@@ -44,4 +44,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const a = e.target.closest('a');
     if (a && window.matchMedia('(max-width:1150px)').matches) closeMenu();
   });
+
+  const passwordInput = document.getElementById('loginPassword');
+  const togglePassword = document.getElementById('togglePassword');
+  const togglePasswordIcon = document.getElementById('togglePasswordIcon');
+
+  if (passwordInput && togglePassword && togglePasswordIcon) {
+    togglePassword.addEventListener('click', () => {
+      const isHidden = passwordInput.type === 'password';
+      passwordInput.type = isHidden ? 'text' : 'password';
+      togglePasswordIcon.classList.toggle('ri-eye-line', !isHidden);
+      togglePasswordIcon.classList.toggle('ri-eye-off-line', isHidden);
+    });
+  }
 });
