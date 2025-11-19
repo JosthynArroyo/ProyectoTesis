@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -45,7 +46,6 @@ class User extends Authenticatable
         'suspended_until'   => 'datetime',
     ];
 
-    // Relaciones
     public function roles()
     {
         return $this->belongsToMany(Role::class);
@@ -67,7 +67,6 @@ class User extends Authenticatable
         return $this->hasMany(Factura::class, 'doctor_id');
     }
 
-    // Helpers de rol/estado
     public function hasRole(string $roleName): bool
     {
         return $this->roles()->where('name', $roleName)->exists();
@@ -78,7 +77,6 @@ class User extends Authenticatable
     public function isSuspended(): bool { return $this->suspended_until && now()->lt($this->suspended_until); }
     public function isActive(): bool    { return $this->status === 'active' && !$this->isSuspended(); }
 
-    // Scopes
     public function scopeOnlyActive($q)
     {
         return $q->where('status', 'active')
@@ -111,5 +109,10 @@ class User extends Authenticatable
               ->orWhere('dni', 'like', $like)
               ->orWhere('telefono', 'like', $like);
         });
+    }
+
+    public function faceProfile(): HasOne
+    {
+        return $this->hasOne(FaceProfile::class);
     }
 }

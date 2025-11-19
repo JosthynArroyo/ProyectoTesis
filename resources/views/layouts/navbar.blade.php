@@ -11,6 +11,8 @@
     'resources/css/navbar.css',
     'resources/css/modal.css',
     'resources/js/navbar.js',
+    'resources/js/welcome-login-modal.js',
+    'resources/js/face-login-modal.js',
   ])
   @stack('head')
   @stack('styles')
@@ -21,12 +23,10 @@
 <header class="cnav-header" id="cnav-header">
   <nav class="cnav" aria-label="Barra de navegación principal">
     <div class="cnav-container">
-      {{-- Logo --}}
       <a href="{{ url('/') }}" class="cnav__logo" aria-label="Inicio">
         <img src="{{ asset('img/logo-welcomeBlanco.jpg') }}" alt="Clínica" style="height:40px">
       </a>
 
-      {{-- Menú principal --}}
       <div class="cnav__menu" id="cnav-menu" aria-hidden="true">
         <ul class="cnav__list" role="menubar">
           <li class="cnav__item" role="none">
@@ -80,29 +80,18 @@
           @endauth
         </ul>
 
-        {{-- Botón cerrar menú móvil --}}
         <button class="cnav__close" id="cnav-close" aria-label="Cerrar menú">
           <i class="ri-close-large-line"></i>
         </button>
 
-        {{-- Redes sociales --}}
         <div class="cnav__social" aria-label="Redes sociales">
-          <a href="https://www.instagram.com/" target="_blank" class="cnav__social-link" aria-label="Instagram">
-            <i class="ri-instagram-line"></i>
-          </a>
-          <a href="https://wa.me/593998740927" target="_blank" class="cnav__social-link" aria-label="WhatsApp">
-            <i class="ri-whatsapp-line"></i>
-          </a>
-          <a href="https://www.facebook.com/" target="_blank" class="cnav__social-link" aria-label="Facebook">
-            <i class="ri-facebook-circle-line"></i>
-          </a>
-          <a href="https://twitter.com/" target="_blank" class="cnav__social-link" aria-label="Twitter">
-            <i class="ri-twitter-x-line"></i>
-          </a>
+          <a href="https://www.instagram.com/" target="_blank" class="cnav__social-link" aria-label="Instagram"><i class="ri-instagram-line"></i></a>
+          <a href="https://wa.me/593998740927" target="_blank" class="cnav__social-link" aria-label="WhatsApp"><i class="ri-whatsapp-line"></i></a>
+          <a href="https://www.facebook.com/" target="_blank" class="cnav__social-link" aria-label="Facebook"><i class="ri-facebook-circle-line"></i></a>
+          <a href="https://twitter.com/" target="_blank" class="cnav__social-link" aria-label="Twitter"><i class="ri-twitter-x-line"></i></a>
         </div>
-      </div> {{-- cierre .cnav__menu --}}
+      </div>
 
-      {{-- Botón hamburguesa --}}
       <button class="cnav__toggle" id="cnav-toggle" aria-label="Abrir menú" aria-expanded="false" aria-controls="cnav-menu">
         <i class="ri-menu-line"></i>
       </button>
@@ -110,7 +99,6 @@
   </nav>
 </header>
 
-{{-- Modal login --}}
 @guest
 <div id="loginModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="loginTitle" aria-hidden="true">
   <div class="modal-backdrop" data-close-login></div>
@@ -122,7 +110,7 @@
       </div>
       <div class="panel-body">
         @if(session('status')) <div class="alert ok">{{ session('status') }}</div> @endif
-        @if(session('auth_error') || $errors->any()) <span id="openLoginOnLoad" hidden></span> @endif
+        @if(session('auth_error') || $errors->any()) <span data-open-login-onload hidden></span> @endif
         @if(session('auth_error'))
           <div class="alert err">{{ session('auth_error') }}</div>
         @elseif($errors->has('email'))
@@ -131,31 +119,58 @@
           <div class="alert err">Revisa tus datos e inténtalo nuevamente.</div>
         @endif
 
-        <form method="POST" action="{{ route('login') }}" id="loginForm">
-          @csrf
-          <div class="field">
-            <label>Correo</label>
-            <input type="email" name="email" autocomplete="email" required value="{{ old('email') }}" placeholder="correo@ejemplo.com" inputmode="email">
-            @error('email') <p class="error">{{ $message }}</p> @enderror
+        <div class="login-tabs" role="tablist">
+          <button type="button" class="login-tab is-active" data-login-tab="password">Correo y contraseña</button>
+          <button type="button" class="login-tab" data-login-tab="face">Reconocimiento facial</button>
+        </div>
+
+        <div class="login-panels">
+          <div class="login-panel is-active" data-login-panel="password">
+            <form method="POST" action="{{ route('login') }}" id="loginForm">
+              @csrf
+              <div class="field">
+                <label>Correo</label>
+                <input type="email" name="email" autocomplete="email" required value="{{ old('email') }}" placeholder="correo@ejemplo.com" inputmode="email">
+                @error('email') <p class="error">{{ $message }}</p> @enderror
+              </div>
+              <div class="field password-field">
+                <label>Contraseña</label>
+                <div class="password-input">
+                  <input type="password" name="password" id="loginPassword" autocomplete="current-password" required placeholder="********">
+                  <button type="button" id="togglePassword" aria-label="Mostrar u ocultar contraseña">
+                    <i id="togglePasswordIcon" class="ri-eye-line" aria-hidden="true"></i>
+                  </button>
+                </div>
+                @error('password') <p class="error">{{ $message }}</p> @enderror
+              </div>
+              <div class="row">
+                <label class="remember"><input type="checkbox" name="remember"> Recuérdame</label>
+                @if (R::has('password.request'))
+                  <a href="{{ route('password.request') }}">¿Olvidaste tu contraseña?</a>
+                @endif
+              </div>
+              <button type="submit" class="submit">Entrar</button>
+            </form>
           </div>
-          <div class="field password-field">
-            <label>Contraseña</label>
-            <div class="password-input">
-              <input type="password" name="password" id="loginPassword" autocomplete="current-password" required placeholder="••••••••">
-              <button type="button" id="togglePassword" aria-label="Mostrar u ocultar contraseña">
-                <i id="togglePasswordIcon" class="ri-eye-line" aria-hidden="true"></i>
-              </button>
-            </div>
-            @error('password') <p class="error">{{ $message }}</p> @enderror
+
+          <div class="login-panel" data-login-panel="face" hidden>
+            <form id="faceLoginForm"
+                  data-endpoint="{{ route('face.login') }}"
+                  data-csrf="{{ csrf_token() }}">
+              <div class="face-login-video">
+                <video id="faceLoginVideo" autoplay muted playsinline></video>
+              </div>
+              <p class="face-login-hint">Mira directo a la cámara y espera el escaneo.</p>
+              <button type="submit" class="submit" id="faceLoginSubmit">Reconocer rostro</button>
+              <p class="face-login-status" data-face-status></p>
+              <p class="face-login-note">
+                ¿No tienes rostro registrado? Entra con tu contraseña y visita
+                <a href="{{ route('face.enroll') }}">Registrar reconocimiento facial</a>.
+              </p>
+            </form>
           </div>
-          <div class="row">
-            <label class="remember"><input type="checkbox" name="remember"> Recuérdame</label>
-            @if (R::has('password.request'))
-              <a href="{{ route('password.request') }}">¿Olvidaste tu contraseña?</a>
-            @endif
-          </div>
-          <button type="submit" class="submit">Entrar</button>
-        </form>
+        </div>
+
       </div>
     </div>
   </div>
@@ -164,7 +179,6 @@
 
 <main>@yield('main')</main>
 
-{{-- Widget chatbot solo para visitantes --}}
 @guest
   @include('chatbot.widget')
 @endguest

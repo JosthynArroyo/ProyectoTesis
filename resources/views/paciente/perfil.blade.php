@@ -135,7 +135,7 @@
               <div>
                 <label>Contraseña actual</label>
                 <div class="password-field">
-                  <input class="input" type="password" name="current_password" id="current_password" autocomplete="current-password" placeholder="••••••••">
+                  <input class="input" type="password" name="current_password" id="current_password" autocomplete="current-password" placeholder="********">
                   <button type="button" class="btn-eye" data-target="#current_password" aria-label="Mostrar u ocultar"><span class="material-symbols-outlined">visibility</span></button>
                 </div>
                 @error('current_password')<div class="error">{{ $message }}</div>@enderror
@@ -158,6 +158,21 @@
               </div>
             </div>
           </section>
+
+          <section class="section">
+            <h5 class="section-title"><span class="material-symbols-outlined">verified_user</span>Reconocimiento facial</h5>
+            <p class="section-description">Escanea tu rostro para iniciar sesión sin contraseña. Necesitas permitir el uso de la cámara.</p>
+            <div class="face-enroll-card">
+              <div class="face-enroll-video">
+                <video id="faceEnrollVideo" autoplay muted playsinline></video>
+                <div id="faceEnrollOverlay">Haz clic en “Guardar rostro” para activar la cámara.</div>
+              </div>
+              <div class="face-enroll-actions">
+                <button type="button" class="btn btn-primary" id="faceEnrollButton">Guardar rostro</button>
+                <p id="faceEnrollStatus" class="face-enroll-status"></p>
+              </div>
+            </div>
+          </section>
         </div>
 
         <div class="perfil-actions">
@@ -171,5 +186,76 @@
 @endsection
 
 @push('scripts')
-    @vite('resources/js/paciente/perfil.js')
+    @vite(['resources/js/paciente/perfil.js','resources/js/face-auth.js'])
+    <script type="module">
+      import { initFaceApi, captureDescriptor } from '/build/assets/face-auth.js';
+
+      document.addEventListener('DOMContentLoaded', () => {
+        const video   = document.getElementById('faceEnrollVideo');
+        const overlay = document.getElementById('faceEnrollOverlay');
+        const button  = document.getElementById('faceEnrollButton');
+        const status  = document.getElementById('faceEnrollStatus');
+        if (!video || !button) return;
+
+        let stream = null;
+        let loading = false;
+
+        async function requestCamera() {
+          if (stream) return stream;
+          try {
+            await initFaceApi();
+            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+            video.srcObject = stream;
+            video.classList.add('is-active');
+            overlay?.classList.add('is-hidden');
+            return stream;
+          } catch (err) {
+            const message = err.name === 'NotAllowedError'
+              ? 'Debes permitir el uso de la cámara para registrar tu rostro.'
+              : err.name === 'NotFoundError'
+                ? 'No se encontró una cámara disponible.'
+                : err.message ?? 'No se pudo activar la cámara.';
+            throw new Error(message);
+          }
+        }
+
+        async function handleEnroll() {
+          if (loading) return;
+          loading = true;
+          button.disabled = true;
+          status.textContent = 'Activando cámara...';
+
+          try {
+            await requestCamera();
+            status.textContent = 'Escaneando rostro...';
+            const descriptor = await captureDescriptor(video);
+
+            status.textContent = 'Guardando...';
+            const response = await fetch('{{ route('face.enroll') }}', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+              },
+              body: JSON.stringify({ descriptor }),
+            });
+
+            if (!response.ok) {
+              const error = await response.json().catch(() => ({}));
+              throw new Error(error.message ?? 'No se pudo guardar el rostro.');
+            }
+
+            status.textContent = 'Rostro guardado correctamente.';
+          } catch (err) {
+            status.textContent = err.message ?? 'No se detectó el rostro. Intenta de nuevo.';
+          } finally {
+            button.disabled = false;
+            loading = false;
+          }
+        }
+
+        button.addEventListener('click', handleEnroll);
+      });
+    </script>
 @endpush

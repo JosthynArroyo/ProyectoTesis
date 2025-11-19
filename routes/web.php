@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\DoctorSlotController;
 use App\Http\Controllers\Doctor\HorarioController as DoctorHorarioController;
 use App\Models\User;
 use App\Http\Controllers\ChatBotController;
+use App\Http\Controllers\FaceAuthController;
 
 
 // API tarifas
@@ -221,3 +222,13 @@ Route::post('/chatbot/agendar', [ChatBotController::class, 'agendar'])->name('ch
 Route::post('/chatbot/buscar-citas', [ChatBotController::class, 'buscarCitas'])->name('chatbot.buscarCitas');
 Route::post('/chatbot/cancelar', [ChatBotController::class, 'cancelar'])->name('chatbot.cancelar');
 Route::post('/chatbot/reagendar', [ChatBotController::class, 'reagendar'])->name('chatbot.reagendar');
+
+
+Route::middleware('auth')->group(function () {
+    Route::get('/face/enroll', [FaceAuthController::class, 'showEnrollment'])->name('face.enroll');
+    Route::post('/face/enroll', [FaceAuthController::class, 'storeEnrollment']);
+});
+
+Route::middleware('guest')->group(function () {
+    Route::post('/face/login', [FaceAuthController::class, 'verifyLogin'])->name('face.login');
+});
