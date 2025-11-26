@@ -153,10 +153,11 @@
             </form>
           </div>
 
-          <div class="login-panel" data-login-panel="face" hidden>
+                    <div class="login-panel" data-login-panel="face" hidden>
             <form id="faceLoginForm"
                   data-endpoint="{{ route('face.login') }}"
-                  data-csrf="{{ csrf_token() }}">
+                  data-csrf="{{ csrf_token() }}"
+                  data-models-url="{{ asset('models') }}">
               <div class="face-login-video">
                 <video id="faceLoginVideo" autoplay muted playsinline></video>
               </div>

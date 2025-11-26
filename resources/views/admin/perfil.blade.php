@@ -134,6 +134,34 @@
                 </div>
               </div>
             </section>
+
+            <section class="section">
+              <h4 class="section-title"><span class="material-symbols-outlined">verified_user</span>Reconocimiento facial</h4>
+              <p class="section-description">Escanea tu rostro para iniciar sesión sin contraseña. Necesitas permitir el uso de la cámara.</p>
+              <div class="face-enroll-card">
+                <div class="face-enroll-video">
+                  <video id="faceEnrollVideo" autoplay muted playsinline></video>
+                  <div id="faceEnrollOverlay">
+                    {{ $user->faceProfile ? 'Rostro registrado. Si quieres actualizarlo, haz clic en "Actualizar rostro".' : 'Haz clic en "Guardar rostro" para activar la cámara.' }}
+                  </div>
+                </div>
+                <div class="face-enroll-actions">
+                  <button
+                    type="button"
+                    class="btn btn-primary"
+                    id="faceEnrollButton"
+                    data-enroll-url="{{ route('face.enroll') }}"
+                    data-csrf="{{ csrf_token() }}"
+                    data-models-url="{{ asset('models') }}"
+                    data-has-face="{{ $user->faceProfile ? '1' : '0' }}"
+                    data-saved-status="{{ $user->faceProfile ? 'Rostro registrado. Puedes actualizarlo si cambias de look.' : '' }}"
+                  >
+                    {{ $user->faceProfile ? 'Actualizar rostro' : 'Guardar rostro' }}
+                  </button>
+                  <p id="faceEnrollStatus" class="face-enroll-status"></p>
+                </div>
+              </div>
+            </section>
           </div>
 
           <div class="profile-actions">

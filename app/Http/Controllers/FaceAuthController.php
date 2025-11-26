@@ -29,7 +29,7 @@ class FaceAuthController extends Controller
 
         $request->user()->faceProfile()->updateOrCreate([], [
             'descriptor' => array_map('floatval', $payload['descriptor']),
-            'threshold'  => config('services.face.threshold', 0.42),
+            'threshold'  => config('services.face.threshold', 0.55),
         ]);
 
         return back()->with('status', 'Perfil facial guardado.');
@@ -51,22 +51,22 @@ class FaceAuthController extends Controller
         $bestMatch = null;
 
         foreach ($profiles as $profile) {
-            if (! $profile->user || ! $profile->user->isActive()) {
+            if (!$profile->user || !$profile->user->isActive()) {
                 continue;
             }
 
             $distance = $recognizer->compare(array_map('floatval', $data['descriptor']), $profile);
 
-            if (! $recognizer->isMatch($distance, $profile)) {
+            if (!$recognizer->isMatch($distance, $profile)) {
                 continue;
             }
 
-            if (! $bestMatch || $distance < $bestMatch['distance']) {
+            if (!$bestMatch || $distance < $bestMatch['distance']) {
                 $bestMatch = ['profile' => $profile, 'distance' => $distance];
             }
         }
 
-        if (! $bestMatch) {
+        if (!$bestMatch) {
             throw ValidationException::withMessages([
                 'descriptor' => 'No se reconoció el rostro registrado.',
             ]);
@@ -77,8 +77,13 @@ class FaceAuthController extends Controller
             'last_verified_at' => now(),
         ]);
 
-        Auth::login($bestMatch['profile']->user, true);
+        $user = $bestMatch['profile']->user;
 
-        return response()->json(['redirect' => route('home')]);
+        Auth::login($user, true);
+
+        return response()->json([
+            'redirect' => route('home'),
+            'name'     => $user->name,
+        ]);
     }
 }

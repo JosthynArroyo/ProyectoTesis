@@ -26,7 +26,8 @@ return [
     ],
 
     'face' => [
-        'threshold'    => env('FACE_MATCH_THRESHOLD', 0.42),
+        // Slightly wider umbral para reducir falsos negativos en coincidencias reales.
+        'threshold'    => env('FACE_MATCH_THRESHOLD', 0.55),
         'max_failures' => env('FACE_MAX_FAILURES', 5),
     ],
 

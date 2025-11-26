@@ -99,6 +99,7 @@
       <div class="alert alert-success">{{ session('success') }}</div>
     @endif
 
+    <div class="users-table" role="region" aria-label="Listado de usuarios" tabindex="0">
     <table class="users">
       <thead>
         <tr>
@@ -260,6 +261,7 @@
       @endforeach
       </tbody>
     </table>
+    </div>
 
     <div class="users-card__footer">
       <div>

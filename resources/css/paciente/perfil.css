@@ -95,6 +95,12 @@ body{
   align-items:start;
 }
 .perfil-aside{
+  position:relative;
+  inset:auto;
+  transform:none;
+  height:auto;
+  width:100%;
+  z-index:1;
   background:#fff;
   border-radius:var(--radius-lg);
   border:1px solid rgba(22,163,74,.22);
@@ -102,6 +108,32 @@ body{
   padding:28px;
   display:grid;
   gap:20px;
+}
+.avatar-actions{
+  display:flex;
+  justify-content:center;
+}
+.btn-avatar-change{
+  display:inline-flex;
+  align-items:center;
+  gap:.4rem;
+  border:1px solid rgba(22,163,74,.24);
+  background:#f7fdf9;
+  color:#065f46;
+  font-weight:700;
+  padding:.65rem 1rem;
+  border-radius:12px;
+  cursor:pointer;
+  transition:transform .05s,box-shadow .2s,border-color .2s;
+}
+.btn-avatar-change:hover{
+  box-shadow:0 16px 28px rgba(16,185,129,.16);
+  border-color:rgba(22,163,74,.36);
+}
+.btn-avatar-change:active{transform:translateY(1px)}
+.btn-avatar-change .material-symbols-outlined{
+  font-variation-settings:'FILL' 1,'wght' 600,'GRAD' 0,'opsz' 24;
+  color:#0ea5a5;
 }
 .avatar{
   position:relative;
@@ -139,7 +171,24 @@ body{
   pointer-events:auto;
 }
 .avatar:hover .overlay{opacity:1}
+.avatar:focus .overlay,
+.avatar:active .overlay{
+  opacity:1;
+  top:0; bottom:0; left:0; right:0;
+  height:auto;
+  background:rgba(0,0,0,.45);
+}
 @media (max-width:768px){
+  .overlay{
+    opacity:1 !important;
+    top:0; bottom:0; left:0; right:0;
+    height:auto;
+    background:rgba(0,0,0,.45);
+    font-size:1rem;
+    font-weight:600;
+  }
+}
+@media (hover:none){
   .overlay{
     opacity:1 !important;
     top:0; bottom:0; left:0; right:0;
@@ -290,7 +339,8 @@ label{display:block;font-weight:700;margin-bottom:.45rem;color:#064e3b}
 }
 @media (max-width:992px){
   .perfil-layout{grid-template-columns:1fr}
-  .perfil-aside{order:2}
+  .perfil-aside{order:1}
+  .perfil-card{order:2}
 }
 @media (max-width:768px){
   .mobile-topbar{display:flex}
@@ -302,6 +352,12 @@ label{display:block;font-weight:700;margin-bottom:.45rem;color:#064e3b}
   .perfil-body{padding:1.4rem}
   .section{padding:1.2rem}
   .avatar{width:116px;height:116px}
+  .perfil-aside{
+    position:relative;
+    transform:none;
+    width:100%;
+    inset:auto;
+  }
 }
 @media (max-width:640px){
   .perfil-page{padding:0 12px 40px}
