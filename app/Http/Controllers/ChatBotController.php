@@ -13,8 +13,11 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class ChatBotController extends Controller
 {
@@ -97,7 +100,7 @@ class ChatBotController extends Controller
         if (empty($fechas)) {
             return response()->json([
                 'ok'      => false,
-                'message' => 'Este médico no tiene horarios libres próximamente.',
+                'message' => 'Este medico no tiene horarios libres proximamente.',
             ], 404);
         }
 
@@ -262,14 +265,16 @@ class ChatBotController extends Controller
     public function buscarCitas(Request $request)
     {
         $data = $request->validate([
-            'cedula' => ['nullable','string','max:20'],
-            'email'  => ['nullable','email','max:255'],
+            'cedula'        => ['nullable','string','max:20'],
+            'email'         => ['nullable','email','max:255'],
+            'estado'        => ['nullable', Rule::in(Cita::ESTADOS)],
+            'incluir_todas' => ['nullable','boolean'],
         ]);
 
         if (empty($data['cedula']) && empty($data['email'])) {
             return response()->json([
                 'ok'      => false,
-                'message' => 'Debes proporcionar tu cédula o tu correo.',
+                'message' => 'Debes proporcionar tu cedula o tu correo.',
                 'citas'   => [],
             ], 422);
         }
@@ -293,41 +298,51 @@ class ChatBotController extends Controller
         }
 
         $hoy = Carbon::today();
+        $modoHistorico = (bool) ($data['incluir_todas'] ?? false);
 
         $citas = Cita::with(['doctor:id,name', 'especialidad:id,nombre'])
             ->where('paciente_id', $user->id)
-            ->whereDate('fecha', '>=', $hoy)
-            ->where('estado', '!=', Cita::ESTADO_REALIZADA)
-            ->where('activo', true)
-            ->orderBy('fecha')
+            ->when(!empty($data['estado']), function ($q) use ($data) {
+                $q->where('estado', $data['estado']);
+            });
+
+        if (! $modoHistorico) {
+            $citas->whereDate('fecha', '>=', $hoy)
+                ->where('estado', '!=', Cita::ESTADO_REALIZADA)
+                ->where('activo', true);
+        }
+
+        $citas = $citas->orderBy('fecha')
             ->orderBy('hora')
             ->get();
 
-        if ($citas->isEmpty()) {
-            return response()->json([
-                'ok'      => false,
-                'message' => 'No tienes citas próximas registradas.',
-                'citas'   => [],
-            ]);
-        }
-
         $respuesta = $citas->map(function ($cita) {
             return [
-                'id'           => $cita->id,
-                'doctor_id'    => $cita->doctor_id,
+                'id'              => $cita->id,
+                'doctor_id'       => $cita->doctor_id,
                 'especialidad_id' => $cita->especialidad_id,
-                'fecha'        => $cita->fecha instanceof Carbon ? $cita->fecha->format('d/m/Y') : Carbon::parse($cita->fecha)->format('d/m/Y'),
-                'hora'         => substr($cita->hora, 0, 5),
-                'estado'       => $cita->estado,
-                'doctor'       => optional($cita->doctor)->name,
-                'especialidad' => optional($cita->especialidad)->nombre,
+                'fecha'           => $cita->fecha instanceof Carbon ? $cita->fecha->format('d/m/Y') : Carbon::parse($cita->fecha)->format('d/m/Y'),
+                'hora'            => substr($cita->hora, 0, 5),
+                'estado'          => $cita->estado,
+                'doctor'          => optional($cita->doctor)->name,
+                'especialidad'    => optional($cita->especialidad)->nombre,
             ];
         });
+
+        if ($respuesta->isEmpty()) {
+            return response()->json([
+                'ok'       => false,
+                'message'  => 'No se encontraron citas con los filtros seleccionados.',
+                'citas'    => [],
+                'paciente' => $user->name,
+            ]);
+        }
 
         return response()->json([
             'ok'       => true,
             'message'  => 'Citas encontradas.',
             'paciente' => $user->name,
+            'estado_consultado' => $data['estado'] ?? null,
             'citas'    => $respuesta,
         ]);
     }
@@ -381,7 +396,7 @@ class ChatBotController extends Controller
         if (! $this->slotDisponible($cita->doctor_id, $nuevaFecha, $data['hora'])) {
             return response()->json([
                 'ok'      => false,
-                'message' => 'Ese horario ya no está disponible.',
+                'message' => 'Ese horario ya no esta disponible.',
             ], 422);
         }
 
@@ -395,7 +410,7 @@ class ChatBotController extends Controller
 
         return response()->json([
             'ok'      => true,
-            'message' => 'La cita fue reprogramada con éxito.',
+            'message' => 'La cita fue reprogramada con exito.',
         ]);
     }
 
@@ -441,6 +456,232 @@ class ChatBotController extends Controller
         ]);
     }
 
+    public function enviarCodigoVerificacion(Request $request)
+    {
+        $data = $request->validate([
+            'cedula' => ['required','digits:10'],
+            'email'  => ['required','email','max:255'],
+        ]);
+
+        $paciente = User::where('dni', $data['cedula'])->first();
+
+        if ($paciente && !empty($paciente->email) && strcasecmp($paciente->email, $data['email']) !== 0) {
+            return response()->json([
+                'ok'      => false,
+                'message' => 'El correo no coincide con el paciente registrado para esa cedula.',
+            ], 422);
+        }
+
+        $codigo = (string) random_int(100000, 999999);
+        $cacheKey = $this->codigoCacheKey($data['cedula'], $data['email']);
+        Cache::put($cacheKey, $codigo, now()->addMinutes(10));
+
+        Mail::raw("Tu codigo de verificacion es {$codigo}. Vence en 10 minutos.", function ($message) use ($data) {
+            $message->to($data['email'])
+                ->subject('Codigo de verificacion - Clinica');
+        });
+
+        return response()->json([
+            'ok'      => true,
+            'message' => 'Hemos enviado un codigo de verificacion a tu correo.',
+        ]);
+    }
+
+    public function verificarCodigo(Request $request)
+    {
+        $data = $request->validate([
+            'cedula' => ['required','digits:10'],
+            'email'  => ['required','email','max:255'],
+            'codigo' => ['required','digits:6'],
+        ]);
+
+        $cacheKey = $this->codigoCacheKey($data['cedula'], $data['email']);
+        $codigoGuardado = Cache::get($cacheKey);
+
+        if (! $codigoGuardado || $codigoGuardado !== $data['codigo']) {
+            return response()->json([
+                'ok'      => false,
+                'message' => 'El codigo ingresado no es correcto o ya vencio.',
+            ], 422);
+        }
+
+        Cache::forget($cacheKey);
+
+        $paciente = User::where('dni', $data['cedula'])->first();
+
+        return response()->json([
+            'ok'      => true,
+            'message' => 'Codigo validado.',
+            'paciente'=> $paciente ? [
+                'id'       => $paciente->id,
+                'nombre'   => $paciente->name,
+                'email'    => $paciente->email,
+                'telefono' => $paciente->telefono,
+            ] : null,
+        ]);
+    }
+
+    public function perfil(Request $request)
+    {
+        $data = $request->validate([
+            'cedula'  => ['required','digits:10'],
+            'email'   => ['required','email','max:255'],
+            'user_id' => ['nullable','integer','exists:users,id'],
+        ]);
+
+        $user = User::query()
+            ->when(!empty($data['user_id']), fn($q) => $q->where('id', $data['user_id']))
+            ->where(function ($q) use ($data) {
+                $q->where('dni', $data['cedula'])
+                    ->orWhere('email', $data['email']);
+            })
+            ->first();
+
+        if (! $user) {
+            return response()->json([
+                'ok'      => false,
+                'message' => 'No encontramos un paciente con esos datos verificados.',
+            ], 404);
+        }
+
+        if (!empty($user->dni) && $user->dni !== $data['cedula']) {
+            return response()->json([
+                'ok'      => false,
+                'message' => 'La cedula validada no coincide con el paciente.',
+            ], 422);
+        }
+
+        if (!empty($user->email) && strcasecmp($user->email, $data['email']) !== 0) {
+            return response()->json([
+                'ok'      => false,
+                'message' => 'El correo validado no coincide con el paciente.',
+            ], 422);
+        }
+
+        return response()->json([
+            'ok' => true,
+            'perfil' => [
+                'id'               => $user->id,
+                'nombre'           => $user->name,
+                'email'            => $user->email,
+                'telefono'         => $user->telefono,
+                'dni'              => $user->dni,
+                'direccion'        => $user->direccion,
+                'fecha_nacimiento' => $user->fecha_nacimiento ? $user->fecha_nacimiento->toDateString() : null,
+                'sexo'             => $user->sexo,
+            ],
+            'sexos' => ['Masculino','Femenino','Otro'],
+        ]);
+    }
+
+    public function actualizarPerfil(Request $request)
+    {
+        $identidad = $request->validate([
+            'cedula'          => ['required','digits:10'],
+            'email_identidad' => ['required','email','max:255'],
+            'user_id'         => ['nullable','integer','exists:users,id'],
+        ]);
+
+        $user = User::query()
+            ->when(!empty($identidad['user_id']), fn($q) => $q->where('id', $identidad['user_id']))
+            ->where(function ($q) use ($identidad) {
+                $q->where('dni', $identidad['cedula'])
+                    ->orWhere('email', $identidad['email_identidad']);
+            })
+            ->first();
+
+        if (! $user) {
+            return response()->json([
+                'ok'      => false,
+                'message' => 'No encontramos un paciente con esos datos verificados.',
+            ], 404);
+        }
+
+        if (!empty($user->dni) && $user->dni !== $identidad['cedula']) {
+            return response()->json([
+                'ok'      => false,
+                'message' => 'La cedula validada no coincide con el paciente.',
+            ], 422);
+        }
+
+        if (!empty($user->email) && strcasecmp($user->email, $identidad['email_identidad']) !== 0) {
+            return response()->json([
+                'ok'      => false,
+                'message' => 'El correo validado no coincide con el paciente.',
+            ], 422);
+        }
+
+        $rules = [
+            'nombre'            => ['required','string','max:255'],
+            'email'             => ['required','email','max:255', Rule::unique('users','email')->ignore($user->id)],
+            'telefono'          => ['nullable','regex:/^\\d{10}$/'],
+            'dni'               => ['required','digits:10', Rule::unique('users','dni')->ignore($user->id)],
+            'direccion'         => ['nullable','string','max:255'],
+            'fecha_nacimiento'  => ['required','date','before:today'],
+            'sexo'              => ['nullable', Rule::in(['Masculino','Femenino','Otro'])],
+            'current_password'  => ['nullable','string'],
+            'password'          => [
+                'nullable','string','min:8','confirmed','different:current_password',
+                'regex:/^(?=.*[A-Za-z])(?=.*\\d)(?=.*[^A-Za-z0-9]).{8,}$/'
+            ],
+        ];
+
+        $messages = [
+            'telefono.regex' => 'El telefono debe tener exactamente 10 digitos.',
+            'password.regex' => 'La contraseña debe incluir letras, numeros y al menos un caracter especial.',
+        ];
+
+        validator($request->all(), $rules, $messages)->validate();
+
+        $user->fill([
+            'name'             => $request->input('nombre'),
+            'email'            => $request->input('email'),
+            'telefono'         => $request->input('telefono'),
+            'dni'              => $request->input('dni'),
+            'direccion'        => $request->input('direccion'),
+            'fecha_nacimiento' => $request->input('fecha_nacimiento'),
+            'sexo'             => $request->input('sexo'),
+        ]);
+
+        $passwordChanged = false;
+        if ($request->filled('password')) {
+            if (! $request->filled('current_password') || ! Hash::check($request->input('current_password'), $user->password)) {
+                return response()->json([
+                    'ok'      => false,
+                    'message' => 'La contraseña actual no es correcta.',
+                    'field'   => 'current_password',
+                ], 422);
+            }
+
+            $user->password = Hash::make($request->input('password'));
+            $user->setRememberToken(Str::random(60));
+            $passwordChanged = true;
+        }
+
+        $user->save();
+
+        return response()->json([
+            'ok'      => true,
+            'message' => 'Datos actualizados correctamente.',
+            'perfil'  => [
+                'id'               => $user->id,
+                'nombre'           => $user->name,
+                'email'            => $user->email,
+                'telefono'         => $user->telefono,
+                'dni'              => $user->dni,
+                'direccion'        => $user->direccion,
+                'fecha_nacimiento' => $user->fecha_nacimiento ? $user->fecha_nacimiento->toDateString() : null,
+                'sexo'             => $user->sexo,
+            ],
+            'password_actualizado' => $passwordChanged,
+        ]);
+    }
+
+    protected function codigoCacheKey(string $cedula, string $email): string
+    {
+        return 'chatbot:codigo:'.sha1($cedula.'|'.strtolower($email));
+    }
+
     protected function slotDisponible(int $doctorId, string $fecha, string $hora): bool
     {
         $libres = $this->calcularSlotsDisponibles($doctorId, $fecha);
@@ -484,5 +725,4 @@ class ChatBotController extends Controller
         sort($slots);
         return array_values(array_unique($slots));
     }
-
 }

@@ -218,10 +218,14 @@ Route::get('/chatbot/doctores/{doctor}/fechas', [ChatBotController::class, 'fech
 Route::get('/asistente', [ChatBotController::class, 'index'])->name('chatbot.index');
 Route::get('/chatbot/especialidades', [ChatBotController::class, 'especialidades'])->name('chatbot.especialidades');
 Route::post('/chatbot/verificar-paciente', [ChatBotController::class, 'verificarPaciente'])->name('chatbot.verificarPaciente');
+Route::post('/chatbot/enviar-codigo', [ChatBotController::class, 'enviarCodigoVerificacion'])->name('chatbot.enviarCodigo');
+Route::post('/chatbot/verificar-codigo', [ChatBotController::class, 'verificarCodigo'])->name('chatbot.verificarCodigo');
 Route::post('/chatbot/agendar', [ChatBotController::class, 'agendar'])->name('chatbot.agendar');
 Route::post('/chatbot/buscar-citas', [ChatBotController::class, 'buscarCitas'])->name('chatbot.buscarCitas');
 Route::post('/chatbot/cancelar', [ChatBotController::class, 'cancelar'])->name('chatbot.cancelar');
 Route::post('/chatbot/reagendar', [ChatBotController::class, 'reagendar'])->name('chatbot.reagendar');
+Route::post('/chatbot/perfil', [ChatBotController::class, 'perfil'])->name('chatbot.perfil');
+Route::post('/chatbot/perfil/actualizar', [ChatBotController::class, 'actualizarPerfil'])->name('chatbot.perfil.actualizar');
 
 
 Route::middleware('auth')->group(function () {
