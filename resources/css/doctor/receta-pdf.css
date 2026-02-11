@@ -1,0 +1,46 @@
+*{ box-sizing:border-box; }
+html,body{ margin:0; padding:0; }
+body{
+  font-family: DejaVu Sans, Arial, Helvetica, sans-serif;
+  color:#0f172a;
+  font-size:12px;
+  line-height:1.5;
+  background:#fff;
+}
+.page{ width:100%; max-width:720px; margin:0 auto; padding:24px 28px; }
+
+.brand{ color:#0f766e; font-weight:800; letter-spacing:.2px; }
+.muted{ color:#64748b; }
+.soft{ color:#475569; }
+.small{ font-size:12px; }
+.xs{ font-size:11px; }
+.divider{ height:1px; background:#e2e8f0; margin:14px 0; }
+
+.sheet{ border:1px solid #e2e8f0; border-radius:12px; padding:20px; background:#fff; }
+
+.header{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }
+.brand-block{ display:flex; align-items:center; gap:12px; }
+.logo{ width:54px; height:54px; border-radius:8px; object-fit:contain; border:1px solid #e2e8f0; padding:6px; background:#fff; }
+.clinic-title{ font-size:20px; font-weight:800; margin:0; }
+.clinic-sub{ margin:2px 0 0; }
+
+.meta{
+  border:1px solid #e2e8f0; border-radius:10px; padding:10px 12px;
+  display:grid; grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:6px 14px; margin-top:12px; background:#f8fafc;
+}
+.meta b{ font-weight:700; }
+
+h3{ margin:14px 0 8px; font-size:14px; color:#0f172a; }
+.section{ margin-top:12px; padding:12px; border:1px solid #e2e8f0; border-radius:10px; background:#fff; }
+.preserve{ white-space:pre-wrap; word-wrap:break-word; }
+
+.sign-row{ display:flex; gap:24px; margin-top:24px; }
+.sign{ flex:1; text-align:center; padding-top:40px; }
+.sign .line{ border-top:1px solid #94a3b8; height:0; margin:8px 0 4px; }
+
+.footer{ margin-top:14px; padding-top:10px; border-top:1px dashed #e2e8f0; display:flex; justify-content:space-between; gap:12px; }
+.badge{ display:inline-block; border:1px solid #99f6e4; background:#ccfbf1; color:#0f766e; padding:2px 8px; border-radius:999px; font-weight:700; font-size:11px; }
+
+.avoid-break{ page-break-inside:avoid; }
+@page{ margin:24px 28px; }

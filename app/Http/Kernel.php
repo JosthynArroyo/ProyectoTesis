@@ -57,5 +57,6 @@ class Kernel extends HttpKernel
 
         // alias para control por rol ya usado en tus rutas
         'role' => \App\Http\Middleware\EnsureUserRole::class,
+        'feature' => \App\Http\Middleware\EnsureFeatureAccess::class,
     ];
 }

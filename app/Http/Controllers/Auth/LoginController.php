@@ -21,7 +21,7 @@ class LoginController extends Controller
     // Evitar ver la pantalla /login y usar el modal del home
     protected function showLoginForm()
     {
-        return redirect('/?login=1');
+        return redirect('/login=1');
     }
 
     protected function validateLogin(Request $request)
@@ -30,6 +30,7 @@ class LoginController extends Controller
             [
                 $this->username() => 'required|email',
                 'password' => 'required|string',
+                'remember' => 'required|boolean',
             ],
             [
                 $this->username().'.required' => 'Ingrese su correo electrónico.',
@@ -52,9 +53,11 @@ class LoginController extends Controller
                 ->with('auth_error', 'Tu cuenta está deshabilitada o suspendida.');
         }
 
+        if ($user->hasRole('superadmin'))    return redirect()->intended('superadmin/dashboard');
         if ($user->hasRole('administrador')) return redirect()->intended('admin/dashboard');
         if ($user->hasRole('paciente'))      return redirect()->intended('paciente/dashboard');
         if ($user->hasRole('doctor'))        return redirect()->intended('doctor/dashboard');
+        if ($user->hasRole('laboratorio'))   return redirect()->intended('laboratorio/dashboard');
         return redirect('/');
     }
 
@@ -67,12 +70,16 @@ class LoginController extends Controller
             return route('login');
         }
 
-        if ($user && $user->hasRole('administrador')) {
+        if ($user && $user->hasRole('superadmin')) {
+            return 'superadmin/dashboard';
+        } elseif ($user && $user->hasRole('administrador')) {
             return 'admin/dashboard';
         } elseif ($user && $user->hasRole('paciente')) {
             return 'paciente/dashboard';
         } elseif ($user && $user->hasRole('doctor')) {
             return 'doctor/dashboard';
+        } elseif ($user && $user->hasRole('laboratorio')) {
+            return 'laboratorio/dashboard';
         }
 
         return '/';

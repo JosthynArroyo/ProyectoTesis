@@ -1,122 +1,123 @@
 @extends('layouts.admin')
 
-@section('title','Panel Administrativo - Clínica Don Bosco')
-
-@push('head')
-  <meta name="dashboard-resumen-url" content="{{ route('admin.dashboard.resumen') }}">
-@endpush
+@section('title','Panel administrativo - Clínica Don Bosco')
+@section('header-title','Panel administrativo')
+@section('header-subtitle','Vision general de la operacion')
 
 @section('main')
-  <h1>Panel de Control</h1>
-  <div class="date"><input type="date"></div>
-
-  <div class="insights">
-    <div class="sales">
-      <span class="material-symbols-sharp">monitor_heart</span>
-      <div class="middle">
-        <div class="left">
-          <h3>Citas Totales</h3>
-          <h1>{{ $totalCitas }}</h1>
+  <div class="space-y-6">
+    <section class="card p-6">
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <p class="text-xs uppercase tracking-widest text-slate-500">Resumen del dia</p>
+          <h1 class="mt-2 text-2xl font-semibold text-slate-900">Panel de control</h1>
+          <p class="text-slate-600">Vision general de pacientes, doctores y actividad reciente.</p>
         </div>
-        <div class="progress"><svg><circle r="30" cx="40" cy="40"></circle></svg></div>
-      </div>
-      <small>Acumulado</small>
-    </div>
-
-    <div class="expenses">
-      <span class="material-symbols-sharp">event_note</span>
-      <div class="middle">
-        <div class="left">
-          <h3>Citas Pendientes</h3>
-          <h1>{{ $totalCitasPendientes }}</h1>
+        <div class="flex items-center gap-3 rounded-xl border border-slate-200 bg-white/90 px-3 py-2">
+          <i class="ri-calendar-line text-slate-400"></i>
+          <input type="date" aria-label="Seleccionar fecha" value="{{ now()->toDateString() }}" class="bg-transparent text-sm text-slate-600">
         </div>
-        <div class="progress"><svg><circle r="30" cx="40" cy="40"></circle></svg></div>
       </div>
-      <small>Acumulado</small>
-    </div>
+    </section>
 
-    <div class="income">
-      <span class="material-symbols-sharp">check_circle</span>
-      <div class="middle">
-        <div class="left">
-          <h3>Citas Completadas</h3>
-          <h1>{{ $totalCitasRealizadas }}</h1>
+    <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <x-ui.stat label="Total de pacientes" :value="$totalPacientes" tone="teal">
+        <x-slot:icon><i class="ri-group-line"></i></x-slot:icon>
+      </x-ui.stat>
+      <x-ui.stat label="Total de doctores" :value="$totalDoctores" tone="sky">
+        <x-slot:icon><i class="ri-stethoscope-line"></i></x-slot:icon>
+      </x-ui.stat>
+      <x-ui.stat label="Usuarios activos hoy" :value="$usuariosActivosHoy" tone="amber">
+        <x-slot:icon><i class="ri-flashlight-line"></i></x-slot:icon>
+      </x-ui.stat>
+    </section>
+
+    <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+      <x-ui.stat label="Citas totales" :value="$totalCitas" tone="sky">
+        <x-slot:icon><i class="ri-calendar-event-line"></i></x-slot:icon>
+      </x-ui.stat>
+      <x-ui.stat label="Citas pendientes" :value="$totalCitasPendientes" tone="amber">
+        <x-slot:icon><i class="ri-hourglass-line"></i></x-slot:icon>
+      </x-ui.stat>
+      <x-ui.stat label="Pendientes criticas" :value="$totalCitasPendientesCriticas" tone="rose">
+        <x-slot:icon><i class="ri-error-warning-line"></i></x-slot:icon>
+      </x-ui.stat>
+      <x-ui.stat label="Citas realizadas" :value="$totalCitasRealizadas" tone="teal">
+        <x-slot:icon><i class="ri-checkbox-circle-line"></i></x-slot:icon>
+      </x-ui.stat>
+      <x-ui.stat label="Citas canceladas" :value="$totalCitasCanceladas" tone="rose">
+        <x-slot:icon><i class="ri-close-circle-line"></i></x-slot:icon>
+      </x-ui.stat>
+    </section>
+
+    <div class="grid gap-6 lg:grid-cols-[1.5fr_0.5fr]">
+      <section class="card p-6">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h2 class="text-lg font-semibold text-slate-900">Citas recientes</h2>
+            <p class="text-sm text-slate-500">Últimas 50 citas registradas.</p>
+          </div>
+          <form id="exportForm" action="{{ route('admin.citas.export') }}" method="GET">
+            <button type="submit" class="btn btn-outline">
+              <i class="ri-download-2-line"></i> Exportar
+            </button>
+          </form>
         </div>
-        <div class="progress"><svg><circle r="30" cx="40" cy="40"></circle></svg></div>
-      </div>
-      <small>Acumulado</small>
-    </div>
-  </div>
 
-  <div class="recent_order">
-    <h1>Citas Recientes</h1>
+        <div class="mt-4 table-shell">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Paciente</th>
+                <th>Doctor</th>
+                <th>Estado</th>
+                <th>Horario</th>
+              </tr>
+            </thead>
+            <tbody id="citasBody">
+              @php use Illuminate\Support\Carbon; @endphp
+              @forelse($citas as $cita)
+                <tr>
+                  <td>{{ optional($cita->paciente)->name ?? 'Sin paciente' }}</td>
+                  <td>{{ optional($cita->doctor)->name ?? 'Sin asignar' }}</td>
+                  <td>
+                    <x-ui.badge :tone="$cita->estado === 'cancelada' ? 'danger' : ($cita->estado === 'pendiente' ? 'warning' : 'success')">
+                      {{ ucfirst($cita->estado) }}
+                    </x-ui.badge>
+                  </td>
+                  <td>{{ Carbon::parse($cita->fecha)->format('Y-m-d') }} {{ Carbon::parse($cita->hora)->format('H:i') }}</td>
+                </tr>
+              @empty
+                <tr><td colspan="4">No hay citas recientes.</td></tr>
+              @endforelse
+            </tbody>
+          </table>
+        </div>
 
-    <form action="{{ route('admin.citas.export') }}" method="GET" style="margin-bottom:15px;text-align:right;">
-      <button type="submit" class="btn-export">
-        <span class="material-symbols-outlined">download</span> Exportar a Excel
-      </button>
-    </form>
+        <div class="mt-4 flex flex-wrap gap-2">
+          <button type="button" id="btnShowLess" class="btn btn-ghost" style="display:none;">Mostrar menos</button>
+          <button type="button" id="btnShowMore" class="btn btn-ghost">Mostrar más</button>
+        </div>
+      </section>
 
-    @php use Illuminate\Support\Carbon; @endphp
-    <table id="tabla-citas">
-      <thead>
-        <tr>
-          <th>Paciente</th><th>Doctor</th><th>Estado</th><th>Horario</th>
-        </tr>
-      </thead>
-      <tbody id="citasBody">
-        @forelse($citas as $cita)
-          <tr>
-            <td>{{ $cita->paciente->name ?? 'Sin paciente' }}</td>
-            <td>{{ $cita->doctor->name ?? 'Sin asignar' }}</td>
-            <td class="{{ $cita->estado === 'pendiente' ? 'warning' : ($cita->estado === 'realizada' ? 'success' : ($cita->estado === 'confirmada' ? 'info' : 'danger')) }}">
-              {{ ucfirst($cita->estado) }}
-            </td>
-            <td>{{ Carbon::parse($cita->fecha)->format('Y-m-d') }} {{ Carbon::parse($cita->hora)->format('H:i') }}</td>
-          </tr>
-        @empty
-          <tr><td colspan="4">No hay citas recientes.</td></tr>
-        @endforelse
-      </tbody>
-    </table>
-
-    <div class="table-actions" style="display:flex;gap:.6rem;justify-content:flex-end;margin-top:.8rem;">
-      <button type="button" id="btnShowLess" class="btn-outline" style="display:none;">Mostrar menos</button>
-      <button type="button" id="btnShowMore" class="btn-outline">Mostrar más</button>
-    </div>
-  </div>
-@endsection
-
-@section('right')
-  <div class="recent_updates">
-    <h2>Últimas actividades</h2>
-    <div class="updates"></div>
-  </div>
-
-  <div class="sales_analytics">
-    <h2>Resumen de citas</h2>
-    <div class="item online">
-      <div class="icon"><span class="material-symbols-sharp">calendar_month</span></div>
-      <div class="right_text">
-        <div class="info"><h3>Citas agendadas</h3><small class="text-muted">Total</small></div>
-        <h3 id="kpi-agendadas">{{ $totalCitas }}</h3>
-      </div>
-    </div>
-
-    <div class="item online">
-      <div class="icon"><span class="material-symbols-sharp">task_alt</span></div>
-      <div class="right_text">
-        <div class="info"><h3>Citas completadas</h3><small class="text-muted">Total</small></div>
-        <h3 id="kpi-completadas">{{ $totalCitasRealizadas }}</h3>
-      </div>
-    </div>
-
-    <div class="item online">
-      <div class="icon"><span class="material-symbols-sharp">cancel</span></div>
-      <div class="right_text">
-        <div class="info"><h3>Citas canceladas</h3><small class="text-muted">Total</small></div>
-        <h3 id="kpi-canceladas">{{ $totalCitasCanceladas }}</h3>
-      </div>
+      <aside class="card p-6">
+        <h3 class="text-lg font-semibold text-slate-900">Resumen de citas</h3>
+        <div class="mt-4 space-y-4">
+          <div>
+            <p class="text-xs uppercase tracking-widest text-slate-500">Agendadas</p>
+            <p id="kpi-agendadas" class="text-2xl font-semibold text-slate-900">{{ $totalCitas }}</p>
+          </div>
+          <div>
+            <p class="text-xs uppercase tracking-widest text-slate-500">Completadas</p>
+            <p id="kpi-completadas" class="text-2xl font-semibold text-slate-900">{{ $totalCitasRealizadas }}</p>
+          </div>
+          <div>
+            <p class="text-xs uppercase tracking-widest text-slate-500">Canceladas</p>
+            <p id="kpi-canceladas" class="text-2xl font-semibold text-slate-900">{{ $totalCitasCanceladas }}</p>
+          </div>
+        </div>
+        <p class="mt-4 text-xs text-slate-500">Actualización en tiempo real.</p>
+      </aside>
     </div>
   </div>
 @endsection

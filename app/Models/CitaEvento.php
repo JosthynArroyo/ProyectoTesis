@@ -10,47 +10,39 @@ class CitaEvento extends Model
 
     protected $fillable = [
         'cita_id',
-        'paciente_id',
-        'doctor_id',
+        'user_id',
         'tipo',
-        'estado_anterior',
-        'estado_nuevo',
-        'fecha_anterior',
-        'fecha_nueva',
-        'hora_anterior',
-        'hora_nueva',
-        'activo_anterior',
-        'activo_nuevo',
-        'meta',
+        'de_estado',
+        'a_estado',
+        'de_fecha',
+        'a_fecha',
+        'de_hora',
+        'a_hora',
     ];
 
     // Casts para evitar strings crudos y tener Carbon en fechas
     protected $casts = [
-        'fecha_anterior'  => 'date',
-        'fecha_nueva'     => 'date',
-        'activo_anterior' => 'boolean',
-        'activo_nuevo'    => 'boolean',
-        'meta'            => 'array',
+        'de_fecha'        => 'date',
+        'a_fecha'         => 'date',
         'created_at'      => 'datetime',
         'updated_at'      => 'datetime',
     ];
 
-    // Aliases si en tu controlador usas de_* y a_* (ajusta si ya cambiaste nombres)
     public function getDeFechaAttribute()
     {
-        return $this->fecha_anterior;
+        return $this->getAttributeFromArray('de_fecha');
     }
     public function getAFechaAttribute()
     {
-        return $this->fecha_nueva;
+        return $this->getAttributeFromArray('a_fecha');
     }
     public function getDeHoraAttribute()
     {
-        return $this->hora_anterior;
+        return $this->getAttributeFromArray('de_hora');
     }
     public function getAHoraAttribute()
     {
-        return $this->hora_nueva;
+        return $this->getAttributeFromArray('a_hora');
     }
 
     // Relaciones mínimas

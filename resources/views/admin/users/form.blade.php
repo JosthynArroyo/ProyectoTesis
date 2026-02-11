@@ -1,93 +1,161 @@
 @php($u = $user ?? new \App\Models\User)
+@php($presetRole = in_array(request('role'), ['administrador','superadmin'], true) ? null : request('role'))
+@php($selectedRoleId = old('role_id', optional($u->roles->first())->id ?? optional($roles->firstWhere('name', $presetRole))->id))
 @csrf
 
-@push('head')
-  @vite('resources/css/admin/users/form.css')
-@endpush
-
-<div class="grid">
-  <div>
-    <label>Nombre</label>
-    <input class="input" name="name" value="{{ old('name', $u->name) }}" required>
-    @error('name')<small class="err">{{ $message }}</small>@enderror
-  </div>
-  <div>
-    <label>Email</label>
-    <input class="input" name="email" type="email" value="{{ old('email', $u->email) }}" required>
-    @error('email')<small class="err">{{ $message }}</small>@enderror
-  </div>
-
-  @if(!$user)
-  <div>
-    <label>Contraseña</label>
-    <div class="password-field">
-      <input class="input" name="password" id="password" type="password" required>
-      <button type="button" class="btn-eye" data-target="#password"><span class="material-symbols-outlined">visibility</span></button>
+<div class="space-y-6">
+  <section class="card p-6">
+    <div>
+      <p class="text-xs uppercase tracking-widest text-slate-500">Datos de cuenta</p>
+      <h3 class="mt-2 text-lg font-semibold text-slate-900">Credenciales de acceso</h3>
+      <p class="text-sm text-slate-500">Nombre visible y credenciales iniciales para el inicio de sesión.</p>
     </div>
-    @error('password')<small class="err">{{ $message }}</small>@enderror
-  </div>
-  <div>
-    <label>Confirmación</label>
-    <div class="password-field">
-      <input class="input" name="password_confirmation" id="password_confirmation" type="password" required>
-      <button type="button" class="btn-eye" data-target="#password_confirmation"><span class="material-symbols-outlined">visibility</span></button>
+    <div class="mt-4 grid gap-4 md:grid-cols-2">
+      <div>
+        <label for="name" class="form-label">Nombre</label>
+        <input class="form-input" id="name" name="name" value="{{ old('name', $u->name) }}" required>
+        @error('name')<small class="text-xs text-rose-600">{{ $message }}</small>@enderror
+      </div>
+      <div>
+        <label for="email" class="form-label">Correo electrónico</label>
+        <input class="form-input" id="email" name="email" type="email" value="{{ old('email', $u->email) }}" required>
+        @error('email')<small class="text-xs text-rose-600">{{ $message }}</small>@enderror
+      </div>
+
+      @if(!$user)
+      <div>
+        <label for="password" class="form-label">Contraseña</label>
+        <div class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2" data-password-wrap>
+          <input class="flex-1 bg-transparent text-sm" name="password" id="password" type="password" autocomplete="new-password" minlength="8" required>
+          <button type="button" class="btn-eye" data-target="#password" aria-label="Mostrar u ocultar"><i class="ri-eye-line"></i></button>
+        </div>
+        @error('password')<small class="text-xs text-rose-600">{{ $message }}</small>@enderror
+      </div>
+      <div>
+        <label for="password_confirmation" class="form-label">Confirmación</label>
+        <div class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2" data-password-wrap>
+          <input class="flex-1 bg-transparent text-sm" name="password_confirmation" id="password_confirmation" type="password" autocomplete="new-password" minlength="8" required>
+          <button type="button" class="btn-eye" data-target="#password_confirmation" aria-label="Mostrar u ocultar"><i class="ri-eye-line"></i></button>
+        </div>
+        @error('password_confirmation')<small class="text-xs text-rose-600">{{ $message }}</small>@enderror
+      </div>
+      @endif
     </div>
-  </div>
-  @endif
+  </section>
 
-  <div>
-    <label>Teléfono</label>
-    <input class="input" name="telefono" value="{{ old('telefono', $u->telefono) }}">
-  </div>
-  <div>
-    <label>Cédula</label>
-    <input class="input" name="dni" value="{{ old('dni', $u->dni) }}">
-  </div>
-  <div class="full">
-    <label>Dirección</label>
-    <input class="input" name="direccion" value="{{ old('direccion', $u->direccion) }}">
-  </div>
-  <div>
-    <label>Fecha de nacimiento</label>
-    <input class="input" name="fecha_nacimiento" type="date" value="{{ old('fecha_nacimiento', $u?->fecha_nacimiento?->format('Y-m-d')) }}">
-  </div>
-  <div>
-    <label>Sexo</label>
-    <select class="input" name="sexo">
-      @foreach(['Masculino','Femenino','Otro'] as $sx)
-        <option value="{{ $sx }}" @selected(old('sexo', $u->sexo)===$sx)>{{ $sx }}</option>
-      @endforeach
-    </select>
-  </div>
+  <section class="card p-6">
+    <div>
+      <p class="text-xs uppercase tracking-widest text-slate-500">Información personal y contacto</p>
+      <h3 class="mt-2 text-lg font-semibold text-slate-900">Datos básicos</h3>
+      <p class="text-sm text-slate-500">Teléfono, documento y datos demográficos para el expediente.</p>
+    </div>
+    <div class="mt-4 grid gap-4 md:grid-cols-2">
+      <div>
+        <label for="telefono" class="form-label">Teléfono</label>
+        <input class="form-input" id="telefono" name="telefono" value="{{ old('telefono', $u->telefono) }}" inputmode="numeric" pattern="\d{10}" minlength="10" maxlength="10" data-digits="10" required>
+        @error('telefono')<small class="text-xs text-rose-600">{{ $message }}</small>@enderror
+      </div>
+      <div>
+        <label for="dni" class="form-label">Cédula</label>
+        <input class="form-input" id="dni" name="dni" value="{{ old('dni', $u->dni) }}" inputmode="numeric" pattern="\d{10}" minlength="10" maxlength="10" data-digits="10" required>
+        @error('dni')<small class="text-xs text-rose-600">{{ $message }}</small>@enderror
+      </div>
+      <div class="md:col-span-2">
+        <label for="direccion" class="form-label">Dirección</label>
+        <input class="form-input" id="direccion" name="direccion" value="{{ old('direccion', $u->direccion) }}" required>
+        @error('direccion')<small class="text-xs text-rose-600">{{ $message }}</small>@enderror
+      </div>
+      <div>
+        <label for="fecha_nacimiento" class="form-label">Fecha de nacimiento</label>
+        <input class="form-input" id="fecha_nacimiento" name="fecha_nacimiento" type="date" value="{{ old('fecha_nacimiento', optional($u->fecha_nacimiento)->format('Y-m-d')) }}" required>
+        @error('fecha_nacimiento')<small class="text-xs text-rose-600">{{ $message }}</small>@enderror
+      </div>
+      <div>
+        <label for="sexo" class="form-label">Sexo</label>
+        <select class="form-select" id="sexo" name="sexo" required>
+          @foreach(['Masculino','Femenino','Otro'] as $sx)
+            <option value="{{ $sx }}" @selected(old('sexo', $u->sexo)===$sx)>{{ $sx }}</option>
+          @endforeach
+        </select>
+        @error('sexo')<small class="text-xs text-rose-600">{{ $message }}</small>@enderror
+      </div>
+    </div>
+  </section>
 
-  <div>
-    <label>Rol</label>
-    <select class="input" name="role_id" id="role_id" required data-preset-role="{{ strtolower((string)request('role')) }}" {{ request('role') ? 'disabled' : '' }}>
-      @foreach($roles as $r)
-        <option value="{{ $r->id }}" @selected(old('role_id', optional($u->roles->first())->id ?? optional($roles->firstWhere('name',request('role')))->id)==$r->id)>
-          {{ ucfirst($r->name) }}
-        </option>
-      @endforeach
-    </select>
-    @if(request('role'))
-      <input type="hidden" name="role_id" value="{{ optional($roles->firstWhere('name',request('role')))->id }}">
-    @endif
-  </div>
+  <section class="card p-6" id="patient-flags-section" style="display:none">
+    <div>
+      <p class="text-xs uppercase tracking-widest text-slate-500">Prioridad del paciente</p>
+      <h3 class="mt-2 text-lg font-semibold text-slate-900">Indicadores clínicos</h3>
+      <p class="text-sm text-slate-500">Solo aplica a pacientes. Marca condiciones relevantes.</p>
+    </div>
+    <div class="mt-4 grid gap-3 sm:grid-cols-2">
+      <label class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2 text-sm">
+        <input type="hidden" name="adulto_mayor" value="0">
+        <input type="checkbox" name="adulto_mayor" value="1" @checked(old('adulto_mayor', optional($u->patientFlag)->adulto_mayor))>
+        <span>Adulto mayor</span>
+      </label>
+      <label class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2 text-sm">
+        <input type="hidden" name="embarazo" value="0">
+        <input type="checkbox" name="embarazo" value="1" @checked(old('embarazo', optional($u->patientFlag)->embarazo))>
+        <span>Embarazo</span>
+      </label>
+      <label class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2 text-sm">
+        <input type="hidden" name="discapacidad" value="0">
+        <input type="checkbox" name="discapacidad" value="1" @checked(old('discapacidad', optional($u->patientFlag)->discapacidad))>
+        <span>Discapacidad</span>
+      </label>
+      <label class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2 text-sm">
+        <input type="hidden" name="cronico" value="0">
+        <input type="checkbox" name="cronico" value="1" @checked(old('cronico', optional($u->patientFlag)->cronico))>
+        <span>Crónico</span>
+      </label>
+      @error('adulto_mayor')<small class="text-xs text-rose-600">{{ $message }}</small>@enderror
+      @error('embarazo')<small class="text-xs text-rose-600">{{ $message }}</small>@enderror
+      @error('discapacidad')<small class="text-xs text-rose-600">{{ $message }}</small>@enderror
+      @error('cronico')<small class="text-xs text-rose-600">{{ $message }}</small>@enderror
+    </div>
+  </section>
 
-  <div id="doctor-only-esp" style="display:none">
-    <label>Especialidad (solo Doctor)</label>
-    <select class="input" name="especialidad_id">
-      <option value="">—</option>
-      @foreach(($especialidades ?? []) as $e)
-        <option value="{{ $e->id }}" @selected(old('especialidad_id', optional($u->especialidades->first())->id ?? '')==$e->id)>{{ $e->nombre }}</option>
-      @endforeach
-    </select>
-  </div>
+  <section class="card p-6">
+    <div>
+      <p class="text-xs uppercase tracking-widest text-slate-500">Rol y seguridad</p>
+      <h3 class="mt-2 text-lg font-semibold text-slate-900">Permisos y especialidad</h3>
+      <p class="text-sm text-slate-500">Selecciona rol y define especialidad y tarifa si aplica.</p>
+    </div>
+    <div class="mt-4 grid gap-4 md:grid-cols-2">
+      <div>
+        <label for="role_id" class="form-label">Rol</label>
+        <select class="form-select" name="role_id" id="role_id" required data-preset-role="{{ strtolower((string)$presetRole) }}" {{ $presetRole ? 'disabled' : '' }}>
+          @foreach($roles as $r)
+            <option value="{{ $r->id }}" @selected((string)$selectedRoleId === (string)$r->id)>
+              {{ ucfirst($r->name) }}
+            </option>
+          @endforeach
+        </select>
+        @if($presetRole)
+          <input type="hidden" name="role_id" value="{{ optional($roles->firstWhere('name',$presetRole))->id }}">
+        @endif
+        @error('role_id')<small class="text-xs text-rose-600">{{ $message }}</small>@enderror
+      </div>
 
-  <div id="doctor-only-precio" style="display:none">
-    <label>Precio consulta (USD)</label>
-    <input class="input" name="precio_consulta" type="number" step="0.01" min="0" value="{{ old('precio_consulta', $u->precio_consulta) }}">
-  </div>
+      <div id="doctor-only-esp" style="display:none">
+        <label for="especialidad_id" class="form-label">Especialidad (solo doctor)</label>
+        <select class="form-select" id="especialidad_id" name="especialidad_id">
+          <option value="">Seleccione</option>
+          @foreach(($especialidades ?? []) as $e)
+            <option value="{{ $e->id }}" @selected(old('especialidad_id', optional($u->especialidades->first())->id) == $e->id)>{{ $e->nombre }}</option>
+          @endforeach
+        </select>
+        @error('especialidad_id')<small class="text-xs text-rose-600">{{ $message }}</small>@enderror
+      </div>
+
+      <div id="doctor-only-precio" style="display:none">
+        <label for="precio_consulta" class="form-label">Precio de consulta (USD)</label>
+        <input class="form-input" id="precio_consulta" name="precio_consulta" type="number" step="0.01" min="0" value="{{ old('precio_consulta', $u->precio_consulta) }}" required>
+        @error('precio_consulta')<small class="text-xs text-rose-600">{{ $message }}</small>@enderror
+      </div>
+    </div>
+  </section>
 </div>
 
 @push('scripts')

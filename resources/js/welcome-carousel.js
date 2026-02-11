@@ -25,8 +25,8 @@
 
   setActive(0); start();
 
-  nextBtn?.addEventListener('click', ()=>{ next(); start(); });
-  prevBtn?.addEventListener('click', ()=>{ prev(); start(); });
+  nextBtn.addEventListener('click', ()=>{ next(); start(); });
+  prevBtn.addEventListener('click', ()=>{ prev(); start(); });
   dots.forEach((d,i)=> d.addEventListener('click', ()=>{ setActive(i); start(); }));
 
   root.addEventListener('mouseenter', stop);

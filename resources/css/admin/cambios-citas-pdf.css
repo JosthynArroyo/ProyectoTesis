@@ -1,0 +1,7 @@
+body{font-family: DejaVu Sans, sans-serif; font-size:11px; color:#0f172a;}
+h2{margin:0 0 8px 0; font-size:16px;}
+p{margin:0 0 10px 0; color:#475569;}
+table{width:100%;border-collapse:collapse;}
+th,td{border:1px solid #e2e8f0;padding:6px 8px;}
+th{background:#f1f5f9;text-align:left;text-transform:uppercase;font-size:10px;letter-spacing:0.04em;}
+tbody tr:nth-child(odd){background:#f8fafc;}

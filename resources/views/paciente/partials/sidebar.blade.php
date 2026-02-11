@@ -1,38 +1,48 @@
-<aside>
-    <div class="top">
-        <div class="logo">
-            <h2>Paciente <span class="danger"> Don Bosco</span></h2>
-        </div>
-        <div class="close">
-            <span class="material-symbols-outlined">close</span>
-        </div>
+<aside class="dashboard-sidebar fixed top-0 bottom-0 left-0 z-40 h-screen -translate-x-full overflow-y-auto border-r border-slate-200/70 bg-white px-4 pb-6 pt-0 shadow-xl lg:translate-x-0 lg:shrink-0">
+    <div class="top flex items-center justify-between">
+        <a href="{{ route('paciente.dashboard') }}" class="flex items-center gap-3">
+            <div>
+                <p class="text-xs uppercase tracking-wide text-slate-500">Panel</p>
+                <p class="text-sm font-semibold text-slate-800">Paciente Don Bosco</p>
+            </div>
+        </a>
+        <button class="close btn btn-ghost px-2 lg:hidden" aria-label="Cerrar menú">
+            <i class="ri-close-line text-lg"></i>
+        </button>
     </div>
 
-    <div class="sidebar">
-        <a href="{{ route('paciente.dashboard') }}" @class(['active' => request()->routeIs('paciente.dashboard')])>
-            <span class="material-symbols-outlined">dashboard</span>
-            <h3>Inicio</h3>
+    <nav class="mt-7 flex flex-col gap-1.5 text-[0.95rem] font-semibold leading-6">
+        <a href="{{ route('paciente.dashboard') }}" @class(['flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors', 'bg-teal-50 text-teal-700' => request()->routeIs('paciente.dashboard'), 'text-slate-600 hover:bg-slate-50' => !request()->routeIs('paciente.dashboard')])>
+            <i class="ri-dashboard-line text-lg"></i> Inicio
         </a>
 
-        <a href="{{ route('paciente.citas') }}" @class(['active' => request()->routeIs('paciente.citas', 'paciente.citas.*', 'paciente.editar-cita')])>
-            <span class="material-symbols-outlined">calendar_month</span>
-            <h3>Mis Citas</h3>
+        <a href="{{ route('paciente.citas') }}" @class(['flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors', 'bg-teal-50 text-teal-700' => request()->routeIs('paciente.citas', 'paciente.citas.*', 'paciente.editar-cita'), 'text-slate-600 hover:bg-slate-50' => !request()->routeIs('paciente.citas', 'paciente.citas.*', 'paciente.editar-cita')])>
+            <i class="ri-calendar-line text-lg"></i> Mis citas
         </a>
 
-        <a href="{{ route('paciente.crear-cita') }}" @class(['active' => request()->routeIs('paciente.crear-cita', 'paciente.crear-cita.*')])>
-            <span class="material-symbols-outlined">add_circle</span>
-            <h3>Agendar Cita</h3>
+        <a href="{{ route('paciente.historial') }}" @class(['flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors', 'bg-teal-50 text-teal-700' => request()->routeIs('paciente.historial*'), 'text-slate-600 hover:bg-slate-50' => !request()->routeIs('paciente.historial*')])>
+            <i class="ri-file-list-2-line text-lg"></i> Historial clínico
         </a>
 
-        <a href="{{ route('paciente.perfil.edit') }}" @class(['active' => request()->routeIs('paciente.perfil.*')])>
-            <span class="material-symbols-outlined">account_circle</span>
-            <h3>Perfil</h3>
+        <a href="{{ route('paciente.laboratorio.index') }}" @class(['flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors', 'bg-teal-50 text-teal-700' => request()->routeIs('paciente.laboratorio.index', 'paciente.laboratorio.download'), 'text-slate-600 hover:bg-slate-50' => !request()->routeIs('paciente.laboratorio.index', 'paciente.laboratorio.download')])>
+            <i class="ri-test-tube-line text-lg"></i> Resultados
         </a>
 
-        <form id="logout-form" action="{{ route('salir') }}" method="POST" style="display:none;">@csrf</form>
-        <a href="#" class="logout-link" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
-            <span class="material-symbols-outlined">logout</span>
-            <h3>Cerrar Sesión</h3>
+        <a href="{{ route('paciente.laboratorio.solicitar') }}" @class(['flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors', 'bg-teal-50 text-teal-700' => request()->routeIs('paciente.laboratorio.solicitar*'), 'text-slate-600 hover:bg-slate-50' => !request()->routeIs('paciente.laboratorio.solicitar*')])>
+            <i class="ri-flask-line text-lg"></i> Solicitar examen
         </a>
-    </div>
+
+        <a href="{{ route('paciente.crear-cita') }}" @class(['flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors', 'bg-teal-50 text-teal-700' => request()->routeIs('paciente.crear-cita', 'paciente.crear-cita.*'), 'text-slate-600 hover:bg-slate-50' => !request()->routeIs('paciente.crear-cita', 'paciente.crear-cita.*')])>
+            <i class="ri-add-circle-line text-lg"></i> Agendar cita
+        </a>
+
+        <a href="{{ route('paciente.perfil.edit') }}" @class(['flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors', 'bg-teal-50 text-teal-700' => request()->routeIs('paciente.perfil.*'), 'text-slate-600 hover:bg-slate-50' => !request()->routeIs('paciente.perfil.*')])>
+            <i class="ri-account-circle-line text-lg"></i> Perfil
+        </a>
+
+        <form id="logout-form" action="{{ route('salir') }}" method="POST" class="hidden">@csrf</form>
+        <a href="#" class="mt-5 flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors text-rose-600 hover:bg-rose-50" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
+            <i class="ri-logout-circle-r-line text-lg"></i> Cerrar sesión
+        </a>
+    </nav>
 </aside>

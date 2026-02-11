@@ -4,24 +4,25 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>@yield('title','Clínica')</title>
-  <link rel="icon" type="image/jpg" href="{{ asset('img/LogoClinica.jpg') }}">
+  @include('layouts.partials.favicon')
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2family=Sora:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.2.0/remixicon.min.css">
 
-  {{-- si usas Vite/Bootstrap, déjalo aquí --}}
   @vite(['resources/css/app.css','resources/js/app.js'])
 
-  {{-- NECESARIO para que entren los estilos de las vistas --}}
   @stack('styles')
 </head>
-<body>
+<body class="min-h-screen text-slate-900">
   @yield('content')
 
-  {{-- Widget del chatbot solo para visitantes no autenticados --}}
   @guest
     @include('chatbot.widget')
   @endguest
 
-  {{-- NECESARIO para los scripts que se pushean desde las vistas --}}
   @stack('scripts')
 </body>
 </html>

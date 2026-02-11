@@ -1,49 +1,41 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="container">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card">
-                <div class="card-header">{{ __('Confirm Password') }}</div>
-
-                <div class="card-body">
-                    {{ __('Please confirm your password before continuing.') }}
-
-                    <form method="POST" action="{{ route('password.confirm') }}">
-                        @csrf
-
-                        <div class="row mb-3">
-                            <label for="password" class="col-md-4 col-form-label text-md-end">{{ __('Password') }}</label>
-
-                            <div class="col-md-6">
-                                <input id="password" type="password" class="form-control @error('password') is-invalid @enderror" name="password" required autocomplete="current-password">
-
-                                @error('password')
-                                    <span class="invalid-feedback" role="alert">
-                                        <strong>{{ $message }}</strong>
-                                    </span>
-                                @enderror
-                            </div>
-                        </div>
-
-                        <div class="row mb-0">
-                            <div class="col-md-8 offset-md-4">
-                                <button type="submit" class="btn btn-primary">
-                                    {{ __('Confirm Password') }}
-                                </button>
-
-                                @if (Route::has('password.request'))
-                                    <a class="btn btn-link" href="{{ route('password.request') }}">
-                                        {{ __('Forgot Your Password?') }}
-                                    </a>
-                                @endif
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </div>
+  <main class="section-pad">
+    <div class="page-shell">
+      <div class="card p-8">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p class="text-xs uppercase tracking-widest text-slate-500">Seguridad</p>
+            <h1 class="mt-2 text-2xl font-semibold text-slate-900">Confirma tu contraseña</h1>
+            <p class="text-slate-600">Por seguridad, confirma tu contraseña antes de continuar.</p>
+          </div>
         </div>
+
+        <form method="POST" action="{{ route('password.confirm') }}" class="mt-6 space-y-4">
+          @csrf
+
+          <div>
+            <label for="password" class="form-label">Contraseña</label>
+            <div class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2" data-password-wrap>
+              <input id="password" type="password" class="flex-1 bg-transparent text-sm @error('password') border-rose-300 @enderror" name="password" required autocomplete="current-password">
+              <button type="button" class="btn-eye" data-target="#password" aria-label="Mostrar u ocultar">
+                <i class="ri-eye-line"></i>
+              </button>
+            </div>
+            @error('password')
+              <span class="text-xs text-rose-600" role="alert">{{ $message }}</span>
+            @enderror
+          </div>
+
+          <div class="flex flex-wrap items-center gap-3">
+            <button type="submit" class="btn btn-primary">Confirmar</button>
+            @if (Route::has('password.request'))
+              <a class="btn btn-ghost" href="{{ route('password.request') }}">Olvidaste tu contraseña</a>
+            @endif
+          </div>
+        </form>
+      </div>
     </div>
-</div>
+  </main>
 @endsection

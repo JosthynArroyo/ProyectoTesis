@@ -23,6 +23,7 @@ class Horario extends Model
         'fecha',
         'hora_inicio',
         'hora_fin',
+        'intervalo_minutos',
     ];
 
     /**
@@ -31,6 +32,7 @@ class Horario extends Model
     protected $casts = [
         'fecha' => 'date',
         'doctor_id' => 'integer',
+        'intervalo_minutos' => 'integer',
     ];
 
     /**
@@ -161,7 +163,7 @@ class Horario extends Model
             $this->fecha->format('d/m/Y'),
             $this->hora_inicio_formatted,
             $this->hora_fin_formatted,
-            $this->doctor->name ?? 'Sin doctor'
+            $this->doctor?->name ?? 'Sin doctor'
         );
     }
 
@@ -173,7 +175,7 @@ class Horario extends Model
      * @param int|null $excludeId
      * @return bool
      */
-    public function hasSolapamiento(string $horaInicio, string $horaFin, ?int $excludeId = null): bool
+    public function hasSolapamiento(string $horaInicio, string $horaFin, int $excludeId = null): bool
     {
         return static::where('doctor_id', $this->doctor_id)
             ->where('fecha', $this->fecha)

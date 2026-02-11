@@ -23,6 +23,13 @@ class CitaEventosController extends Controller
         $desde    = $request->get('desde');                        // YYYY-MM-DD
         $hasta    = $request->get('hasta');                        // YYYY-MM-DD
         $q        = trim((string)$request->get('q', ''));          // búsqueda libre (#cita, correo, dni)
+        if ($tipo === 'all') {
+            $tipo = '';
+        }
+        if ($estado === 'all') {
+            $estado = '';
+        }
+
 
         $ev = CitaEvento::with(['cita.paciente', 'cita.doctor'])
             ->when($tipo !== '', fn($qq) => $qq->where('tipo', $tipo))
@@ -71,23 +78,27 @@ class CitaEventosController extends Controller
 
             // Fallbacks para nombres alternos de columnas
             $deEstado = $r->de_estado ?? $r->estado_anterior ?? '';
-            $aEstado  = $r->a_estado  ?? $r->estado_nuevo    ?? '';
+            $aEstado  = $r->a_estado ?? $r->estado_nuevo ?? '';
 
-            $deFecha  = $r->de_fecha  ?? $r->fecha_anterior ?? null;
-            $aFecha   = $r->a_fecha   ?? $r->fecha_nueva    ?? null;
-            $deHora   = $r->de_hora   ?? $r->hora_anterior  ?? '';
-            $aHora    = $r->a_hora    ?? $r->hora_nueva     ?? '';
+            $deFecha  = $r->de_fecha ?? $r->fecha_anterior ?? null;
+            $aFecha   = $r->a_fecha ?? $r->fecha_nueva ?? null;
+            $deHora   = $r->de_hora ?? $r->hora_anterior ?? '';
+            $aHora    = $r->a_hora ?? $r->hora_nueva ?? '';
 
             // Formateo defensivo de fecha
-            $deFechaStr = $deFecha ? ($deFecha instanceof Carbon ? $deFecha->format('Y-m-d') : Carbon::parse($deFecha)->format('Y-m-d')) : '';
-            $aFechaStr  = $aFecha  ? ($aFecha  instanceof Carbon ? $aFecha->format('Y-m-d')  : Carbon::parse($aFecha)->format('Y-m-d'))  : '';
+            $deFechaStr = $deFecha
+                ? ($deFecha instanceof Carbon ? $deFecha->format('Y-m-d') : Carbon::parse($deFecha)->format('Y-m-d'))
+                : '';
+            $aFechaStr  = $aFecha
+                ? ($aFecha instanceof Carbon ? $aFecha->format('Y-m-d') : Carbon::parse($aFecha)->format('Y-m-d'))
+                : '';
 
             $data[] = [
                 $createdStr,
                 $r->tipo,
                 '#'.$r->cita_id,
-                optional($r->cita?->paciente)->name,
-                optional($r->cita?->doctor)->name,
+                optional($r->cita->paciente)->name,
+                optional($r->cita->doctor)->name,
                 $deEstado,
                 $aEstado,
                 trim($deFechaStr.' '.$deHora),
@@ -149,6 +160,13 @@ class CitaEventosController extends Controller
         $desde    = $request->get('desde');
         $hasta    = $request->get('hasta');
         $q        = trim((string)$request->get('q', ''));
+        if ($tipo === 'all') {
+            $tipo = '';
+        }
+        if ($estado === 'all') {
+            $estado = '';
+        }
+
 
         return CitaEvento::with(['cita.paciente', 'cita.doctor'])
             ->when($tipo !== '', fn($qq) => $qq->where('tipo', $tipo))

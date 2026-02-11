@@ -1,0 +1,20 @@
+@import './doctor.css';
+
+:root {
+  --clr-primary: #0f766e;
+  --clr-primary-variant: #0b5e59;
+  --clr-light: rgba(13, 148, 136, 0.12);
+}
+
+.lab-dashboard .btn{
+  display:inline-flex;
+  align-items:center;
+  gap:.35rem;
+  padding:.5rem .9rem;
+  border-radius:10px;
+  border:1px solid var(--clr-border);
+  font-weight:700;
+  text-decoration:none;
+  color:var(--clr-info-dark);
+}
+.lab-dashboard .btn-outline{ background:#fff; }

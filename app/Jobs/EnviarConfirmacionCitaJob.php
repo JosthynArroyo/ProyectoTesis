@@ -48,8 +48,8 @@ class EnviarConfirmacionCitaJob implements ShouldQueue
 
         Log::info(sprintf(
             'Correos de cita AGENDADA enviados. Paciente: %s <%s> | Doctor: %s <%s> | Cita ID: %d',
-            $cita->paciente->name ?? '-', $cita->paciente->email ?? '-',
-            $cita->doctor->name ?? '-',   $cita->doctor->email ?? '-',
+            $cita->paciente?->name ?? '-', $cita->paciente?->email ?? '-',
+            $cita->doctor?->name ?? '-',   $cita->doctor?->email ?? '-',
             $cita->id
         ));
     }

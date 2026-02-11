@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Role;
+use App\Support\ValidationRules;
 use Illuminate\Http\Request;
 use Illuminate\Foundation\Auth\RegistersUsers;
 use Illuminate\Support\Facades\Hash;
@@ -25,17 +26,14 @@ class RegisterController extends Controller
             $data,
             [
                 'name'     => ['required', 'string', 'max:255'],
-                'email'    => ['required', 'string', 'email', 'max:255', 'unique:users'],
-                'password' => ['required', 'string', 'min:8', 'regex:/^(?=.*[a-zA-Z])(?=.*\d).+$/', 'confirmed'],
+                'email'    => ValidationRules::emailUnique(),
+                'password' => ValidationRules::passwordRequired(),
             ],
             [
                 'name.required' => 'Ingrese su nombre.',
                 'email.required' => 'Ingrese su correo electrónico.',
                 'email.email' => 'Ingrese un correo electrónico válido.',
-                'email.unique' => 'Este correo ya está registrado.',
                 'password.required' => 'Ingrese una contraseña.',
-                'password.min' => 'La contraseña debe tener al menos 8 caracteres.',
-                'password.regex' => 'La contraseña debe contener al menos una letra y un número.',
                 'password.confirmed' => 'La confirmación de contraseña no coincide.',
             ],
             [

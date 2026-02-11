@@ -31,6 +31,7 @@ class CitaObserver
                 Cita::ESTADO_CANCELADA  => 'cancelada',
                 Cita::ESTADO_REALIZADA  => 'realizada',
                 Cita::ESTADO_PENDIENTE  => 'pendiente', // por si vuelve a pendiente
+                Cita::ESTADO_NO_SE_PRESENTO => 'no_se_presento',
             ];
             CitaEvento::create([
                 'cita_id'   => $cita->id,

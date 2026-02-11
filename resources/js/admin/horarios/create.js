@@ -40,8 +40,8 @@
 
   function syncMode(){
     const on=!!same.checked;
-    boxGlobal.style.display=on?'':'none';
-    boxPerDay.style.display=on?'none':'';
+    boxGlobal.style.display=on ? '' : 'none';
+    boxPerDay.style.display=on ? 'none' : '';
     toggleRows();updateKPI();
   }
 
@@ -50,7 +50,7 @@
     boxPerDay.querySelectorAll('.row-dia').forEach(row=>{
       const d=parseInt(row.dataset.dia,10);
       const show=checked.has(d);
-      row.style.opacity=show?'1':'.35';
+      row.style.opacity=show ? '1' : '.35';
       row.querySelectorAll('input').forEach(i=>i.disabled=!show);
     });
     if(same.checked)boxPerDay.querySelectorAll('input').forEach(i=>i.disabled=true);
@@ -69,7 +69,7 @@
         d.setDate(d.getDate()+1);
       }
     }
-    kpi.textContent=selDays.length?`Días marcados: ${selDays.length}. Fechas afectadas en el rango: ${total}.`:`Selecciona al menos un día.`;
+    kpi.textContent=selDays.length ? `Dias marcados: ${selDays.length}. Fechas afectadas en el rango: ${total}.` : `Selecciona al menos un dia.`;
   }
 
   syncMode();

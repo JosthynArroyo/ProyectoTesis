@@ -143,7 +143,7 @@ body{
 .hp{position:absolute; left:-10000px; top:auto; width:1px; height:1px; overflow:hidden}
 
 /* Espacio extra con header fijo */
-.cnav-header + main .contacto{padding-top:24px}
+.cnav-header + main .contacto{padding-top:calc(var(--cnav-h) + 6px)}
 
 /* ================== Micro-interacciones ================== */
 .form-group input:hover,

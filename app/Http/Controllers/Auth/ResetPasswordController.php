@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Support\ValidationRules;
 use Illuminate\Foundation\Auth\ResetsPasswords;
 
 class ResetPasswordController extends Controller
@@ -19,6 +20,15 @@ class ResetPasswordController extends Controller
     */
 
     use ResetsPasswords;
+
+    protected function rules()
+    {
+        return [
+            'token' => 'required',
+            'email' => 'required|email',
+            'password' => ValidationRules::passwordRequired(),
+        ];
+    }
 
     /**
      * Where to redirect users after resetting their password.

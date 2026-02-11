@@ -1,26 +1,28 @@
 @import 'tailwindcss';
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap');
 
 :root{
-  --clr-primary:#1d4ed8;
+  --font-body: 'Montserrat', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-heading: 'Space Grotesk', 'Montserrat', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --clr-primary:#2563eb;
+  --clr-primary-variant:#1d4ed8;
   --clr-danger:#dc2626;
   --clr-success:#16a34a;
   --clr-white:#ffffff;
-  --clr-info-dark:#334155;
-  --clr-info-light:#e2e8f0;
+  --clr-info-dark:#111827;
+  --clr-info-light:#d8e4ff;
   --clr-dark:#0f172a;
-  --clr-warning:#f97316;
-  --clr-light:rgba(29,78,216,.12);
-  --clr-primary-variant:#1e3a8a;
-  --clr-dark-variant:#475569;
-  --clr-color-background:#f5f7fb;
+  --clr-warning:#f59e0b;
+  --clr-light:rgba(37,99,235,.10);
+  --clr-dark-variant:#1f2937;
+  --clr-color-background:#f6f8ff;
   --card-border-radius:2rem;
   --border-radius-1:.4rem;
   --border-radius-2:.8rem;
   --border-radius-3:1.2rem;
   --card-padding:1.8rem;
   --padding-1:1.2rem;
-  --box-shadow:0 18px 38px rgba(15,23,42,.08);
+  --box-shadow:0 18px 38px rgba(37,99,235,.08);
 }
 
 .dark-theme-variables{
@@ -34,10 +36,11 @@
 
 *{margin:0;padding:0;box-sizing:border-box;text-decoration:none;border:0;list-style:none;appearance:none}
 body{
-  font-family:"Poppins",serif;
+  font-family:var(--font-body);
   font-size:.88rem;
   user-select:none;
-  background:var(--clr-color-background);
+  background:radial-gradient(1400px 520px at 24% -14%, #eef2ff 0%, #ffffff 58%);
+  background-color:var(--clr-color-background);
   width:100%;
   min-height:100vh;
   overflow-y:auto;
@@ -54,17 +57,122 @@ body{
 .container.no-right{grid-template-columns:14rem auto}
 
 a{color:var(--clr-dark)}
-h1{font-weight:800;font-size:1.8rem}
-h2{font-size:1.4rem}
-h3{font-size:.87rem}
+h1{font-family:var(--font-heading);font-weight:800;font-size:1.8rem}
+h2{font-family:var(--font-heading);font-weight:700;font-size:1.4rem}
+h3{font-family:var(--font-heading);font-weight:700;font-size:.87rem}
 h4{font-size:.8rem}
 h5{font-size:.77rem}
 small{font-size:.75rem}
 
+/* Clases auxiliares para títulos en módulos */
+.heading-1,.heading-2,.heading-3{font-family:var(--font-heading)}
+
+/* Tarjeta de título genérica para vistas admin */
+.title-card{
+  background:#fff;
+  border:1px solid #d8e4ff;
+  border-radius:20px;
+  padding:18px 22px;
+  box-shadow:var(--box-shadow);
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  align-items:center;
+  gap:14px;
+}
+.title-card__body{
+  display:grid;
+  gap:6px;
+}
+.title-card__title{
+  margin:0;
+  font-family:var(--font-heading);
+  font-size:1.8rem;
+  font-weight:800;
+  color:var(--clr-primary);
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+}
+.title-card__subtitle{
+  margin:0;
+  color:var(--clr-dark-variant);
+  font-weight:600;
+}
+.title-card__actions{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  align-items:center;
+  justify-content:flex-start;
+}
+
+.title-card--center .title-card__body{
+  text-align:center;
+  justify-items:center;
+}
+.title-card--center .title-card__title{
+  justify-self:center;
+}
+.title-card--center .title-card__actions{
+  justify-content:center;
+}
+
+.title-card--title-center .title-card__body{
+  text-align:center;
+  justify-items:center;
+}
+
+.page-hero{
+  background:#fff;
+  border:1px solid #d8e4ff;
+  border-radius:20px;
+  padding:18px 20px;
+  box-shadow:var(--box-shadow);
+  display:flex;
+  justify-content:space-between;
+  gap:1rem;
+  align-items:flex-start;
+  margin-bottom:14px;
+}
+.page-hero h1{ margin:4px 0 6px; color:var(--clr-info-dark); }
+.page-hero .lede{ margin:0; color:var(--clr-dark-variant); font-weight:600; }
+.page-hero .hero-actions{ display:flex; align-items:center; gap:.6rem; flex-wrap:wrap; }
+.hero-head{ display:flex; align-items:center; gap:.65rem; }
+.icon-btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  height:40px;
+  width:40px;
+  border-radius:12px;
+  border:1px solid #d8e4ff;
+  background:#eef3ff;
+  color:var(--clr-dark);
+  cursor:pointer;
+  box-shadow:var(--box-shadow);
+}
+.icon-btn span{ font-size:22px; }
+.icon-btn.ghost{ background:#eef3ff; }
+.mobile-only{ display:none; }
+.title-card--title-center .title-card__title{
+  justify-self:center;
+}
+
 /* ===== Ajustes clave solicitados ===== */
 
-aside{background:transparent}
-aside .top{padding:12px 18px 6px}
+aside{
+  background:transparent;
+  position:sticky;
+  top:0;
+  align-self:start;
+  height:100vh;
+}
+aside .top{
+  padding:12px 18px 6px;
+  background-color:var(--clr-white);
+  display:flex;
+  align-items:center;
+}
 aside .logo h2{margin:0;line-height:1.1}
 aside .logo .danger{color:var(--clr-primary)}
 
@@ -84,8 +192,10 @@ aside .top div.close{display:none}
 aside .sidebar{
   background-color:var(--clr-white);
   display:flex;flex-direction:column;justify-content:flex-start;
-  height:calc(100vh - 5rem);
-  padding:1rem 0;position:relative
+  height:calc(100vh - 4.4rem);
+  padding:1rem 0 1.4rem;
+  position:relative;
+  overflow-y:auto;
 }
 aside .sidebar a{
   display:flex;align-items:center;gap:1rem;
@@ -105,6 +215,7 @@ aside .sidebar a.active::before{content:'';width:6px;height:100%;background-colo
 aside .sidebar a:hover{color:var(--clr-primary)}
 aside .sidebar a:hover span{margin-left:1rem}
 aside .sidebar a span.msg_count{background:var(--clr-danger);color:var(--clr-white);padding:2px 5px;font-size:11px;border-radius:var(--border-radius-1);margin-left:auto}
+aside .sidebar a:last-child{margin-top:auto;border-top:1px solid var(--clr-info-light);padding-top:1rem}
 
 /* ===== Main ===== */
 main{margin-top:1.4rem;width:auto}
@@ -142,7 +253,7 @@ main .recent_order table{
 }
 main .recent_order table:hover{box-shadow:none}
 main table tbody tr{height:3.8rem;border-bottom:1px solid var(--clr-info-light);color:var(--clr-dark-variant);transition:background .3s ease}
-main table tbody tr:hover{background:rgba(29,78,216,.06)}
+main table tbody tr:hover{background:rgba(22,163,74,.06)}
 main table tbody td{height:3.8rem;border-bottom:1px solid transparent}
 main table tbody tr:last-child td{border:none}
 main .recent_order a{text-align:center;display:block;margin:1rem}
@@ -153,10 +264,11 @@ main .recent_order a{text-align:center;display:block;margin:1rem}
 .right .top button{display:none}
 .right .theme-toggler{
   background-color:var(--clr-white);display:flex;justify-content:space-between;
-  height:1.6rem;width:4.2rem;cursor:pointer;border-radius:var(--border-radius-1)
+  height:1.6rem;width:4.2rem;cursor:pointer;border-radius:var(--border-radius-1);
+  box-shadow:var(--box-shadow);border:1px solid var(--clr-info-light)
 }
 .right .theme-toggler span{font-size:1.2rem;width:50%;height:100%;display:flex;align-items:center;justify-content:center}
-.right .theme-toggler span.active{background-color:var(--clr-primary);color:#fff}
+.right .theme-toggler span.active{background-color:var(--clr-primary);color:#fff;box-shadow:0 0.4rem 1.2rem rgba(22,163,74,.22)}
 .right .info h3,.right .item h3{color:var(--clr-dark)}
 
 .right .recent_updates{margin-top:1rem;margin-left:-20px}
@@ -177,7 +289,7 @@ main .recent_order a{text-align:center;display:block;margin:1rem}
 }
 .right .sales_analytics .item:hover{box-shadow:none}
 .right .sales_analytics .item .icon{
-  display:flex;align-items:center;justify-content:center;background:var(--clr-primary);color:var(--clr-white);
+  display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--clr-primary),var(--clr-primary-variant));color:var(--clr-white);
   border-radius:50%;height:50px;width:50px;margin-right:.8rem;flex-shrink:0
 }
 .right .sales_analytics .item .icon span{font-size:24px;line-height:1;display:inline-block}
@@ -193,21 +305,21 @@ right .sales_analytics .item:nth-child(3){animation-delay:.2s}
   background:transparent;border:1px solid var(--clr-info-light);padding:.6rem 1rem;border-radius:12px;
   font-weight:600;cursor:pointer;transition:background .3s ease,color .3s ease,border-color .3s ease
 }
-.btn-outline:hover{background:rgba(29,78,216,.08);color:var(--clr-primary);border-color:var(--clr-primary)}
+.btn-outline:hover{background:rgba(22,163,74,.08);color:var(--clr-primary);border-color:var(--clr-primary)}
 .dark-theme-variables .insights>div small{color:#cbd5e1}
 
 .page{max-width:980px;margin:0 auto}
 .page-title{text-align:center;font-weight:800;color:var(--clr-primary);margin:.4rem 0 1.2rem}
-.card{background:var(--clr-white);border:1px solid #e7ebf3;border-radius:16px;padding:1.2rem 1.4rem;box-shadow:var(--box-shadow);animation:fadeSlideUp .6s ease both}
+.card{background:var(--clr-white);border:1px solid var(--clr-info-light);border-radius:16px;padding:1.2rem 1.4rem;box-shadow:var(--box-shadow);animation:fadeSlideUp .6s ease both}
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .form-grid .full{grid-column:1/-1}
-.field{padding-bottom:12px;border-bottom:1px dashed #e2e8f0}
+.field{padding-bottom:12px;border-bottom:1px dashed var(--clr-info-light)}
 .field:last-child{border-bottom:none}
 .input,.select{
-  width:100%;height:44px;background:#fbfcfe;border:1.6px solid #ccd5e5;border-radius:12px;padding:0 .85rem;color:#111827;
+  width:100%;height:44px;background:#f8fbf9;border:1.6px solid #cfe3d8;border-radius:12px;padding:0 .85rem;color:#111827;
   transition:border .15s,box-shadow .15s;appearance:none
 }
-.input:focus,.select:focus{border-color:var(--clr-primary);box-shadow:0 0 0 4px rgba(29,78,216,.18);outline:none}
+.input:focus,.select:focus{border-color:var(--clr-primary);box-shadow:0 0 0 4px rgba(22,163,74,.20);outline:none}
 .btn{border:0;padding:.85rem 1.2rem;border-radius:12px;font-weight:700;cursor:pointer}
 .btn-primary{background:var(--clr-primary);color:#fff}
 .btn-primary:hover{filter:brightness(.95)}
@@ -215,6 +327,7 @@ right .sales_analytics .item:nth-child(3){animation-delay:.2s}
 /* Topbar móvil global por defecto oculta */
 .mobile-topbar{display:none}
 .topbar-title{font-size:1rem;font-weight:800;color:#0f172a;margin:0}
+.mobile-only{display:none}
 
 /* ===== Responsivo ===== */
 @media screen and (max-width:1200px){
@@ -228,7 +341,7 @@ right .sales_analytics .item:nth-child(3){animation-delay:.2s}
 @media screen and (max-width:768px){
   .container{width:100%;grid-template-columns:repeat(1,1fr)}
   .container.no-right{grid-template-columns:1fr}
-  aside{position:fixed;width:18rem;z-index:3;background:var(--clr-white);display:none;left:-100px;animation:menuAni 1s forwards}
+  aside{position:fixed;width:18rem;z-index:9999;background:var(--clr-white);display:none;left:-100px;animation:menuAni 1s forwards}
   @keyframes menuAni{to{left:0}}
   aside .logo h2{display:inline}
   aside .sidebar h3{display:inline}
@@ -253,6 +366,7 @@ right .sales_analytics .item:nth-child(3){animation-delay:.2s}
     box-shadow:0 .5rem 1rem rgba(15,23,42,.1);z-index:5
   }
   .menu-toggle{background:transparent;border:0;display:inline-flex;align-items:center;justify-content:center;color:#0f172a}
+  .mobile-only{display:inline-flex}
 
   /* Evitar botón duplicado en la barra derecha cuando exista */
   .right .top button{display:none !important}

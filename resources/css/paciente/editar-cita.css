@@ -1,15 +1,15 @@
 /* resources/css/paciente/editar-cita.css */
 :root{
-  --primary:#22c55e;        /* verde principal */
-  --primary-2:#16a34a;      /* verde profundo */
-  --danger:#ef4444;
+  --primary:#16a34a;        /* verde principal */
+  --primary-2:#0f8a3f;      /* verde profundo */
+  --danger:#dc2626;
   --success:#16a34a;
-  --info:#22c55e;
+  --info:#0f766e;
   --warning:#f59e0b;
-  --ink:#1f2330;
-  --muted:#6b7280;
+  --ink:#0f172a;
+  --muted:#475569;
   --card:#ffffff;
-  --ring:rgba(34,197,94,.28);
+  --ring:rgba(22,163,74,.30);
   --shadow:0 20px 35px rgba(31,35,48,.10), 0 8px 14px rgba(31,35,48,.06);
   --radius-lg:22px;
   --radius-sm:14px;
@@ -33,7 +33,13 @@ body.paciente-body--editar-cita::before{background:linear-gradient(120deg,#ecfdf
 body.paciente-body--editar-cita::after{left:auto;right:-8%;bottom:15%;background:linear-gradient(120deg,#fef2f2,#e9fced);}
 
 body.paciente-body--editar-cita main{margin:0;padding:0;background:transparent;}
-body.paciente-body--editar-cita .editar-cita-page{max-width:980px;margin:48px auto;padding:0 20px;}
+body.paciente-body--editar-cita .editar-cita-page{
+  width:100%;
+  max-width:960px;
+  margin:24px auto 56px;
+  padding:0 16px;
+  box-sizing:border-box;
+}
 
 body.paciente-body--editar-cita .card{
   background:var(--card);
@@ -41,21 +47,11 @@ body.paciente-body--editar-cita .card{
   box-shadow:var(--shadow);
   overflow:hidden;
   border:1px solid #eaf4ee;
+  width:100%;
+  box-sizing:border-box;
 }
 
 /* Header */
-body.paciente-body--editar-cita .card-header{
-  padding:24px 24px 18px;
-  background:linear-gradient(135deg, var(--primary), var(--primary-2));
-}
-body.paciente-body--editar-cita .header-panel{
-  background:#fff;border-radius:16px;padding:14px 18px;
-  box-shadow:0 10px 20px rgba(16,24,40,.06);
-  display:flex;align-items:center;gap:12px;max-width:92%;margin:0 auto;
-}
-body.paciente-body--editar-cita .card-header .title{color:#0c1a12;font-size:1.35rem;font-weight:800;margin:0 0 4px 0;}
-body.paciente-body--editar-cita .card-header .subtitle{color:#55715f;margin:0;font-weight:600;line-height:1.3;}
-
 /* Botón flecha regresar */
 body.paciente-body--editar-cita .back-btn{
   display:flex;align-items:center;justify-content:center;
@@ -71,8 +67,20 @@ body.paciente-body--editar-cita .back-btn:active{transform:translateY(1px)}
 body.paciente-body--editar-cita .card-body{padding:26px;}
 
 /* KPIs */
-body.paciente-body--editar-cita .meta{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px;}
-body.paciente-body--editar-cita .meta .kpi{background:#f4fbf7;border:1px solid #e4f4ea;border-radius:14px;padding:14px 14px;}
+body.paciente-body--editar-cita .meta{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:14px;
+  margin-bottom:18px;
+}
+body.paciente-body--editar-cita .meta .kpi{
+  background:#f4fbf7;
+  border:1px solid #e4f4ea;
+  border-radius:14px;
+  padding:14px 14px;
+  min-width:0;
+  box-sizing:border-box;
+}
 body.paciente-body--editar-cita .kpi .label{font-size:.78rem;color:var(--muted);font-weight:600;letter-spacing:.3px;text-transform:uppercase;}
 body.paciente-body--editar-cita .kpi .value{margin-top:6px;font-weight:700;font-size:1.02rem;}
 
@@ -98,6 +106,7 @@ body.paciente-body--editar-cita .input input{
   width:100%;border:none;outline:none;background:transparent;
   font:600 .98rem/1.4 "Poppins",system-ui;color:var(--ink);
 }
+body.paciente-body--editar-cita select#hora{width:100%;}
 body.paciente-body--editar-cita .help{margin-top:6px;font-size:.78rem;color:var(--muted);}
 body.paciente-body--editar-cita .error{display:block;margin-top:6px;color:var(--danger);font-size:.83rem;font-weight:600;}
 
@@ -110,7 +119,7 @@ body.paciente-body--editar-cita .btn{
 body.paciente-body--editar-cita .btn:active{transform:translateY(1px) scale(.995);}
 body.paciente-body--editar-cita .btn-primary{
   color:#fff;background:linear-gradient(135deg,var(--primary),var(--primary-2));
-  box-shadow:0 12px 24px rgba(34,197,94,.28);
+  box-shadow:0 12px 24px rgba(22,163,74,.26);
 }
 body.paciente-body--editar-cita .btn-primary:hover{filter:brightness(1.03);}
 
@@ -120,10 +129,19 @@ body.paciente-body--editar-cita .alert{
 }
 
 /* Responsivo */
+@media (max-width:1200px){
+  .meta{grid-template-columns:repeat(2,minmax(0,1fr));}
+}
 @media (max-width:900px){ .header-panel{max-width:100%;} }
 @media (max-width:780px){
   .meta{grid-template-columns:1fr;}
-  .card-header{padding:18px;}
   .card-body{padding:20px;}
   .form-grid{grid-template-columns:1fr;}
+}
+@media (max-width:640px){
+  .meta{grid-template-columns:1fr;}
+  .actions{flex-direction:column;align-items:stretch;}
+  .actions .btn{width:100%;}
+  body.paciente-body--editar-cita .editar-cita-page{padding:0 12px;}
+  body.paciente-body--editar-cita .card-body{padding:18px;}
 }

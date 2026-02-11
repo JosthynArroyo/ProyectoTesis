@@ -91,13 +91,13 @@ class User extends Authenticatable
         return $q->whereHas('roles', fn ($r) => $r->where('name', 'doctor'));
     }
 
-    public function scopeRole($q, ?string $role)
+    public function scopeRole($q, string $role)
     {
         if (!$role) return $q;
         return $q->whereHas('roles', fn ($r) => $r->where('name', $role));
     }
 
-    public function scopeSearch($q, ?string $term)
+    public function scopeSearch($q, string $term)
     {
         $term = trim((string) $term);
         if ($term === '') return $q;
@@ -114,5 +114,15 @@ class User extends Authenticatable
     public function faceProfile(): HasOne
     {
         return $this->hasOne(FaceProfile::class);
+    }
+
+    public function patientFlag(): HasOne
+    {
+        return $this->hasOne(PatientFlag::class);
+    }
+
+    public function featureAccessRequests()
+    {
+        return $this->hasMany(FeatureAccessRequest::class);
     }
 }

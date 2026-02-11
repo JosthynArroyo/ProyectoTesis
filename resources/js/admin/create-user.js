@@ -15,15 +15,4 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
-  // asegura contenedores para focus-within
-  document.querySelectorAll('.form .grid > div').forEach(div => {
-    if (!div.classList.contains('field-wrap')) div.classList.add('field-wrap');
-  });
-  // nombre de archivo en ayudas
-  document.querySelectorAll('.form input[type="file"]').forEach(input => {
-    input.addEventListener('change', () => {
-      const help = input.closest('.field-wrap')?.querySelector('.help');
-      if (help) help.textContent = input.files?.length ? input.files[0].name : '';
-    });
-  });
 });

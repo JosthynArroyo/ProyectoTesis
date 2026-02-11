@@ -1,0 +1,80 @@
+/* Estilos compartidos entre crear/editar receta */
+.rx-wrap{
+  width:min(900px,100%);
+  margin:84px auto 36px;
+  background:#fff;
+  border:1px solid var(--clr-border);
+  border-radius:var(--card-border-radius);
+  box-shadow:var(--box-shadow);
+  padding:22px;
+}
+
+.rx-hdr{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:14px;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+.rx-grid{display:grid;gap:14px;}
+.rx-grid label{font-weight:700;margin-bottom:6px;display:block;}
+.rx-grid textarea{
+  width:100%;
+  min-height:120px;
+  padding:12px;
+  border:1px solid var(--clr-border);
+  border-radius:12px;
+  resize:vertical;
+}
+
+.rx-actions{
+  display:flex;
+  gap:.6rem;
+  justify-content:flex-end;
+  margin-top:12px;
+  flex-wrap:wrap;
+}
+
+.rx-actions--no-margin{ margin:0; }
+.rx-actions--left{ justify-content:flex-start; }
+
+.btn{
+  display:inline-flex;
+  align-items:center;
+  gap:.35rem;
+  padding:.6rem 1rem;
+  border-radius:10px;
+  font-weight:700;
+  border:1px solid var(--clr-border);
+  cursor:pointer;
+  text-decoration:none;
+}
+
+.btn-primary{ background:var(--clr-primary); color:#fff; border-color:var(--clr-primary); }
+.btn-muted{ background:#f3f4f6; }
+.btn-outline{ background:#fff; }
+
+.pill{
+  padding:.35rem .7rem;
+  border:1px solid var(--clr-border);
+  border-radius:999px;
+  background:#f9fafb;
+  font-size:.85rem;
+}
+
+.pill-ok{
+  background:#e8fff4;
+  border-color:#b7f3d7;
+  color:#0a7a55;
+  display:none;
+}
+
+.pill-ok.is-visible{ display:inline-flex; }
+.help-note{ display:none; color:#0a7a55; font-weight:600; }
+.help-note.is-visible{ display:block; }
+
+.rx-alert{ margin-bottom:12px; }
+.rx-alert ul{ margin:0; padding-left:18px; }
+.rx-inline-note{ color:#6b7280; }

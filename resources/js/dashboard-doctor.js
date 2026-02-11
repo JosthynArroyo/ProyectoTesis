@@ -1,9 +1,9 @@
 const themeToggler = document.querySelector('.theme-toggler');
 
-themeToggler?.addEventListener('click', () => {
+themeToggler.addEventListener('click', () => {
   document.body.classList.toggle('dark-theme-variables');
-  themeToggler.querySelector('span:nth-child(1)')?.classList.toggle('active');
-  themeToggler.querySelector('span:nth-child(2)')?.classList.toggle('active');
+  themeToggler.querySelector('span:nth-child(1)').classList.toggle('active');
+  themeToggler.querySelector('span:nth-child(2)').classList.toggle('active');
 });
 
 // ---- Dashboard data ----
@@ -17,9 +17,8 @@ const els = {
   conf2h: document.getElementById('k-conf-2h'),
   real2h: document.getElementById('k-real-2h'),
   canc2h: document.getElementById('k-canc-2h'),
+  pacientes: document.getElementById('k-pacientes'),
   tbody: document.getElementById('tbody-citas'),
-  circles: document.querySelectorAll('.insights .progress svg circle'),
-  numbers: document.querySelectorAll('.insights .progress .number'),
 };
 
 function estadoClass(s){
@@ -62,7 +61,7 @@ const fmtTime = (val) => {
   // Devuelve HH:mm
   if (!val) return '';
   // Si ya viene 'HH:mm' o 'HH:mm:ss', recortar
-  if (/^\d{2}:\d{2}(:\d{2})?$/.test(val)) return val.slice(0,5);
+  if (/^\d{2}:\d{2}(:\d{2})$/.test(val)) return val.slice(0,5);
   try {
     const d = new Date(val);
     return new Intl.DateTimeFormat('es-EC', {
@@ -71,18 +70,6 @@ const fmtTime = (val) => {
   } catch { return val; }
 };
 // ===============================================
-
-// Dibuja el aro de progreso (SVG circle)
-function setCircle(idx, percent){
-  const c = els.circles?.[idx];
-  if (!c) return;
-  const r = Number(c.getAttribute('r') || 30);
-  const circ = 2 * Math.PI * r;
-  const p = Math.max(0, Math.min(percent ?? 0, 100));
-  c.style.strokeDasharray = `${circ}`;
-  c.style.strokeDashoffset = `${circ - (circ * p) / 100}`;
-  if (els.numbers?.[idx]) els.numbers[idx].textContent = `${Math.round(p)}%`;
-}
 
 async function refreshDashboard(){
   if (!ENDPOINT) return;
@@ -99,14 +86,7 @@ async function refreshDashboard(){
     if (els.conf2h) els.conf2h.textContent = k.confirmadas_2h ?? 0;
     if (els.real2h) els.real2h.textContent = k.realizadas_2h ?? 0;
     if (els.canc2h) els.canc2h.textContent = k.canceladas_2h ?? 0;
-
-    // Aros: 0) hoy (solo decorativo), 1) % atendidas de hoy, 2) % pendientes de hoy
-    const totalHoy = Number(k.hoy ?? 0);
-    const pReal = totalHoy > 0 ? (Number(k.realizadas ?? 0) / totalHoy) * 100 : 0;
-    const pPend = totalHoy > 0 ? (Number(k.pendientes ?? 0) / totalHoy) * 100 : 0;
-    setCircle(0, totalHoy > 0 ? 100 : 0); // si hay citas, llena; si no, vacío
-    setCircle(1, pReal);
-    setCircle(2, pPend);
+    if (els.pacientes) els.pacientes.textContent = k.pacientes ?? 0;
 
     // --- Tabla ---
     const rows = data.citas || [];
@@ -116,11 +96,11 @@ async function refreshDashboard(){
       } else {
         els.tbody.innerHTML = rows.map(c => {
           // Preferir campos ya formateados si existen; si no, helpers
-          const fechaCorta = c.fecha_corta ?? fmtDate(c.fecha);
-          const horaCorta  = c.hora ?? fmtTime(c.fecha);
+          const fechaCorta = c.fecha_corta || fmtDate(c.fecha);
+          const horaCorta  = c.hora ? fmtTime(c.hora) : fmtTime(c.fecha);
           return `
             <tr>
-              <td>${c.paciente ?? 'Paciente'}</td>
+              <td>${c.paciente || 'Paciente'}</td>
               <td class="${estadoClass(c.estado)}">${cap(c.estado || '')}</td>
               <td>${fechaCorta}</td>
               <td>${horaCorta}</td>
@@ -139,7 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setInterval(refreshDashboard, 15000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshDashboard(); });
 
-  const USER_ID = document.querySelector('meta[name="user-id"]')?.content;
+  const USER_ID = document.querySelector('meta[name="user-id"]').content;
   if (window.Echo && USER_ID){
     window.Echo.private(`doctor.${USER_ID}`).listen('.cita.actualizada', () => {
       refreshDashboard();

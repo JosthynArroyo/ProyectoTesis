@@ -1,28 +1,31 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="container">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card">
-                <div class="card-header">{{ __('Verify Your Email Address') }}</div>
-
-                <div class="card-body">
-                    @if (session('resent'))
-                        <div class="alert alert-success" role="alert">
-                            {{ __('A fresh verification link has been sent to your email address.') }}
-                        </div>
-                    @endif
-
-                    {{ __('Before proceeding, please check your email for a verification link.') }}
-                    {{ __('If you did not receive the email') }},
-                    <form class="d-inline" method="POST" action="{{ route('verification.resend') }}">
-                        @csrf
-                        <button type="submit" class="btn btn-link p-0 m-0 align-baseline">{{ __('click here to request another') }}</button>.
-                    </form>
-                </div>
-            </div>
+  <main class="section-pad">
+    <div class="page-shell">
+      <div class="card p-8">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p class="text-xs uppercase tracking-widest text-slate-500">Verificacion</p>
+            <h1 class="mt-2 text-2xl font-semibold text-slate-900">Verifica tu correo electrónico</h1>
+          </div>
+          <span class="badge info">Paso requerido</span>
         </div>
+
+        @if (session('resent'))
+          <div class="alert success mt-6" role="alert">
+            Se envio un nuevo enlace de verificacion a tu correo.
+          </div>
+        @endif
+
+        <p class="mt-6 text-slate-600">Antes de continuar, revisa tu bandeja de entrada y haz clic en el enlace de verificacion.</p>
+        <div class="mt-6">
+          <form method="POST" action="{{ route('verification.resend') }}">
+            @csrf
+            <button type="submit" class="btn btn-outline">Reenviar enlace</button>
+          </form>
+        </div>
+      </div>
     </div>
-</div>
+  </main>
 @endsection

@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const resumenUrlMeta = document.querySelector('meta[name="dashboard-resumen-url"]');
-    const resumenUrl = resumenUrlMeta?.content || '/admin/dashboard/resumen';
+    const resumenUrl = resumenUrlMeta.content || '/admin/dashboard/resumen';
 
     async function refreshKPIs(){
         try{

@@ -23,3 +23,7 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 *.xlsx
+.venv/
+venv/
+**/.venv/
+**/venv/

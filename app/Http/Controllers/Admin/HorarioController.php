@@ -18,7 +18,7 @@ class HorarioController extends Controller
         $weekRef  = $request->get('week');
 
         // Semana ISO: lunes a domingo
-        $seed      = $weekRef ?: Carbon::now()->toDateString();
+        $seed      = $weekRef ? $weekRef : Carbon::now()->toDateString();
         $weekStart = Carbon::parse($seed)->startOfWeek(Carbon::MONDAY);
         $weekEnd   = $weekStart->copy()->endOfWeek(Carbon::SUNDAY);
 
@@ -36,7 +36,7 @@ class HorarioController extends Controller
         $horarios = $query->get();
 
         $doctores = User::whereHas('roles', fn($q) => $q->where('name','doctor'))
-            ->where('active', true)
+            ->onlyActive()
             ->orderBy('name')
             ->get(['id','name']);
 
@@ -47,7 +47,7 @@ class HorarioController extends Controller
     public function create()
     {
         $doctores = User::whereHas('roles', fn($q) => $q->where('name','doctor'))
-            ->where('active', true)
+            ->onlyActive()
             ->orderBy('name')
             ->get(['id','name']);
 
@@ -65,13 +65,14 @@ class HorarioController extends Controller
             'fecha_fin'    => ['required','date','after_or_equal:fecha_inicio'],
             'dias'         => ['required','array','min:1'],
             'dias.*'       => ['integer','between:1,7'],
+            'misma_franja' => ['required','boolean'],
         ];
 
         $rules = $modoPerDia
             ? $base + [
                 'horas'           => ['required','array'],
-                'horas.*.inicio'  => ['nullable','date_format:H:i'],
-                'horas.*.fin'     => ['nullable','date_format:H:i'],
+                'horas.*.inicio'  => ['required','date_format:H:i'],
+                'horas.*.fin'     => ['required','date_format:H:i'],
               ]
             : $base + [
                 'hora_inicio' => ['required','date_format:H:i'],
@@ -149,14 +150,14 @@ class HorarioController extends Controller
         return redirect()->route('admin.horarios.index', [
                 'doctor_id' => $data['doctor_id'],
                 'week'      => $week,
-            ])->with('success', "Horarios creados: {$creados}. Omitidos: {$omitidos}.");
+            ])->with('success', 'Horarios creados correctamente.');
     }
 
     /** EDIT */
     public function edit(Horario $horario)
     {
         $doctores = User::whereHas('roles', fn($q) => $q->where('name','doctor'))
-            ->where('active', true)
+            ->onlyActive()
             ->orderBy('name')
             ->get(['id','name']);
 
@@ -210,7 +211,7 @@ class HorarioController extends Controller
         return ((int) $m) % 30 === 0;
     }
 
-    private function overlapExists(int $doctorId, string $fecha, string $hi, string $hf, ?int $ignoreId = null): bool
+    private function overlapExists(int $doctorId, string $fecha, string $hi, string $hf, int $ignoreId = null): bool
     {
         return Horario::where('doctor_id', $doctorId)
             ->whereDate('fecha', $fecha) // robusto para DATE/DATETIME

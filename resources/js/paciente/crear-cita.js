@@ -10,6 +10,13 @@
 
   const tarifaPanel = document.getElementById('tarifaPanel');
   const tarifaLabel = document.getElementById('tarifaLabel');
+  const labSection = document.getElementById('labSection');
+  const labId = form.dataset.laboratorioId || '';
+  const labRequired = labSection ? Array.from(labSection.querySelectorAll('[data-lab-required]')) : [];
+  const examSel = document.getElementById('tipo_examen');
+  const prepAyuno = document.querySelector('[data-lab-prep="ayuno"]');
+  const prepAgua = document.querySelector('[data-lab-prep="agua"]');
+  const prepHorario = document.querySelector('[data-lab-prep="horario"]');
 
   const doctorsUrlTpl = form.dataset.endpointTemplate;
   const tarifaUrlTpl  = form.dataset.tarifaTemplate;
@@ -26,6 +33,29 @@
   function hideTarifa(){
     if (tarifaPanel) tarifaPanel.hidden = true;
     if (tarifaLabel) tarifaLabel.textContent = 'Tarifa: —';
+  }
+
+  function toggleLabFields(especialidadId){
+    if (!labSection) return;
+    const isLab = labId && String(especialidadId) === String(labId);
+    labSection.hidden = !isLab;
+    labRequired.forEach((el) => {
+      if (isLab) {
+        el.setAttribute('required', 'required');
+      } else {
+        el.removeAttribute('required');
+      }
+    });
+    updateLabPrep();
+  }
+
+  function updateLabPrep(){
+    if (!examSel || !prepAyuno || !prepAgua || !prepHorario) return;
+    const option = examSel.selectedOptions && examSel.selectedOptions[0];
+    const empty = examSel.dataset.prepEmpty || 'Selecciona un examen para ver la preparacion.';
+    prepAyuno.textContent = option.dataset.prepAyuno || empty;
+    prepAgua.textContent = option.dataset.prepAgua || empty;
+    prepHorario.textContent = option.dataset.prepHorario || empty;
   }
 
   async function fetchTarifa(doctorId){
@@ -69,7 +99,7 @@
       }else{
         let opts='<option value="">Seleccionar</option>';
         for(const d of data){
-          const sel = String(preselectId||'')===String(d.id)?' selected':'';
+          const sel = String(preselectId || '') === String(d.id) ? ' selected' : '';
           opts += `<option value="${d.id}"${sel}>${d.name}</option>`;
         }
         docSel.innerHTML=opts;
@@ -96,6 +126,24 @@
     const h = Math.floor(m/60);
     const mm = String(m%60).padStart(2,'0');
     return String(h).padStart(2,'0') + ':' + mm;
+  }
+
+  function hhmmToMinutes(value){
+    if (value == null) return null;
+    if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+    const str = String(value).trim();
+    if (/^\d{3,4}$/.test(str)) {
+      const h = Number(str.slice(0, -2));
+      const m = Number(str.slice(-2));
+      if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
+      return h * 60 + m;
+    }
+    const parts = str.split(':');
+    if (parts.length !== 2) return null;
+    const h = Number(parts[0]);
+    const m = Number(parts[1]);
+    if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
+    return h * 60 + m;
   }
 
   // Acepta: "08:30" | 510 | {value,label} | {hora} | {time} | {inicio,fin}
@@ -141,14 +189,24 @@
       const raw = Array.isArray(data) ? data : (Array.isArray(data.slots) ? data.slots : []);
       const norm = raw.map(normalizeSlot).filter(Boolean);
 
-      if(norm.length===0){
-        clearSlots('No hay horarios disponibles para ese día');
-        horaHelp && (horaHelp.textContent = 'No hay horarios disponibles para ese día.');
+      const hoy = new Date();
+      const hoyStr = hoy.toISOString().slice(0, 10);
+      const minAdelantoHoy = hoy.getHours() * 60 + hoy.getMinutes() + 60;
+      const filtrados = norm.filter((slot) => {
+        if (fecha !== hoyStr) return true;
+        const mins = hhmmToMinutes(slot.value);
+        if (mins === null) return true; // si no se puede parsear, no lo descartamos
+        return mins >= minAdelantoHoy;
+      });
+
+      if(filtrados.length===0){
+        clearSlots('No hay horarios con 1 hora de anticipación');
+        horaHelp && (horaHelp.textContent = 'No hay horarios disponibles con al menos 1 hora de anticipación.');
         return;
       }
 
       let opts = '<option value="">Seleccionar hora</option>';
-      for(const s of norm){
+      for(const s of filtrados){
         const sel = String(oldHora || '') === String(s.value) ? ' selected' : '';
         const dis = s.disabled ? ' disabled' : '';
         opts += `<option value="${s.value}"${sel}${dis}>${s.label}</option>`;
@@ -163,7 +221,10 @@
   }
 
   // ---- listeners ----
-  espSel && espSel.addEventListener('change', function(){ loadDoctors(this.value, null); });
+  espSel && espSel.addEventListener('change', function(){
+    toggleLabFields(this.value);
+    loadDoctors(this.value, null);
+  });
   docSel && docSel.addEventListener('change', function(){
     const id=this.value;
     if(!id){ hideTarifa(); clearSlots(); return; }
@@ -171,12 +232,15 @@
     loadSlots();
   });
   fechaInp && fechaInp.addEventListener('change', loadSlots);
+  examSel && examSel.addEventListener('change', updateLabPrep);
 
   // ---- init ----
   (async function init(){
     if (oldEsp) {
+      toggleLabFields(oldEsp);
       await loadDoctors(oldEsp, oldDoc || null);
       if (oldDoc && fechaInp && fechaInp.value) await loadSlots();
     }
+    updateLabPrep();
   })();
 })();

@@ -14,20 +14,22 @@ class DatabaseSeeder extends Seeder
         $this->call([
             RoleSeeder::class,
             EspecialidadesSeeder::class,
+            LabTestsSeeder::class,
         ]);
 
-        $admin = User::updateOrCreate(
-            ['email' => 'admin@clinic.test'], 
+        $superadmin = User::updateOrCreate(
+            ['email' => 'superadmin@clinic.test'],
             [
-                'name'     => 'Administrador',
-                'password' => 'admin1234', 
+                'name'     => 'Superadmin',
+                'password' => 'superadmin1234',
                 'active'   => true,
+                'status'   => 'active',
             ]
         );
 
-        $adminRole = Role::where('name', 'administrador')->first();
-        if ($adminRole) {
-            $admin->roles()->sync([$adminRole->id]);
+        $superRole = Role::where('name', 'superadmin')->first();
+        if ($superRole) {
+            $superadmin->roles()->sync([$superRole->id]);
         }
     }
 }

@@ -36,20 +36,18 @@ class ContactoController extends Controller
         $datos = $request->validate([
             'nombre'         => ['required','string','max:255'],
             'email'          => ['required','email','max:255'],
-            'telefono'       => ['nullable','regex:/^[0-9]{10}$/'],
-            'motivo'         => ['nullable','in:consulta_general,agendar_cita,reprogramacion,facturacion,otros'],
-            'asunto'         => ['nullable','string','max:255'],
+            'telefono'       => ['required','digits:10'],
+            'asunto'         => ['required','string','max:255'],
             'mensaje'        => ['required','string','max:1000'],
-            'consentimiento' => ['required','in:si,no'],
             'empresa'        => ['nullable','prohibited'], 
             't0'             => ['required','integer'],
         ]);
 
-        $payload = Arr::only($datos, ['nombre','email','telefono','motivo','asunto','mensaje']);
+        $payload = Arr::only($datos, ['nombre','email','telefono','asunto','mensaje']);
         Contacto::create($payload);
 
         // Enviar email al administrador
-        Mail::to('josthynarroyo627@gmail.com')->send(
+        Mail::to(config('mail.contact_to'))->send(
             new \App\Mail\ContactoRecibido($datos) // ver clase abajo
         );
 

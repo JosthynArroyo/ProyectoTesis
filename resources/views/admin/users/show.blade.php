@@ -1,73 +1,102 @@
 @extends('layouts.admin')
 @section('title','Usuario')
-
-@push('head')
-  @vite('resources/css/admin/users/show.css')
-@endpush
+@section('header-title','Detalle de usuario')
+@section('header-subtitle','Información completa del perfil')
 
 @section('main')
-<div class="wrap">
-  <header class="header">
-    <div class="actions-left">
-      <a class="btn btn-secondary" href="{{ route('admin.usuarios.index') }}">
-        <span class="material-symbols-outlined">arrow_back</span>
-        Volver
-      </a>
-    </div>
-    <div class="title">
-      <h2>Detalle usuario #{{ $user->id }}</h2>
-      <p class="subtitle">{{ optional($user->roles->first())->name ?? '—' }}</p>
-    </div>
-    <div class="actions-right">
-      <a class="btn btn-primary" href="{{ route('admin.usuarios.edit',$user) }}">
-        <span class="material-symbols-outlined">edit</span>
-        Editar
-      </a>
-    </div>
-  </header>
-
-  <section class="card">
-    <div class="profile">
-      <div class="avatar">
-        <img src="{{ $user->avatar ? asset('storage/'.$user->avatar) : asset('img/doctor1.jpg') }}" alt="Avatar">
+@php($statusLabel = ['active' => 'Activo', 'inactive' => 'Inactivo', 'blocked' => 'Bloqueado'][$user->status ?? 'active'] ?? 'Activo')
+@php($statusTone = ['active' => 'success', 'inactive' => 'warning', 'blocked' => 'danger'][$user->status ?? 'active'] ?? 'success')
+<div class="space-y-6">
+  <section class="card p-6">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <div>
+        <p class="text-xs uppercase tracking-widest text-slate-500">Detalle de usuario #{{ $user->id }}</p>
+        <h1 class="mt-2 text-2xl font-semibold text-slate-900">Detalle de usuario #{{ $user->id }}</h1>
       </div>
-      <div class="identity">
-        <h3>{{ $user->name }}</h3>
-        <div class="pill">{{ $user->status ?? 'active' }}</div>
+      <div class="flex items-center gap-2">
+        <span class="badge neutral">{{ optional($user->roles->first())->name ?? '-' }}</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="card p-6">
+    <div class="flex flex-wrap items-center gap-4">
+      <div class="h-20 w-20 overflow-hidden rounded-3xl">
+        <img src="{{ $user->avatar ? asset('storage/'.$user->avatar) : asset('img/doctor1.jpg') }}" alt="Avatar" class="h-full w-full object-cover">
+      </div>
+      <div>
+        <div class="flex flex-wrap items-center gap-2">
+          <h3 class="text-lg font-semibold text-slate-900">{{ $user->name }}</h3>
+          <span class="badge {{ $statusTone }}">{{ $statusLabel }}</span>
+        </div>
         @if($user->suspended_until)
-          <div class="muted">Suspendido hasta {{ $user->suspended_until->format('Y-m-d H:i') }}</div>
+          <div class="text-sm text-slate-500">Suspendido hasta {{ $user->suspended_until->format('Y-m-d H:i') }}</div>
         @endif
       </div>
     </div>
 
-    <dl class="grid">
-      <div class="item">
-        <dt>Email</dt>
-        <dd>
+    <dl class="mt-6 grid gap-4 md:grid-cols-2">
+      <div>
+        <dt class="text-xs uppercase tracking-widest text-slate-400">Correo electrónico</dt>
+        <dd class="flex items-center gap-2 text-sm text-slate-700">
           <span id="emailText">{{ $user->email }}</span>
-          <button class="icon-btn" data-copy="#emailText"><span class="material-symbols-outlined">content_copy</span></button>
+          <button class="btn btn-ghost px-2" data-copy="#emailText"><i class="ri-file-copy-line"></i></button>
         </dd>
       </div>
 
-      <div class="item">
-        <dt>Teléfono</dt>
-        <dd>
-          <span id="telText">{{ $user->telefono ?? '—' }}</span>
+      <div>
+        <dt class="text-xs uppercase tracking-widest text-slate-400">Teléfono</dt>
+        <dd class="flex items-center gap-2 text-sm text-slate-700">
+          <span id="telText">{{ $user->telefono ?? '-' }}</span>
           @if($user->telefono)
-            <a class="icon-btn" href="tel:{{ $user->telefono }}"><span class="material-symbols-outlined">call</span></a>
-            <button class="icon-btn" data-copy="#telText"><span class="material-symbols-outlined">content_copy</span></button>
+            <a class="btn btn-ghost px-2" href="tel:{{ $user->telefono }}"><i class="ri-phone-line"></i></a>
+            <button class="btn btn-ghost px-2" data-copy="#telText"><i class="ri-file-copy-line"></i></button>
           @endif
         </dd>
       </div>
 
-      <div class="item"><dt>Cédula</dt><dd>{{ $user->dni ?? '—' }}</dd></div>
-      <div class="item full"><dt>Dirección</dt><dd>{{ $user->direccion ?? '—' }}</dd></div>
-      <div class="item"><dt>Fecha de nacimiento</dt><dd>{{ $user->fecha_nacimiento?->format('Y-m-d') ?? '—' }}</dd></div>
-      <div class="item"><dt>Sexo</dt><dd>{{ $user->sexo ?? '—' }}</dd></div>
-      <div class="item full"><dt>Especialidades</dt><dd>{{ ($user->especialidades?->pluck('nombre')->implode(', ')) ?: '—' }}</dd></div>
-      <div class="item"><dt>Último acceso</dt><dd>{{ $user->last_login_at?->format('Y-m-d H:i') ?? '—' }}</dd></div>
-      <div class="item"><dt>Creado</dt><dd>{{ $user->created_at?->format('Y-m-d H:i') }}</dd></div>
+      <div>
+        <dt class="text-xs uppercase tracking-widest text-slate-400">Cédula</dt>
+        <dd class="text-sm text-slate-700">{{ $user->dni ?? '-' }}</dd>
+      </div>
+      <div>
+        <dt class="text-xs uppercase tracking-widest text-slate-400">Dirección</dt>
+        <dd class="text-sm text-slate-700">{{ $user->direccion ?? '-' }}</dd>
+      </div>
+
+      <div>
+        <dt class="text-xs uppercase tracking-widest text-slate-400">Fecha de nacimiento</dt>
+        <dd class="text-sm text-slate-700">{{ optional($user->fecha_nacimiento)->format('Y-m-d') ?? '-' }}</dd>
+      </div>
+      <div>
+        <dt class="text-xs uppercase tracking-widest text-slate-400">Sexo</dt>
+        <dd class="text-sm text-slate-700">{{ $user->sexo ?? '-' }}</dd>
+      </div>
+
+      <div class="md:col-span-2">
+        <dt class="text-xs uppercase tracking-widest text-slate-400">Especialidades</dt>
+        <dd class="text-sm text-slate-700">{{ ($user->especialidades->pluck('nombre')->implode(', ')) ?: '—' }}</dd>
+      </div>
+
+      <div>
+        <dt class="text-xs uppercase tracking-widest text-slate-400">Último acceso</dt>
+        <dd class="text-sm text-slate-700">{{ optional($user->last_login_at)->format('Y-m-d H:i') ?? '-' }}</dd>
+      </div>
+      <div>
+        <dt class="text-xs uppercase tracking-widest text-slate-400">Creado</dt>
+        <dd class="text-sm text-slate-700">{{ $user->created_at->format('Y-m-d H:i') }}</dd>
+      </div>
     </dl>
+
+    <div class="mt-6">
+      <x-ui.form-actions>
+        <x-slot:left>
+          <a class="btn btn-ghost" href="{{ route('admin.usuarios.index') }}">
+            <i class="ri-arrow-left-line"></i> Volver
+          </a>
+        </x-slot>
+      </x-ui.form-actions>
+    </div>
   </section>
 </div>
 @endsection

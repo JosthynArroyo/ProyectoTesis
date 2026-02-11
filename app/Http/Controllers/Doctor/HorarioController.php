@@ -83,7 +83,7 @@ class HorarioController extends Controller
             'hora_inicio' => ['required','date_format:H:i'],
             'hora_fin'    => ['required','date_format:H:i','after:hora_inicio'],
             'intervalo_minutos' => ['required','integer','in:10,15,20,30,45,60'],
-            'sobrescribir' => ['nullable','boolean'],
+            'sobrescribir' => ['required','boolean'],
         ]);
 
         $doctorId = Auth::id();

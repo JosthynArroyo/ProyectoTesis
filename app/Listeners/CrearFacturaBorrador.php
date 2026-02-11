@@ -32,8 +32,8 @@ class CrearFacturaBorrador
         $pacienteId = $cita->paciente_id;
 
         // Normalizar tarifa
-        $precio = (float) ($doctor->precio_consulta ?? 0);
-        $moneda = $doctor->moneda ?: 'USD';
+        $precio = (float) ($doctor?->precio_consulta ?? 0);
+        $moneda = $doctor?->moneda ?? 'USD';
         $descripcion = 'Consulta médica';
         if (!empty($doctor->name)) {
             $descripcion .= ' - Dr(a). ' . $doctor->name;

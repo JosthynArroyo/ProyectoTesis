@@ -69,4 +69,6 @@ return [
         'name' => env('MAIL_FROM_NAME', 'Example'),
     ],
 
+    'contact_to' => env('CONTACTO_TO', env('MAIL_FROM_ADDRESS', 'hello@example.com')),
+
 ];

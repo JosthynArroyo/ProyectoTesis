@@ -1,52 +1,41 @@
-@extends('layouts.guest')
+@extends('layouts.app')
 
 @section('content')
-<div class="max-w-lg mx-auto py-10 space-y-6">
-    <h1 class="text-2xl font-bold text-center">Ingresar con reconocimiento facial</h1>
-
-    <form id="faceLoginForm" class="space-y-5">
-        @csrf
-        <div>
-            <label class="block text-sm font-medium">Correo</label>
-            <input type="email" name="email" class="mt-1 w-full border rounded px-3 py-2" required>
+  <main class="section-pad">
+    <div class="page-shell">
+      <div class="card p-8 max-w-xl mx-auto">
+        <div class="text-center">
+          <p class="text-xs uppercase tracking-widest text-slate-500">Acceso biométrico</p>
+          <h1 class="mt-2 text-2xl font-semibold text-slate-900">Ingresar con reconocimiento facial</h1>
+          <p class="text-slate-600">Asegura tu acceso con tu rostro registrado.</p>
         </div>
 
-        <video id="video" autoplay class="w-full rounded shadow"></video>
+        <form id="faceLoginForm"
+              class="mt-6 space-y-5"
+              data-endpoint="{{ route('face.login') }}"
+              data-csrf="{{ csrf_token() }}"
+              data-models-url="{{ asset('models') }}">
+          @csrf
+          <div>
+            <label class="form-label" for="email">Correo</label>
+            <input type="email" id="email" name="email" class="form-input" required>
+            @error('email')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
+          </div>
 
-        <button class="w-full bg-indigo-600 text-white py-2 rounded" id="loginBtn" type="submit">Entrar</button>
-        <a href="{{ route('login') }}" class="block text-center text-sm text-gray-500">Usar correo y contraseña</a>
-    </form>
+          <div class="overflow-hidden rounded-2xl border border-slate-200 bg-slate-900">
+            <video id="video" autoplay class="w-full h-64 object-cover"></video>
+          </div>
 
-    <div id="error" class="text-red-600 text-center"></div>
-</div>
+          <button class="btn btn-primary w-full" id="loginBtn" type="submit">Entrar</button>
+          <a href="{{ route('login') }}" class="block text-center text-sm text-slate-500">Usar correo y contraseña</a>
+        </form>
 
-<script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js" defer></script>
-<script type="module">
-    import { initFaceApi, captureDescriptor, sendDescriptor } from "{{ mix('js/face-auth.js') }}";
+        <div id="error" class="text-rose-600 text-center text-sm"></div>
+      </div>
+    </div>
+  </main>
 
-    document.addEventListener('DOMContentLoaded', async () => {
-        await initFaceApi();
-        const video = document.getElementById('video');
-        await navigator.mediaDevices.getUserMedia({ video: true }).then(stream => video.srcObject = stream);
-
-        document.getElementById('faceLoginForm').addEventListener('submit', async (event) => {
-            event.preventDefault();
-            const formData = new FormData(event.target);
-            const descriptor = await captureDescriptor(video);
-            formData.append('descriptor', JSON.stringify(descriptor));
-            try {
-                const response = await fetch('{{ route('face.login') }}', {
-                    method: 'POST',
-                    headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
-                    body: formData
-                });
-                if (!response.ok) throw await response.json();
-                const data = await response.json();
-                window.location.href = data.redirect;
-            } catch (error) {
-                document.getElementById('error').textContent = error.message ?? 'No fue posible validar el rostro.';
-            }
-        });
-    });
-</script>
+  @push('scripts')
+      @vite('resources/js/auth/face-login.js')
+  @endpush
 @endsection

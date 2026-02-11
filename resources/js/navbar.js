@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const menu = document.getElementById('cnav-menu');
   const toggle = document.getElementById('cnav-toggle');
   const closeBtn = document.getElementById('cnav-close');
+  const mobileMq = window.matchMedia('(max-width: 1023.98px)');
 
   if (!header || !menu) return;
 
@@ -17,22 +18,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Abrir menu movil
   const openMenu = () => {
+    menu.classList.remove('hidden');
     menu.classList.add('is-open');
     menu.setAttribute('aria-hidden', 'false');
-    toggle?.setAttribute('aria-expanded', 'true');
+    toggle.setAttribute('aria-expanded', 'true');
     document.body.classList.add('nav-open');
   };
 
   // Cerrar menu movil
   const closeMenu = () => {
     menu.classList.remove('is-open');
+    menu.classList.add('hidden');
     menu.setAttribute('aria-hidden', 'true');
-    toggle?.setAttribute('aria-expanded', 'false');
+    toggle.setAttribute('aria-expanded', 'false');
     document.body.classList.remove('nav-open');
   };
 
-  toggle?.addEventListener('click', openMenu);
-  closeBtn?.addEventListener('click', closeMenu);
+  toggle.addEventListener('click', openMenu);
+  closeBtn.addEventListener('click', closeMenu);
 
   // Cerrar con ESC
   document.addEventListener('keydown', (e) => {
@@ -40,21 +43,10 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Cerrar al hacer click en un enlace del menu en movil
-  menu?.addEventListener('click', (e) => {
+  menu.addEventListener('click', (e) => {
     const a = e.target.closest('a');
-    if (a && window.matchMedia('(max-width:1150px)').matches) closeMenu();
+    if (!a || !mobileMq.matches || !menu.classList.contains('is-open')) return;
+    requestAnimationFrame(closeMenu);
   });
 
-  const passwordInput = document.getElementById('loginPassword');
-  const togglePassword = document.getElementById('togglePassword');
-  const togglePasswordIcon = document.getElementById('togglePasswordIcon');
-
-  if (passwordInput && togglePassword && togglePasswordIcon) {
-    togglePassword.addEventListener('click', () => {
-      const isHidden = passwordInput.type === 'password';
-      passwordInput.type = isHidden ? 'text' : 'password';
-      togglePasswordIcon.classList.toggle('ri-eye-line', !isHidden);
-      togglePasswordIcon.classList.toggle('ri-eye-off-line', isHidden);
-    });
-  }
 });

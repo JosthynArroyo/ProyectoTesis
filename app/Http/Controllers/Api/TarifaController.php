@@ -15,18 +15,18 @@ class TarifaController extends Controller
     {
         $doctor = User::query()
             ->where('id', $id)
-            ->where('active', true)
+            ->onlyActive()
             ->first();
 
-        if (!$doctor || !$doctor->hasRole('doctor')) {
+        if (!$doctor || !($doctor->hasRole('doctor') || $doctor->hasRole('laboratorio'))) {
             return response()->json([
                 'ok'      => false,
-                'message' => 'Doctor no encontrado o inactivo.',
+                'message' => 'Usuario no encontrado o inactivo.',
             ], 404);
         }
 
         $precio  = $doctor->precio_consulta; // puede ser null si no configurado aún
-        $moneda  = $doctor->moneda ?: 'USD';
+        $moneda  = $doctor->moneda ?? 'USD';
         $definido = !is_null($precio);
 
         return response()->json([

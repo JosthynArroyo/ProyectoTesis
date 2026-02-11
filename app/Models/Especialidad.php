@@ -11,7 +11,11 @@ class Especialidad extends Model
 
     protected $table = 'especialidades';
 
-    protected $fillable = ['nombre', 'descripcion'];
+    protected $fillable = ['nombre', 'descripcion', 'icono', 'activo', 'orden'];
+
+    protected $casts = [
+        'activo' => 'boolean',
+    ];
 
     public function doctores()
     {

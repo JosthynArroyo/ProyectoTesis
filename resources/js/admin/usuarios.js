@@ -1,5 +1,8 @@
 document.addEventListener('DOMContentLoaded', () => {
   const chips = document.querySelectorAll('.filter-chip');
+  const moreFiltersBtn = document.getElementById('btn-more-filters');
+  const filtersWrap = document.getElementById('filters-wrap');
+  const kebabs = document.querySelectorAll('[data-kebab]');
 
   const sync = (chip) => {
     const input = chip.querySelector('input[type="checkbox"]');
@@ -7,7 +10,10 @@ document.addEventListener('DOMContentLoaded', () => {
     chip.classList.toggle('is-active', active);
     chip.setAttribute('aria-pressed', String(active));
     const icon = chip.querySelector('.icon');
-    if (icon) icon.textContent = active ? 'check_circle' : 'radio_button_unchecked';
+    if (icon) {
+      icon.classList.toggle('ri-checkbox-circle-line', active);
+      icon.classList.toggle('ri-checkbox-blank-circle-line', !active);
+    }
   };
 
   chips.forEach((chip) => {
@@ -19,10 +25,19 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         input.checked = !input.checked;
         sync(chip);
-        // chip.closest('form')?.submit(); // si quieres aplicar al instante
+        // chip.closest('form').submit(); // si quieres aplicar al instante
       }
     });
   });
+
+  if (moreFiltersBtn && filtersWrap) {
+    moreFiltersBtn.addEventListener('click', () => {
+      const isHidden = filtersWrap.hasAttribute('hidden');
+      if (isHidden) filtersWrap.removeAttribute('hidden');
+      else filtersWrap.setAttribute('hidden', 'hidden');
+      moreFiltersBtn.setAttribute('aria-expanded', String(isHidden));
+    });
+  }
 
   window.openSuspend = (id) => {
     const row = document.getElementById('susp-row-' + id);
@@ -56,4 +71,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
   mobileToggle();
   window.addEventListener('resize', mobileToggle);
+
+  kebabs.forEach((btn) => {
+    const menu = document.getElementById(btn.dataset.kebab);
+    if (!menu) return;
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const open = menu.getAttribute('data-open') === '1';
+      document.querySelectorAll('.kebab-menu').forEach((m) => m.setAttribute('data-open','0'));
+      if (!open) menu.setAttribute('data-open','1');
+    });
+  });
+  document.addEventListener('click', () => {
+    document.querySelectorAll('.kebab-menu').forEach((m) => m.setAttribute('data-open','0'));
+  });
 });

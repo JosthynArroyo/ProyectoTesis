@@ -27,8 +27,8 @@ class ExportCitasController extends Controller
         Cita::with(['paciente', 'doctor'])
             ->chunkById(500, function ($citas) use ($sheet, &$fila) {
                 foreach ($citas as $cita) {
-                    $sheet->setCellValue("A{$fila}", $cita->paciente->name ?? 'Sin paciente');
-                    $sheet->setCellValue("B{$fila}", $cita->doctor->name ?? 'Sin asignar');
+                    $sheet->setCellValue("A{$fila}", $cita->paciente?->name ?? 'Sin paciente');
+                    $sheet->setCellValue("B{$fila}", $cita->doctor?->name ?? 'Sin asignar');
                     $sheet->setCellValue("C{$fila}", $cita->fecha);
                     $sheet->setCellValue("D{$fila}", $cita->hora);
                     $fila++;

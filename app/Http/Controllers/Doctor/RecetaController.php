@@ -51,7 +51,7 @@ class RecetaController extends Controller
             'cita_id'      => 'required|exists:citas_medicas,id',
             'diagnostico'  => 'required|string|max:2000',
             'medicamentos' => 'required|string|max:3000',
-            'indicaciones' => 'nullable|string|max:3000',
+            'indicaciones' => 'required|string|max:3000',
         ]);
 
         $cita = Cita::with(['paciente','doctor','especialidad','receta'])->findOrFail($data['cita_id']);
@@ -111,9 +111,9 @@ class RecetaController extends Controller
             'cita_id'       => 'required|exists:citas_medicas,id',
             'diagnostico'   => 'required|string|max:2000',
             'medicamentos'  => 'required|string|max:3000',
-            'indicaciones'  => 'nullable|string|max:3000',
-            'regenerar_pdf' => 'nullable|boolean',
-            'reenviar'      => 'nullable|boolean',
+            'indicaciones'  => 'required|string|max:3000',
+            'regenerar_pdf' => 'required|boolean',
+            'reenviar'      => 'required|boolean',
         ]);
 
         $cita = Cita::with(['paciente','doctor','especialidad','receta'])->findOrFail($data['cita_id']);
@@ -139,7 +139,7 @@ class RecetaController extends Controller
             'indicaciones' => $data['indicaciones'] ?? null,
         ]);
 
-        // ¿Regenerar PDF?
+        // ¿Regenerar PDF
         $needRegen = $request->boolean('regenerar_pdf')
             || $request->boolean('reenviar')
             || empty($receta->pdf_path)
@@ -156,7 +156,7 @@ class RecetaController extends Controller
             $receta->update(['pdf_path' => $relativePath]);
         }
 
-        // ¿Reenviar?
+        // ¿Reenviar
         if ($request->boolean('reenviar')) {
             if (!$pdfOutput && $relativePath && Storage::exists($relativePath)) {
                 $pdfOutput = Storage::get($relativePath);
@@ -268,15 +268,14 @@ class RecetaController extends Controller
     }
 
     /**
-     * Devuelve el logo /public/img/logo_clinica.png en data-URI base64.
+     * Devuelve el logo /public/img/logopdf.jpg en data-URI base64.
      */
-    private function logoBase64(): ?string
+    private function logoBase64(): string
     {
-        $path = public_path('img/logo_clinica.png');
+        $path = public_path('img/logopdf.jpg');
         if (!is_file($path)) return null;
 
-        // Ajusta MIME si tu archivo es jpg/webp.
-        $mime = 'image/png';
+        $mime = mime_content_type($path) ?: 'image/jpeg';
         $data = base64_encode(file_get_contents($path));
         return "data:{$mime};base64,{$data}";
     }

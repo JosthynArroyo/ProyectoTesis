@@ -3,83 +3,97 @@
 
 @section('title','Formulario de Contacto')
 
-@push('head')
-  @vite(['resources/css/contacto.css'])
-@endpush
-
 @section('main')
-  <section class="contacto">
-    <div class="contacto__grid">
+  <div style="min-height:calc(100vh - 4.5rem);display:flex;flex-direction:column;">
+  <section class="section-pad section-pad--first">
+    <div class="page-shell grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
+      <aside class="card p-6 space-y-6">
+        <div>
+          <p class="text-xs uppercase tracking-widest text-slate-500">Contacto</p>
+          <h2 class="mt-2 text-2xl font-semibold text-slate-900">{{ $siteSettings->get('contact.title', 'Clínica Don Bosco') }}</h2>
+          <p class="mt-2 text-slate-600">{{ $siteSettings->get('contact.subtitle', 'Sistema de gestión médica para agendar citas fácilmente y recibir atención especializada.') }}</p>
+        </div>
 
-      {{-- Info + Mapa --}}
-      <aside class="info">
-        <h2 class="info__title">Clínica Don Bosco</h2>
-        <p class="info__desc">
-          Sistema de gestión médica para agendar citas fácilmente y recibir atención especializada.
-        </p>
-
-        <div class="info__list">
+        <div class="space-y-4 text-sm text-slate-600">
           <div>
-            <h3>Dirección</h3>
-            <p>Quito, Av. Colón y 6 de Diciembre</p>
+            <p class="text-xs uppercase tracking-wide text-slate-400">Dirección</p>
+            <p>{{ $siteSettings->get('contact.address', 'Quito, Av. Colon y 6 de Diciembre') }}</p>
           </div>
           <div>
-            <h3>Teléfono</h3>
-            <p>0998742410</p>
+            <p class="text-xs uppercase tracking-wide text-slate-400">Teléfono</p>
+            <p>{{ $siteSettings->get('contact.phone', '0998742410') }}</p>
           </div>
           <div>
-            <h3>Horario</h3>
-            <p>Lunes a Viernes, 08:00 - 18:00</p>
+            <p class="text-xs uppercase tracking-wide text-slate-400">Horario</p>
+            <p>{{ $siteSettings->get('contact.hours', 'Lunes a Viernes, 08:00 - 18:00') }}</p>
           </div>
         </div>
 
-        <div class="mapa">
+        @php
+          $mapEmbed = $siteSettings->get('contact.map_embed', 'https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d207.47773878695978!2d-78.47943247794669!3d-0.1385355730076882!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x91d5855715695e7b%3A0x2f91853277ceb246!2sConsultorio%20De%20Especialidades!5e1!3m2!1ses!2sus!4v1760994198832!5m2!1ses!2sus');
+          if (is_string($mapEmbed)) {
+            $mapEmbed = trim($mapEmbed);
+            if (str_contains($mapEmbed, '/maps/embedpb=')) {
+              $mapEmbed = str_replace('/maps/embedpb=', '/maps/embed?pb=', $mapEmbed);
+            }
+            if (str_starts_with($mapEmbed, '/maps/')) {
+              $mapEmbed = 'https://www.google.com' . $mapEmbed;
+            }
+          }
+        @endphp
+
+        <div class="overflow-hidden rounded-2xl border border-slate-200">
           <iframe
-            title="Ubicación Clínica Don Bosco"
-            src="https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d207.47773878695978!2d-78.47943247794669!3d-0.1385355730076882!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x91d5855715695e7b%3A0x2f91853277ceb246!2sConsultorio%20De%20Especialidades!5e1!3m2!1ses!2sus!4v1760994198832!5m2!1ses!2sus"
-            width="100%" height="320" style="border:0"
+            title="Ubicacion Clínica Don Bosco"
+            src="{{ $mapEmbed }}"
+            class="map-embed"
             loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen>
           </iframe>
         </div>
       </aside>
 
-      {{-- Formulario --}}
-      <div class="contacto__card">
-        <h1 class="contacto__title">Formulario de Contacto</h1>
+      <div class="card p-6">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p class="text-xs uppercase tracking-widest text-slate-500">Escribenos</p>
+            <h1 class="mt-2 text-2xl font-semibold text-slate-900">{{ $siteSettings->get('contact.form_title', 'Formulario de contacto') }}</h1>
+          </div>
+          <span class="badge info">{{ $siteSettings->get('contact.form_badge', 'Respuesta en menos de 24h') }}</span>
+        </div>
 
         @if(session('success'))
-          <div class="alert-success" role="status">{{ session('success') }}</div>
+          <div class="alert success mt-4" role="status">{{ session('success') }}</div>
         @endif
 
-        <form method="POST" action="{{ route('contacto.enviar') }}" novalidate id="contactoForm">
+        <form method="POST" action="{{ route('contacto.enviar') }}" novalidate id="contactoForm" class="mt-6 space-y-4">
           @csrf
 
-          {{-- honeypot + tiempo mínimo --}}
-          <input type="text" name="empresa" class="hp" autocomplete="off" tabindex="-1" aria-hidden="true">
           <input type="hidden" name="t0" value="{{ now()->timestamp }}">
 
-          <div class="form-group">
-            <label for="nombre">Nombre</label>
+          <div class="form-group space-y-1">
+            <label for="nombre" class="form-label">Nombre</label>
             <input
               id="nombre" type="text" name="nombre" value="{{ old('nombre') }}" required
               autocomplete="name"
               aria-invalid="{{ $errors->has('nombre') ? 'true' : 'false' }}"
-              aria-describedby="{{ $errors->has('nombre') ? 'err-nombre' : '' }}">
-            @error('nombre')<small id="err-nombre" class="err">{{ $message }}</small>@enderror
+              aria-describedby="{{ $errors->has('nombre') ? 'err-nombre' : '' }}"
+              class="form-input">
+            @error('nombre')<small id="err-nombre" class="err text-xs text-rose-600">{{ $message }}</small>@enderror
           </div>
 
-          <div class="form-group">
-            <label for="email">Correo electrónico</label>
+          <div class="form-group space-y-1">
+            <label for="email" class="form-label">Correo electrónico</label>
             <input
               id="email" type="email" name="email" value="{{ old('email') }}" required
               autocomplete="email" inputmode="email"
               aria-invalid="{{ $errors->has('email') ? 'true' : 'false' }}"
-              aria-describedby="{{ $errors->has('email') ? 'err-email' : '' }}">
-            @error('email')<small id="err-email" class="err">{{ $message }}</small>@enderror
+              aria-describedby="{{ $errors->has('email') ? 'err-email' : '' }}"
+              class="form-input">
+            @error('email')<small id="err-email" class="err text-xs text-rose-600">{{ $message }}</small>@enderror
           </div>
 
-          <div class="form-group">
-            <label for="telefono">Teléfono (10 dígitos)</label>
+          <div class="form-group space-y-1">
+            <label for="telefono" class="form-label">Teléfono (10 dígitos)</label>
             <input
               id="telefono"
               type="tel"
@@ -90,80 +104,47 @@
               maxlength="10"
               pattern="[0-9]{10}"
               title="Debe contener exactamente 10 dígitos numéricos"
+              data-digits="10"
+              required
               aria-invalid="{{ $errors->has('telefono') ? 'true' : 'false' }}"
               aria-describedby="{{ $errors->has('telefono') ? 'err-telefono' : '' }}"
-              oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0,10)">
-            @error('telefono')<small id="err-telefono" class="err">{{ $message }}</small>@enderror
+              class="form-input">
+            @error('telefono')<small id="err-telefono" class="err text-xs text-rose-600">{{ $message }}</small>@enderror
           </div>
 
-          <div class="form-group">
-            <label for="motivo">Motivo</label>
-            <select
-              id="motivo" name="motivo"
-              aria-invalid="{{ $errors->has('motivo') ? 'true' : 'false' }}"
-              aria-describedby="{{ $errors->has('motivo') ? 'err-motivo' : '' }}">
-              <option value="">Selecciona una opción</option>
-              <option value="consulta_general" @selected(old('motivo')==='consulta_general')>Consulta general</option>
-              <option value="agendar_cita" @selected(old('motivo')==='agendar_cita')>Agendar cita</option>
-              <option value="reprogramacion" @selected(old('motivo')==='reprogramacion')>Reprogramación</option>
-              <option value="facturacion" @selected(old('motivo')==='facturacion')>Facturación</option>
-              <option value="otros" @selected(old('motivo')==='otros')>Otros</option>
-            </select>
-            @error('motivo')<small id="err-motivo" class="err">{{ $message }}</small>@enderror
-          </div>
-
-          <div class="form-group">
-            <label for="asunto">Asunto</label>
+          <div class="form-group space-y-1">
+            <label for="asunto" class="form-label">Asunto</label>
             <input
               id="asunto" type="text" name="asunto" value="{{ old('asunto') }}"
-              autocomplete="off"
+              autocomplete="off" placeholder="Ej. Consulta sobre horarios"
+              required
               aria-invalid="{{ $errors->has('asunto') ? 'true' : 'false' }}"
-              aria-describedby="{{ $errors->has('asunto') ? 'err-asunto' : '' }}">
-            @error('asunto')<small id="err-asunto" class="err">{{ $message }}</small>@enderror
+              aria-describedby="{{ $errors->has('asunto') ? 'err-asunto' : '' }}"
+              class="form-input">
+            @error('asunto')<small id="err-asunto" class="err text-xs text-rose-600">{{ $message }}</small>@enderror
           </div>
 
-          <div class="form-group">
-            <label for="mensaje">Mensaje</label>
+          <div class="form-group space-y-1">
+            <label for="mensaje" class="form-label">Mensaje</label>
             <textarea
               id="mensaje" name="mensaje" rows="6" required spellcheck="true" maxlength="1000"
+              placeholder="Escribe el motivo de tu contacto y los detalles necesarios."
               aria-invalid="{{ $errors->has('mensaje') ? 'true' : 'false' }}"
-              aria-describedby="help-mensaje{{ $errors->has('mensaje') ? ' err-mensaje' : '' }}">{{ old('mensaje') }}</textarea>
-            <small id="help-mensaje" class="hint">Máx. 1000 caracteres.</small>
-            @error('mensaje')<small id="err-mensaje" class="err">{{ $message }}</small>@enderror
+              aria-describedby="help-mensaje{{ $errors->has('mensaje') ? ' err-mensaje' : '' }}"
+              class="form-textarea">{{ old('mensaje') }}</textarea>
+            <small id="help-mensaje" class="hint text-xs text-slate-500">Describe el motivo de tu contacto. Max. 1000 caracteres.</small>
+            @error('mensaje')<small id="err-mensaje" class="err text-xs text-rose-600">{{ $message }}</small>@enderror
           </div>
 
-          {{-- Consentimiento corto con Sí/No --}}
-          <div class="form-group">
-            <label>¿Autoriza crear una cuenta con estos datos?</label>
-            <div style="display:flex;gap:12px;align-items:center">
-              <label><input type="radio" name="consentimiento" value="si" {{ old('consentimiento')==='si' ? 'checked' : '' }}> Sí</label>
-              <label><input type="radio" name="consentimiento" value="no" {{ old('consentimiento')==='no' ? 'checked' : '' }}> No</label>
-            </div>
-            @error('consentimiento')<small class="err">{{ $message }}</small>@enderror
-          </div>
-
-          <button type="submit" class="btn-submit" id="btnSubmit">Enviar</button>
+          <button type="submit" class="btn btn-primary w-full" id="btnSubmit">Enviar</button>
         </form>
       </div>
-
     </div>
   </section>
+  @include('partials.footer')
+  </div>
 @endsection
 
 @push('scripts')
-<script>
-  (function(){
-    const f = document.getElementById('contactoForm');
-    const b = document.getElementById('btnSubmit');
-    if (f && b) { f.addEventListener('submit', () => { b.disabled = true; }); }
-    const err = document.querySelector('.err');
-    if (err) {
-      const input = err.closest('.form-group')?.querySelector('input,textarea,select');
-      if (input) {
-        input.focus();
-        input.scrollIntoView({behavior:'smooth', block:'center'});
-      }
-    }
-  })();
-</script>
+  @vite('resources/js/contacto.js')
 @endpush

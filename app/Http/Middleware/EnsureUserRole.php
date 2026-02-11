@@ -18,6 +18,10 @@ class EnsureUserRole
             return redirect('/login');
         }
 
+        if ($request->user()->roles->contains('name', 'superadmin')) {
+            return $next($request);
+        }
+
         foreach ($roles as $role) {
             if ($request->user()->roles->contains('name', $role)) {
                 return $next($request);

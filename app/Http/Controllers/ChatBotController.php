@@ -10,6 +10,7 @@ use App\Models\Especialidad;
 use App\Models\Horario;
 use App\Models\Role;
 use App\Models\User;
+use App\Support\ValidationRules;
 use Carbon\Carbon;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
@@ -35,7 +36,12 @@ class ChatBotController extends Controller
 
     public function doctoresPorEspecialidad(Especialidad $especialidad)
     {
-        $doctores = User::doctors()
+        $rol = mb_strtolower($especialidad->nombre) === 'laboratorio clinico'
+            ? 'laboratorio'
+            : 'doctor';
+
+        $doctores = User::query()
+            ->role($rol)
             ->onlyActive()
             ->whereHas('especialidades', fn($q) => $q->where('especialidades.id', $especialidad->id))
             ->orderBy('name')
@@ -53,7 +59,7 @@ class ChatBotController extends Controller
             'especialidad' => $especialidad->nombre,
             'doctores'     => $doctores->map(function ($d) {
                 $precioDefinido = !is_null($d->precio_consulta);
-                $moneda = $d->moneda ?: 'USD';
+                $moneda = $d->moneda ?? 'USD';
 
                 return [
                     'id'            => $d->id,
@@ -70,9 +76,44 @@ class ChatBotController extends Controller
 
     public function fechasDisponibles(User $doctor)
     {
-        abort_unless($doctor->hasRole('doctor'), 404);
+        abort_unless($doctor->hasRole('doctor') || $doctor->hasRole('laboratorio'), 404);
 
-        $hoy = Carbon::today();
+        $tz = config('app.timezone', 'America/Guayaquil');
+        $hoy = Carbon::today($tz);
+        if ($doctor->hasRole('laboratorio')) {
+            $fechas = [];
+
+            for ($i = 0; $i < 30; $i++) {
+                $fecha = $hoy->copy()->addDays($i)->toDateString();
+                $slotsLibres = $this->calcularSlotsDisponibles($doctor->id, $fecha);
+                if (empty($slotsLibres)) {
+                    continue;
+                }
+
+                $fechas[] = [
+                    'value' => $fecha,
+                    'label' => Carbon::parse($fecha)->locale('es')->isoFormat('dddd D [de] MMMM'),
+                ];
+
+                if (count($fechas) >= 7) {
+                    break;
+                }
+            }
+
+            if (empty($fechas)) {
+                return response()->json([
+                    'ok'      => false,
+                    'message' => 'Este medico no tiene horarios libres proximamente.',
+                ], 404);
+            }
+
+            return response()->json([
+                'ok'     => true,
+                'doctor' => ['id' => $doctor->id, 'nombre' => $doctor->name],
+                'fechas' => $fechas,
+            ]);
+        }
+
         $horarios = Horario::where('doctor_id', $doctor->id)
             ->whereDate('fecha', '>=', $hoy)
             ->orderBy('fecha')
@@ -116,16 +157,157 @@ class ChatBotController extends Controller
         $data = $request->validate([
             'nombre'          => ['required','string','max:255'],
             'cedula'          => ['required','digits:10'],
-            'email'           => ['nullable','email','max:255'],
-            'telefono'        => ['nullable','digits:10'],
+            'email'           => ['required','email','max:255'],
+            'telefono'        => ['required','digits:10'],
             'especialidad_id' => ['required','exists:especialidades,id'],
             'doctor_id'       => ['required','integer','exists:users,id'],
             'fecha'           => ['required','date_format:Y-m-d','after_or_equal:today'],
             'hora'            => ['required','date_format:H:i'],
-            'motivo'          => ['nullable','string','max:500'],
+            'motivo'          => ['required','string','max:500'],
+            'crear_usuario'   => ['required','boolean'],
         ]);
 
-        $doctor = User::doctors()->onlyActive()->findOrFail($data['doctor_id']);
+        $crearUsuario = array_key_exists('crear_usuario', $data) ? (bool) $data['crear_usuario'] : null;
+        $user = $request->user();
+        $usuarioCreado = false;
+        $credencialesEnviadas = false;
+
+        if ($user) {
+            if (!empty($user->dni) && $user->dni !== $data['cedula']) {
+                return response()->json([
+                    'ok'      => false,
+                    'message' => 'La cedula no coincide con tu perfil.',
+                ], 403);
+            }
+
+            if (!empty($data['email']) && !empty($user->email) && strcasecmp($user->email, $data['email']) !== 0) {
+                return response()->json([
+                    'ok'      => false,
+                    'message' => 'El correo no coincide con tu perfil.',
+                ], 403);
+            }
+
+            if (empty($user->email) && !empty($data['email'])) {
+                $user->email = $data['email'];
+            }
+            if (empty($user->dni)) {
+                $user->dni = $data['cedula'];
+            }
+
+            if (!empty($data['telefono'])) {
+                if (!empty($user->telefono) && $user->telefono !== $data['telefono']) {
+                    return response()->json([
+                        'ok'      => false,
+                        'message' => 'El telefono no coincide con tu perfil.',
+                    ], 403);
+                }
+                if (empty($user->telefono)) {
+                    $user->telefono = $data['telefono'];
+                }
+            }
+
+            if (empty($user->name)) {
+                $user->name = $data['nombre'];
+            }
+
+            if ($user->isDirty()) {
+                $user->save();
+            }
+        } else {
+            $user = User::query()
+                ->role('paciente')
+                ->where('dni', $data['cedula'])
+                ->first();
+
+            if (!$user && !empty($data['email'])) {
+                $user = User::query()
+                    ->role('paciente')
+                    ->where('email', $data['email'])
+                    ->first();
+            }
+
+            if ($user) {
+                if (!empty($data['cedula']) && !empty($user->dni) && $user->dni !== $data['cedula']) {
+                    return response()->json([
+                        'ok'      => false,
+                        'message' => 'La cedula no coincide con tu perfil.',
+                    ], 403);
+                }
+
+                if (!empty($data['email']) && !empty($user->email) && strcasecmp($user->email, $data['email']) !== 0) {
+                    return response()->json([
+                        'ok'      => false,
+                        'message' => 'El correo no coincide con tu perfil.',
+                    ], 403);
+                }
+
+                if (empty($user->email) && !empty($data['email'])) {
+                    $user->email = $data['email'];
+                }
+                if (empty($user->dni)) {
+                    $user->dni = $data['cedula'];
+                }
+
+                if (!empty($data['telefono'])) {
+                    if (!empty($user->telefono) && $user->telefono !== $data['telefono']) {
+                        return response()->json([
+                            'ok'      => false,
+                            'message' => 'El telefono no coincide con tu perfil.',
+                        ], 403);
+                    }
+                    if (empty($user->telefono)) {
+                        $user->telefono = $data['telefono'];
+                    }
+                }
+
+                if (empty($user->name)) {
+                    $user->name = $data['nombre'];
+                }
+
+                if ($user->isDirty()) {
+                    $user->save();
+                }
+            } else {
+                if (empty($data['email'])) {
+                    return response()->json([
+                        'ok'      => false,
+                        'message' => 'Necesitamos un correo valido para registrar tu cita.',
+                    ], 422);
+                }
+
+                $passwordPlano = Str::random(10);
+                $user = User::create([
+                    'name'     => $data['nombre'],
+                    'email'    => $data['email'],
+                    'password' => Hash::make($passwordPlano),
+                    'telefono' => $data['telefono'],
+                    'dni'      => $data['cedula'],
+                ]);
+
+                $role = Role::where('name', 'paciente')->first();
+                if ($role) {
+                    $user->roles()->attach($role->id);
+                }
+
+                $usuarioCreado = true;
+                if ($crearUsuario !== false) {
+                    Mail::to($user->email)->send(new CuentaCreadaDesdeChat($user, $passwordPlano));
+                    $credencialesEnviadas = true;
+                }
+            }
+        }
+
+        if (empty($user->telefono)) {
+            return response()->json([
+                'ok'      => false,
+                'message' => 'Necesitamos un numero de telefono de 10 digitos para contactarte.',
+            ], 422);
+        }
+
+        $doctor = User::query()
+            ->onlyActive()
+            ->whereHas('roles', fn($q) => $q->whereIn('name', ['doctor','laboratorio']))
+            ->findOrFail($data['doctor_id']);
 
         if (! $doctor->especialidades()->where('especialidad_id', $data['especialidad_id'])->exists()) {
             return response()->json([
@@ -142,88 +324,6 @@ class ChatBotController extends Controller
             ], 422);
         }
 
-        $passwordPlano = null;
-        $user = User::where('dni', $data['cedula'])->first();
-
-        if ($user) {
-            if (!empty($data['email'])) {
-                if (!empty($user->email) && strcasecmp($user->email, $data['email']) !== 0) {
-                    return response()->json([
-                        'ok'      => false,
-                        'message' => 'El correo no coincide con el paciente registrado para esa cedula.',
-                    ], 422);
-                }
-
-                if (empty($user->email)) {
-                    $user->email = $data['email'];
-                }
-            }
-        } else {
-            if (!empty($data['email'])) {
-                $userPorEmail = User::where('email', $data['email'])->first();
-                if ($userPorEmail) {
-                    if (!empty($userPorEmail->dni) && $userPorEmail->dni !== $data['cedula']) {
-                        return response()->json([
-                            'ok'      => false,
-                            'message' => 'Este correo ya esta vinculado a otro numero de cedula.',
-                        ], 422);
-                    }
-
-                    $userPorEmail->dni = $userPorEmail->dni ?: $data['cedula'];
-                    $user = $userPorEmail;
-                }
-            }
-        }
-
-        if ($user) {
-            if (empty($user->email) && !empty($data['email'])) {
-                $user->email = $data['email'];
-            }
-
-            $telefonoAsignado = $data['telefono'] ?: $user->telefono;
-            if (empty($telefonoAsignado)) {
-                return response()->json([
-                    'ok'      => false,
-                    'message' => 'Necesitamos un numero de telefono de 10 digitos para contactarte.',
-                ], 422);
-            }
-
-            $user->telefono = $telefonoAsignado;
-            $user->dni = $user->dni ?: $data['cedula'];
-            $user->save();
-        } else {
-            if (empty($data['email'])) {
-                return response()->json([
-                    'ok'      => false,
-                    'message' => 'Necesitamos un correo electronico valido para crear tu cuenta.',
-                ], 422);
-            }
-
-            if (empty($data['telefono'])) {
-                return response()->json([
-                    'ok'      => false,
-                    'message' => 'Ingresa un numero de telefono de 10 digitos.',
-                ], 422);
-            }
-
-            $passwordPlano = Str::random(10);
-
-            $user = User::create([
-                'name'     => $data['nombre'],
-                'email'    => $data['email'],
-                'password' => bcrypt($passwordPlano),
-                'dni'      => $data['cedula'],
-                'telefono' => $data['telefono'],
-                'status'   => 'active',
-            ]);
-
-            if ($rol = Role::where('name', 'paciente')->first()) {
-                $user->roles()->syncWithoutDetaching([$rol->id]);
-            }
-
-            Mail::to($user->email)->queue(new CuentaCreadaDesdeChat($user, $passwordPlano));
-        }
-
         try {
             $cita = Cita::create([
                 'paciente_id'     => $user->id,
@@ -233,7 +333,11 @@ class ChatBotController extends Controller
                 'hora'            => $data['hora'],
                 'estado'          => Cita::ESTADO_PENDIENTE,
                 'activo'          => true,
+                'pending_since'   => now('America/Guayaquil'),
+                'last_priority_notified_at' => null,
             ]);
+            $cita->refreshPriority();
+            $cita->save();
         } catch (QueryException $e) {
             if ($e->getCode() === '23000' || str_contains($e->getMessage(), 'UNIQUE')) {
                 return response()->json([
@@ -258,46 +362,80 @@ class ChatBotController extends Controller
                 'doctor'        => $doctor->name,
                 'especialidad'  => $doctor->especialidades()->where('especialidad_id', $data['especialidad_id'])->value('nombre'),
             ],
-            'usuario_creado' => (bool) $passwordPlano,
+            'usuario_creado' => $usuarioCreado,
+            'credenciales_enviadas' => $credencialesEnviadas,
         ]);
     }
 
     public function buscarCitas(Request $request)
     {
         $data = $request->validate([
-            'cedula'        => ['nullable','string','max:20'],
-            'email'         => ['nullable','email','max:255'],
-            'estado'        => ['nullable', Rule::in(Cita::ESTADOS)],
-            'incluir_todas' => ['nullable','boolean'],
+            'cedula'        => ['required','digits:10'],
+            'email'         => ['required','email','max:255'],
+            'estado'        => ['required', Rule::in(array_merge(Cita::ESTADOS, ['all']))],
+            'incluir_todas' => ['required','boolean'],
         ]);
 
-        if (empty($data['cedula']) && empty($data['email'])) {
-            return response()->json([
-                'ok'      => false,
-                'message' => 'Debes proporcionar tu cedula o tu correo.',
-                'citas'   => [],
-            ], 422);
+        if (($data['estado'] ?? null) === 'all') {
+            $data['estado'] = null;
         }
 
-        $userQuery = User::query();
+        $user = $request->user();
+        if ($user) {
+            if (!empty($data['cedula']) && !empty($user->dni) && $user->dni !== $data['cedula']) {
+                return response()->json([
+                    'ok'      => false,
+                    'message' => 'La cedula no coincide con tu perfil.',
+                    'citas'   => [],
+                ], 403);
+            }
 
-        if (!empty($data['email'])) {
-            $userQuery->where('email', $data['email']);
-        } elseif (!empty($data['cedula'])) {
-            $userQuery->where('dni', $data['cedula']);
+            if (!empty($data['email']) && !empty($user->email) && strcasecmp($user->email, $data['email']) !== 0) {
+                return response()->json([
+                    'ok'      => false,
+                    'message' => 'El correo no coincide con tu perfil.',
+                    'citas'   => [],
+                ], 403);
+            }
+        } else {
+            $user = User::query()
+                ->role('paciente')
+                ->where('dni', $data['cedula'])
+                ->first();
+
+            if (!$user && !empty($data['email'])) {
+                $user = User::query()
+                    ->role('paciente')
+                    ->where('email', $data['email'])
+                    ->first();
+            }
+
+            if (!$user) {
+                return response()->json([
+                    'ok'      => false,
+                    'message' => 'No encontramos un paciente con esos datos.',
+                    'citas'   => [],
+                ], 404);
+            }
+
+            if (!empty($data['cedula']) && !empty($user->dni) && $user->dni !== $data['cedula']) {
+                return response()->json([
+                    'ok'      => false,
+                    'message' => 'La cedula no coincide con el paciente registrado.',
+                    'citas'   => [],
+                ], 403);
+            }
+
+            if (!empty($data['email']) && !empty($user->email) && strcasecmp($user->email, $data['email']) !== 0) {
+                return response()->json([
+                    'ok'      => false,
+                    'message' => 'El correo no coincide con el paciente registrado.',
+                    'citas'   => [],
+                ], 403);
+            }
         }
 
-        $user = $userQuery->first();
-
-        if (! $user) {
-            return response()->json([
-                'ok'      => false,
-                'message' => 'No encontramos pacientes con esos datos.',
-                'citas'   => [],
-            ]);
-        }
-
-        $hoy = Carbon::today();
+        $hoy = Carbon::today(config('app.timezone', 'America/Guayaquil'));
         $modoHistorico = (bool) ($data['incluir_todas'] ?? false);
 
         $citas = Cita::with(['doctor:id,name', 'especialidad:id,nombre'])
@@ -349,11 +487,52 @@ class ChatBotController extends Controller
 
     public function cancelar(Request $request)
     {
+        $isGuest = !$request->user();
         $data = $request->validate([
             'cita_id' => ['required','integer','exists:citas_medicas,id'],
+            'cedula'  => [Rule::requiredIf($isGuest), 'digits:10'],
+            'email'   => [Rule::requiredIf($isGuest), 'email','max:255'],
         ]);
 
-        $cita = Cita::findOrFail($data['cita_id']);
+        $cita = Cita::with('paciente')->findOrFail($data['cita_id']);
+        $user = $request->user();
+        if ($user) {
+            if ($cita->paciente_id !== $user->id) {
+                return response()->json([
+                    'ok'      => false,
+                    'message' => 'No tienes permisos para cancelar esta cita.',
+                ], 403);
+            }
+        } else {
+            if (empty($data['cedula']) && empty($data['email'])) {
+                return response()->json([
+                    'ok'      => false,
+                    'message' => 'Debes proporcionar tu cedula o correo para cancelar la cita.',
+                ], 422);
+            }
+
+            $paciente = $cita->paciente;
+            if (!$paciente) {
+                return response()->json([
+                    'ok'      => false,
+                    'message' => 'No encontramos al paciente asociado a esta cita.',
+                ], 404);
+            }
+
+            if (!empty($data['cedula']) && !empty($paciente->dni) && $paciente->dni !== $data['cedula']) {
+                return response()->json([
+                    'ok'      => false,
+                    'message' => 'La cedula no coincide con el paciente de la cita.',
+                ], 403);
+            }
+
+            if (!empty($data['email']) && !empty($paciente->email) && strcasecmp($paciente->email, $data['email']) !== 0) {
+                return response()->json([
+                    'ok'      => false,
+                    'message' => 'El correo no coincide con el paciente de la cita.',
+                ], 403);
+            }
+        }
 
         if (Carbon::parse($cita->fecha)->isPast()) {
             return response()->json([
@@ -364,6 +543,7 @@ class ChatBotController extends Controller
 
         $cita->estado = Cita::ESTADO_CANCELADA;
         $cita->activo = false;
+        $cita->refreshPriority();
         $cita->save();
 
         NotificarCambioEstadoCitaJob::dispatch($cita, 'cancelada', 'paciente');
@@ -376,13 +556,54 @@ class ChatBotController extends Controller
 
     public function reagendar(Request $request)
     {
+        $isGuest = !$request->user();
         $data = $request->validate([
             'cita_id' => ['required','integer','exists:citas_medicas,id'],
             'fecha'   => ['required','date_format:Y-m-d','after_or_equal:today'],
             'hora'    => ['required','date_format:H:i'],
+            'cedula'  => [Rule::requiredIf($isGuest), 'digits:10'],
+            'email'   => [Rule::requiredIf($isGuest), 'email','max:255'],
         ]);
 
-        $cita = Cita::findOrFail($data['cita_id']);
+        $cita = Cita::with('paciente')->findOrFail($data['cita_id']);
+        $user = $request->user();
+        if ($user) {
+            if ($cita->paciente_id !== $user->id) {
+                return response()->json([
+                    'ok'      => false,
+                    'message' => 'No tienes permisos para reprogramar esta cita.',
+                ], 403);
+            }
+        } else {
+            if (empty($data['cedula']) && empty($data['email'])) {
+                return response()->json([
+                    'ok'      => false,
+                    'message' => 'Debes proporcionar tu cedula o correo para reprogramar la cita.',
+                ], 422);
+            }
+
+            $paciente = $cita->paciente;
+            if (!$paciente) {
+                return response()->json([
+                    'ok'      => false,
+                    'message' => 'No encontramos al paciente asociado a esta cita.',
+                ], 404);
+            }
+
+            if (!empty($data['cedula']) && !empty($paciente->dni) && $paciente->dni !== $data['cedula']) {
+                return response()->json([
+                    'ok'      => false,
+                    'message' => 'La cedula no coincide con el paciente de la cita.',
+                ], 403);
+            }
+
+            if (!empty($data['email']) && !empty($paciente->email) && strcasecmp($paciente->email, $data['email']) !== 0) {
+                return response()->json([
+                    'ok'      => false,
+                    'message' => 'El correo no coincide con el paciente de la cita.',
+                ], 403);
+            }
+        }
 
         if (Carbon::parse($cita->fecha)->isPast()) {
             return response()->json([
@@ -404,6 +625,9 @@ class ChatBotController extends Controller
         $cita->hora   = $data['hora'];
         $cita->estado = Cita::ESTADO_PENDIENTE;
         $cita->activo = true;
+        $cita->pending_since = now('America/Guayaquil');
+        $cita->last_priority_notified_at = null;
+        $cita->refreshPriority();
         $cita->save();
 
         NotificarCambioEstadoCitaJob::dispatch($cita, 'reagendada', 'paciente');
@@ -416,31 +640,71 @@ class ChatBotController extends Controller
 
     public function verificarPaciente(Request $request)
     {
-        $data = $request->validate([
-            'cedula' => ['required','digits:10'],
-            'email'  => ['nullable','email','max:255'],
-        ]);
+        $cedula = preg_replace('/\s+/', '', (string) $request->input('cedula', ''));
+        $emailInput = $request->input('email');
+        $email = is_null($emailInput) ? null : trim((string) $emailInput);
 
-        $paciente = User::where('dni', $data['cedula'])->first();
+        $data = validator(
+            [
+                'cedula' => $cedula,
+                'email'  => $email,
+            ],
+            [
+                'cedula' => ['required', 'digits:10'],
+                'email'  => ['nullable', 'email', 'max:255'],
+            ]
+        )->validate();
 
-        if (! $paciente) {
-            return response()->json([
-                'ok'      => true,
-                'existe'  => false,
-                'message' => 'No encontramos pacientes registrados con esta cedula.',
-            ]);
-        }
+        $emailProporcionado = filled($data['email'] ?? null);
 
-        if (!empty($data['email']) && !empty($paciente->email) && strcasecmp($paciente->email, $data['email']) !== 0) {
-            return response()->json([
-                'ok'      => false,
-                'existe'  => true,
-                'message' => 'Este correo no coincide con el paciente registrado para esa cedula.',
-                'paciente'=> [
-                    'nombre' => $paciente->name,
-                    'email'  => $paciente->email,
-                ],
-            ], 422);
+        $user = $request->user();
+        if ($user) {
+            if (!empty($user->dni) && $user->dni !== $data['cedula']) {
+                return response()->json([
+                    'ok'      => false,
+                    'existe'  => true,
+                    'message' => 'La cedula no coincide con tu perfil.',
+                ], 403);
+            }
+
+            if ($emailProporcionado && !empty($user->email) && strcasecmp((string) $user->email, $data['email']) !== 0) {
+                return response()->json([
+                    'ok'      => false,
+                    'existe'  => true,
+                    'message' => 'El correo no coincide con tu perfil.',
+                ], 403);
+            }
+
+            if ($emailProporcionado && empty($user->email)) {
+                $user->email = $data['email'];
+                $user->save();
+            }
+        } else {
+            $user = User::query()
+                ->role('paciente')
+                ->where('dni', $data['cedula'])
+                ->first();
+
+            if (!$user) {
+                return response()->json([
+                    'ok'      => false,
+                    'existe'  => false,
+                    'message' => 'No encontramos pacientes registrados con esta cedula.',
+                ], 404);
+            }
+
+            if ($emailProporcionado && !empty($user->email) && strcasecmp((string) $user->email, $data['email']) !== 0) {
+                return response()->json([
+                    'ok'      => false,
+                    'existe'  => true,
+                    'message' => 'El correo no coincide con el paciente registrado.',
+                ], 403);
+            }
+
+            if ($emailProporcionado && empty($user->email)) {
+                $user->email = $data['email'];
+                $user->save();
+            }
         }
 
         return response()->json([
@@ -448,10 +712,10 @@ class ChatBotController extends Controller
             'existe'  => true,
             'message' => 'Paciente identificado correctamente.',
             'paciente'=> [
-                'id'       => $paciente->id,
-                'nombre'   => $paciente->name,
-                'email'    => $paciente->email,
-                'telefono' => $paciente->telefono,
+                'id'       => $user->id,
+                'nombre'   => $user->name,
+                'email'    => $user->email,
+                'telefono' => $user->telefono,
             ],
         ]);
     }
@@ -463,17 +727,56 @@ class ChatBotController extends Controller
             'email'  => ['required','email','max:255'],
         ]);
 
-        $paciente = User::where('dni', $data['cedula'])->first();
+        $user = $request->user();
+        if ($user) {
+            if (!empty($user->dni) && $user->dni !== $data['cedula']) {
+                return response()->json([
+                    'ok'      => false,
+                    'message' => 'La cedula no coincide con tu perfil.',
+                ], 403);
+            }
 
-        if ($paciente && !empty($paciente->email) && strcasecmp($paciente->email, $data['email']) !== 0) {
-            return response()->json([
-                'ok'      => false,
-                'message' => 'El correo no coincide con el paciente registrado para esa cedula.',
-            ], 422);
+            if (empty($user->email)) {
+                return response()->json([
+                    'ok'      => false,
+                    'message' => 'Tu perfil no tiene un correo registrado.',
+                ], 422);
+            }
+
+            if (strcasecmp((string) $user->email, $data['email']) !== 0) {
+                return response()->json([
+                    'ok'      => false,
+                    'message' => 'El correo no coincide con tu perfil.',
+                ], 403);
+            }
+        } else {
+            $user = User::query()
+                ->role('paciente')
+                ->where('dni', $data['cedula'])
+                ->first();
+
+            if (!$user) {
+                return response()->json([
+                    'ok'      => false,
+                    'message' => 'No encontramos un paciente con esos datos.',
+                ], 404);
+            }
+
+            if (!empty($user->email) && strcasecmp((string) $user->email, $data['email']) !== 0) {
+                return response()->json([
+                    'ok'      => false,
+                    'message' => 'El correo no coincide con el paciente registrado.',
+                ], 403);
+            }
+
+            if (empty($user->email)) {
+                $user->email = $data['email'];
+                $user->save();
+            }
         }
 
         $codigo = (string) random_int(100000, 999999);
-        $cacheKey = $this->codigoCacheKey($data['cedula'], $data['email']);
+        $cacheKey = $this->codigoCacheKey($user->dni ?? $data['cedula'], $user->email ?? $data['email']);
         Cache::put($cacheKey, $codigo, now()->addMinutes(10));
 
         Mail::raw("Tu codigo de verificacion es {$codigo}. Vence en 10 minutos.", function ($message) use ($data) {
@@ -495,29 +798,73 @@ class ChatBotController extends Controller
             'codigo' => ['required','digits:6'],
         ]);
 
-        $cacheKey = $this->codigoCacheKey($data['cedula'], $data['email']);
+        $user = $request->user();
+        if ($user) {
+            if (!empty($user->dni) && $user->dni !== $data['cedula']) {
+                return response()->json([
+                    'ok'      => false,
+                    'message' => 'La cedula no coincide con tu perfil.',
+                ], 403);
+            }
+
+            if (empty($user->email) || strcasecmp((string) $user->email, $data['email']) !== 0) {
+                return response()->json([
+                    'ok'      => false,
+                    'message' => 'El correo no coincide con tu perfil.',
+                ], 403);
+            }
+        } else {
+            $user = User::query()
+                ->role('paciente')
+                ->where('dni', $data['cedula'])
+                ->first();
+
+            if (!$user) {
+                return response()->json([
+                    'ok'      => false,
+                    'message' => 'No encontramos un paciente con esos datos.',
+                ], 404);
+            }
+
+            if (!empty($user->email) && strcasecmp((string) $user->email, $data['email']) !== 0) {
+                return response()->json([
+                    'ok'      => false,
+                    'message' => 'El correo no coincide con el paciente registrado.',
+                ], 403);
+            }
+        }
+
+        $cacheKey = $this->codigoCacheKey($user->dni ?? $data['cedula'], $user->email ?? $data['email']);
         $codigoGuardado = Cache::get($cacheKey);
 
-        if (! $codigoGuardado || $codigoGuardado !== $data['codigo']) {
+        if (is_null($codigoGuardado)) {
+            return response()->json([
+                'ok'           => false,
+                'message'      => 'El codigo ya vencio. Solicita uno nuevo.',
+                'error'        => 'codigo_vencido',
+                'allow_resend' => true,
+            ], 422);
+        }
+
+        if ($codigoGuardado !== $data['codigo']) {
             return response()->json([
                 'ok'      => false,
-                'message' => 'El codigo ingresado no es correcto o ya vencio.',
+                'message' => 'El codigo ingresado no es correcto.',
+                'error'   => 'codigo_incorrecto',
             ], 422);
         }
 
         Cache::forget($cacheKey);
 
-        $paciente = User::where('dni', $data['cedula'])->first();
-
         return response()->json([
             'ok'      => true,
             'message' => 'Codigo validado.',
-            'paciente'=> $paciente ? [
-                'id'       => $paciente->id,
-                'nombre'   => $paciente->name,
-                'email'    => $paciente->email,
-                'telefono' => $paciente->telefono,
-            ] : null,
+            'paciente'=> [
+                'id'       => $user->id,
+                'nombre'   => $user->name,
+                'email'    => $user->email,
+                'telefono' => $user->telefono,
+            ],
         ]);
     }
 
@@ -529,33 +876,47 @@ class ChatBotController extends Controller
             'user_id' => ['nullable','integer','exists:users,id'],
         ]);
 
-        $user = User::query()
-            ->when(!empty($data['user_id']), fn($q) => $q->where('id', $data['user_id']))
-            ->where(function ($q) use ($data) {
-                $q->where('dni', $data['cedula'])
-                    ->orWhere('email', $data['email']);
-            })
-            ->first();
+        $user = $request->user();
+        if ($user) {
+            if (!empty($user->dni) && $user->dni !== $data['cedula']) {
+                return response()->json([
+                    'ok'      => false,
+                    'message' => 'La cedula validada no coincide con tu perfil.',
+                ], 403);
+            }
 
-        if (! $user) {
-            return response()->json([
-                'ok'      => false,
-                'message' => 'No encontramos un paciente con esos datos verificados.',
-            ], 404);
-        }
+            if (!empty($user->email) && strcasecmp($user->email, $data['email']) !== 0) {
+                return response()->json([
+                    'ok'      => false,
+                    'message' => 'El correo validado no coincide con tu perfil.',
+                ], 403);
+            }
+        } else {
+            $user = User::query()
+                ->role('paciente')
+                ->where('dni', $data['cedula'])
+                ->first();
 
-        if (!empty($user->dni) && $user->dni !== $data['cedula']) {
-            return response()->json([
-                'ok'      => false,
-                'message' => 'La cedula validada no coincide con el paciente.',
-            ], 422);
-        }
+            if (!$user) {
+                return response()->json([
+                    'ok'      => false,
+                    'message' => 'No encontramos un paciente con esos datos.',
+                ], 404);
+            }
 
-        if (!empty($user->email) && strcasecmp($user->email, $data['email']) !== 0) {
-            return response()->json([
-                'ok'      => false,
-                'message' => 'El correo validado no coincide con el paciente.',
-            ], 422);
+            if (!empty($user->email) && strcasecmp($user->email, $data['email']) !== 0) {
+                return response()->json([
+                    'ok'      => false,
+                    'message' => 'El correo validado no coincide con el paciente registrado.',
+                ], 403);
+            }
+
+            if (!empty($data['user_id']) && (int) $data['user_id'] !== (int) $user->id) {
+                return response()->json([
+                    'ok'      => false,
+                    'message' => 'El perfil no coincide con el paciente validado.',
+                ], 403);
+            }
         }
 
         return response()->json([
@@ -582,53 +943,67 @@ class ChatBotController extends Controller
             'user_id'         => ['nullable','integer','exists:users,id'],
         ]);
 
-        $user = User::query()
-            ->when(!empty($identidad['user_id']), fn($q) => $q->where('id', $identidad['user_id']))
-            ->where(function ($q) use ($identidad) {
-                $q->where('dni', $identidad['cedula'])
-                    ->orWhere('email', $identidad['email_identidad']);
-            })
-            ->first();
+        $user = $request->user();
+        if ($user) {
+            if (!empty($user->dni) && $user->dni !== $identidad['cedula']) {
+                return response()->json([
+                    'ok'      => false,
+                    'message' => 'La cedula validada no coincide con tu perfil.',
+                ], 403);
+            }
 
-        if (! $user) {
-            return response()->json([
-                'ok'      => false,
-                'message' => 'No encontramos un paciente con esos datos verificados.',
-            ], 404);
-        }
+            if (!empty($user->email) && strcasecmp($user->email, $identidad['email_identidad']) !== 0) {
+                return response()->json([
+                    'ok'      => false,
+                    'message' => 'El correo validado no coincide con tu perfil.',
+                ], 403);
+            }
+        } else {
+            $user = User::query()
+                ->role('paciente')
+                ->where('dni', $identidad['cedula'])
+                ->first();
 
-        if (!empty($user->dni) && $user->dni !== $identidad['cedula']) {
-            return response()->json([
-                'ok'      => false,
-                'message' => 'La cedula validada no coincide con el paciente.',
-            ], 422);
-        }
+            if (!$user) {
+                return response()->json([
+                    'ok'      => false,
+                    'message' => 'No encontramos un paciente con esos datos.',
+                ], 404);
+            }
 
-        if (!empty($user->email) && strcasecmp($user->email, $identidad['email_identidad']) !== 0) {
-            return response()->json([
-                'ok'      => false,
-                'message' => 'El correo validado no coincide con el paciente.',
-            ], 422);
+            if (!empty($user->email) && strcasecmp($user->email, $identidad['email_identidad']) !== 0) {
+                return response()->json([
+                    'ok'      => false,
+                    'message' => 'El correo validado no coincide con el paciente registrado.',
+                ], 403);
+            }
+
+            if (!empty($identidad['user_id']) && (int) $identidad['user_id'] !== (int) $user->id) {
+                return response()->json([
+                    'ok'      => false,
+                    'message' => 'El perfil no coincide con el paciente validado.',
+                ], 403);
+            }
         }
 
         $rules = [
             'nombre'            => ['required','string','max:255'],
             'email'             => ['required','email','max:255', Rule::unique('users','email')->ignore($user->id)],
-            'telefono'          => ['nullable','regex:/^\\d{10}$/'],
+            'telefono'          => ValidationRules::telefono(),
             'dni'               => ['required','digits:10', Rule::unique('users','dni')->ignore($user->id)],
-            'direccion'         => ['nullable','string','max:255'],
+            'direccion'         => ['required','string','max:255'],
             'fecha_nacimiento'  => ['required','date','before:today'],
-            'sexo'              => ['nullable', Rule::in(['Masculino','Femenino','Otro'])],
+            'sexo'              => ['required', Rule::in(['Masculino','Femenino','Otro'])],
             'current_password'  => ['nullable','string'],
-            'password'          => [
-                'nullable','string','min:8','confirmed','different:current_password',
-                'regex:/^(?=.*[A-Za-z])(?=.*\\d)(?=.*[^A-Za-z0-9]).{8,}$/'
-            ],
+            'password'          => array_merge(
+                ValidationRules::passwordOptional(),
+                ['different:current_password']
+            ),
         ];
 
         $messages = [
-            'telefono.regex' => 'El telefono debe tener exactamente 10 digitos.',
-            'password.regex' => 'La contraseña debe incluir letras, numeros y al menos un caracter especial.',
+            'telefono.digits' => 'El teléfono debe tener exactamente 10 dígitos.',
+            'password.regex' => 'La contraseña debe incluir letras, números y al menos un carácter especial.',
         ];
 
         validator($request->all(), $rules, $messages)->validate();
@@ -690,6 +1065,44 @@ class ChatBotController extends Controller
 
     protected function calcularSlotsDisponibles(int $doctorId, string $fecha, $bloques = null): array
     {
+        $tz = config('app.timezone', 'America/Guayaquil');
+        $hoy = Carbon::now($tz);
+        $limite = $hoy->copy()->addHour();
+        $fechaCarbon = Carbon::parse($fecha, $tz);
+        $esHoy = $fechaCarbon->isSameDay($hoy);
+
+        $doctor = User::find($doctorId);
+        $isLab = $doctor && $doctor->hasRole('laboratorio');
+
+        if ($isLab) {
+            $ocupadas = Cita::where('doctor_id', $doctorId)
+                ->whereDate('fecha', $fecha)
+                ->where('activo', true)
+                ->pluck('hora')
+                ->map(fn($hora) => substr($hora, 0, 5))
+                ->toArray();
+
+            $inicio = Carbon::parse("{$fecha} 08:00", $tz);
+            $fin    = Carbon::parse("{$fecha} 18:00", $tz);
+            $step = 15;
+
+            $slots = [];
+            for ($cursor = $inicio->copy(); $cursor->lt($fin); $cursor->addMinutes($step)) {
+                if ($esHoy && $cursor->lt($limite)) {
+                    continue;
+                }
+
+                $hhmm = $cursor->format('H:i');
+                if (!in_array($hhmm, $ocupadas, true)) {
+                    $slots[] = $hhmm;
+                }
+            }
+
+            sort($slots);
+            return array_values(array_unique($slots));
+        }
+
+
         $bloques = $bloques ?: Horario::where('doctor_id', $doctorId)
             ->whereDate('fecha', $fecha)
             ->get();
@@ -711,10 +1124,14 @@ class ChatBotController extends Controller
                 ? (int) $horario->intervalo_minutos
                 : 30;
 
-            $inicio = Carbon::parse("{$fecha} {$horario->hora_inicio}");
-            $fin    = Carbon::parse("{$fecha} {$horario->hora_fin}");
+            $inicio = Carbon::parse("{$fecha} {$horario->hora_inicio}", $tz);
+            $fin    = Carbon::parse("{$fecha} {$horario->hora_fin}", $tz);
 
             for ($cursor = $inicio->copy(); $cursor->lt($fin); $cursor->addMinutes($step)) {
+                if ($esHoy && $cursor->lt($limite)) {
+                    continue; // No ofrecer horas que ya pasaron ni las que están dentro de la siguiente hora
+                }
+
                 $hhmm = $cursor->format('H:i');
                 if (! in_array($hhmm, $ocupadas, true)) {
                     $slots[] = $hhmm;

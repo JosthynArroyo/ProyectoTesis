@@ -1,0 +1,12 @@
+@page { size: A4 landscape; margin: 18px 22px; }
+body{ font-family: DejaVu Sans, Arial, sans-serif; font-size:10.5px; color:#0f172a; margin:0; }
+h3{ margin:0 0 10px 0; font-size:14px; }
+table{ width:100%; border-collapse:collapse; table-layout:fixed; }
+colgroup col{ width:auto; }
+th,td{
+  border:1px solid #e2e8f0; padding:5px 6px; vertical-align:top; line-height:1.25;
+  word-break:break-word; overflow-wrap:anywhere; white-space:normal;
+}
+th{ background:#f1f5f9; font-weight:700; text-transform:uppercase; font-size:9px; letter-spacing:0.04em; }
+.center{ text-align:center; }
+.nowrap{ white-space:nowrap; }

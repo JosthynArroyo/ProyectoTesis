@@ -12,23 +12,51 @@ class DoctorSlotController extends Controller
 {
     public function __invoke(User $doctor, string $fecha)
     {
-        $date = Carbon::parse($fecha)->toDateString();
+        $tz = config('app.timezone', 'America/Guayaquil');
+        $ahora = Carbon::now($tz);
+        $limiteHora = $ahora->copy()->addHour();
+        $date = Carbon::parse($fecha, $tz)->toDateString();
+        $esHoy = $date === $ahora->toDateString();
+        $isLab = $doctor->hasRole('laboratorio');
 
-        // Horario específico del día (tu modelo ya usa fecha)
-        $horario = Horario::where('doctor_id', $doctor->id)
-            ->whereDate('fecha', $date)
-            ->first();
+        if ($isLab) {
+            $inicio = Carbon::parse("{$date} 08:00", $tz);
+            $fin    = Carbon::parse("{$date} 18:00", $tz);
+            $step   = 15;
 
-        if (!$horario) {
-            return response()->json(['slots' => []]);
+            $ocupadas = Cita::where('doctor_id', $doctor->id)
+                ->whereDate('fecha', $date)
+                ->where('activo', true)
+                ->whereIn('estado', [Cita::ESTADO_PENDIENTE, Cita::ESTADO_CONFIRMADA])
+                ->pluck('hora')
+                ->map(fn ($t) => substr($t, 0, 5))
+                ->toArray();
+
+            $slots = [];
+            for ($t = $inicio->copy(); $t->lt($fin); $t->addMinutes($step)) {
+                if ($esHoy && $t->lt($limiteHora)) {
+                    continue;
+                }
+
+                $hhmm = $t->format('H:i');
+                $slots[] = [
+                    'hora'   => $hhmm,
+                    'estado' => in_array($hhmm, $ocupadas, true) ? 'ocupado' : 'libre',
+                ];
+            }
+
+            return response()->json(['slots' => $slots]);
         }
 
-        $step = property_exists($horario, 'intervalo_minutos')
-            ? (int)($horario->intervalo_minutos ?: 30)
-            : 30;
+        // Horarios del dia
+        $horarios = Horario::where('doctor_id', $doctor->id)
+            ->whereDate('fecha', $date)
+            ->orderBy('hora_inicio')
+            ->get();
 
-        $inicio = Carbon::parse("{$date} {$horario->hora_inicio}");
-        $fin    = Carbon::parse("{$date} {$horario->hora_fin}");
+        if ($horarios->isEmpty()) {
+            return response()->json(['slots' => []]);
+        }
 
         // Citas ocupadas del día
         $ocupadas = Cita::where('doctor_id', $doctor->id)
@@ -39,16 +67,32 @@ class DoctorSlotController extends Controller
             ->map(fn ($t) => substr($t, 0, 5))   // "HH:MM"
             ->toArray();
 
+        $ocupadasSet = array_flip($ocupadas);
+
         // Construir TODAS las franjas con estado libre/ocupado
         $slots = [];
-        for ($t = $inicio->copy(); $t->lt($fin); $t->addMinutes($step)) {
-            $hhmm = $t->format('H:i');
-            $slots[] = [
-                'hora'   => $hhmm,
-                'estado' => in_array($hhmm, $ocupadas, true) ? 'ocupado' : 'libre',
-            ];
+        foreach ($horarios as $horario) {
+            $step = (int) ($horario->intervalo_minutos ?: 30);
+            $inicio = Carbon::parse("{$date} {$horario->hora_inicio}", $tz);
+            $fin    = Carbon::parse("{$date} {$horario->hora_fin}", $tz);
+
+            for ($t = $inicio->copy(); $t->lt($fin); $t->addMinutes($step)) {
+                if ($esHoy && $t->lt($limiteHora)) {
+                    continue; // No mostrar bloques dentro de la prxima hora en la zona horaria de Ecuador
+                }
+
+                $hhmm = $t->format('H:i');
+                if (!isset($slots[$hhmm])) {
+                    $slots[$hhmm] = [
+                        'hora'   => $hhmm,
+                        'estado' => isset($ocupadasSet[$hhmm]) ? 'ocupado' : 'libre',
+                    ];
+                }
+            }
         }
 
-        return response()->json(['slots' => $slots]);
+        ksort($slots);
+        return response()->json(['slots' => array_values($slots)]);
     }
 }
+

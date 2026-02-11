@@ -5,17 +5,23 @@ namespace App\Http\Controllers\Paciente;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Cita;
+use App\Models\LaboratorioOrden;
+use App\Models\LabOrder;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use App\Services\CitaNoShowService;
+use App\Support\ValidationRules;
 
 
 class AdminController extends Controller
 {
     public function dashboard()
     {
+        app(CitaNoShowService::class)->marcarVencidas();
         $user = Auth::user();
 
         $citas = Cita::where('paciente_id', $user->id)
@@ -31,6 +37,83 @@ class AdminController extends Controller
         $citasCompletadas2h = $citas->where('estado', 'realizada')->where('updated_at', '>=', now()->subHours(2))->count();
         $citasCanceladas2h = $citas->where('estado', 'cancelada')->where('updated_at', '>=', now()->subHours(2))->count();
 
+        $labResultados = LaboratorioOrden::with(['cita.especialidad'])
+            ->whereHas('cita', function ($q) use ($user) {
+                $q->where('paciente_id', $user->id);
+            })
+            ->where('estado', LaboratorioOrden::ESTADO_RESULTADO_DISPONIBLE)
+            ->orderByDesc('resultado_publicado_at')
+            ->limit(4)
+            ->get();
+
+        $labOrdenes = LaboratorioOrden::with(['cita'])
+            ->whereHas('cita', function ($q) use ($user) {
+                $q->where('paciente_id', $user->id);
+            })
+            ->orderByDesc('id')
+            ->get();
+
+        $labOrdenProgramada = $labOrdenes
+            ->filter(fn($orden) => in_array($orden->estado, [
+                LaboratorioOrden::ESTADO_ORDEN_CREADA,
+                LaboratorioOrden::ESTADO_CITA_PROGRAMADA,
+            ], true))
+            ->filter(fn($orden) => $orden->cita && $orden->cita->fecha)
+            ->sortBy(function ($orden) {
+                $hora = $orden->cita->hora ?? '00:00';
+                return Carbon::parse($orden->cita->fecha->format('Y-m-d').' '.$hora);
+            })
+            ->first();
+
+        $labOrdenEnCurso = $labOrdenes->firstWhere('estado', LaboratorioOrden::ESTADO_MUESTRA_TOMADA);
+
+        $labResultadoDestacado = $labOrdenes
+            ->where('estado', LaboratorioOrden::ESTADO_RESULTADO_DISPONIBLE)
+            ->sortByDesc(function ($orden) {
+                return $orden->resultado_publicado_at ?? $orden->updated_at ?? $orden->id;
+            })
+            ->first();
+
+        $labOrdenPrincipal = $labOrdenProgramada
+            ?? $labOrdenEnCurso
+            ?? $labResultadoDestacado
+            ?? $labOrdenes->first();
+
+        $labVentanaAtencion = null;
+        if ($labOrdenProgramada && $labOrdenProgramada->cita && $labOrdenProgramada->cita->hora) {
+            $inicio = Carbon::parse($labOrdenProgramada->cita->fecha->format('Y-m-d').' '.$labOrdenProgramada->cita->hora);
+            $labVentanaAtencion = [
+                'inicio' => $inicio->format('H:i'),
+                'fin' => $inicio->copy()->addMinutes(30)->format('H:i'),
+            ];
+        }
+
+        $labEsperaEstimada = null;
+        if ($labOrdenProgramada && $labOrdenProgramada->cita && $labOrdenProgramada->cita->fecha && $labOrdenProgramada->cita->fecha->isToday()) {
+            $fecha = $labOrdenProgramada->cita->fecha->toDateString();
+            $hora = $labOrdenProgramada->cita->hora;
+
+            $esperaQuery = LaboratorioOrden::whereHas('cita', function ($q) use ($fecha, $hora) {
+                $q->whereDate('fecha', $fecha);
+                if ($hora) {
+                    $q->where('hora', '<', $hora);
+                }
+            })
+                ->whereIn('estado', [
+                    LaboratorioOrden::ESTADO_ORDEN_CREADA,
+                    LaboratorioOrden::ESTADO_CITA_PROGRAMADA,
+                ])
+                ->where('id', '!=', $labOrdenProgramada->id);
+
+            $labEsperaEstimada = $esperaQuery->count();
+        }
+
+        $labOrders = LabOrder::with(['items.test'])
+            ->where('patient_id', $user->id)
+            ->orderByDesc('created_at')
+            ->limit(3)
+            ->get();
+
         return view('paciente.dashboard', compact(
             'user',
             'citas',
@@ -40,7 +123,15 @@ class AdminController extends Controller
             'totalCitasCanceladas',
             'citasAgendadas2h',
             'citasCompletadas2h',
-            'citasCanceladas2h'
+            'citasCanceladas2h',
+            'labResultados',
+            'labOrdenes',
+            'labOrdenProgramada',
+            'labOrdenPrincipal',
+            'labResultadoDestacado',
+            'labVentanaAtencion',
+            'labEsperaEstimada',
+            'labOrders'
         ));
     }
 
@@ -56,20 +147,19 @@ class AdminController extends Controller
 
         $request->validate([
             'name'              => ['required','string','max:255'],
-            'email'             => ['required','email','max:255', Rule::unique('users','email')->ignore($user->id)],
-            'telefono'          => ['nullable','regex:/^\d{10}$/'],
-            'dni'               => ['required','digits:10', Rule::unique('users','dni')->ignore($user->id)],
-            'direccion'         => ['nullable','string','max:255'],
+            'email'             => ValidationRules::emailUnique('users', $user->id),
+            'telefono'          => ValidationRules::telefono(),
+            'dni'               => ValidationRules::cedulaUnique('users', $user->id),
+            'direccion'         => ['required','string','max:255'],
             'fecha_nacimiento'  => ['required','date','before:today'],
-            'sexo'              => ['nullable','in:Masculino,Femenino,Otro'],
+            'sexo'              => ['required','in:Masculino,Femenino,Otro'],
             'avatar'            => ['nullable','image','mimes:jpg,jpeg,png,webp','max:2048'],
             'current_password'  => ['nullable','string'],
-            'password'          => [
-                'nullable','string','min:8','confirmed','different:current_password',
-                'regex:/^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/'
-            ],
+            'password'          => array_merge(
+                ValidationRules::passwordOptional(),
+                ['different:current_password']
+            ),
         ], [
-            'telefono.regex' => 'Teléfono: exactamente 10 dígitos.',
             'password.regex' => 'La contraseña debe incluir letras, números y al menos un carácter especial.',
         ]);
 

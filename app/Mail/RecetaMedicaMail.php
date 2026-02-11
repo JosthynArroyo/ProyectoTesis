@@ -31,9 +31,9 @@ class RecetaMedicaMail extends Mailable
 
     public function __construct(
         Cita $cita,
-        ?string $relativePath,
-        ?string $pdfOutput,
-        ?string $fileName,
+        string $relativePath,
+        string $pdfOutput,
+        string $fileName,
         string $motivo = 'creacion'
     ) {
         $this->cita         = $cita;
@@ -47,7 +47,8 @@ class RecetaMedicaMail extends Mailable
     {
         // Asunto
         $subject = $this->motivo === 'actualizacion'
-            ? 'Actualización de receta médica - Clínica Don Bosco'
+            ?
+             'Actualización de receta médica - Clínica Don Bosco'
             : 'Nueva receta médica - Clínica Don Bosco';
 
         $email = $this->subject($subject)

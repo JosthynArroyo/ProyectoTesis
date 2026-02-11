@@ -1,10 +1,9 @@
-(() => {
+document.addEventListener('DOMContentLoaded', () => {
   const modal = document.getElementById('loginModal');
   if (!modal) return;
 
-  const closeBtn  = document.getElementById('closeLoginModal');
-  const backdrop  = modal.querySelector('.modal-backdrop');
-  const triggers  = document.querySelectorAll('[data-login-trigger]');
+  const closeBtn = document.getElementById('closeLoginModal');
+  const backdrop = modal.querySelector('.modal-backdrop');
   const emailInput = modal.querySelector('input[name="email"]');
   const menuToggle = document.getElementById('menu');
 
@@ -15,14 +14,19 @@
   }
 
   function openModal(e) {
-    if (e) { e.preventDefault(); e.stopPropagation(); }
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     if (menuToggle && menuToggle.checked) menuToggle.checked = false;
     savedY = window.scrollY || 0;
     document.body.classList.add('modal-open');
     modal.classList.add('is-open');
     setAria(true);
     if (emailInput) {
-      try { emailInput.focus({ preventScroll: true }); } catch {}
+      try {
+        emailInput.focus({ preventScroll: true });
+      } catch {}
     }
   }
 
@@ -34,28 +38,33 @@
     window.scrollTo(0, savedY);
   }
 
-  triggers.forEach(el => el.addEventListener('click', openModal));
+  document.addEventListener('click', (e) => {
+    const trigger = e.target.closest('[data-login-trigger]');
+    if (trigger) openModal(e);
+  });
+
   if (closeBtn) closeBtn.addEventListener('click', closeModal);
   if (backdrop) backdrop.addEventListener('click', closeModal);
 
-  document.addEventListener('keydown', ev => {
+  document.addEventListener('keydown', (ev) => {
     if (ev.key === 'Escape' && modal.classList.contains('is-open')) closeModal(ev);
   });
 
-  // Abre si el servidor dejó la marca por errores de validación
+  // Abre si el servidor dejo la marca por errores de validacion.
   if (modal.querySelector('[data-open-login-onload]')) {
     openModal();
   }
 
-  // Abre si viene ?login=1 en la URL (enlaces "Iniciar Sesión" o "Agendar Cita")
+  // Abre si viene login=1 en la URL.
   const params = new URLSearchParams(window.location.search);
   if (params.get('login') === '1') {
     openModal();
     params.delete('login');
-    const cleanUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '') + window.location.hash;
+    const query = params.toString();
+    const cleanUrl = window.location.pathname + (query ? `?${query}` : '') + window.location.hash;
     window.history.replaceState({}, '', cleanUrl);
   }
 
-  // Soporte para abrir desde otros scripts
+  // Soporte para abrir desde otros scripts.
   window.addEventListener('open-login-modal', openModal);
-})();
+});

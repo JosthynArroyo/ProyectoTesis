@@ -82,6 +82,36 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Mensajes personalizados
+    |--------------------------------------------------------------------------
+    */
+
+    'custom' => [
+        'telefono' => [
+            'digits' => 'El teléfono debe tener exactamente 10 dígitos numéricos.',
+            'regex'  => 'El teléfono debe tener exactamente 10 dígitos numéricos.',
+        ],
+        'dni' => [
+            'digits' => 'La cédula debe tener exactamente 10 dígitos numéricos.',
+            'regex'  => 'La cédula debe tener exactamente 10 dígitos numéricos.',
+            'unique' => 'La cédula ya está registrada.',
+        ],
+        'cedula' => [
+            'digits' => 'La cédula debe tener exactamente 10 dígitos numéricos.',
+            'regex'  => 'La cédula debe tener exactamente 10 dígitos numéricos.',
+            'unique' => 'La cédula ya está registrada.',
+        ],
+        'email' => [
+            'unique' => 'El correo ya está registrado.',
+        ],
+        'password' => [
+            'min'   => 'La contraseña debe tener al menos 8 caracteres.',
+            'regex' => 'La contraseña debe tener al menos 8 caracteres e incluir letras, números y un carácter especial.',
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Atributos personalizados
     |--------------------------------------------------------------------------
     |
@@ -92,8 +122,12 @@ return [
 
     'attributes' => [
         'email'                 => 'correo electrónico',
+        'telefono'              => 'teléfono',
+        'dni'                   => 'cédula',
+        'cedula'                => 'cédula',
         'password'              => 'contraseña',
         'password_confirmation' => 'confirmación de contraseña',
+        'current_password'      => 'contraseña actual',
         'name'                  => 'nombre',
     ],
 

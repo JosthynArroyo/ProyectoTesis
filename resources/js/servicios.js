@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const grid = document.getElementById('svcGrid');
   const chips = Array.from(document.querySelectorAll('.chip'));
   const search = document.getElementById('svcSearch');
+  const empty = document.getElementById('svcEmpty');
 
   if (!grid) return;
 
@@ -13,6 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function apply() {
     const q = currentQuery.trim().toLowerCase();
+    let visibleCount = 0;
     cards.forEach(card => {
       const tags = (card.getAttribute('data-tags') || '').toLowerCase();
       const text = card.innerText.toLowerCase();
@@ -20,8 +22,11 @@ document.addEventListener('DOMContentLoaded', () => {
       const byFilter = currentFilter === 'all' || tags.includes(currentFilter);
       const byQuery = q === '' || text.includes(q);
 
-      card.style.display = (byFilter && byQuery) ? '' : 'none';
+      const isVisible = byFilter && byQuery;
+      card.style.display = isVisible ? '' : 'none';
+      if (isVisible) visibleCount += 1;
     });
+    if (empty) empty.hidden = visibleCount > 0;
   }
 
   chips.forEach(chip => {
@@ -33,7 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  search?.addEventListener('input', (e) => {
+  search.addEventListener('input', (e) => {
     currentQuery = e.target.value || '';
     apply();
   });

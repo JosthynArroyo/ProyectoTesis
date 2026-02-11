@@ -11,6 +11,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 use App\Mail\CambioEstadoCitaMail;
+use App\Services\WhatsAppService;
 
 class NotificarCambioEstadoCitaJob implements ShouldQueue
 {
@@ -49,8 +50,8 @@ class NotificarCambioEstadoCitaJob implements ShouldQueue
         $cita = Cita::with(['paciente','doctor','especialidad'])->findOrFail($this->cita->id);
 
         // Definir destinatarios (siempre ambas partes)
-        $paraPaciente = $cita->paciente?->email;
-        $paraDoctor   = $cita->doctor?->email;
+        $paraPaciente = $cita->paciente->email;
+        $paraDoctor   = $cita->doctor->email;
 
         if (!$paraPaciente && !$paraDoctor) {
             Log::warning("NotificarCambioEstadoCitaJob: Cita {$cita->id} sin correos de paciente/doctor.");
@@ -69,6 +70,16 @@ class NotificarCambioEstadoCitaJob implements ShouldQueue
             Mail::to($paraDoctor)->queue(
                 new CambioEstadoCitaMail($cita, 'doctor', $this->evento, $this->quien)
             );
+        }
+
+        if ($this->evento === 'aceptada') {
+            $whatsapp = app(WhatsAppService::class);
+            if ($cita->paciente) {
+                $whatsapp->sendCitaAceptada($cita, $cita->paciente, 'paciente');
+            }
+            if ($cita->doctor) {
+                $whatsapp->sendCitaAceptada($cita, $cita->doctor, 'doctor');
+            }
         }
 
         Log::info("NotificarCambioEstadoCitaJob: enviados correos de evento '{$this->evento}' (quien={$this->quien}) para Cita {$cita->id}.");

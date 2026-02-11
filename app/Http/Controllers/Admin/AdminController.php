@@ -12,17 +12,20 @@ use App\Models\Cita;
 use App\Models\User;
 use App\Models\Role;
 use App\Models\Especialidad;
+use App\Support\ValidationRules;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 use Illuminate\Support\Str;
+use App\Services\CitaNoShowService;
 
 class AdminController extends Controller
 {
     // ===== Dashboard =====
     public function dashboard()
     {
+        app(CitaNoShowService::class)->marcarVencidas();
         $user = Auth::user();
 
         $citas = Cita::with(['paciente', 'doctor'])
@@ -34,14 +37,25 @@ class AdminController extends Controller
         $totalCitasPendientes = Cita::where('estado', 'pendiente')->count();
         $totalCitasRealizadas = Cita::where('estado', 'realizada')->count();
         $totalCitasCanceladas = Cita::where('estado', 'cancelada')->count();
+        $totalCitasPendientesCriticas = Cita::where('estado', 'pendiente')
+            ->where('activo', true)
+            ->where('priority_level', 'critica')
+            ->count();
+        $totalPacientes       = User::whereHas('roles', fn($q) => $q->where('name', 'paciente'))->count();
+        $totalDoctores        = User::whereHas('roles', fn($q) => $q->where('name', 'doctor'))->count();
+        $usuariosActivosHoy   = User::whereDate('last_login_at', now()->toDateString())->count();
 
         return view('admin.dashboard', compact(
             'user',
             'citas',
             'totalCitas',
             'totalCitasPendientes',
+            'totalCitasPendientesCriticas',
             'totalCitasRealizadas',
-            'totalCitasCanceladas'
+            'totalCitasCanceladas',
+            'totalPacientes',
+            'totalDoctores',
+            'usuariosActivosHoy'
         ));
     }
 
@@ -51,6 +65,7 @@ class AdminController extends Controller
             return redirect()->route('admin.dashboard');
         }
 
+        app(CitaNoShowService::class)->marcarVencidas();
         return response()->json([
             'agendadas'   => Cita::count(),
             'completadas' => Cita::where('estado', 'realizada')->count(),
@@ -71,23 +86,21 @@ class AdminController extends Controller
 
         $rules = [
             'name'              => ['required','string','max:255'],
-            'email'             => ['required','email','max:255', Rule::unique('users','email')->ignore($user->id)],
-            'telefono'          => ['nullable','regex:/^\d{10}$/'],
-            'dni'               => ['required','digits:10', Rule::unique('users','dni')->ignore($user->id)],
-            'direccion'         => ['nullable','string','max:255'],
-            'fecha_nacimiento'  => ['nullable','date','before:today'],
-            'sexo'              => ['nullable','in:Masculino,Femenino,Otro'],
+            'email'             => ValidationRules::emailUnique('users', $user->id),
+            'telefono'          => ValidationRules::telefono(),
+            'dni'               => ValidationRules::cedulaUnique('users', $user->id),
+            'direccion'         => ['required','string','max:255'],
+            'fecha_nacimiento'  => ['required','date','before:today'],
+            'sexo'              => ['required','in:Masculino,Femenino,Otro'],
             'avatar'            => ['nullable','image','mimes:jpg,jpeg,png,webp','max:2048'],
             'current_password'  => ['nullable','string'],
-            'password'          => [
-                'nullable','string','min:8','confirmed','different:current_password',
-                'regex:/^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/'
-            ],
+            'password'          => array_merge(
+                ValidationRules::passwordOptional(),
+                ['different:current_password']
+            ),
         ];
 
         $messages = [
-            'telefono.regex' => 'El teléfono debe tener exactamente 10 dígitos.',
-            'dni.digits'     => 'El número de cédula debe tener exactamente 10 dígitos.',
             'password.regex' => 'La contraseña debe incluir letras, números y al menos un carácter especial.',
         ];
 
@@ -139,10 +152,13 @@ class AdminController extends Controller
         $buscar  = trim((string) $request->get('buscar', ''));
         $perPage = (int) ($request->get('per_page', 12));
         $role    = $request->string('role')->lower()->value();
+        if ($role === 'all') {
+            $role = '';
+        }
 
         $allColumns = ['usuario','contacto','rol','estado','especialidades','acciones'];
         $cols = $request->has('cols')
-            ? array_values(array_intersect($allColumns, (array)$request->get('cols')))
+            ? array_values(array_intersect($allColumns, (array) $request->get('cols')))
             : ($request->session()->get('usuarios.cols') ?: $allColumns);
         if (empty($cols)) $cols = $allColumns;
         $request->session()->put('usuarios.cols', $cols);
@@ -150,10 +166,11 @@ class AdminController extends Controller
         $usersQ = User::with(['roles', 'especialidades'])
             ->orderBy('created_at', 'desc')
             ->search($buscar)
-            ->role($role);
+            ->role($role)
+            ->whereDoesntHave('roles', fn ($q) => $q->whereIn('name', ['administrador', 'superadmin']));
 
         $users = $usersQ->paginate($perPage)->appends($request->query());
-        $roles = Role::orderBy('name', 'asc')->get();
+        $roles = Role::whereNotIn('name', ['administrador', 'superadmin'])->orderBy('name', 'asc')->get();
 
         return view('admin.usuarios', compact('users', 'roles', 'buscar', 'cols', 'allColumns', 'perPage'))
             ->with('role', $role);
@@ -162,7 +179,7 @@ class AdminController extends Controller
     // ===== CRUD usuario rápido =====
     public function usuariosCreate()
     {
-        $roles = Role::orderBy('name')->get();
+        $roles = Role::whereNotIn('name', ['administrador', 'superadmin'])->orderBy('name')->get();
         $especialidades = Especialidad::orderBy('nombre')->get();
         return view('admin.users.create', compact('roles','especialidades'));
     }
@@ -170,32 +187,47 @@ class AdminController extends Controller
     public function usuariosStore(Request $request)
     {
         $roles = Role::pluck('name','id');
+        $roleName = $roles[(int) $request->input('role_id')] ?? null;
 
         $baseRules = [
             'name'     => ['required','string','max:255'],
-            'email'    => ['required','email','max:255','unique:users,email'],
-            'password' => ['required','string','min:8','confirmed','regex:/^(?=.*[A-Za-z])(?=.*\d).+$/'],
-            'telefono' => ['nullable','digits:10'],
-            'dni'      => ['required','digits:10','unique:users,dni'],
-            'direccion'=> ['nullable','string','max:255'],
-            'fecha_nacimiento' => ['nullable','date','before:today'],
-            'sexo'     => ['nullable','in:Masculino,Femenino,Otro'],
+            'email'    => ValidationRules::emailUnique(),
+            'password' => ValidationRules::passwordRequired(),
+            'telefono' => ValidationRules::telefono(),
+            'dni'      => ValidationRules::cedulaUnique(),
+            'direccion'=> ['required','string','max:255'],
+            'fecha_nacimiento' => ['required','date','before:today'],
+            'sexo'     => ['required','in:Masculino,Femenino,Otro'],
             'role_id'  => ['required','exists:roles,id'],
-            'especialidad_id' => ['nullable','integer','exists:especialidades,id'],
-            'precio_consulta' => ['nullable','numeric','min:0','max:99999999.99'],
+            'especialidad_id' => ['nullable', Rule::requiredIf($roleName === 'doctor'), 'integer', 'exists:especialidades,id'],
+            'precio_consulta' => ['nullable', Rule::requiredIf(in_array($roleName, ['doctor','laboratorio'], true)), 'numeric', 'min:0', 'max:99999999.99'],
+            'adulto_mayor' => ['required','boolean'],
+            'embarazo' => ['required','boolean'],
+            'discapacidad' => ['required','boolean'],
+            'cronico' => ['required','boolean'],
         ];
 
         $data = $request->validate($baseRules);
 
         $roleName = $roles[(int)$data['role_id']] ?? null;
+        if ($this->isPrivilegedRole($roleName)) {
+            return back()->withErrors(['role_id' => 'No puedes asignar roles Administrador o Superadmin.'])->withInput();
+        }
         $isDoctor = $roleName === 'doctor';
+        $isLaboratorio = $roleName === 'laboratorio';
+        $labId = null;
 
         if ($isDoctor) {
             $request->validate([
                 'especialidad_id' => ['required','integer','exists:especialidades,id'],
             ], [
-                'especialidad_id.required' => 'La especialidad es obligatoria para el rol Doctor.',
+                'especialidad_id.required' => 'La especialidad es obligatoria para este rol.',
             ]);
+        } elseif ($isLaboratorio) {
+            $labId = Especialidad::where('nombre', 'Laboratorio Clinico')->value('id');
+            if (!$labId) {
+                return back()->withErrors(['especialidad_id' => 'No existe la especialidad Laboratorio Clínico.'])->withInput();
+            }
         }
 
         $u = new User();
@@ -208,15 +240,23 @@ class AdminController extends Controller
         $u->direccion        = $data['direccion'] ?? null;
         $u->fecha_nacimiento = $data['fecha_nacimiento'] ?? null;
         $u->sexo             = $data['sexo'] ?? null;
-        $u->precio_consulta  = $isDoctor ? ($data['precio_consulta'] ?? null) : null;
+        $u->precio_consulta  = ($isDoctor || $isLaboratorio) ? ($data['precio_consulta'] ?? null) : null;
         $u->moneda           = 'USD';
         $u->status           = 'active';
         $u->save();
 
         $u->roles()->sync([(int)$data['role_id']]);
 
-        if ($isDoctor) {
-            $u->especialidades()->sync([(int)$request->input('especialidad_id')]);
+        if ($isDoctor || $isLaboratorio) {
+            $espId = $isLaboratorio ? (int)$labId : (int)$request->input('especialidad_id');
+            $u->especialidades()->sync([$espId]);
+        }
+
+        if ($roleName === 'paciente') {
+            $u->patientFlag()->updateOrCreate(
+                ['user_id' => $u->id],
+                $this->extractPatientFlags($request)
+            );
         }
 
         return redirect()->route('admin.usuarios.index')->with('success','Usuario creado correctamente.');
@@ -224,33 +264,51 @@ class AdminController extends Controller
 
     public function usuariosShow(User $user)
     {
+        if ($this->isPrivilegedAccount($user)) {
+            return redirect()->route('admin.usuarios.index')
+                ->withErrors(['No puedes administrar cuentas Administrador o Superadmin.']);
+        }
         $user->load(['roles','especialidades']);
         return view('admin.users.show', compact('user'));
     }
 
     public function usuariosEdit(User $user)
     {
+        if ($this->isPrivilegedAccount($user)) {
+            return redirect()->route('admin.usuarios.index')
+                ->withErrors(['No puedes administrar cuentas Administrador o Superadmin.']);
+        }
         $user->load(['roles','especialidades']);
-        $roles = Role::orderBy('name')->get();
+        $roles = Role::whereNotIn('name', ['administrador', 'superadmin'])->orderBy('name')->get();
         $especialidades = Especialidad::orderBy('nombre')->get();
         return view('admin.users.edit', compact('user','roles','especialidades'));
     }
 
     public function usuariosUpdate(Request $request, User $user)
     {
+        if ($this->isPrivilegedAccount($user)) {
+            return redirect()->route('admin.usuarios.index')
+                ->withErrors(['No puedes administrar cuentas Administrador o Superadmin.']);
+        }
         $request->merge(['email' => strtolower($request->input('email'))]);
+        $roles = Role::pluck('name','id');
+        $roleNameRequest = $roles[(int) $request->input('role_id')] ?? null;
 
         $rules = [
             'name'             => ['required','string','max:255'],
-            'email'            => ['required','email','max:255', Rule::unique('users','email')->ignore($user->id)],
-            'telefono'         => ['nullable','digits:10'],
-            'dni'              => ['required','digits:10', Rule::unique('users','dni')->ignore($user->id)],
-            'direccion'        => ['nullable','string','max:255'],
-            'fecha_nacimiento' => ['nullable','date','before:today'],
-            'sexo'             => ['nullable','in:Masculino,Femenino,Otro'],
+            'email'            => ValidationRules::emailUnique('users', $user->id),
+            'telefono'         => ValidationRules::telefono(),
+            'dni'              => ValidationRules::cedulaUnique('users', $user->id),
+            'direccion'        => ['required','string','max:255'],
+            'fecha_nacimiento' => ['required','date','before:today'],
+            'sexo'             => ['required','in:Masculino,Femenino,Otro'],
             'role_id'          => ['required','exists:roles,id'],
-            'especialidad_id'  => ['nullable','integer','exists:especialidades,id'],
-            'precio_consulta'  => ['nullable','numeric','min:0','max:99999999.99'],
+            'especialidad_id'  => ['nullable', Rule::requiredIf($roleNameRequest === 'doctor'), 'integer', 'exists:especialidades,id'],
+            'precio_consulta'  => ['nullable', Rule::requiredIf(in_array($roleNameRequest, ['doctor','laboratorio'], true)), 'numeric', 'min:0', 'max:99999999.99'],
+            'adulto_mayor' => ['required','boolean'],
+            'embarazo' => ['required','boolean'],
+            'discapacidad' => ['required','boolean'],
+            'cronico' => ['required','boolean'],
         ];
         $data = $request->validate($rules);
 
@@ -264,7 +322,22 @@ class AdminController extends Controller
 
         $roleId   = (int)$data['role_id'];
         $roleName = optional(Role::find($roleId))->name;
+        if ($this->isPrivilegedRole($roleName)) {
+            return back()->withErrors(['role_id' => 'No puedes asignar roles Administrador o Superadmin.'])->withInput();
+        }
         $isDoctor = $roleName === 'doctor';
+        $isLaboratorio = $roleName === 'laboratorio';
+        $labId = null;
+
+        if ($isDoctor && empty($data['especialidad_id'])) {
+            return back()->withErrors(['especialidad_id' => 'La especialidad es obligatoria para este rol.'])->withInput();
+        }
+        if ($isLaboratorio) {
+            $labId = Especialidad::where('nombre', 'Laboratorio Clinico')->value('id');
+            if (!$labId) {
+                return back()->withErrors(['especialidad_id' => 'No existe la especialidad Laboratorio Clínico.'])->withInput();
+            }
+        }
 
         if ($isDoctor) {
             $user->precio_consulta = $data['precio_consulta'] ?? $user->precio_consulta;
@@ -274,6 +347,10 @@ class AdminController extends Controller
             } else {
                 $user->especialidades()->sync([]);
             }
+        } elseif ($isLaboratorio) {
+            $user->precio_consulta = $data['precio_consulta'] ?? $user->precio_consulta;
+            $user->moneda = $user->moneda ?: 'USD';
+            $user->especialidades()->sync([(int)$labId]);
         } else {
             $user->precio_consulta = null;
             $user->especialidades()->sync([]);
@@ -283,9 +360,36 @@ class AdminController extends Controller
         $user->save();
         $user->roles()->sync([$roleId]);
 
+        if ($roleName === 'paciente') {
+            $user->patientFlag()->updateOrCreate(
+                ['user_id' => $user->id],
+                $this->extractPatientFlags($request)
+            );
+        }
+
         return redirect()
             ->route('admin.usuarios.edit', $user)
             ->with('success', 'Usuario actualizado correctamente.');
+    }
+
+    private function extractPatientFlags(Request $request): array
+    {
+        return [
+            'adulto_mayor' => $request->boolean('adulto_mayor'),
+            'embarazo' => $request->boolean('embarazo'),
+            'discapacidad' => $request->boolean('discapacidad'),
+            'cronico' => $request->boolean('cronico'),
+        ];
+    }
+
+    private function isPrivilegedRole(string $roleName): bool
+    {
+        return in_array($roleName, ['administrador', 'superadmin'], true);
+    }
+
+    private function isPrivilegedAccount(User $user): bool
+    {
+        return $user->hasRole('administrador') || $user->hasRole('superadmin');
     }
 
     public function usuariosDestroy(User $user)
@@ -293,8 +397,8 @@ class AdminController extends Controller
         if (Auth::id() === $user->id) {
             return back()->withErrors(['No puedes eliminar tu propio usuario.']);
         }
-        if ($user->hasRole('administrador')) {
-            return back()->withErrors(['No puedes eliminar cuentas con rol Administrador.']);
+        if ($this->isPrivilegedAccount($user)) {
+            return back()->withErrors(['No puedes eliminar cuentas con rol Administrador o Superadmin.']);
         }
 
         $user->roles()->detach();
@@ -319,17 +423,17 @@ class AdminController extends Controller
     {
         $rules = [
             'name'             => ['required', 'string', 'max:255'],
-            'email'            => ['required', 'email', 'max:255', 'unique:users,email'],
-            'password'         => ['required', 'string', 'min:8', 'confirmed', 'regex:/^(?=.*[A-Za-z])(?=.*\d).+$/'],
-            'telefono'         => ['nullable', 'digits:10'],
-            'dni'              => ['required', 'digits:10', 'unique:users,dni'],
-            'direccion'        => ['nullable', 'string', 'max:255'],
+            'email'            => ValidationRules::emailUnique(),
+            'password'         => ValidationRules::passwordRequired(),
+            'telefono'         => ValidationRules::telefono(),
+            'dni'              => ValidationRules::cedulaUnique(),
+            'direccion'        => ['required', 'string', 'max:255'],
             'fecha_nacimiento' => ['required', 'date', 'before:today'],
-            'sexo'             => ['nullable', 'in:Masculino,Femenino,Otro'],
+            'sexo'             => ['required', 'in:Masculino,Femenino,Otro'],
             'avatar'           => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'especialidad_id'  => ['required', 'integer', 'exists:especialidades,id'],
-            'precio_consulta'  => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
-            'moneda'           => ['nullable', 'in:USD'],
+            'precio_consulta'  => ['required', 'numeric', 'min:0', 'max:99999999.99'],
+            'moneda'           => ['required', 'in:USD'],
         ];
 
         $validated = $request->validate($rules);
@@ -362,9 +466,13 @@ class AdminController extends Controller
 
     public function doctoresPorEspecialidad(Especialidad $especialidad)
     {
+        $rol = mb_strtolower($especialidad->nombre) === 'laboratorio clinico'
+            ? 'laboratorio'
+            : 'doctor';
+
         $doctores = $especialidad->doctores()
-            ->whereHas('roles', fn($q) => $q->where('name', 'doctor'))
-            ->where('active', true)
+            ->whereHas('roles', fn($q) => $q->where('name', $rol))
+            ->onlyActive()
             ->orderBy('name')
             ->get(['users.id', 'users.name']);
 
@@ -380,13 +488,13 @@ class AdminController extends Controller
     {
         $rules = [
             'name'             => ['required', 'string', 'max:255'],
-            'email'            => ['required', 'email', 'max:255', 'unique:users,email'],
-            'password'         => ['required', 'string', 'min:8', 'confirmed', 'regex:/^(?=.*[A-Za-z])(?=.*\d).+$/'],
-            'telefono'         => ['nullable', 'digits:10'],
-            'dni'              => ['required', 'digits:10', 'unique:users,dni'],
-            'direccion'        => ['nullable', 'string', 'max:255'],
-            'fecha_nacimiento' => ['nullable', 'date', 'before:today'],
-            'sexo'             => ['nullable', 'in:Masculino,Femenino,Otro'],
+            'email'            => ValidationRules::emailUnique(),
+            'password'         => ValidationRules::passwordRequired(),
+            'telefono'         => ValidationRules::telefono(),
+            'dni'              => ValidationRules::cedulaUnique(),
+            'direccion'        => ['required', 'string', 'max:255'],
+            'fecha_nacimiento' => ['required', 'date', 'before:today'],
+            'sexo'             => ['required', 'in:Masculino,Femenino,Otro'],
         ];
 
         $data = $request->validate($rules);
@@ -415,11 +523,15 @@ class AdminController extends Controller
     {
         $buscar = trim((string)$request->get('buscar',''));
         $role   = $request->string('role')->lower()->value();
+        if (in_array($role, ['administrador', 'superadmin'], true)) {
+            return back()->withErrors(['No puedes exportar cuentas Administrador o Superadmin.']);
+        }
 
         $users = User::with(['roles','especialidades'])
             ->orderBy('id','desc')
             ->search($buscar)
             ->role($role)
+            ->whereDoesntHave('roles', fn ($q) => $q->whereIn('name', ['administrador', 'superadmin']))
             ->get();
 
         $sheetData = [];
@@ -427,7 +539,7 @@ class AdminController extends Controller
 
         foreach ($users as $u) {
             $rol = optional($u->roles->first())->name;
-            $esp = ($u->especialidades ?? collect())->pluck('nombre')->implode(', ');
+            $esp = $u->especialidades ? $u->especialidades->pluck('nombre')->implode(', ') : '';
             $sheetData[] = [
                 $u->id,
                 $u->name,
@@ -435,10 +547,10 @@ class AdminController extends Controller
                 $u->telefono,
                 $u->dni,
                 $rol,
-                $u->status ?? 'active',
-                optional($u->suspended_until)?->format('Y-m-d H:i'),
-                optional($u->last_login_at)?->format('Y-m-d H:i'),
-                optional($u->created_at)?->format('Y-m-d H:i'),
+                $u->status ? 'active' : 'inactive',
+                optional($u->suspended_until)->format('Y-m-d H:i'),
+                optional($u->last_login_at)->format('Y-m-d H:i'),
+                optional($u->created_at)->format('Y-m-d H:i'),
                 $esp,
             ];
         }
@@ -452,7 +564,7 @@ class AdminController extends Controller
         $sheet->setTitle('Usuarios');
 
         $writer = new Xlsx($spreadsheet);
-        $filename = 'usuarios'.($role?'-'.$role:'').'_'.now()->format('Ymd_His').'.xlsx';
+        $filename = 'usuarios'.($role ? '-'.$role : '').'_'.now()->format('Ymd_His').'.xlsx';
 
         return response()->streamDownload(function() use ($writer) {
             $writer->save('php://output');
@@ -465,11 +577,15 @@ class AdminController extends Controller
     {
         $buscar = trim((string)$request->get('buscar',''));
         $role   = $request->string('role')->lower()->value();
+        if (in_array($role, ['administrador', 'superadmin'], true)) {
+            return back()->withErrors(['No puedes exportar cuentas Administrador o Superadmin.']);
+        }
 
         $users = User::with(['roles','especialidades'])
             ->orderBy('id','desc')
             ->search($buscar)
             ->role($role)
+            ->whereDoesntHave('roles', fn ($q) => $q->whereIn('name', ['administrador', 'superadmin']))
             ->get();
 
         $html = view('admin.users.usuarios-pdf', compact('users','role'))->render();
@@ -483,7 +599,7 @@ class AdminController extends Controller
         $dompdf->setPaper('A4','portrait');
         $dompdf->render();
 
-        $filename = 'usuarios'.($role?'-'.$role:'').'_'.now()->format('Ymd_His').'.pdf';
+        $filename = 'usuarios'.($role ? '-'.$role : '').'_'.now()->format('Ymd_His').'.pdf';
 
         return response($dompdf->output(), 200, [
             'Content-Type'        => 'application/pdf',

@@ -1,18 +1,9 @@
-const themeToggler = document.querySelector('.right .theme-toggler');
-const openSidebarBtn = document.getElementById('menu_bar');
+const themeToggler = document.querySelector('.theme-toggler');
 
-themeToggler?.addEventListener('click', () => {
+themeToggler.addEventListener('click', () => {
   document.body.classList.toggle('dark-theme-variables');
-  themeToggler.querySelector('span:nth-child(1)')?.classList.toggle('active');
-  themeToggler.querySelector('span:nth-child(2)')?.classList.toggle('active');
-});
-
-openSidebarBtn?.addEventListener('click', () => {
-  document.querySelector('aside')?.classList.add('is-open');
-});
-
-document.querySelector('aside .top .close')?.addEventListener('click', () => {
-  document.querySelector('aside')?.classList.remove('is-open');
+  themeToggler.querySelector('span:nth-child(1)').classList.toggle('active');
+  themeToggler.querySelector('span:nth-child(2)').classList.toggle('active');
 });
 
 document.addEventListener('DOMContentLoaded', () => {

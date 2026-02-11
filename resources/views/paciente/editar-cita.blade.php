@@ -1,109 +1,82 @@
 {{-- resources/views/paciente/editar-cita.blade.php --}}
 @extends('layouts.paciente')
-@section('title', 'Reagendar Cita')
+@section('title', 'Reagendar cita')
 @section('body-class', 'paciente-body--editar-cita')
+@section('header-title','Reagendar cita')
+@section('header-subtitle','Ajusta la fecha y hora')
 
-@push('head')
-    @vite('resources/css/paciente/editar-cita.css')
+@push('scripts')
+    @vite('resources/js/paciente/editar-cita.js')
 @endpush
 
 @section('main')
-    <div class="editar-cita-page">
-        <div class="card">
-            <div class="card-header">
-                <div class="header-panel">
-                    {{-- Botón regresar como flecha --}}
-                    <a href="{{ route('paciente.citas') }}" class="back-btn" aria-label="Regresar">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
-                        </svg>
-                    </a>
-                    <div>
-                        <h1 class="title">Reagendar Cita</h1>
-                        <p class="subtitle">Selecciona una nueva fecha y hora para tu atención.</p>
+    <div class="space-y-6">
+        <section class="card p-6">
+            <div>
+                <p class="text-xs uppercase tracking-widest text-slate-500">Citas</p>
+                <h1 class="mt-2 text-2xl font-semibold text-slate-900">Reagendar cita</h1>
+                <p class="text-slate-600">Modifica la fecha y hora de tu cita según tu disponibilidad.</p>
+            </div>
+        </section>
+
+        <div class="card p-6">
+            @if ($errors->has('error'))
+                <x-ui.alert tone="error">{{ $errors->first('error') }}</x-ui.alert>
+            @endif
+
+            <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                <div class="card p-4">
+                    <div class="text-xs uppercase tracking-widest text-slate-400">Doctor</div>
+                    <div class="text-sm font-semibold text-slate-900">{{ optional($cita->doctor)->name ?? 'Sin asignar' }}</div>
+                </div>
+                <div class="card p-4">
+                    <div class="text-xs uppercase tracking-widest text-slate-400">Especialidad</div>
+                    <div class="text-sm font-semibold text-slate-900">{{ optional($cita->especialidad)->nombre ?? '—' }}</div>
+                </div>
+                <div class="card p-4">
+                    <div class="text-xs uppercase tracking-widest text-slate-400">Estado</div>
+                    <div class="text-sm">
+                        <span class="badge {{ $cita->estado === 'pendiente' ? 'warning' : ($cita->estado === 'confirmada' ? 'info' : ($cita->estado === 'realizada' ? 'success' : 'danger')) }}">
+                            {{ $cita->estado === 'pendiente' ? 'En revisión' : ($cita->estado === 'no_se_presento' ? 'No se presentó' : ucfirst($cita->estado)) }}
+                        </span>
                     </div>
                 </div>
             </div>
 
-            <div class="card-body">
-                @if ($errors->has('error'))
-                    <div class="alert">{{ $errors->first('error') }}</div>
-                @endif
+            <form method="POST" action="{{ route('paciente.editar-cita.update', $cita->id) }}"
+                  data-slots-url="{{ route('api.doctor.slots',['doctor'=>$cita->doctor_id,'fecha'=>'__FECHA__']) }}"
+                  data-doctor="{{ $cita->doctor_id }}"
+                  data-old-hora="{{ old('hora', \Carbon\Carbon::parse($cita->hora)->format('H:i')) }}"
+                  class="mt-6 grid gap-4 md:grid-cols-2">
+                @csrf
+                @method('PUT')
 
-                <div class="meta">
-                    <div class="kpi">
-                        <div class="label">Doctor</div>
-                        <div class="value">{{ $cita->doctor->name ?? 'Sin asignar' }}</div>
-                    </div>
-                    <div class="kpi">
-                        <div class="label">Especialidad</div>
-                        <div class="value">{{ $cita->especialidad->nombre ?? '—' }}</div>
-                    </div>
-                    <div class="kpi">
-                        <div class="label">Estado</div>
-                        <div class="value">
-                            <span class="pill {{ $cita->estado === 'pendiente' ? 'pending' : ($cita->estado === 'confirmada' ? 'info' : ($cita->estado === 'realizada' ? 'success' : 'danger')) }}">
-                                {{ ucfirst($cita->estado) }}
-                            </span>
-                        </div>
-                    </div>
+                <div>
+                    <label for="fecha" class="form-label">Nueva fecha</label>
+                    <input id="fecha" type="date" name="fecha"
+                           value="{{ old('fecha', $cita->fecha ? $cita->fecha->format('Y-m-d') : '') }}"
+                           min="{{ \Carbon\Carbon::now('America/Guayaquil')->toDateString() }}"
+                           required class="form-input">
+                    @error('fecha')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
+                    <div class="text-xs text-slate-500">Solo fechas futuras o la actual.</div>
                 </div>
 
-                <form method="POST" action="{{ route('paciente.editar-cita.update', $cita->id) }}">
-                    @csrf
-                    @method('PUT')
+                <div>
+                    <label for="hora" class="form-label">Nueva Hora</label>
+                    <select id="hora" name="hora" required class="form-select">
+                        <option value="">Selecciona una hora</option>
+                        <option value="{{ old('hora', \Carbon\Carbon::parse($cita->hora)->format('H:i')) }}" selected>
+                            {{ old('hora', \Carbon\Carbon::parse($cita->hora)->format('H:i')) }}
+                        </option>
+                    </select>
+                    @error('hora')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
+                    <div class="text-xs text-slate-500" id="horaHelp">Formato 24 horas. Se muestran solo horarios disponibles.</div>
+                </div>
 
-                    <div class="form-grid">
-                        <div>
-                            <label for="fecha">Nueva Fecha</label>
-                            <div class="input">
-                                <span class="icon" aria-hidden="true">
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <rect x="3" y="4" width="18" height="18" rx="3"></rect>
-                                        <path d="M16 2v4M8 2v4M3 10h18"></path>
-                                    </svg>
-                                </span>
-                                <input
-                                    id="fecha"
-                                    type="date"
-                                    name="fecha"
-                                    value="{{ old('fecha', $cita->fecha ? $cita->fecha->format('Y-m-d') : '') }}"
-                                    min="{{ \Carbon\Carbon::now('America/Guayaquil')->toDateString() }}"
-                                    required
-                                >
-                            </div>
-                            @error('fecha')<span class="error">{{ $message }}</span>@enderror
-                            <div class="help">Solo fechas futuras o la actual.</div>
-                        </div>
-
-                        <div>
-                            <label for="hora">Nueva Hora</label>
-                            <div class="input">
-                                <span class="icon" aria-hidden="true">
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <circle cx="12" cy="12" r="9"></circle>
-                                        <path d="M12 7v5l3 3"></path>
-                                    </svg>
-                                </span>
-                                <input
-                                    id="hora"
-                                    type="time"
-                                    name="hora"
-                                    value="{{ old('hora', \Carbon\Carbon::parse($cita->hora)->format('H:i')) }}"
-                                    step="1800"
-                                    required
-                                >
-                            </div>
-                            @error('hora')<span class="error">{{ $message }}</span>@enderror
-                            <div class="help">Formato 24 horas. Intervalos de 30 minutos (08:00, 08:30, 09:00...).</div>
-                        </div>
-                    </div>
-
-                    <div class="actions">
-                        <button type="submit" class="btn btn-primary">Guardar cambios</button>
-                    </div>
-                </form>
-            </div>
+                <div class="md:col-span-2 flex justify-end">
+                    <button type="submit" class="btn btn-primary">Guardar cambios</button>
+                </div>
+            </form>
         </div>
     </div>
 @endsection

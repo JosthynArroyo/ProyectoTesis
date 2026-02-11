@@ -1,0 +1,47 @@
+@php
+  $pendingPersonalizacion = \App\Models\FeatureAccessRequest::forFeature('personalizacion')->pending()->count();
+@endphp
+
+<aside class="dashboard-sidebar fixed top-0 bottom-0 left-0 z-40 h-screen -translate-x-full overflow-y-auto border-r border-slate-200/70 bg-white px-4 pb-6 pt-0 shadow-xl lg:translate-x-0 lg:shrink-0">
+    <div class="top flex items-center justify-between">
+        <a href="{{ route('superadmin.dashboard') }}" class="flex items-center gap-3">
+            <div>
+                <p class="text-xs uppercase tracking-wide text-slate-500">Panel</p>
+                <p class="text-sm font-semibold text-slate-800">Superadmin</p>
+            </div>
+        </a>
+        <button class="close btn btn-ghost px-2 lg:hidden" aria-label="Cerrar menú">
+            <i class="ri-close-line text-lg"></i>
+        </button>
+    </div>
+
+    <nav class="mt-7 flex flex-col gap-1.5 text-[0.95rem] font-semibold leading-6">
+        <a href="{{ route('superadmin.dashboard') }}" class="flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors {{ request()->routeIs('superadmin.dashboard') ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-50' }}">
+            <i class="ri-dashboard-line text-lg"></i> Inicio
+        </a>
+
+        <a href="{{ route('superadmin.admins.index') }}" class="flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors {{ request()->routeIs('superadmin.admins.*') ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-50' }}">
+            <i class="ri-shield-user-line text-lg"></i> Administradores
+        </a>
+
+        <a href="{{ route('superadmin.solicitudes.personalizacion.index') }}" class="flex min-h-[44px] items-center justify-between gap-3 rounded-xl px-3 py-2.5 transition-colors {{ request()->routeIs('superadmin.solicitudes.personalizacion.*') ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-50' }}">
+            <span class="flex items-center gap-3"><i class="ri-notification-4-line text-lg"></i> Solicitudes</span>
+            @if($pendingPersonalizacion > 0)
+              <span class="badge warning">{{ $pendingPersonalizacion }}</span>
+            @endif
+        </a>
+
+        <a href="{{ route('superadmin.personalizacion.bienvenida.edit') }}" class="flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors {{ request()->routeIs('superadmin.personalizacion.*') ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-50' }}">
+            <i class="ri-palette-line text-lg"></i> Personalización
+        </a>
+
+        <a href="{{ route('superadmin.maintenance.edit') }}" class="flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors {{ request()->routeIs('superadmin.maintenance.*') ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-50' }}">
+            <i class="ri-tools-line text-lg"></i> Mantenimiento
+        </a>
+
+        <form id="logout-form" action="{{ route('salir') }}" method="POST" class="hidden">@csrf</form>
+        <a href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();" class="mt-5 flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 text-rose-600 transition-colors hover:bg-rose-50">
+            <i class="ri-logout-circle-r-line text-lg"></i> Cerrar sesión
+        </a>
+    </nav>
+</aside>

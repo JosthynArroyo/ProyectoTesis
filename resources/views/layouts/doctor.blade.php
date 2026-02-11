@@ -1,54 +1,40 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" class="dashboard-root">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title', 'Panel del Doctor')</title>
-    <link rel="icon" type="image/jpg" href="{{ asset('img/LogoClinica.jpg') }}">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Sharp" />
+    @include('layouts.partials.favicon')
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2family=Sora:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.2.0/remixicon.min.css">
     @stack('head')
-    @vite(['resources/css/dashboards/doctor.css', 'resources/js/sidebar-toggle.js'])
+    @vite(['resources/css/app.css','resources/js/app.js'])
     @stack('styles')
 </head>
-<body class="@yield('body-class')">
-    @php($hasRight = $__env->hasSection('right'))
-    @php($activeSidebar = trim($__env->yieldContent('activeSidebar')))
-    @php($user = Auth::user())
-
-    <div class="container dashboard-container @if($hasRight) has-right @else has-no-right @endif">
+@php($hasRight = $__env->hasSection('right'))
+@php($activeSidebar = trim($__env->yieldContent('activeSidebar')))
+@php($headerTitle = trim($__env->yieldContent('header-title')) ?: 'Panel médico')
+@php($headerSubtitle = trim($__env->yieldContent('header-subtitle')) ?: 'Gestión de consultas y agenda')
+<body class="min-h-screen text-slate-900 dashboard-shell @yield('body-class')">
+    <div class="min-h-screen lg:flex dashboard-layout">
         @include('doctor.partials.sidebar', ['active' => $activeSidebar])
+        <div class="fixed inset-0 z-30 hidden bg-slate-900/50 backdrop-blur-sm lg:hidden" data-sidebar-overlay></div>
 
-        <div class="layout-content">
-            <main>
-                @yield('content')
-            </main>
+        <div class="flex min-h-screen flex-1 flex-col">
+            <x-layout.dashboard-header :title="$headerTitle" :subtitle="$headerSubtitle" role="Doctor" :profile-route="route('doctor.perfil.edit')" />
 
-            {{-- Mostrar el panel derecho SOLO si la vista define @section('right') --}}
-            @if($hasRight)
-                <div class="right">
-                    <div class="top">
-                        <button id="menu_bar">
-                            <span class="material-symbols-sharp">menu</span>
-                        </button>
-                        <div class="theme-toggler">
-                            <span class="material-symbols-sharp active">light_mode</span>
-                            <span class="material-symbols-sharp">dark_mode</span>
-                        </div>
-                        <div class="profile">
-                            <div class="info">
-                                <p><b>{{ $user?->name ?? 'Usuario' }}</b></p>
-                                <p>Panel Médico</p>
-                            </div>
-                            <div class="profile-photo">
-                                <img src="{{ $user && $user->avatar ? asset('storage/' . $user->avatar) : asset('img/doctor1.jpg') }}" alt="Foto del doctor">
-                            </div>
-                        </div>
+            <div class="dashboard-content flex-1 px-4 pb-10 lg:px-8">
+                @if($hasRight)
+                    <div class="grid gap-6 lg:grid-cols-[1fr_320px]">
+                        <main class="space-y-6">@yield('content')</main>
+                        <aside class="space-y-4">@yield('right')</aside>
                     </div>
-
-                    @yield('right')
-                </div>
-            @endif
+                @else
+                    <main class="space-y-6">@yield('content')</main>
+                @endif
+            </div>
         </div>
     </div>
 

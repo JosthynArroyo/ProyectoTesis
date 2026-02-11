@@ -2,7 +2,10 @@ import * as faceapi from 'face-api.js';
 
 let loaded = false;
 let currentPath = '';
-const tinyFaceOptions = new faceapi.TinyFaceDetectorOptions();
+const tinyFaceOptions = new faceapi.TinyFaceDetectorOptions({
+  inputSize: 224,
+  scoreThreshold: 0.4,
+});
 
 function normalizeModelsPath(path = '/models') {
   if (!path.startsWith('http') && !path.startsWith('/')) {
@@ -73,6 +76,11 @@ export async function initFaceApi(modelsPath = '/models') {
   loaded = true;
 }
 
+export async function detectFaces(videoElement) {
+  await ensureVideoReady(videoElement);
+  return faceapi.detectAllFaces(videoElement, tinyFaceOptions).withFaceLandmarks().withFaceDescriptors();
+}
+
 export async function captureDescriptor(videoElement, options = {}) {
   const { timeout = 10000, retryInterval = 300 } = options;
 
@@ -93,5 +101,5 @@ export async function captureDescriptor(videoElement, options = {}) {
     await wait(retryInterval);
   }
 
-  throw new Error('No se detecto ningun rostro. Acercate a la camara y verifica la iluminacion.');
+  throw new Error('No se detecto rostro.');
 }

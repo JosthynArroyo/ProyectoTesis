@@ -1,139 +1,148 @@
 @extends('layouts.paciente')
-@section('title', 'Agendar Cita')
+@section('title', 'Agendar cita')
 @section('body-class', 'paciente-body--crear-cita')
+@section('header-title','Agendar cita')
+@section('header-subtitle','Selecciona especialidad y horario')
 
-@push('head')
-    @vite([
-        'resources/css/paciente/crear-cita.css',
-        'resources/js/sidebar-toggle.js',
-        'resources/js/paciente/crear-cita.js'
-    ])
+@push('scripts')
+    @vite('resources/js/paciente/crear-cita.js')
 @endpush
 
 @section('main')
-<div class="crear-cita-page">
-    <div class="mobile-topbar">
-        <button id="menu_bar" aria-label="Abrir menú"><span class="material-symbols-sharp">menu</span></button>
-    </div>
+<div class="space-y-6">
+    <section class="card p-6">
+        <div>
+            <p class="text-xs uppercase tracking-widest text-slate-500">Agendar</p>
+            <h1 class="mt-2 text-2xl font-semibold text-slate-900">Agendar nueva cita</h1>
+            <p class="text-slate-600">Elige especialidad, doctor, fecha y hora disponibles.</p>
+        </div>
+    </section>
 
-    <div class="card">
-        <div class="card-header">
-            <div class="header-panel">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                    <rect x="3" y="4" width="18" height="18" rx="3"></rect>
-                    <path d="M16 2v4M8 2v4M3 10h18"></path>
-                </svg>
+    @php($selectedEsp = old('especialidad_id', $prefEspecialidad ?? ''))
+    @php($labExamenes = $labExamenes ?? [])
+    <div class="card p-6">
+        @if ($errors->has('error'))
+            <x-ui.alert tone="error">{{ $errors->first('error') }}</x-ui.alert>
+        @endif
+
+        <form method="POST" action="{{ route('paciente.crear-cita.store') }}"
+              data-endpoint-template="{{ route('especialidades.doctores', ['especialidad' => 'ESP_ID']) }}"
+              data-old-esp="{{ $selectedEsp }}"
+              data-old-doc="{{ old('doctor_id') }}"
+              data-old-hora="{{ old('hora') }}"
+              data-tarifa-template="{{ route('api.tarifa.doctor.show', ['id' => 'DOC_ID']) }}"
+              data-slots-template="{{ url('/api/doctor/DOC_ID/fecha/FECHA/slots') }}"
+              data-laboratorio-id="{{ $laboratorioId ?? '' }}" class="space-y-6">
+            @csrf
+
+            <div class="grid gap-4 md:grid-cols-2">
+                <div class="md:col-span-2">
+                    <label for="especialidad_id" class="form-label">Especialidad</label>
+                    <select id="especialidad_id" name="especialidad_id" required class="form-select">
+                        <option value="">Seleccione una especialidad</option>
+                        @foreach($especialidades as $esp)
+                            <option value="{{ $esp->id }}" {{ (string)$selectedEsp === (string)$esp->id ? 'selected' : '' }}>
+                                {{ $esp->nombre }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('especialidad_id')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
+                </div>
+
+                <div class="md:col-span-2">
+                    <label for="doctor_id" class="form-label">Doctor</label>
+                    <select id="doctor_id" name="doctor_id" required disabled class="form-select">
+                        <option value="">{{ old('especialidad_id') ? 'Cargando…' : 'Seleccione una especialidad primero' }}</option>
+                    </select>
+                    @error('doctor_id')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
+
+                    <div id="tarifaPanel" class="mt-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2 text-sm text-slate-600" aria-live="polite" hidden>
+                        <span id="tarifaLabel">Tarifa: —</span>
+                    </div>
+                </div>
+
                 <div>
-                    <h1 class="title">Agendar Nueva Cita</h1>
-                    <p class="subtitle">Elige especialidad, doctor, fecha y hora disponibles.</p>
+                    <label for="fecha" class="form-label">Fecha</label>
+                    <input id="fecha" type="date" name="fecha"
+                           value="{{ old('fecha') }}"
+                           min="{{ \Carbon\Carbon::now('America/Guayaquil')->toDateString() }}" required class="form-input">
+                    @error('fecha')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
+                    <div class="text-xs text-slate-500">Solo se permiten fechas a partir de hoy.</div>
+                </div>
+
+                <div>
+                    <label for="hora" class="form-label">Hora</label>
+                    <select id="hora" name="hora" required disabled class="form-select">
+                        <option value="">{{ old('doctor_id') && old('fecha') ? 'Cargando horarios…' : 'Seleccione doctor y fecha' }}</option>
+                    </select>
+                    @error('hora')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
+                    <div id="horaHelp" class="text-xs text-slate-500">Formato de 24 horas. Se listan solo los horarios disponibles.</div>
+                </div>
+
+                <div class="md:col-span-2 lab-section" id="labSection" hidden>
+                    <div class="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
+                        <div class="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                                <h3 class="text-sm font-semibold text-slate-900">Examen de laboratorio</h3>
+                                <p class="text-xs text-slate-500">Selecciona el examen y confirma la solicitud.</p>
+                            </div>
+                        </div>
+                        <div class="mt-4 grid gap-4 md:grid-cols-2">
+                            <div>
+                                <label for="tipo_examen" class="form-label">Tipo de examen</label>
+                                <select id="tipo_examen" name="tipo_examen" data-lab-required data-prep-empty="Selecciona un examen para ver la preparación." class="form-select">
+                                    <option value="">Seleccionar examen</option>
+                                    @foreach($labExamenes as $examen)
+                                        @php($value = $examen['value'] ?? '')
+                                        @php($prep = $examen['prep'] ?? [])
+                                        <option value="{{ $value }}"
+                                            {{ old('tipo_examen') === $value ? 'selected' : '' }}
+                                            data-prep-ayuno="{{ $prep['ayuno'] ?? '' }}"
+                                            data-prep-agua="{{ $prep['agua'] ?? '' }}"
+                                            data-prep-horario="{{ $prep['horario'] ?? '' }}">
+                                            {{ $examen['label'] ?? $value }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @error('tipo_examen')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
+                            </div>
+
+                            <div>
+                                <label for="prioridad" class="form-label">Prioridad (si aplica)</label>
+                                <select id="prioridad" name="prioridad" data-lab-required class="form-select">
+                                    <option value="normal" {{ old('prioridad', 'normal') === 'normal' ? 'selected' : '' }}>Normal</option>
+                                    <option value="urgente" {{ old('prioridad') === 'urgente' ? 'selected' : '' }}>Urgente</option>
+                                </select>
+                                @error('prioridad')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
+                            </div>
+
+                            <div class="md:col-span-2 grid gap-3 sm:grid-cols-2">
+                                <div class="rounded-2xl border border-slate-200 bg-white/90 p-3">
+                                    <h4 class="text-xs font-semibold text-slate-700">Preparación previa</h4>
+                                    <ul class="mt-2 space-y-1 text-xs text-slate-500">
+                                        <li><strong>Ayuno:</strong> <span data-lab-prep="ayuno">Selecciona un examen para ver la preparación.</span></li>
+                                        <li><strong>Agua:</strong> <span data-lab-prep="agua">Selecciona un examen para ver la preparación.</span></li>
+                                        <li><strong>Horario recomendado:</strong> <span data-lab-prep="horario">Selecciona un examen para ver la preparación.</span></li>
+                                    </ul>
+                                </div>
+
+                                <div class="rounded-2xl border border-slate-200 bg-white/90 p-3">
+                                    <h4 class="text-xs font-semibold text-slate-700">Indicaciones del médico</h4>
+                                    <p class="mt-2 text-xs text-slate-500" data-lab-indicaciones>Sin indicaciones adicionales.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <div class="card-body">
-            @if ($errors->has('error'))
-                <div class="alert">{{ $errors->first('error') }}</div>
-            @endif
-
-            <form method="POST" action="{{ route('paciente.crear-cita.store') }}"
-                  data-endpoint-template="{{ route('especialidades.doctores', ['especialidad' => 'ESP_ID']) }}"
-                  data-old-esp="{{ old('especialidad_id') }}"
-                  data-old-doc="{{ old('doctor_id') }}"
-                  data-old-hora="{{ old('hora') }}"
-                  data-tarifa-template="{{ route('api.tarifa.doctor.show', ['id' => 'DOC_ID']) }}"
-                  {{-- plantilla correcta: usa DOC_ID y FECHA --}}
-                  data-slots-template="{{ url('/api/doctor/DOC_ID/fecha/FECHA/slots') }}">
-                @csrf
-
-                <div class="form-grid">
-                    <div class="col-span-2">
-                        <label for="especialidad_id">Especialidad</label>
-                        <div class="input">
-                            <span class="icon" aria-hidden="true">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"></path></svg>
-                            </span>
-                            <select id="especialidad_id" name="especialidad_id" required>
-                                <option value="">Seleccione una especialidad</option>
-                                @foreach($especialidades as $esp)
-                                    <option value="{{ $esp->id }}" {{ old('especialidad_id') == $esp->id ? 'selected' : '' }}>
-                                        {{ $esp->nombre }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            <span class="arrow" aria-hidden="true">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
-                            </span>
-                        </div>
-                        @error('especialidad_id')<span class="error">{{ $message }}</span>@enderror
-                    </div>
-
-                    <div class="col-span-2">
-                        <label for="doctor_id">Doctor</label>
-                        <div class="input">
-                            <span class="icon" aria-hidden="true">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                                    <circle cx="12" cy="7" r="4"/>
-                                </svg>
-                            </span>
-                            <select id="doctor_id" name="doctor_id" required disabled>
-                                <option value="">{{ old('especialidad_id') ? 'Cargando…' : 'Seleccione una especialidad primero' }}</option>
-                            </select>
-                            <span class="arrow" aria-hidden="true">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
-                            </span>
-                        </div>
-                        @error('doctor_id')<span class="error">{{ $message }}</span>@enderror
-
-                        <div id="tarifaPanel" class="tarifa-panel" aria-live="polite" hidden>
-                            <span id="tarifaLabel">Tarifa: —</span>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label for="fecha">Fecha</label>
-                        <div class="input">
-                            <span class="icon" aria-hidden="true">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <rect x="3" y="4" width="18" height="18" rx="3"></rect>
-                                    <path d="M16 2v4M8 2v4M3 10h18"></path>
-                                </svg>
-                            </span>
-                            <input id="fecha" type="date" name="fecha"
-                                   value="{{ old('fecha') }}"
-                                   min="{{ \Carbon\Carbon::now('America/Guayaquil')->toDateString() }}" required>
-                        </div>
-                        @error('fecha')<span class="error">{{ $message }}</span>@enderror
-                        <div class="help">Solo se permiten fechas a partir de hoy.</div>
-                    </div>
-
-                    <div>
-                        <label for="hora">Hora</label>
-                        <div class="input">
-                            <span class="icon" aria-hidden="true">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <circle cx="12" cy="12" r="9"></circle>
-                                    <path d="M12 7v5l3 3"></path>
-                                </svg>
-                            </span>
-                            <select id="hora" name="hora" required disabled>
-                                <option value="">{{ old('doctor_id') && old('fecha') ? 'Cargando horarios…' : 'Seleccione doctor y fecha' }}</option>
-                            </select>
-                            <span class="arrow" aria-hidden="true">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
-                            </span>
-                        </div>
-                        @error('hora')<span class="error">{{ $message }}</span>@enderror
-                        <div id="horaHelp" class="help">Formato de 24 horas. Se listan solo los horarios disponibles.</div>
-                    </div>
-                </div>
-
-                <div class="actions">
-                    <button type="submit" class="btn btn-primary">Registrar Cita</button>
+            <x-ui.form-actions>
+                <x-slot:left>
                     <a href="{{ route('paciente.citas') }}" class="btn btn-ghost">Cancelar</a>
-                </div>
-            </form>
-        </div>
+                </x-slot>
+                <button type="submit" class="btn btn-primary">Registrar cita</button>
+            </x-ui.form-actions>
+        </form>
     </div>
 </div>
 @endsection

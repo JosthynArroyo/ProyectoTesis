@@ -7,11 +7,11 @@ import { initFaceApi, captureDescriptor } from './face-auth.js';
   const tabButtons = modal.querySelectorAll('[data-login-tab]');
   const panels = modal.querySelectorAll('[data-login-panel]');
   const facePanel = modal.querySelector('[data-login-panel="face"]');
-  const faceForm = facePanel?.querySelector('#faceLoginForm');
-  const statusEl = faceForm?.querySelector('[data-face-status]');
-  const video = faceForm?.querySelector('#faceLoginVideo');
-  const submitButton = faceForm?.querySelector('#faceLoginSubmit');
-  const modelsUrl = faceForm?.dataset.modelsUrl || '/models';
+  const faceForm = facePanel.querySelector('#faceLoginForm');
+  const statusEl = faceForm.querySelector('[data-face-status]');
+  const video = faceForm.querySelector('#faceLoginVideo');
+  const submitButton = faceForm.querySelector('#faceLoginSubmit');
+  const modelsUrl = faceForm.dataset.modelsUrl || '/models';
 
   let stream = null;
 
@@ -55,7 +55,7 @@ import { initFaceApi, captureDescriptor } from './face-auth.js';
     btn.addEventListener('click', () => switchTab(btn.dataset.loginTab));
   });
 
-  faceForm?.addEventListener('submit', async (event) => {
+  faceForm.addEventListener('submit', async (event) => {
     event.preventDefault();
     if (!faceForm || !statusEl || !submitButton) return;
 
