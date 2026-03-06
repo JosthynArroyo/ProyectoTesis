@@ -18,6 +18,19 @@
         </div>
     </section>
 
+    <section class="card p-4">
+        <div class="flex items-center justify-between gap-3">
+            <p class="text-sm font-semibold text-slate-900">Progreso del formulario</p>
+            <span class="text-xs text-slate-500" data-step-summary>Paso 1 de 4</span>
+        </div>
+        <ol class="mt-3 grid gap-2 sm:grid-cols-4" data-cita-stepper>
+            <li class="rounded-xl border border-teal-200 bg-teal-50 px-3 py-2 text-xs font-semibold text-teal-700" data-step-item="1">1. Especialidad</li>
+            <li class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-500" data-step-item="2">2. Doctor</li>
+            <li class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-500" data-step-item="3">3. Fecha y hora</li>
+            <li class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-500" data-step-item="4">4. Motivo y confirmar</li>
+        </ol>
+    </section>
+
     @php($selectedEsp = old('especialidad_id', $prefEspecialidad ?? ''))
     @php($labExamenes = $labExamenes ?? [])
     <div class="card p-6">
@@ -38,7 +51,7 @@
             <div class="grid gap-4 md:grid-cols-2">
                 <div class="md:col-span-2">
                     <label for="especialidad_id" class="form-label">Especialidad</label>
-                    <select id="especialidad_id" name="especialidad_id" required class="form-select">
+                    <select id="especialidad_id" name="especialidad_id" required class="form-select" data-step-field="1">
                         <option value="">Seleccione una especialidad</option>
                         @foreach($especialidades as $esp)
                             <option value="{{ $esp->id }}" {{ (string)$selectedEsp === (string)$esp->id ? 'selected' : '' }}>
@@ -51,7 +64,7 @@
 
                 <div class="md:col-span-2">
                     <label for="doctor_id" class="form-label">Doctor</label>
-                    <select id="doctor_id" name="doctor_id" required disabled class="form-select">
+                    <select id="doctor_id" name="doctor_id" required disabled class="form-select" data-step-field="2">
                         <option value="">{{ old('especialidad_id') ? 'Cargando…' : 'Seleccione una especialidad primero' }}</option>
                     </select>
                     @error('doctor_id')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
@@ -65,18 +78,39 @@
                     <label for="fecha" class="form-label">Fecha</label>
                     <input id="fecha" type="date" name="fecha"
                            value="{{ old('fecha') }}"
-                           min="{{ \Carbon\Carbon::now('America/Guayaquil')->toDateString() }}" required class="form-input">
+                           min="{{ \Carbon\Carbon::now('America/Guayaquil')->toDateString() }}" required class="form-input" data-step-field="3">
                     @error('fecha')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
                     <div class="text-xs text-slate-500">Solo se permiten fechas a partir de hoy.</div>
                 </div>
 
                 <div>
                     <label for="hora" class="form-label">Hora</label>
-                    <select id="hora" name="hora" required disabled class="form-select">
+                    <select id="hora" name="hora" required disabled class="form-select" data-step-field="3">
                         <option value="">{{ old('doctor_id') && old('fecha') ? 'Cargando horarios…' : 'Seleccione doctor y fecha' }}</option>
                     </select>
                     @error('hora')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
                     <div id="horaHelp" class="text-xs text-slate-500">Formato de 24 horas. Se listan solo los horarios disponibles.</div>
+                </div>
+
+                <div class="md:col-span-2">
+                    <label for="motivo_consulta" class="form-label">Motivo de consulta</label>
+                    <input id="motivo_consulta"
+                           type="text"
+                           name="motivo_consulta"
+                           value="{{ old('motivo_consulta') }}"
+                           required
+                           minlength="3"
+                           maxlength="80"
+                           class="form-input"
+                           data-step-field="4"
+                           placeholder="Ej: dolor de garganta">
+                    @error('motivo_consulta')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
+                    <div class="mt-1 text-xs text-slate-500">Campo obligatorio, breve y en una sola linea (3-80 caracteres).</div>
+                    <div class="mt-2 flex flex-wrap gap-2" data-motivo-chip-group data-target="#motivo_consulta">
+                        @foreach(['Fiebre','Dolor de garganta','Dolor abdominal','Tos','Dolor de cabeza','Nauseas','Diarrea','Malestar general'] as $chip)
+                            <button type="button" class="chip" data-motivo-chip="{{ $chip }}">{{ $chip }}</button>
+                        @endforeach
+                    </div>
                 </div>
 
                 <div class="md:col-span-2 lab-section" id="labSection" hidden>

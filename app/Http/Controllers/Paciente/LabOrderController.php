@@ -32,6 +32,7 @@ class LabOrderController extends Controller
                 'lab_test_ids' => $missingPrep->pluck('id')->all(),
             ]);
         }
+
         $medicalOrders = MedicalOrder::with(['labTest', 'doctor'])
             ->where('patient_id', $patient->id)
             ->where('status', MedicalOrder::STATUS_PENDIENTE)
@@ -42,7 +43,7 @@ class LabOrderController extends Controller
             ->get();
 
         $defaultSource = old('source');
-        if (!$defaultSource) {
+        if (! $defaultSource) {
             $defaultSource = $medicalOrders->isNotEmpty()
                 ? LabOrder::SOURCE_MEDICAL_ORDER
                 : LabOrder::SOURCE_ROUTINE;
@@ -116,7 +117,7 @@ class LabOrderController extends Controller
                 ->firstOrFail();
 
             $labTest = $medicalOrder->labTest;
-            if (!$labTest || !$labTest->activo) {
+            if (! $labTest || ! $labTest->activo) {
                 return back()->withErrors(['medical_order_id' => 'La orden medica no tiene un examen valido.'])->withInput();
             }
 
@@ -130,7 +131,8 @@ class LabOrderController extends Controller
             $labTest = LabTest::where('id', $validated['lab_test_id'])
                 ->where('activo', true)
                 ->firstOrFail();
-            if ($labTest->requiere_orden || !$labTest->es_rutina || $labTest->tipo !== 'rutina') {
+
+            if ($labTest->requiere_orden || ! $labTest->es_rutina || $labTest->tipo !== 'rutina') {
                 return back()->withErrors([
                     'lab_test_id' => 'Este examen requiere orden medica. Cambia a "Con orden medica" o selecciona un examen de rutina.',
                 ])->withInput();
@@ -145,10 +147,13 @@ class LabOrderController extends Controller
                 'patient_id' => $patientId,
             ]);
         }
+
         $indicacionesSnapshot = trim((string) $labTest->indicaciones_default);
         if ($indicacionesSnapshot === '') {
             $indicacionesSnapshot = 'Sin indicaciones adicionales para este examen.';
         }
+
+        $labOrderId = null;
 
         DB::transaction(function () use (
             $patientId,
@@ -159,7 +164,8 @@ class LabOrderController extends Controller
             $medicalOrder,
             $labTest,
             $prepSnapshot,
-            $indicacionesSnapshot
+            $indicacionesSnapshot,
+            &$labOrderId
         ) {
             $labOrder = LabOrder::create([
                 'patient_id' => $patientId,
@@ -170,6 +176,8 @@ class LabOrderController extends Controller
                 'status' => LabOrder::STATUS_PENDIENTE_TOMA,
                 'doctor_notes' => $doctorNotes,
             ]);
+
+            $labOrderId = $labOrder->id;
 
             LabOrderItem::create([
                 'lab_order_id' => $labOrder->id,
@@ -183,7 +191,10 @@ class LabOrderController extends Controller
             }
         });
 
-        return redirect()->route('paciente.dashboard')
-            ->with('success', 'Solicitud de examen registrada.');
+        return redirect()->route('paciente.laboratorio.index')
+            ->with('success', 'Solicitud de examen registrada.')
+            ->with('success_action_url', route('paciente.laboratorio.index'))
+            ->with('success_action_label', 'Ver mis ordenes')
+            ->with('highlight_lab_item', $labOrderId ? 'lab-order-'.$labOrderId : null);
     }
 }

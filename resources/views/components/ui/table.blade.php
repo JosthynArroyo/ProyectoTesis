@@ -2,7 +2,7 @@
     'head' => null,
 ])
 
-<div {{ $attributes->merge(['class' => 'table-shell']) }}>
+<div {{ $attributes->merge(['class' => 'table-shell table-responsive-x']) }}>
     <table class="table">
         @if(isset($head))
             <thead>

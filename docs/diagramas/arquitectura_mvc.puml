@@ -1,0 +1,73 @@
+@startuml
+skinparam shadowing false
+skinparam componentStyle rectangle
+left to right direction
+
+actor Usuario
+
+package "Presentacion" {
+  component "Browser / UI" as UI
+  component "Blade Views" as Views
+  component "JS Frontend\nchatbot, agenda,\nface auth, pagos" as JS
+  component "Routes web.php" as Routes
+  component "Middleware\nAuth, Roles, Maintenance,\nFeatureAccess, PendingPayments" as Middleware
+}
+
+package "Aplicacion" {
+  component "Controllers\nPaciente, Doctor, Admin,\nSuperadmin, Laboratorio,\nChatBot, FaceAuth, Captcha" as Controllers
+  component "Form Requests" as Requests
+  component "Services\nPagoService, WhatsAppService,\nPriorityEvaluator, VisionClient,\nFaceRecognitionService" as Services
+  component "Jobs y Listeners" as Async
+}
+
+package "Dominio / Modelo" {
+  component "Models\nUser, Cita, NotaSoap,\nPago, Receta, LabOrder..." as Models
+  component "Events\nCitaAgendada, CitaAtendida" as Events
+}
+
+package "Infraestructura" {
+  database "DB" as DB
+  folder "Storage" as Storage
+  component "Mail" as Mail
+  component "Twilio" as Twilio
+  component "Vision API" as Vision
+}
+
+Usuario --> UI
+UI --> JS
+UI --> Routes
+Routes --> Middleware
+Middleware --> Controllers
+
+Controllers --> Requests
+Controllers --> Services
+Controllers --> Models
+Controllers --> Views
+
+Services --> Models
+Controllers --> Events
+Events --> Async
+Async --> Services
+Async --> Models
+
+Models --> DB
+Services --> DB
+Services --> Storage
+Services --> Mail
+Services --> Twilio
+Services --> Vision
+
+Views --> UI : HTML renderizado
+
+note bottom of Controllers
+La capa de aplicacion concentra la logica de casos de uso:
+agendar citas, registrar SOAP, aprobar pagos,
+laboratorio, chatbot, biometria y personalizacion.
+end note
+
+note bottom of Models
+Laravel implementa MVC, pero en el proyecto tambien
+se observa una separacion por capas:
+presentacion, aplicacion, dominio e infraestructura.
+end note
+@enduml

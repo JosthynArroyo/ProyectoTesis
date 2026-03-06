@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -22,6 +23,7 @@ class User extends Authenticatable
         'fecha_nacimiento',
         'sexo',
         'avatar',
+        'theme_preference',
         'precio_consulta',
         'moneda',
         'status',
@@ -40,6 +42,7 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password'          => 'hashed',
         'fecha_nacimiento'  => 'date',
+        'theme_preference'  => 'string',
         'precio_consulta'   => 'decimal:2',
         'last_login_at'     => 'datetime',
         'last_activity_at'  => 'datetime',
@@ -67,9 +70,34 @@ class User extends Authenticatable
         return $this->hasMany(Factura::class, 'doctor_id');
     }
 
+    public function pagos(): HasMany
+    {
+        return $this->hasMany(Pago::class, 'paciente_id');
+    }
+
+    public function pagosGestionados(): HasMany
+    {
+        return $this->hasMany(Pago::class, 'aprobado_por');
+    }
+
+    public function pagosCreados(): HasMany
+    {
+        return $this->hasMany(Pago::class, 'creado_por');
+    }
+
+    public function recibosEmitidos(): HasMany
+    {
+        return $this->hasMany(PaymentReceipt::class, 'emitido_por');
+    }
+
     public function hasRole(string $roleName): bool
     {
         return $this->roles()->where('name', $roleName)->exists();
+    }
+
+    public function hasPendingPaymentBlocks(): bool
+    {
+        return $this->pagos()->conBloqueoAgendamiento()->exists();
     }
 
     public function isBlocked(): bool   { return $this->status === 'blocked'; }

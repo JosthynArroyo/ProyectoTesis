@@ -4,7 +4,7 @@
 @section('header-title','Historial de recetas')
 @section('header-subtitle','Descarga y consulta recetas')
 
-@section('content')
+@section('main')
 <section class="space-y-6">
   <div class="card p-6">
     <div class="flex items-center gap-3">

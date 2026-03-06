@@ -1,0 +1,136 @@
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam actorStyle awesome
+
+actor Visitante
+actor Paciente
+actor Doctor
+actor Laboratorio
+actor Administrador
+actor Superadmin
+
+rectangle "Sistema Clinica JA" {
+  usecase "Autenticarse" as UC_Login
+  usecase "Registrar login facial" as UC_FaceLogin
+  usecase "Registrar biometria facial" as UC_FaceEnroll
+  usecase "Gestionar perfil" as UC_Perfil
+  usecase "Consultar disponibilidad" as UC_Disponibilidad
+  usecase "Agendar cita" as UC_Agendar
+  usecase "Reprogramar o cancelar cita" as UC_Reprogramar
+  usecase "Consultar historial clinico propio" as UC_HistorialPaciente
+  usecase "Consultar pagos y enviar comprobante" as UC_PagosPaciente
+  usecase "Descargar recetas,\nordenes y resultados" as UC_Documentos
+  usecase "Solicitar examen de laboratorio" as UC_LabPaciente
+
+  usecase "Usar chatbot clinico" as UC_Chatbot
+  usecase "Resolver CAPTCHA" as UC_Captcha
+  usecase "Verificar identidad del paciente" as UC_VerificarPaciente
+  usecase "Autogestionar citas por chatbot" as UC_ChatbotCitas
+
+  usecase "Revisar agenda y citas" as UC_AgendaDoctor
+  usecase "Aceptar o rechazar cita" as UC_AceptarRechazar
+  usecase "Registrar SOAP" as UC_SoapDraft
+  usecase "Firmar SOAP" as UC_SoapSign
+  usecase "Registrar enmienda SOAP" as UC_SoapAmend
+  usecase "Emitir receta" as UC_Receta
+  usecase "Solicitar laboratorio" as UC_LabDoctor
+  usecase "Marcar cita realizada" as UC_Realizar
+  usecase "Consultar historial de pacientes" as UC_HistorialDoctor
+
+  usecase "Gestionar usuarios y horarios" as UC_AdminUsuarios
+  usecase "Gestionar pagos" as UC_AdminPagos
+  usecase "Consultar cambios de citas" as UC_AdminCambios
+  usecase "Consultar historial clinico institucional" as UC_AdminHistorial
+  usecase "Solicitar acceso a personalizacion" as UC_RequestFeature
+  usecase "Personalizar landing y contacto" as UC_AdminPersonalizacion
+  usecase "Aplicar override de agendamiento" as UC_Override
+
+  usecase "Gestionar administradores" as UC_SuperAdmins
+  usecase "Aprobar o revocar acceso\na personalizacion" as UC_ApproveFeature
+  usecase "Gestionar mantenimiento del sitio" as UC_Maintenance
+
+  usecase "Gestionar ordenes de laboratorio" as UC_LabGestion
+  usecase "Registrar toma de muestra" as UC_Muestra
+  usecase "Publicar resultado" as UC_Resultado
+
+  usecase "Validar disponibilidad y reglas" as UC_ValidarAgenda
+  usecase "Crear pago pendiente" as UC_PagoPend
+  usecase "Generar orden de cobro" as UC_OrdenCobro
+  usecase "Emitir recibo de pago" as UC_Recibo
+  usecase "Enviar notificaciones\ncorreo y WhatsApp" as UC_Notificar
+}
+
+Visitante --> UC_Disponibilidad
+Visitante --> UC_Chatbot
+
+Paciente --> UC_Login
+Paciente --> UC_FaceLogin
+Paciente --> UC_FaceEnroll
+Paciente --> UC_Perfil
+Paciente --> UC_Disponibilidad
+Paciente --> UC_Agendar
+Paciente --> UC_Reprogramar
+Paciente --> UC_HistorialPaciente
+Paciente --> UC_PagosPaciente
+Paciente --> UC_Documentos
+Paciente --> UC_LabPaciente
+Paciente --> UC_Chatbot
+
+Doctor --> UC_Login
+Doctor --> UC_Perfil
+Doctor --> UC_AgendaDoctor
+Doctor --> UC_AceptarRechazar
+Doctor --> UC_SoapDraft
+Doctor --> UC_SoapSign
+Doctor --> UC_SoapAmend
+Doctor --> UC_Receta
+Doctor --> UC_LabDoctor
+Doctor --> UC_Realizar
+Doctor --> UC_HistorialDoctor
+
+Laboratorio --> UC_Login
+Laboratorio --> UC_LabGestion
+Laboratorio --> UC_Muestra
+Laboratorio --> UC_Resultado
+
+Administrador --> UC_Login
+Administrador --> UC_AdminUsuarios
+Administrador --> UC_AdminPagos
+Administrador --> UC_AdminCambios
+Administrador --> UC_AdminHistorial
+Administrador --> UC_RequestFeature
+Administrador --> UC_AdminPersonalizacion
+Administrador --> UC_Override
+
+Superadmin --> UC_Login
+Superadmin --> UC_SuperAdmins
+Superadmin --> UC_ApproveFeature
+Superadmin --> UC_AdminPersonalizacion
+Superadmin --> UC_Maintenance
+
+UC_Chatbot .> UC_Captcha : <<include>>
+UC_Chatbot .> UC_VerificarPaciente : <<include>>
+UC_Chatbot .> UC_ChatbotCitas : <<include>>
+
+UC_Agendar .> UC_ValidarAgenda : <<include>>
+UC_Agendar .> UC_PagoPend : <<include>>
+UC_Agendar .> UC_Notificar : <<include>>
+UC_Reprogramar .> UC_ValidarAgenda : <<include>>
+UC_AceptarRechazar .> UC_Notificar : <<include>>
+UC_Realizar .> UC_SoapSign : <<include>>
+UC_Realizar .> UC_OrdenCobro : <<include>>
+UC_AdminPagos .> UC_Recibo : <<include>>
+UC_Resultado .> UC_Notificar : <<include>>
+
+note bottom of UC_Chatbot
+Canal de autogestion para usuarios no autenticados
+o pacientes que validan identidad con captcha y codigo.
+end note
+
+note bottom of UC_AdminPersonalizacion
+La personalizacion esta restringida por solicitudes
+de acceso revisadas por superadmin.
+end note
+@enduml

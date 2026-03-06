@@ -5,10 +5,14 @@ namespace App\Http\Controllers\Doctor;
 use App\Http\Controllers\Controller;
 use App\Models\Cita;
 use App\Models\Especialidad;
+use App\Models\Horario;
 use App\Models\LaboratorioOrden;
 use App\Models\User;
 use App\Jobs\EnviarConfirmacionCitaJob;
 use App\Events\CitaAgendada;
+use App\Services\PagoService;
+use App\Services\PriorityEvaluator;
+use App\Support\ValidationRules;
 use Carbon\Carbon;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
@@ -20,6 +24,30 @@ class LaboratorioController extends Controller
     protected function laboratorioEspecialidadId(): int
     {
         return Especialidad::where('nombre', 'Laboratorio Clinico')->value('id');
+    }
+
+    protected function horarioParaSlot(int $profesionalId, string $fecha, Carbon $slot): ?Horario
+    {
+        return Horario::query()
+            ->where('doctor_id', $profesionalId)
+            ->whereDate('fecha', $fecha)
+            ->whereTime('hora_inicio', '<=', $slot->format('H:i:s'))
+            ->whereTime('hora_fin', '>', $slot->format('H:i:s'))
+            ->orderBy('hora_inicio')
+            ->first();
+    }
+
+    protected function intervaloHorario(Horario $horario): int
+    {
+        return max(1, (int) ($horario->intervalo_minutos ?: 30));
+    }
+
+    protected function slotAlineadoConHorario(Horario $horario, string $fecha, Carbon $slot, string $tz = 'America/Guayaquil'): bool
+    {
+        $inicio = Carbon::parse($fecha.' '.substr((string) $horario->hora_inicio, 0, 5), $tz);
+        $seleccionado = Carbon::parse($fecha.' '.$slot->format('H:i'), $tz);
+
+        return $inicio->diffInMinutes($seleccionado) % $this->intervaloHorario($horario) === 0;
     }
 
     public function create(Request $request)
@@ -52,7 +80,7 @@ class LaboratorioController extends Controller
         return view('doctor.laboratorio.crear', compact('pacientes', 'doctoresLab', 'prefPaciente', 'labId', 'defaultLabId', 'defaultLabName'));
     }
 
-    public function store(Request $request)
+    public function store(Request $request, PriorityEvaluator $priorityEvaluator)
     {
         $data = $request->validate(
             [
@@ -60,6 +88,7 @@ class LaboratorioController extends Controller
                 'doctor_id'    => 'required|exists:users,id',
                 'fecha'        => 'required|date',
                 'hora'         => 'required|date_format:H:i',
+                'motivo_consulta' => ValidationRules::motivoConsulta(),
                 'tipo_examen'  => 'required|string|max:255',
                 'prioridad'    => 'required|in:normal,urgente',
                 'indicaciones' => 'required|string|max:2000',
@@ -69,8 +98,15 @@ class LaboratorioController extends Controller
                 'paciente_id.required' => 'Selecciona un paciente.',
                 'doctor_id.required'   => 'Selecciona el laboratorio.',
                 'tipo_examen.required' => 'Indica el tipo de examen.',
+                'motivo_consulta.required' => 'El motivo de consulta es obligatorio.',
             ]
         );
+
+        $motivoConsulta = $priorityEvaluator->sanitizeMotivo($data['motivo_consulta']);
+
+        if (app(PagoService::class)->pacienteTieneBloqueo((int) $data['paciente_id'])) {
+            return back()->withErrors(['error' => PagoService::MENSAJE_BLOQUEO])->withInput();
+        }
 
         $labId = $this->laboratorioEspecialidadId();
         if (!$labId) {
@@ -93,17 +129,17 @@ class LaboratorioController extends Controller
         }
 
         $slot = Carbon::createFromFormat('H:i', $data['hora']);
-        $intervalo = 15;
+        $horarioSeleccionado = $this->horarioParaSlot((int) $data['doctor_id'], (string) $data['fecha'], $slot);
 
-        if ($slot->minute % $intervalo !== 0) {
-            return back()->withErrors(['hora' => 'La hora debe estar en intervalos de 15 minutos (por ejemplo 08:00, 08:15, 08:30).'])->withInput();
+        if (!$horarioSeleccionado) {
+            return back()->withErrors(['hora' => 'No hay horario configurado para ese laboratorio en ese dia y hora.'])->withInput();
         }
 
-        $inicioLab = Carbon::createFromTimeString('08:00');
-        $finLab = Carbon::createFromTimeString('18:00');
-        if ($slot->lt($inicioLab) || $slot->gte($finLab)) {
-            return back()->withErrors(['hora' => 'El laboratorio atiende de 08:00 a 18:00.'])->withInput();
+        if (!$this->slotAlineadoConHorario($horarioSeleccionado, (string) $data['fecha'], $slot)) {
+            return back()->withErrors(['hora' => 'La hora seleccionada no coincide con un bloque disponible del horario configurado.'])->withInput();
         }
+
+        $intervalo = $this->intervaloHorario($horarioSeleccionado);
         $citasMismoDia = Cita::where('doctor_id', $data['doctor_id'])
             ->whereDate('fecha', $data['fecha'])
             ->where('activo', true)
@@ -116,7 +152,7 @@ class LaboratorioController extends Controller
         });
 
         if ($existe) {
-            return back()->withErrors(['error' => 'El laboratorio ya tiene una cita en ese horario o en un rango de 15 minutos.'])->withInput();
+            return back()->withErrors(['error' => 'El laboratorio ya tiene una cita en ese horario o en un bloque inmediato del horario configurado.'])->withInput();
         }
 
         try {
@@ -128,12 +164,11 @@ class LaboratorioController extends Controller
                 'especialidad_id' => $labId,
                 'fecha'           => $data['fecha'],
                 'hora'            => $slot->format('H:i:00'),
+                'motivo_consulta' => $motivoConsulta,
                 'estado'          => Cita::ESTADO_PENDIENTE,
                 'activo'          => true,
-                'pending_since'   => now('America/Guayaquil'),
-                'last_priority_notified_at' => null,
             ]);
-            $cita->refreshPriority();
+            $priorityEvaluator->apply($cita);
             $cita->save();
 
             LaboratorioOrden::create([

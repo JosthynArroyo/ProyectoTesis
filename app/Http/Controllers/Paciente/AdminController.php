@@ -5,15 +5,16 @@ namespace App\Http\Controllers\Paciente;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Cita;
+use App\Models\Pago;
 use App\Models\LaboratorioOrden;
 use App\Models\LabOrder;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use App\Services\CitaNoShowService;
+use App\Services\PagoService;
+use App\Services\ImageOptimizer;
 use App\Support\ValidationRules;
 
 
@@ -32,6 +33,16 @@ class AdminController extends Controller
         $totalCitasPendientes = $citas->where('estado', 'pendiente')->count();
         $totalCitasRealizadas = $citas->where('estado', 'realizada')->count();
         $totalCitasCanceladas = $citas->where('estado', 'cancelada')->count();
+
+        $pagosBase = Pago::query()->where('paciente_id', $user->id);
+        $totalPagos = (clone $pagosBase)->count();
+        $pagosPendientes = (clone $pagosBase)
+            ->whereIn('estado', [Pago::ESTADO_PENDIENTE, Pago::ESTADO_EN_VERIFICACION])
+            ->count();
+        $pagosPagados = (clone $pagosBase)
+            ->where('estado', Pago::ESTADO_PAGADO)
+            ->count();
+        $bloqueoPagosPendientes = app(PagoService::class)->pacienteTieneBloqueo($user->id);
 
         $citasAgendadas2h = $citas->where('created_at', '>=', now()->subHours(2))->count();
         $citasCompletadas2h = $citas->where('estado', 'realizada')->where('updated_at', '>=', now()->subHours(2))->count();
@@ -121,6 +132,10 @@ class AdminController extends Controller
             'totalCitasPendientes',
             'totalCitasRealizadas',
             'totalCitasCanceladas',
+            'totalPagos',
+            'pagosPendientes',
+            'pagosPagados',
+            'bloqueoPagosPendientes',
             'citasAgendadas2h',
             'citasCompletadas2h',
             'citasCanceladas2h',
@@ -141,7 +156,7 @@ class AdminController extends Controller
         return view('paciente.perfil', compact('user'));
     }
 
-    public function actualizarPerfil(Request $request)
+    public function actualizarPerfil(Request $request, ImageOptimizer $imageOptimizer)
     {
         $user = Auth::user();
 
@@ -153,7 +168,7 @@ class AdminController extends Controller
             'direccion'         => ['required','string','max:255'],
             'fecha_nacimiento'  => ['required','date','before:today'],
             'sexo'              => ['required','in:Masculino,Femenino,Otro'],
-            'avatar'            => ['nullable','image','mimes:jpg,jpeg,png,webp','max:2048'],
+            'avatar'            => ['nullable','image','mimes:jpg,jpeg,png,webp,svg','max:2048'],
             'current_password'  => ['nullable','string'],
             'password'          => array_merge(
                 ValidationRules::passwordOptional(),
@@ -165,9 +180,9 @@ class AdminController extends Controller
 
         if ($request->hasFile('avatar')) {
             if ($user->avatar) {
-                Storage::disk('public')->delete($user->avatar);
+                $imageOptimizer->deleteByStoredPath($user->avatar, 'patients');
             }
-            $user->avatar = $request->file('avatar')->store('avatars', 'public');
+            $user->avatar = $imageOptimizer->optimizeAndStore($request->file('avatar'), 'patients');
         }
 
         $user->fill([

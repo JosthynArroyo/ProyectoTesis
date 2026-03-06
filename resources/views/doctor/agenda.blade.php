@@ -4,7 +4,7 @@
 @section('header-title','Agenda semanal')
 @section('header-subtitle','Consulta tus bloques disponibles')
 
-@section('content')
+@section('main')
   <section class="space-y-6">
     <div class="card p-6">
       <div>

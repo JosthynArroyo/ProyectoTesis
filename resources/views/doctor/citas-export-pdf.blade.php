@@ -20,11 +20,12 @@
       <span>Doctor: {{ $doctor->name ?? 'Doctor' }}</span>
       <span>Filtro estado:
         @if($estado)
-          {{ $estado === 'no_se_presento' ? 'No se presentó' : ucfirst($estado) }}
+          {{ $estado === 'no_se_presento' ? 'No se presento' : ucfirst($estado) }}
         @else
           Todos
         @endif
       </span>
+      <span>Filtro prioridad: {{ $prioridad ?: 'Todas' }}</span>
       <span>Generado: {{ now()->format('Y-m-d H:i') }}</span>
     </p>
 
@@ -37,6 +38,7 @@
           <th>Fecha</th>
           <th>Hora</th>
           <th>Estado</th>
+          <th>Prioridad</th>
         </tr>
       </thead>
       <tbody>
@@ -47,11 +49,17 @@
             <td>{{ optional($cita->especialidad)->nombre ?? 'Sin especialidad' }}</td>
             <td>{{ \Carbon\Carbon::parse($cita->fecha)->format('d/m/Y') }}</td>
             <td>{{ \Carbon\Carbon::parse($cita->hora)->format('H:i') }}</td>
-            <td>{{ $cita->estado === 'no_se_presento' ? 'No se presentó' : ucfirst($cita->estado) }}</td>
+            <td>{{ $cita->estado === 'no_se_presento' ? 'No se presento' : ucfirst($cita->estado) }}</td>
+            <td>
+              {{ $cita->prioridad_nivel ?? 'BAJA' }}
+              @if($cita->prioridad_red_flag)
+                (Red flag)
+              @endif
+            </td>
           </tr>
         @empty
           <tr>
-            <td colspan="6">Sin citas para el filtro seleccionado.</td>
+            <td colspan="7">Sin citas para el filtro seleccionado.</td>
           </tr>
         @endforelse
       </tbody>

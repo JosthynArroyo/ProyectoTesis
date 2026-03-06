@@ -1,0 +1,436 @@
+@startuml
+hide circle
+skinparam shadowing false
+skinparam linetype ortho
+
+entity "users" as users {
+  *id : bigint <<PK>>
+  --
+  name : varchar
+  email : varchar <<UQ>>
+  telefono : varchar
+  dni : varchar <<Cedula>>
+  direccion : varchar
+  fecha_nacimiento : date
+  sexo : varchar
+  avatar : varchar
+  active : boolean
+  status : varchar
+  precio_consulta : decimal(10,2)
+  moneda : varchar(3)
+  theme_preference : varchar(10)
+  last_login_at : timestamp
+  last_activity_at : timestamp
+  suspended_until : timestamp
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+entity "roles" as roles {
+  *id : bigint <<PK>>
+  --
+  name : varchar <<UQ>>
+  description : varchar
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+entity "role_user" as role_user {
+  *user_id : bigint <<PK, FK>>
+  *role_id : bigint <<PK, FK>>
+}
+
+entity "especialidades" as especialidades {
+  *id : bigint <<PK>>
+  --
+  nombre : varchar <<UQ>>
+  descripcion : text
+  icono : varchar
+  activo : boolean
+  orden : int
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+entity "doctor_especialidad" as doctor_especialidad {
+  *id : bigint <<PK>>
+  --
+  user_id : bigint <<FK>>
+  especialidad_id : bigint <<FK>>
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+entity "patient_flags" as patient_flags {
+  *id : bigint <<PK>>
+  --
+  user_id : bigint <<FK, UQ>>
+  adulto_mayor : boolean
+  embarazo : boolean
+  discapacidad : boolean
+  cronico : boolean
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+entity "horarios" as horarios {
+  *id : bigint <<PK>>
+  --
+  doctor_id : bigint <<FK>>
+  fecha : date
+  hora_inicio : time
+  hora_fin : time
+  intervalo_minutos : smallint
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+entity "citas_medicas" as citas_medicas {
+  *id : bigint <<PK>>
+  --
+  paciente_id : bigint <<FK>>
+  doctor_id : bigint <<FK>>
+  especialidad_id : bigint <<FK>>
+  fecha : date
+  hora : time
+  motivo_consulta : varchar(80)
+  estado : enum
+  activo : boolean
+  prioridad_nivel : varchar(10)
+  prioridad_fuente : varchar(40)
+  prioridad_red_flag : boolean
+  prioridad_red_flag_tipo : varchar(80)
+  prioridad_es_adulto_mayor : boolean
+  prioridad_es_embarazo : boolean
+  prioridad_es_discapacidad : boolean
+  prioridad_es_cronico : boolean
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+entity "cita_eventos" as cita_eventos {
+  *id : bigint <<PK>>
+  --
+  cita_id : bigint <<FK>>
+  user_id : bigint
+  tipo : varchar(30)
+  de_estado : varchar(20)
+  a_estado : varchar(20)
+  de_fecha : date
+  a_fecha : date
+  de_hora : varchar(10)
+  a_hora : varchar(10)
+  valor_anterior : varchar(200)
+  valor_nuevo : varchar(200)
+  comentario : varchar(500)
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+entity "notas_soap" as notas_soap {
+  *id : bigint <<PK>>
+  --
+  cita_id : bigint <<FK, UQ>>
+  estado : enum
+  signed_at : timestamp
+  signed_by : bigint <<FK>>
+  subjetivo_motivo : text
+  subjetivo_hpi : text
+  subjetivo_ros : json
+  subjetivo_notas : text
+  signos_vitales : json
+  examen_fisico : text
+  notas_objetivas : text
+  assessment : text
+  plan_general : text
+  plan_seguimiento : text
+  plan_notas : text
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+entity "nota_soap_diagnosticos" as nota_soap_diagnosticos {
+  *id : bigint <<PK>>
+  --
+  nota_soap_id : bigint <<FK>>
+  tipo : enum
+  texto : varchar(255)
+  cie10 : varchar(20)
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+entity "nota_soap_enmiendas" as nota_soap_enmiendas {
+  *id : bigint <<PK>>
+  --
+  nota_soap_id : bigint <<FK>>
+  user_id : bigint <<FK>>
+  motivo : text
+  contenido : text
+  snapshot : json
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+entity "recetas" as recetas {
+  *id : bigint <<PK>>
+  --
+  cita_id : bigint <<FK, UQ>>
+  diagnostico : text
+  medicamentos : text
+  indicaciones : text
+  pdf_path : varchar
+  enviado_en : timestamp
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+entity "laboratorio_ordenes" as laboratorio_ordenes {
+  *id : bigint <<PK>>
+  --
+  cita_id : bigint <<FK, UQ>>
+  solicitante_id : bigint <<FK>>
+  origen : enum
+  prioridad : enum
+  tipo_examen : varchar(255)
+  indicaciones : text
+  preparacion : text
+  estado : enum
+  resultado_path : varchar
+  resultado_resumen : text
+  resultado_publicado_at : timestamp
+  resultado_enviado_at : timestamp
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+entity "lab_tests" as lab_tests {
+  *id : bigint <<PK>>
+  --
+  nombre : varchar(255)
+  tipo : varchar(30)
+  categoria : varchar(80)
+  requiere_orden : boolean
+  es_rutina : boolean
+  preparacion_default : text
+  indicaciones_default : text
+  ayuno_horas : smallint
+  restricciones : text
+  duracion_minutos : smallint
+  activo : boolean
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+entity "medical_orders" as medical_orders {
+  *id : bigint <<PK>>
+  --
+  patient_id : bigint <<FK>>
+  doctor_id : bigint <<FK>>
+  lab_test_id : bigint <<FK>>
+  doctor_notes : text
+  status : enum
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+entity "lab_orders" as lab_orders {
+  *id : bigint <<PK>>
+  --
+  patient_id : bigint <<FK>>
+  source : enum
+  doctor_id : bigint <<FK>>
+  medical_order_id : bigint <<FK>>
+  priority : enum
+  status : enum
+  scheduled_at : timestamp
+  doctor_notes : text
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+entity "lab_order_items" as lab_order_items {
+  *id : bigint <<PK>>
+  --
+  lab_order_id : bigint <<FK>>
+  lab_test_id : bigint <<FK>>
+  preparacion_snapshot : text
+  indicaciones_snapshot : text
+  resultado_url : varchar
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+entity "facturas" as facturas {
+  *id : bigint <<PK>>
+  --
+  cita_id : bigint <<FK>>
+  paciente_id : bigint <<FK>>
+  doctor_id : bigint <<FK>>
+  moneda : varchar(3)
+  subtotal : decimal(10,2)
+  impuestos : decimal(10,2)
+  total : decimal(10,2)
+  estado : enum
+  pdf_path : varchar
+  emitida_en : timestamp
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+entity "factura_items" as factura_items {
+  *id : bigint <<PK>>
+  --
+  factura_id : bigint <<FK>>
+  descripcion : varchar
+  cantidad : int
+  precio_unitario : decimal(10,2)
+  total_linea : decimal(10,2)
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+entity "pagos" as pagos {
+  *id : bigint <<PK>>
+  --
+  cita_id : bigint <<FK, UQ>>
+  folio_unico : varchar(60) <<UQ>>
+  token_publico : varchar(120) <<UQ>>
+  paciente_id : bigint <<FK>>
+  monto : decimal(10,2)
+  moneda : varchar(3)
+  metodo_pago : varchar(20)
+  estado : varchar(20)
+  referencia_transaccion : varchar
+  comprobante_path : varchar
+  orden_pdf_path : varchar
+  aprobado_por : bigint <<FK>>
+  aprobado_en : timestamp
+  creado_por : bigint <<FK>>
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+entity "payment_status_logs" as payment_status_logs {
+  *id : bigint <<PK>>
+  --
+  pago_id : bigint <<FK>>
+  estado_anterior : varchar(20)
+  estado_nuevo : varchar(20)
+  actor_id : bigint <<FK>>
+  actor_rol : varchar(40)
+  motivo : text
+  created_at : timestamp
+}
+
+entity "payment_receipts" as payment_receipts {
+  *id : bigint <<PK>>
+  --
+  pago_id : bigint <<FK, UQ>>
+  folio_recibo : varchar(60) <<UQ>>
+  emitido_en : timestamp
+  emitido_por : bigint <<FK>>
+  metodo_pago : varchar(20)
+  monto : decimal(10,2)
+  referencia_transaccion : varchar
+  comprobante_path : varchar
+  pdf_path : varchar
+  created_at : timestamp
+  updated_at : timestamp
+}
+
+entity "payment_receipt_logs" as payment_receipt_logs {
+  *id : bigint <<PK>>
+  --
+  payment_receipt_id : bigint <<FK>>
+  estado_anterior : varchar(40)
+  estado_nuevo : varchar(40)
+  actor_id : bigint <<FK>>
+  actor_rol : varchar(40)
+  motivo : text
+  created_at : timestamp
+}
+
+entity "booking_override_logs" as booking_override_logs {
+  *id : bigint <<PK>>
+  --
+  paciente_id : bigint <<FK>>
+  actor_id : bigint <<FK>>
+  cita_id : bigint <<FK>>
+  motivo : text
+  created_at : timestamp
+}
+
+roles ||--o{ role_user
+users ||--o{ role_user
+users ||--o{ doctor_especialidad
+especialidades ||--o{ doctor_especialidad
+users ||--o| patient_flags
+users ||--o{ horarios : doctor_id
+users ||--o{ citas_medicas : paciente_id
+users ||--o{ citas_medicas : doctor_id
+especialidades ||--o{ citas_medicas
+citas_medicas ||--o{ cita_eventos
+citas_medicas ||--o| notas_soap
+users |o--o{ notas_soap : signed_by
+notas_soap ||--o{ nota_soap_diagnosticos
+notas_soap ||--o{ nota_soap_enmiendas
+users |o--o{ nota_soap_enmiendas : user_id
+citas_medicas ||--o| recetas
+citas_medicas ||--o| laboratorio_ordenes
+users |o--o{ laboratorio_ordenes : solicitante_id
+users ||--o{ medical_orders : patient_id
+users ||--o{ medical_orders : doctor_id
+lab_tests ||--o{ medical_orders
+users ||--o{ lab_orders : patient_id
+users |o--o{ lab_orders : doctor_id
+medical_orders |o--o{ lab_orders
+lab_orders ||--o{ lab_order_items
+lab_tests ||--o{ lab_order_items
+citas_medicas |o--o{ facturas
+users ||--o{ facturas : paciente_id
+users ||--o{ facturas : doctor_id
+facturas ||--o{ factura_items
+citas_medicas ||--o| pagos
+users ||--o{ pagos : paciente_id
+users |o--o{ pagos : aprobado_por
+users |o--o{ pagos : creado_por
+pagos ||--o{ payment_status_logs
+users |o--o{ payment_status_logs : actor_id
+pagos ||--o| payment_receipts
+users |o--o{ payment_receipts : emitido_por
+payment_receipts ||--o{ payment_receipt_logs
+users |o--o{ payment_receipt_logs : actor_id
+users ||--o{ booking_override_logs : paciente_id
+users |o--o{ booking_override_logs : actor_id
+citas_medicas |o--o{ booking_override_logs : cita_id
+
+note top of citas_medicas
+Base: migraciones inspeccionadas.
+No se detectaron soft deletes
+en el nucleo clinico modelado.
+end note
+
+note right of cita_eventos
+Observacion:
+solo existe FK segura a cita_id.
+user_id se guarda sin FK y no se
+hallaron columnas paciente_id ni
+doctor_id en las migraciones.
+end note
+
+note right of facturas
+La app crea una factura borrador
+por cita mediante el listener
+CrearFacturaBorrador, pero el
+esquema no impone UNIQUE(cita_id).
+end note
+
+note right of lab_orders
+La app marca la orden medica como
+"usada" despues de crear una
+solicitud, pero la base no impone
+unicidad sobre medical_order_id.
+end note
+
+@enduml

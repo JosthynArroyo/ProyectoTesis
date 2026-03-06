@@ -1,0 +1,447 @@
+/* Scope: solo paneles internos autenticados (html.dashboard-root). */
+
+html.dashboard-root .theme-toggler {
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+html.dashboard-root .theme-toggler [data-theme-icon] {
+    transition: color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+html.dashboard-root .theme-toggler [data-theme-icon].is-active {
+    background: #ffffff;
+    box-shadow: 0 6px 14px rgba(15, 23, 42, 0.14);
+}
+
+html.dashboard-root.panel-theme-dark {
+    color-scheme: dark;
+    --ink: #e2e8f0;
+    --muted: #94a3b8;
+    --soft: #64748b;
+    --border: #334155;
+    --panel: rgba(15, 23, 42, 0.92);
+    --panel-strong: #0f172a;
+    --accent-soft: rgba(20, 184, 166, 0.18);
+    --clr-dark: #e2e8f0;
+    --clr-dark-variant: #94a3b8;
+    --clr-info-dark: #cbd5e1;
+    --clr-info-light: #1e293b;
+    --clr-white: #0f172a;
+    --clr-light: rgba(148, 163, 184, 0.14);
+    --clr-color-background: #020617;
+    --clr-surface-muted: #1e293b;
+}
+
+html.dashboard-root.panel-theme-dark body.dashboard-shell {
+    color: var(--ink);
+    background:
+        radial-gradient(circle at 80% -10%, rgba(20, 184, 166, 0.16), transparent 42%),
+        radial-gradient(circle at 0% 0%, rgba(14, 165, 233, 0.1), transparent 36%),
+        linear-gradient(180deg, #020617 0%, #0b1220 55%, #020617 100%);
+}
+
+html.dashboard-root.panel-theme-dark body.dashboard-shell::before {
+    background: radial-gradient(circle at 65% 5%, rgba(30, 41, 59, 0.55), transparent 45%);
+}
+
+html.dashboard-root.panel-theme-dark body.paciente-body--citas {
+    --pc-ink: #e2e8f0;
+    --pc-muted: #94a3b8;
+    --pc-border: #334155;
+    --pc-surface: #0f172a;
+    --pc-soft: #111827;
+    --pc-shadow: 0 18px 32px rgba(2, 6, 23, 0.42);
+    --pc-ring: 0 0 0 4px rgba(20, 184, 166, 0.22);
+    background:
+        radial-gradient(900px 400px at 10% -20%, #132033 0%, #020617 60%) fixed;
+}
+
+html.dashboard-root.panel-theme-dark .dashboard-topbar {
+    background: rgba(2, 6, 23, 0.9);
+    border-color: #1e293b;
+    backdrop-filter: blur(8px);
+}
+
+html.dashboard-root.panel-theme-dark .dashboard-sidebar {
+    background: #020617;
+    border-color: #1e293b;
+    box-shadow: 0 22px 40px rgba(2, 6, 23, 0.6);
+}
+
+html.dashboard-root.panel-theme-dark .sidebar-brand__text small {
+    color: #94a3b8;
+}
+
+html.dashboard-root.panel-theme-dark .sidebar-brand__text strong {
+    color: #f1f5f9;
+}
+
+html.dashboard-root.panel-theme-dark .dashboard-sidebar details,
+html.dashboard-root.panel-theme-dark .dashboard-sidebar summary {
+    color: #cbd5e1;
+}
+
+html.dashboard-root.panel-theme-dark .dashboard-sidebar a:hover,
+html.dashboard-root.panel-theme-dark .dashboard-sidebar button:hover,
+html.dashboard-root.panel-theme-dark .dashboard-sidebar summary:hover {
+    background: rgba(51, 65, 85, 0.48);
+    color: #f8fafc;
+}
+
+html.dashboard-root.panel-theme-dark .card,
+html.dashboard-root.panel-theme-dark .glass-panel {
+    background: #0f172a;
+    border-color: #334155;
+    box-shadow: 0 16px 30px rgba(2, 6, 23, 0.46);
+}
+
+html.dashboard-root.panel-theme-dark .page-header__info h1,
+html.dashboard-root.panel-theme-dark .page-header__info h2,
+html.dashboard-root.panel-theme-dark .detail-item__value {
+    color: #f8fafc;
+}
+
+html.dashboard-root.panel-theme-dark .page-header__info p,
+html.dashboard-root.panel-theme-dark .detail-item__label {
+    color: #94a3b8;
+}
+
+html.dashboard-root.panel-theme-dark .section-divider {
+    border-top-color: #334155;
+}
+
+html.dashboard-root.panel-theme-dark .table-shell {
+    background: #0f172a;
+    border-color: #334155;
+}
+
+html.dashboard-root.panel-theme-dark .table thead {
+    background: #111827;
+    color: #94a3b8;
+}
+
+html.dashboard-root.panel-theme-dark .table td {
+    color: #e2e8f0;
+}
+
+html.dashboard-root.panel-theme-dark .table tbody tr {
+    border-color: #1e293b;
+}
+
+html.dashboard-root.panel-theme-dark .table tbody tr:hover {
+    background: rgba(51, 65, 85, 0.36);
+}
+
+html.dashboard-root.panel-theme-dark .table-responsive-cards .table tbody tr {
+    background: #0f172a;
+    border-color: #334155;
+}
+
+html.dashboard-root.panel-theme-dark .table-responsive-cards .table tbody tr:hover {
+    background: #111c31;
+}
+
+html.dashboard-root.panel-theme-dark .table-responsive-cards .table td {
+    border-bottom-color: #1e293b;
+}
+
+html.dashboard-root.panel-theme-dark .table-responsive-cards .table td::before {
+    color: #94a3b8;
+}
+
+html.dashboard-root.panel-theme-dark .form-label {
+    color: #cbd5e1;
+}
+
+html.dashboard-root.panel-theme-dark .form-input,
+html.dashboard-root.panel-theme-dark .form-select,
+html.dashboard-root.panel-theme-dark .form-textarea {
+    background: #0f172a;
+    border-color: #334155;
+    color: #e2e8f0;
+    box-shadow: none;
+}
+
+html.dashboard-root.panel-theme-dark .inline-control-shell {
+    background: #0f172a;
+    border-color: #334155;
+    box-shadow: none;
+}
+
+html.dashboard-root.panel-theme-dark .inline-control-shell > input,
+html.dashboard-root.panel-theme-dark .inline-control-shell > select,
+html.dashboard-root.panel-theme-dark .inline-control-shell > textarea,
+html.dashboard-root.panel-theme-dark div[class*="rounded-xl border border-slate-200 bg-white/90 px-3 py-2"] > input.bg-transparent,
+html.dashboard-root.panel-theme-dark div[class*="rounded-xl border border-slate-200 bg-white/90 px-3 py-2"] > select.bg-transparent,
+html.dashboard-root.panel-theme-dark div[class*="rounded-xl border border-slate-200 bg-white/90 px-3 py-2"] > textarea.bg-transparent {
+    color: #e2e8f0;
+}
+
+html.dashboard-root.panel-theme-dark .inline-control-shell > input::placeholder,
+html.dashboard-root.panel-theme-dark .inline-control-shell > textarea::placeholder,
+html.dashboard-root.panel-theme-dark div[class*="rounded-xl border border-slate-200 bg-white/90 px-3 py-2"] > input.bg-transparent::placeholder,
+html.dashboard-root.panel-theme-dark div[class*="rounded-xl border border-slate-200 bg-white/90 px-3 py-2"] > textarea.bg-transparent::placeholder {
+    color: #64748b;
+}
+
+html.dashboard-root.panel-theme-dark .form-input::placeholder,
+html.dashboard-root.panel-theme-dark .form-select::placeholder,
+html.dashboard-root.panel-theme-dark .form-textarea::placeholder,
+html.dashboard-root.panel-theme-dark input::placeholder,
+html.dashboard-root.panel-theme-dark textarea::placeholder {
+    color: #64748b;
+}
+
+html.dashboard-root.panel-theme-dark .form-input:focus,
+html.dashboard-root.panel-theme-dark .form-select:focus,
+html.dashboard-root.panel-theme-dark .form-textarea:focus,
+html.dashboard-root.panel-theme-dark input:focus,
+html.dashboard-root.panel-theme-dark select:focus,
+html.dashboard-root.panel-theme-dark textarea:focus {
+    border-color: #14b8a6;
+    box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.2);
+}
+
+html.dashboard-root.panel-theme-dark .btn-secondary {
+    background: #1e293b;
+    color: #e2e8f0;
+}
+
+html.dashboard-root.panel-theme-dark .btn-secondary:hover {
+    background: #334155;
+}
+
+html.dashboard-root.panel-theme-dark .btn-outline {
+    border-color: #334155;
+    color: #e2e8f0;
+}
+
+html.dashboard-root.panel-theme-dark .btn-outline:hover {
+    border-color: #475569;
+    background: #1e293b;
+}
+
+html.dashboard-root.panel-theme-dark .btn-ghost {
+    color: #cbd5e1;
+}
+
+html.dashboard-root.panel-theme-dark .btn-ghost:hover {
+    background: rgba(51, 65, 85, 0.5);
+}
+
+html.dashboard-root.panel-theme-dark .panel-back-button {
+    border-color: #334155;
+    background: linear-gradient(180deg, #0f172a 0%, #111827 100%);
+    color: #e2e8f0;
+    box-shadow: 0 14px 28px rgba(2, 6, 23, 0.5);
+}
+
+html.dashboard-root.panel-theme-dark .panel-back-button:hover {
+    border-color: #475569;
+    color: #5eead4;
+    box-shadow: 0 18px 32px rgba(2, 6, 23, 0.58);
+}
+
+html.dashboard-root.panel-theme-dark .panel-back-button__icon {
+    background: linear-gradient(135deg, rgba(94, 234, 212, 0.16) 0%, rgba(56, 189, 248, 0.14) 100%);
+    color: #5eead4;
+}
+
+html.dashboard-root.panel-theme-dark .pill,
+html.dashboard-root.panel-theme-dark .chip {
+    background: #1e293b;
+    border-color: #334155;
+    color: #cbd5e1;
+}
+
+html.dashboard-root.panel-theme-dark .empty-state {
+    background: rgba(15, 23, 42, 0.78);
+    border-color: #334155;
+    color: #cbd5e1;
+}
+
+html.dashboard-root.panel-theme-dark .alert {
+    background: #0f172a;
+    border-color: #334155;
+    color: #e2e8f0;
+}
+
+html.dashboard-root.panel-theme-dark .alert.success {
+    background: rgba(16, 185, 129, 0.14);
+    border-color: rgba(16, 185, 129, 0.35);
+    color: #a7f3d0;
+}
+
+html.dashboard-root.panel-theme-dark .alert.warning {
+    background: rgba(245, 158, 11, 0.12);
+    border-color: rgba(245, 158, 11, 0.35);
+    color: #fcd34d;
+}
+
+html.dashboard-root.panel-theme-dark .alert.error {
+    background: rgba(225, 29, 72, 0.12);
+    border-color: rgba(225, 29, 72, 0.35);
+    color: #fda4af;
+}
+
+html.dashboard-root.panel-theme-dark .badge.neutral {
+    background: #1e293b;
+    color: #cbd5e1;
+}
+
+html.dashboard-root.panel-theme-dark .badge.info {
+    background: rgba(14, 165, 233, 0.2);
+    color: #bae6fd;
+}
+
+html.dashboard-root.panel-theme-dark .badge.success {
+    background: rgba(16, 185, 129, 0.2);
+    color: #a7f3d0;
+}
+
+html.dashboard-root.panel-theme-dark .badge.warning {
+    background: rgba(245, 158, 11, 0.2);
+    color: #fcd34d;
+}
+
+html.dashboard-root.panel-theme-dark .badge.danger {
+    background: rgba(225, 29, 72, 0.2);
+    color: #fda4af;
+}
+
+html.dashboard-root.panel-theme-dark .toast {
+    background: #0f172a;
+    border-color: #334155;
+    color: #e2e8f0;
+}
+
+html.dashboard-root.panel-theme-dark .toast-warn {
+    background: rgba(245, 158, 11, 0.16);
+    color: #fcd34d;
+}
+
+html.dashboard-root.panel-theme-dark .toast-float--success {
+    background: rgba(16, 185, 129, 0.18);
+    color: #a7f3d0;
+    border-color: rgba(16, 185, 129, 0.35);
+}
+
+html.dashboard-root.panel-theme-dark .kebab-menu {
+    background: #0f172a;
+    border-color: #334155;
+    box-shadow: 0 20px 40px rgba(2, 6, 23, 0.55);
+}
+
+html.dashboard-root.panel-theme-dark .modal-backdrop {
+    background: rgba(2, 6, 23, 0.72);
+}
+
+html.dashboard-root.panel-theme-dark .theme-toggler {
+    background: #0f172a;
+    border-color: #334155;
+    color: #cbd5e1;
+}
+
+html.dashboard-root.panel-theme-dark .theme-toggler [data-theme-icon="light"] {
+    color: #f59e0b;
+}
+
+html.dashboard-root.panel-theme-dark .theme-toggler [data-theme-icon="dark"] {
+    color: #cbd5e1;
+}
+
+html.dashboard-root.panel-theme-dark .theme-toggler [data-theme-icon].is-active {
+    background: #1e293b;
+    color: #5eead4;
+    box-shadow: inset 0 0 0 1px rgba(94, 234, 212, 0.25);
+}
+
+html.dashboard-root.panel-theme-dark .theme-preference-card__icon {
+    background: rgba(94, 234, 212, 0.16);
+    color: #5eead4;
+}
+
+html.dashboard-root.panel-theme-dark .text-slate-900 { color: #f8fafc !important; }
+html.dashboard-root.panel-theme-dark .text-slate-800 { color: #e2e8f0 !important; }
+html.dashboard-root.panel-theme-dark .text-slate-700 { color: #cbd5e1 !important; }
+html.dashboard-root.panel-theme-dark .text-slate-600 { color: #94a3b8 !important; }
+html.dashboard-root.panel-theme-dark .text-slate-500 { color: #64748b !important; }
+html.dashboard-root.panel-theme-dark .text-slate-400 { color: #94a3b8 !important; }
+
+html.dashboard-root.panel-theme-dark .text-teal-700 { color: #5eead4 !important; }
+html.dashboard-root.panel-theme-dark .text-teal-600 { color: #5eead4 !important; }
+html.dashboard-root.panel-theme-dark .text-amber-900 { color: #fef3c7 !important; }
+html.dashboard-root.panel-theme-dark .text-amber-800 { color: #fde68a !important; }
+html.dashboard-root.panel-theme-dark .text-amber-700 { color: #fcd34d !important; }
+html.dashboard-root.panel-theme-dark .text-emerald-900 { color: #d1fae5 !important; }
+html.dashboard-root.panel-theme-dark .text-emerald-800 { color: #a7f3d0 !important; }
+html.dashboard-root.panel-theme-dark .text-emerald-700 { color: #6ee7b7 !important; }
+html.dashboard-root.panel-theme-dark .text-rose-700 { color: #fda4af !important; }
+html.dashboard-root.panel-theme-dark .text-rose-600 { color: #fda4af !important; }
+html.dashboard-root.panel-theme-dark .text-sky-700 { color: #bae6fd !important; }
+html.dashboard-root.panel-theme-dark .text-sky-600 { color: #7dd3fc !important; }
+
+html.dashboard-root.panel-theme-dark .bg-white,
+html.dashboard-root.panel-theme-dark .bg-white\/80,
+html.dashboard-root.panel-theme-dark .bg-white\/90,
+html.dashboard-root.panel-theme-dark .bg-slate-50 {
+    background-color: #0f172a !important;
+}
+
+html.dashboard-root.panel-theme-dark .bg-slate-100 {
+    background-color: #1e293b !important;
+}
+
+html.dashboard-root.panel-theme-dark .bg-teal-50 {
+    background-color: rgba(20, 184, 166, 0.18) !important;
+}
+
+html.dashboard-root.panel-theme-dark .bg-amber-50 {
+    background-color: rgba(245, 158, 11, 0.12) !important;
+}
+
+html.dashboard-root.panel-theme-dark .bg-emerald-50 {
+    background-color: rgba(16, 185, 129, 0.12) !important;
+}
+
+html.dashboard-root.panel-theme-dark .bg-rose-50 {
+    background-color: rgba(225, 29, 72, 0.12) !important;
+}
+
+html.dashboard-root.panel-theme-dark .bg-sky-50 {
+    background-color: rgba(14, 165, 233, 0.12) !important;
+}
+
+html.dashboard-root.panel-theme-dark .border-slate-100,
+html.dashboard-root.panel-theme-dark .border-slate-200,
+html.dashboard-root.panel-theme-dark .border-slate-300 {
+    border-color: #334155 !important;
+}
+
+html.dashboard-root.panel-theme-dark .border-teal-200 {
+    border-color: rgba(20, 184, 166, 0.35) !important;
+}
+
+html.dashboard-root.panel-theme-dark .border-amber-200 {
+    border-color: rgba(245, 158, 11, 0.35) !important;
+}
+
+html.dashboard-root.panel-theme-dark .border-emerald-200 {
+    border-color: rgba(16, 185, 129, 0.35) !important;
+}
+
+html.dashboard-root.panel-theme-dark .border-rose-200 {
+    border-color: rgba(225, 29, 72, 0.35) !important;
+}
+
+html.dashboard-root.panel-theme-dark .hover\:bg-slate-50:hover {
+    background-color: rgba(51, 65, 85, 0.48) !important;
+}
+
+html.dashboard-root.panel-theme-dark .hover\:bg-slate-100:hover {
+    background-color: rgba(71, 85, 105, 0.55) !important;
+}
+
+html.dashboard-root.panel-theme-dark .hover\:bg-rose-50:hover {
+    background-color: rgba(225, 29, 72, 0.18) !important;
+}

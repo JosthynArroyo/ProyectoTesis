@@ -17,7 +17,14 @@ class PreventRequestsDuringMaintenance
             return $next($request);
         }
 
-        if ($request->routeIs('login') || $request->routeIs('face.login')) {
+        if (
+            $request->routeIs('login')
+            || $request->routeIs('face.login')
+            || $request->routeIs('logout')
+            || $request->routeIs('salir')
+            || $request->routeIs('salir.get')
+            || $request->routeIs('superadmin.*')
+        ) {
             return $next($request);
         }
 

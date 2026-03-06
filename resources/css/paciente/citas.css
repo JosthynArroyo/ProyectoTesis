@@ -20,7 +20,6 @@
 }
 
 body.paciente-body--citas{font-family:var(--pc-font-body);color:var(--pc-ink);background:radial-gradient(900px 400px at 10% -20%, #f6faf7 0%, #fff 60%) fixed;}
-body.paciente-body--citas .theme-toggler{display:none!important}
 body.paciente-body--citas main{margin:0;padding:0;background:transparent;width:100%;max-width:none;display:block}
 
 .citas{width:100%;margin:0 auto;padding:32px 28px 64px;display:grid;gap:18px;box-sizing:border-box}

@@ -17,10 +17,13 @@ use App\Events\CitaAgendada;
 use App\Events\CitaAtendida;
 use Carbon\Carbon;
 use App\Services\CitaNoShowService;
+use App\Services\PriorityEvaluator;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Dompdf\Dompdf;
 use Dompdf\Options;
+use App\Services\PagoService;
+use App\Support\ValidationRules;
 
 class CitaController extends Controller
 {
@@ -31,6 +34,29 @@ class CitaController extends Controller
         return strlen($h) >= 8
             ? Carbon::createFromFormat('H:i:s', $h)
             : Carbon::createFromFormat('H:i', $h);
+    }
+
+    protected function horarioParaSlot(int $profesionalId, string $fecha, Carbon $slot): ?Horario
+    {
+        return Horario::where('doctor_id', $profesionalId)
+            ->whereDate('fecha', $fecha)
+            ->whereTime('hora_inicio', '<=', $slot->format('H:i:s'))
+            ->whereTime('hora_fin', '>', $slot->format('H:i:s'))
+            ->orderBy('hora_inicio')
+            ->first();
+    }
+
+    protected function intervaloHorario(Horario $horario): int
+    {
+        return max(1, (int) ($horario->intervalo_minutos ?: 30));
+    }
+
+    protected function slotAlineadoConHorario(Horario $horario, string $fecha, Carbon $slot, string $tz = 'America/Guayaquil'): bool
+    {
+        $inicio = Carbon::parse($fecha.' '.substr((string) $horario->hora_inicio, 0, 5), $tz);
+        $seleccionado = Carbon::parse($fecha.' '.$slot->format('H:i'), $tz);
+
+        return $inicio->diffInMinutes($seleccionado) % $this->intervaloHorario($horario) === 0;
     }
 
     /** ======================= PACIENTE: LISTADO ======================= */
@@ -113,7 +139,9 @@ class CitaController extends Controller
             }
         }
 
-        return view('paciente.citas', compact('citas', 'emptyMessage', 'totalesPorEstado'));
+        $bloqueoPagosPendientes = app(PagoService::class)->pacienteTieneBloqueo($userId);
+
+        return view('paciente.citas', compact('citas', 'emptyMessage', 'totalesPorEstado', 'bloqueoPagosPendientes'));
     }
 
     /** ======================= PACIENTE: CREAR ======================= */
@@ -215,14 +243,19 @@ class CitaController extends Controller
         return view('paciente.crear-cita', compact('doctores', 'especialidades', 'prefEspecialidad', 'laboratorioId', 'labExamenes'));
     }
 
-    public function store(Request $request)
+    public function store(Request $request, PriorityEvaluator $priorityEvaluator)
     {
+        if (app(PagoService::class)->pacienteTieneBloqueo((int) Auth::id())) {
+            return back()->withErrors(['error' => PagoService::MENSAJE_BLOQUEO])->withInput();
+        }
+
         $request->validate(
             [
                 'doctor_id'        => 'required|exists:users,id',
                 'especialidad_id'  => 'required|exists:especialidades,id',
                 'fecha'            => 'required|date',
                 'hora'             => 'required|date_format:H:i',
+                'motivo_consulta'  => ValidationRules::motivoConsulta(),
             ],
             [
                 'doctor_id.required'       => 'Seleccione un doctor.',
@@ -233,8 +266,14 @@ class CitaController extends Controller
                 'fecha.date'               => 'La fecha no es válida.',
                 'hora.required'            => 'Ingrese una hora.',
                 'hora.date_format'         => 'Formato de hora inválido. Use HH:MM.',
+                'motivo_consulta.required' => 'El motivo de consulta es obligatorio.',
+                'motivo_consulta.min'      => 'El motivo debe tener al menos 3 caracteres.',
+                'motivo_consulta.max'      => 'El motivo no puede superar 80 caracteres.',
+                'motivo_consulta.regex'    => 'El motivo debe ir en una sola linea.',
             ]
         );
+
+        $motivoConsulta = $priorityEvaluator->sanitizeMotivo($request->input('motivo_consulta'));
 
         $labId = $this->laboratorioEspecialidadId();
         $isLab = $labId && (int)$request->especialidad_id === (int)$labId;
@@ -272,33 +311,17 @@ class CitaController extends Controller
         }
 
         $slot = Carbon::createFromFormat('H:i', $request->hora);
-        $intervalo = $isLab ? 15 : 30;
+        $horarioSeleccionado = $this->horarioParaSlot((int) $request->doctor_id, (string) $request->fecha, $slot);
 
-        if ($slot->minute % $intervalo !== 0) {
-            $msg = $isLab
-                ? 'La hora debe estar en intervalos de 15 minutos (por ejemplo 08:00, 08:15, 08:30).'
-                : 'La hora debe estar en intervalos de 30 minutos (por ejemplo 08:00, 08:30, 09:00).';
-            return back()->withErrors(['hora' => $msg])->withInput();
+        if (!$horarioSeleccionado) {
+            return back()->withErrors(['error' => 'No hay horario configurado para ese profesional en ese dia y hora.'])->withInput();
         }
 
-        if ($isLab) {
-            $inicioLab = Carbon::createFromTimeString('08:00');
-            $finLab = Carbon::createFromTimeString('18:00');
-            if ($slot->lt($inicioLab) || $slot->gte($finLab)) {
-                return back()->withErrors(['hora' => 'El laboratorio atiende de 08:00 a 18:00.'])->withInput();
-            }
-        } else {
-            // DISPONIBILIDAD
-            $hayHorario = Horario::where('doctor_id', $request->doctor_id)
-                ->whereDate('fecha', $request->fecha)
-                ->whereTime('hora_inicio', '<=', $slot->format('H:i:s'))
-                ->whereTime('hora_fin',   '>',  $slot->format('H:i:s'))
-                ->exists();
-
-            if (!$hayHorario) {
-                return back()->withErrors(['error' => 'No hay horario disponible del doctor para ese dia y hora.'])->withInput();
-            }
+        if (!$this->slotAlineadoConHorario($horarioSeleccionado, (string) $request->fecha, $slot)) {
+            return back()->withErrors(['hora' => 'La hora seleccionada no coincide con un bloque disponible del horario configurado.'])->withInput();
         }
+
+        $intervalo = $this->intervaloHorario($horarioSeleccionado);
 
         // choques +/- intervalo
 
@@ -314,9 +337,7 @@ class CitaController extends Controller
         });
 
         if ($existe) {
-            $msg = $isLab
-                ? 'El laboratorio ya tiene una cita en ese horario o en un rango de 15 minutos.'
-                : 'El doctor ya tiene una cita en ese horario o en un rango de 30 minutos.';
+            $msg = 'El profesional ya tiene una cita en ese horario o en un bloque inmediato del horario configurado.';
             return back()->withErrors(['error' => $msg])->withInput();
         }
 
@@ -329,13 +350,12 @@ class CitaController extends Controller
                 'especialidad_id' => $request->especialidad_id,
                 'fecha'           => $request->fecha,
                 'hora'            => $slot->format('H:i:00'),
+                'motivo_consulta' => $motivoConsulta,
                 'estado'          => Cita::ESTADO_PENDIENTE,
                 'activo'          => true,
-                'pending_since'   => now('America/Guayaquil'),
-                'last_priority_notified_at' => null,
             ]);
 
-            $cita->refreshPriority();
+            $priorityEvaluator->apply($cita);
             $cita->save();
 
             if ($isLab) {
@@ -363,7 +383,11 @@ class CitaController extends Controller
         event(new CitaAgendada($cita));
         EnviarConfirmacionCitaJob::dispatch($cita);
 
-        return redirect()->route('paciente.citas')->with('success', 'Cita creada con éxito. Confirmación enviada y doctor notificado.');
+        return redirect()->route('paciente.citas')
+            ->with('success', 'Cita creada con éxito. Confirmación enviada y doctor notificado.')
+            ->with('success_action_url', route('paciente.citas'))
+            ->with('success_action_label', 'Ver mis citas')
+            ->with('highlight_cita', $cita->id);
     }
 
     public function cancelar($id)
@@ -384,12 +408,15 @@ class CitaController extends Controller
 
         $cita->estado = Cita::ESTADO_CANCELADA;
         $cita->activo = false;
-        $cita->refreshPriority();
         $cita->save();
 
         NotificarCambioEstadoCitaJob::dispatch($cita, 'cancelada', 'paciente');
 
-        return back()->with('success', 'Cita cancelada.');
+        return back()
+            ->with('success', 'Cita cancelada.')
+            ->with('success_action_url', route('paciente.citas'))
+            ->with('success_action_label', 'Ver mis citas')
+            ->with('highlight_cita', $cita->id);
     }
 
     /** ======================= PACIENTE: EDITAR/ACTUALIZAR ======================= */
@@ -412,7 +439,7 @@ class CitaController extends Controller
         return view('paciente.editar-cita', compact('cita'));
     }
 
-    public function actualizar(Request $request, $id)
+    public function actualizar(Request $request, $id, PriorityEvaluator $priorityEvaluator)
     {
         $cita = Cita::findOrFail($id);
 
@@ -428,14 +455,21 @@ class CitaController extends Controller
             [
                 'fecha' => 'required|date',
                 'hora'  => 'required|date_format:H:i',
+                'motivo_consulta' => ValidationRules::motivoConsulta(),
             ],
             [
                 'fecha.required'   => 'Seleccione una fecha.',
                 'fecha.date'       => 'La fecha no es válida.',
                 'hora.required'    => 'Ingrese una hora.',
                 'hora.date_format' => 'Formato de hora inválido. Use HH:MM.',
+                'motivo_consulta.required' => 'El motivo de consulta es obligatorio.',
+                'motivo_consulta.min'      => 'El motivo debe tener al menos 3 caracteres.',
+                'motivo_consulta.max'      => 'El motivo no puede superar 80 caracteres.',
+                'motivo_consulta.regex'    => 'El motivo debe ir en una sola linea.',
             ]
         );
+
+        $motivoConsulta = $priorityEvaluator->sanitizeMotivo($request->input('motivo_consulta'));
 
         $ahora = now('America/Guayaquil');
         $fechaHora = Carbon::createFromFormat('Y-m-d H:i', $request->fecha.' '.$request->hora, 'America/Guayaquil');
@@ -444,34 +478,17 @@ class CitaController extends Controller
         }
 
         $slot = Carbon::createFromFormat('H:i', $request->hora);
-        $labId = $this->laboratorioEspecialidadId();
-        $isLab = $labId && (int)$cita->especialidad_id === (int)$labId;
-        $intervalo = $isLab ? 15 : 30;
+        $horarioSeleccionado = $this->horarioParaSlot((int) $cita->doctor_id, (string) $request->fecha, $slot);
 
-        if ($slot->minute % $intervalo !== 0) {
-            $msg = $isLab
-                ? 'La hora debe estar en intervalos de 15 minutos (por ejemplo 08:00, 08:15, 08:30).'
-                : 'La hora debe estar en intervalos de 30 minutos (por ejemplo 08:00, 08:30, 09:00).';
-            return back()->withErrors(['hora' => $msg])->withInput();
+        if (!$horarioSeleccionado) {
+            return back()->withErrors(['error' => 'No hay horario configurado para ese profesional en ese dia y hora.'])->withInput();
         }
 
-        if ($isLab) {
-            $inicioLab = Carbon::createFromTimeString('08:00');
-            $finLab = Carbon::createFromTimeString('18:00');
-            if ($slot->lt($inicioLab) || $slot->gte($finLab)) {
-                return back()->withErrors(['hora' => 'El laboratorio atiende de 08:00 a 18:00.'])->withInput();
-            }
-        } else {
-            $hayHorario = Horario::where('doctor_id', $cita->doctor_id)
-                ->whereDate('fecha', $request->fecha)
-                ->whereTime('hora_inicio', '<=', $slot->format('H:i:s'))
-                ->whereTime('hora_fin',   '>',  $slot->format('H:i:s'))
-                ->exists();
-
-            if (!$hayHorario) {
-                return back()->withErrors(['error' => 'No hay horario disponible del doctor para ese dia y hora.'])->withInput();
-            }
+        if (!$this->slotAlineadoConHorario($horarioSeleccionado, (string) $request->fecha, $slot)) {
+            return back()->withErrors(['hora' => 'La hora seleccionada no coincide con un bloque disponible del horario configurado.'])->withInput();
         }
+
+        $intervalo = $this->intervaloHorario($horarioSeleccionado);
         $citasMismoDia = Cita::where('doctor_id', $cita->doctor_id)
             ->whereDate('fecha', $request->fecha)
             ->where('activo', true)
@@ -485,9 +502,7 @@ class CitaController extends Controller
         });
 
         if ($existe) {
-            $msg = $isLab
-                ? 'El laboratorio ya tiene una cita en ese horario o en un rango de 15 minutos.'
-                : 'El doctor ya tiene una cita en ese horario o en un rango de 30 minutos.';
+            $msg = 'El profesional ya tiene una cita en ese horario o en un bloque inmediato del horario configurado.';
             return back()->withErrors(['error' => $msg])->withInput();
         }
 
@@ -497,13 +512,12 @@ class CitaController extends Controller
             $cita->update([
                 'fecha'  => $request->fecha,
                 'hora'   => $slot->format('H:i:00'),
+                'motivo_consulta' => $motivoConsulta,
                 'estado' => Cita::ESTADO_PENDIENTE,
                 'activo' => true,
-                'pending_since' => now('America/Guayaquil'),
-                'last_priority_notified_at' => null,
             ]);
 
-            $cita->refreshPriority();
+            $priorityEvaluator->apply($cita);
             $cita->save();
 
             DB::commit();
@@ -517,7 +531,11 @@ class CitaController extends Controller
 
         NotificarCambioEstadoCitaJob::dispatch($cita, 'reagendada', 'paciente');
 
-        return redirect()->route('paciente.citas')->with('success', 'Cita reagendada.');
+        return redirect()->route('paciente.citas')
+            ->with('success', 'Cita reagendada.')
+            ->with('success_action_url', route('paciente.citas'))
+            ->with('success_action_label', 'Ver mis citas')
+            ->with('highlight_cita', $cita->id);
     }
 
     /** ======================= DOCTOR: LISTADO ======================= */
@@ -526,24 +544,16 @@ class CitaController extends Controller
     app(CitaNoShowService::class)->marcarVencidas();
     $doctorId = Auth::id();
     $estado = $this->obtenerEstadoFiltroDoctor($request);
+    $prioridad = $this->obtenerPrioridadFiltroDoctor($request);
 
     // Para la tabla
     $citas = \App\Models\Cita::where('doctor_id', $doctorId)
         ->when($estado !== '', fn($query) => $query->where('estado', $estado))
+        ->when($prioridad !== '', fn($query) => $query->where('prioridad_nivel', $prioridad))
         ->with(['paciente','especialidad','receta','notaSoap'])
-        ->orderByRaw("
-            CASE estado
-            WHEN 'confirmada' THEN 1
-            WHEN 'pendiente'  THEN 2
-            WHEN 'cancelada'  THEN 3
-            WHEN 'realizada'  THEN 4
-            ELSE 5
-            END
-        ")
-        ->orderByRaw("CASE WHEN estado = 'pendiente' THEN priority_score END DESC")
-        ->orderByRaw("CASE WHEN estado = 'pendiente' THEN pending_since END ASC")
-        ->orderBy('fecha','asc')
-        ->orderBy('hora','asc')
+        ->orderByRaw(Cita::prioridadOrderSql())
+        ->orderBy('fecha', 'asc')
+        ->orderBy('hora', 'asc')
         ->get();
 
     // Helper robusto fecha+hora
@@ -597,7 +607,7 @@ class CitaController extends Controller
         $c->proxima_cita = $mapProxima[$c->id] ?? null;
     }
 
-    return view('doctor.citas', compact('citas', 'estado'));
+    return view('doctor.citas', compact('citas', 'estado', 'prioridad'));
 }
 
     protected function obtenerEstadoFiltroDoctor(Request $request): string
@@ -610,15 +620,29 @@ class CitaController extends Controller
         return in_array($estado, $validStates, true) ? $estado : '';
     }
 
+    protected function obtenerPrioridadFiltroDoctor(Request $request): string
+    {
+        $prioridad = strtoupper(trim((string) $request->get('prioridad', '')));
+        if ($prioridad === 'ALL') {
+            return '';
+        }
+
+        return in_array($prioridad, Cita::PRIORIDAD_NIVELES, true) ? $prioridad : '';
+    }
+
     protected function etiquetaEstadoCita(string $estado): string
     {
         return $estado === \App\Models\Cita::ESTADO_NO_SE_PRESENTO ? 'No se presento' : ucfirst($estado);
     }
 
-    protected function queryDoctorCitas(int $doctorId, string $estado = '')
+    protected function queryDoctorCitas(int $doctorId, string $estado = '', string $prioridad = '')
     {
         return \App\Models\Cita::where('doctor_id', $doctorId)
-            ->when($estado !== '', fn($query) => $query->where('estado', $estado));
+            ->when($estado !== '', fn($query) => $query->where('estado', $estado))
+            ->when($prioridad !== '', fn($query) => $query->where('prioridad_nivel', $prioridad))
+            ->orderByRaw(Cita::prioridadOrderSql())
+            ->orderBy('fecha', 'asc')
+            ->orderBy('hora', 'asc');
     }
 
     public function aceptar($id)
@@ -639,7 +663,6 @@ class CitaController extends Controller
 
         $cita->estado = Cita::ESTADO_CONFIRMADA;
         $cita->activo = true;
-        $cita->refreshPriority();
         $cita->save();
 
         NotificarCambioEstadoCitaJob::dispatch($cita, 'aceptada', 'doctor');
@@ -665,7 +688,6 @@ class CitaController extends Controller
 
         $cita->estado = Cita::ESTADO_CANCELADA;
         $cita->activo = false;
-        $cita->refreshPriority();
         $cita->save();
 
         NotificarCambioEstadoCitaJob::dispatch($cita, 'cancelada', 'doctor');
@@ -696,7 +718,6 @@ class CitaController extends Controller
 
         $cita->estado = Cita::ESTADO_REALIZADA;
         $cita->activo = true;
-        $cita->refreshPriority();
         $cita->save();
 
         event(new CitaAtendida($cita));
@@ -708,16 +729,15 @@ class CitaController extends Controller
     {
         $doctorId = Auth::id();
         $estado = $this->obtenerEstadoFiltroDoctor($request);
+        $prioridad = $this->obtenerPrioridadFiltroDoctor($request);
 
-        $rows = $this->queryDoctorCitas($doctorId, $estado)
+        $rows = $this->queryDoctorCitas($doctorId, $estado, $prioridad)
             ->with(['paciente:id,name', 'especialidad:id,nombre'])
-            ->orderBy('fecha', 'asc')
-            ->orderBy('hora', 'asc')
             ->get();
 
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
-        $sheet->fromArray([['Paciente', 'Especialidad', 'Fecha', 'Hora', 'Estado']], null, 'A1', true);
+        $sheet->fromArray([['Paciente', 'Especialidad', 'Fecha', 'Hora', 'Estado', 'Prioridad']], null, 'A1', true);
 
         $fila = 2;
         foreach ($rows as $cita) {
@@ -726,10 +746,11 @@ class CitaController extends Controller
             $sheet->setCellValue("C{$fila}", $cita->fecha);
             $sheet->setCellValue("D{$fila}", substr((string)$cita->hora, 0, 5));
             $sheet->setCellValue("E{$fila}", $this->etiquetaEstadoCita($cita->estado));
+            $sheet->setCellValue("F{$fila}", ($cita->prioridad_nivel ?? Cita::PRIORIDAD_BAJA) . ($cita->prioridad_red_flag ? ' (Red flag)' : ''));
             $fila++;
         }
 
-        foreach (range('A', 'E') as $col) {
+        foreach (range('A', 'F') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 
@@ -752,17 +773,17 @@ class CitaController extends Controller
     {
         $doctorId = Auth::id();
         $estado = $this->obtenerEstadoFiltroDoctor($request);
+        $prioridad = $this->obtenerPrioridadFiltroDoctor($request);
 
-        $citas = $this->queryDoctorCitas($doctorId, $estado)
+        $citas = $this->queryDoctorCitas($doctorId, $estado, $prioridad)
             ->with(['paciente:id,name', 'especialidad:id,nombre'])
-            ->orderBy('fecha', 'asc')
-            ->orderBy('hora', 'asc')
             ->get();
 
         $html = view('doctor.citas-export-pdf', [
             'citas' => $citas,
             'doctor' => Auth::user(),
             'estado' => $estado,
+            'prioridad' => $prioridad,
         ])->render();
 
         $opt = new Options();
@@ -798,44 +819,10 @@ class CitaController extends Controller
      */
     public function slotsDisponibles($doctor, $fecha)
     {
-        $doctorUser = User::find($doctor);
-        if ($doctorUser && $doctorUser->hasRole('laboratorio')) {
-            $ocupadas = Cita::where('doctor_id', $doctor)
-                ->whereDate('fecha', $fecha)
-                ->where('activo', true)
-                ->pluck('hora')
-                ->map(fn($h) => substr($h, 0, 5))
-                ->toArray();
-
-            $slots = [];
-            $ahora = now('America/Guayaquil');
-            $esHoy = $fecha === $ahora->format('Y-m-d');
-            $limiteHoyMin = ($ahora->hour * 60) + $ahora->minute + 60;
-
-            $inicio = Carbon::createFromFormat('H:i', '08:00');
-            $fin = Carbon::createFromFormat('H:i', '18:00');
-
-            for ($t = $inicio->copy(); $t->lt($fin); $t->addMinutes(15)) {
-                if ($esHoy) {
-                    $slotMin = ($t->hour * 60) + $t->minute;
-                    if ($slotMin < $limiteHoyMin) {
-                        continue;
-                    }
-                }
-
-                $hhmm = $t->format('H:i');
-                if (!in_array($hhmm, $ocupadas, true)) {
-                    $slots[] = $hhmm;
-                }
-            }
-
-            return response()->json(['slots' => $slots]);
-        }
-
         $horarios = Horario::where('doctor_id', $doctor)
             ->whereDate('fecha', $fecha)
             ->orderBy('hora_inicio')
-            ->get(['hora_inicio','hora_fin']);
+            ->get(['hora_inicio','hora_fin','intervalo_minutos']);
 
         if ($horarios->isEmpty()) {
             return response()->json(['slots' => []]);
@@ -856,8 +843,9 @@ class CitaController extends Controller
         foreach ($horarios as $h) {
             $ini = $this->parseHoraFlexible($h->hora_inicio);
             $fin = $this->parseHoraFlexible($h->hora_fin);
+            $intervalo = max(1, (int) ($h->intervalo_minutos ?: 30));
 
-            for ($t = $ini->copy(); $t->lt($fin); $t->addMinutes(30)) {
+            for ($t = $ini->copy(); $t->lt($fin); $t->addMinutes($intervalo)) {
                 if ($esHoy) {
                     $slotMin = ($t->hour * 60) + $t->minute;
                     if ($slotMin < $limiteHoyMin) {
@@ -867,10 +855,10 @@ class CitaController extends Controller
 
                 $hhmm = $t->format('H:i');
 
-                $choca = collect($ocupadas)->contains(function ($o) use ($hhmm) {
+                $choca = collect($ocupadas)->contains(function ($o) use ($hhmm, $intervalo) {
                     $a = Carbon::createFromFormat('H:i', $o);
                     $b = Carbon::createFromFormat('H:i', $hhmm);
-                    return $a->diffInMinutes($b) <= 29;
+                    return $a->diffInMinutes($b) <= ($intervalo - 1);
                 });
                 if ($choca) continue;
 
@@ -905,9 +893,16 @@ class CitaController extends Controller
      * POST /doctor/citas/{cita}/proxima/planificar
      * Crea la próxima cita con fecha/hora elegidas por el doctor.
      */
-    public function proximaPlanificada(Request $request, Cita $cita)
+    public function proximaPlanificada(Request $request, Cita $cita, PriorityEvaluator $priorityEvaluator)
     {
         if ($cita->doctor_id !== Auth::id()) abort(403);
+
+        if (app(PagoService::class)->pacienteTieneBloqueo((int) $cita->paciente_id)) {
+            return response()->json([
+                'ok' => false,
+                'msg' => PagoService::MENSAJE_BLOQUEO,
+            ], 423);
+        }
 
         $request->validate(
             ['fecha'=>'required|date','hora'=>'required|date_format:H:i'],
@@ -948,19 +943,18 @@ class CitaController extends Controller
             return response()->json(['ok'=>false,'msg'=>'Choque con otra cita en ±30 minutos.'], 422);
         }
 
-        DB::transaction(function() use ($cita, $request, $slot) {
+        DB::transaction(function() use ($cita, $request, $slot, $priorityEvaluator) {
             $nueva = Cita::create([
                 'paciente_id'     => $cita->paciente_id,
                 'doctor_id'       => $cita->doctor_id,
                 'especialidad_id' => $cita->especialidad_id,
                 'fecha'           => $request->fecha,
                 'hora'            => $slot->format('H:i:00'),
+                'motivo_consulta' => $cita->motivo_consulta ?: 'Seguimiento medico',
                 'estado'          => Cita::ESTADO_PENDIENTE,
                 'activo'          => true,
-                'pending_since'   => now('America/Guayaquil'),
-                'last_priority_notified_at' => null,
             ]);
-            $nueva->refreshPriority();
+            $priorityEvaluator->apply($nueva);
             $nueva->save();
             event(new CitaAgendada($nueva));
             EnviarConfirmacionCitaJob::dispatch($nueva);

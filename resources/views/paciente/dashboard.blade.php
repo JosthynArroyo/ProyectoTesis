@@ -22,20 +22,22 @@
 @section('main')
   <div class="space-y-6">
     <section class="card p-6">
-      <div class="flex flex-wrap items-center justify-between gap-4">
-        <div>
+      <div class="page-header">
+        <div class="page-header__info">
           <p class="text-xs uppercase tracking-widest text-slate-500">Panel del paciente</p>
           <h1 class="mt-2 text-2xl font-semibold text-slate-900">Mi panel</h1>
           <p class="text-slate-600">Resumen claro de tus citas próximas y estado de tu agenda.</p>
         </div>
-        <div class="date flex items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2">
-          <i class="ri-calendar-line text-slate-400"></i>
-          <input type="date" value="{{ \Carbon\Carbon::now()->format('Y-m-d') }}" class="bg-transparent text-sm text-slate-600">
+        <div class="page-header__actions">
+          <div class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2">
+            <i class="ri-calendar-line text-slate-400"></i>
+            <input type="date" value="{{ \Carbon\Carbon::now()->format('Y-m-d') }}" class="bg-transparent text-sm text-slate-600">
+          </div>
         </div>
       </div>
     </section>
 
-    <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+    <section class="stat-grid">
       <x-ui.stat label="Citas agendadas" :value="$totalCitas" tone="teal">
         <x-slot:icon><i class="ri-calendar-check-line"></i></x-slot:icon>
         <p class="text-xs text-slate-500">Este mes</p>
@@ -50,14 +52,49 @@
       </x-ui.stat>
     </section>
 
+    <section class="card p-6">
+      <div class="page-header">
+        <div class="page-header__info">
+          <h2>Mis pagos</h2>
+          <p>Control de obligaciones por cita y estado de revisión.</p>
+        </div>
+        <div class="page-header__actions">
+          <a href="{{ route('paciente.pagos.index') }}" class="btn btn-outline">Ir a Mis pagos</a>
+        </div>
+      </div>
+
+      <div class="mt-4 grid gap-3 sm:grid-cols-3">
+        <div class="rounded-2xl border border-slate-200 bg-white/90 p-4">
+          <p class="text-xs uppercase tracking-widest text-slate-500">Total</p>
+          <p class="mt-1 text-2xl font-semibold text-slate-900">{{ $totalPagos ?? 0 }}</p>
+        </div>
+        <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+          <p class="text-xs uppercase tracking-widest text-amber-700">Pendientes/Verificación</p>
+          <p class="mt-1 text-2xl font-semibold text-amber-900">{{ $pagosPendientes ?? 0 }}</p>
+        </div>
+        <div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+          <p class="text-xs uppercase tracking-widest text-emerald-700">Pagados</p>
+          <p class="mt-1 text-2xl font-semibold text-emerald-900">{{ $pagosPagados ?? 0 }}</p>
+        </div>
+      </div>
+
+      @if($bloqueoPagosPendientes ?? false)
+        <x-ui.alert tone="warning" class="mt-4">
+          Tiene pagos pendientes. Regularice su cuenta para agendar una nueva cita.
+        </x-ui.alert>
+      @endif
+    </section>
+
     @if($labOrdenes->isNotEmpty())
       <section class="card p-6">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 class="text-lg font-semibold text-slate-900">Laboratorio</h2>
-            <p class="text-sm text-slate-500">Estado de tu examen, sin detalles técnicos.</p>
+        <div class="page-header">
+          <div class="page-header__info">
+            <h2>Laboratorio</h2>
+            <p>Estado de tu examen, sin detalles técnicos.</p>
           </div>
-          <a class="btn btn-outline" href="{{ route('paciente.laboratorio.index') }}">Ver detalles</a>
+          <div class="page-header__actions">
+            <a class="btn btn-outline" href="{{ route('paciente.laboratorio.index') }}">Ver detalles</a>
+          </div>
         </div>
 
         @if($labResultadoDestacado && $labResultadoDestacado->resultado_path)
@@ -66,7 +103,7 @@
               <p class="text-sm font-semibold text-emerald-800">Resultado disponible</p>
               <p class="text-sm text-emerald-700">Tu informe ya está listo para revisar.</p>
             </div>
-            <a class="btn btn-primary" href="{{ route('paciente.laboratorio.download', $labResultadoDestacado->id) }}">Ver o descargar</a>
+            <a class="btn btn-primary btn-full-mobile" href="{{ route('paciente.laboratorio.download', $labResultadoDestacado->id) }}">Ver o descargar</a>
           </div>
         @endif
 
@@ -80,13 +117,13 @@
           ])
           @php($estadoInfo = $estadoCatalogo[$estadoActual] ?? ['label' => 'Pendiente', 'tone' => 'info'])
 
-          <div class="mt-4 grid gap-4 md:grid-cols-2">
-            <div>
-              <p class="text-xs uppercase tracking-widest text-slate-500">Examen</p>
-              <p class="text-lg font-semibold text-slate-900">{{ data_get($labOrdenPrincipal, 'tipo_examen', 'Examen de laboratorio') }}</p>
+          <div class="mt-4 detail-grid">
+            <div class="detail-item">
+              <span class="detail-item__label">Examen</span>
+              <span class="detail-item__value">{{ data_get($labOrdenPrincipal, 'tipo_examen', 'Examen de laboratorio') }}</span>
             </div>
-            <div>
-              <p class="text-xs uppercase tracking-widest text-slate-500">Estado</p>
+            <div class="detail-item">
+              <span class="detail-item__label">Estado</span>
               <div class="mt-1 flex flex-wrap items-center gap-2">
                 <span class="badge {{ $estadoInfo['tone'] }}">{{ $estadoInfo['label'] }}</span>
                 @if(!empty($estadoInfo['note']))
@@ -143,12 +180,14 @@
     @endif
 
     <section class="card p-6">
-      <div class="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 class="text-lg font-semibold text-slate-900">Exámenes de laboratorio</h2>
-          <p class="text-sm text-slate-500">Solicitudes activas y recientes.</p>
+      <div class="page-header">
+        <div class="page-header__info">
+          <h2>Exámenes de laboratorio</h2>
+          <p>Solicitudes activas y recientes.</p>
         </div>
-        <a class="btn btn-outline" href="{{ route('paciente.laboratorio.solicitar') }}">Solicitar examen</a>
+        <div class="page-header__actions">
+          <a class="btn btn-outline btn-full-mobile" href="{{ route('paciente.laboratorio.solicitar') }}">Solicitar examen</a>
+        </div>
       </div>
 
       @if($labOrders->isNotEmpty())
@@ -180,14 +219,16 @@
     </section>
 
     <section class="card p-6">
-      <div class="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 class="text-lg font-semibold text-slate-900">Mis próximas citas</h2>
-          <p class="text-sm text-slate-500">Las 4 más cercanas en tu agenda</p>
+      <div class="page-header">
+        <div class="page-header__info">
+          <h2>Mis próximas citas</h2>
+          <p>Las 4 más cercanas en tu agenda</p>
         </div>
-        <a class="btn btn-ghost" href="{{ route('paciente.citas') }}">Ver todas mis citas</a>
+        <div class="page-header__actions">
+          <a class="btn btn-ghost" href="{{ route('paciente.citas') }}">Ver todas mis citas</a>
+        </div>
       </div>
-      <div class="mt-4 table-shell">
+      <div class="mt-4 table-shell table-responsive-cards">
         <table class="table">
           <thead>
           <tr>
@@ -227,14 +268,16 @@
     </section>
 
     <section class="card p-6">
-      <div class="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 class="text-lg font-semibold text-slate-900">Resultados de laboratorio</h2>
-          <p class="text-sm text-slate-500">Últimos resultados disponibles</p>
+      <div class="page-header">
+        <div class="page-header__info">
+          <h2>Resultados de laboratorio</h2>
+          <p>Últimos resultados disponibles</p>
         </div>
-        <a class="btn btn-ghost" href="{{ route('paciente.laboratorio.index') }}">Ver resultados</a>
+        <div class="page-header__actions">
+          <a class="btn btn-ghost" href="{{ route('paciente.laboratorio.index') }}">Ver resultados</a>
+        </div>
       </div>
-      <div class="mt-4 table-shell">
+      <div class="mt-4 table-shell table-responsive-cards">
         <table class="table">
           <thead>
           <tr>
@@ -257,7 +300,7 @@
               </td>
               <td data-label="Archivo">
                 @if($orden->resultado_path)
-                  <a href="{{ route('paciente.laboratorio.download', $orden->id) }}" class="btn btn-outline">Descargar</a>
+                  <a href="{{ route('paciente.laboratorio.download', $orden->id) }}" class="btn btn-outline btn-sm">Descargar</a>
                 @else
                   <span class="text-xs text-slate-500">Pendiente</span>
                 @endif

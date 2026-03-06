@@ -1,11 +1,3 @@
-const themeToggler = document.querySelector('.theme-toggler');
-
-themeToggler.addEventListener('click', () => {
-  document.body.classList.toggle('dark-theme-variables');
-  themeToggler.querySelector('span:nth-child(1)').classList.toggle('active');
-  themeToggler.querySelector('span:nth-child(2)').classList.toggle('active');
-});
-
 document.addEventListener('DOMContentLoaded', () => {
   const dateInput = document.querySelector('.date input[type="date"]');
   if (dateInput) {

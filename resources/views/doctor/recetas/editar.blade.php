@@ -4,7 +4,7 @@
 @section('header-title','Editar receta')
 @section('header-subtitle','Actualiza la receta y notifica al paciente')
 
-@section('content')
+@section('main')
 <div class="rx-wrap space-y-6" @if(session('ask_resend')) data-ask-resend="1" @endif>
   <div class="card p-6">
     <div class="flex flex-wrap items-start justify-between gap-4">
@@ -16,7 +16,7 @@
           <strong>Fecha cita:</strong> {{ \Carbon\Carbon::parse($cita->fecha)->format('d/m/Y') }} {{ \Carbon\Carbon::parse($cita->hora)->format('H:i') }}
           @if($receta->enviado_en)
             &nbsp;|&nbsp;
-            <strong>Último envío:</strong> {{ $receta->enviado_en->format('d/m/Y H:i') }}
+            <strong>Ãšltimo envÃ­o:</strong> {{ $receta->enviado_en->format('d/m/Y H:i') }}
           @endif
         </div>
       </div>
@@ -38,15 +38,6 @@
   @if (session('info'))
     <x-ui.alert tone="warning" class="rx-alert">{{ session('info') }}</x-ui.alert>
   @endif
-  @if ($errors->any())
-    <x-ui.alert tone="error" class="rx-alert">
-      <ul>
-        @foreach ($errors->all() as $error)
-          <li>{{ $error }}</li>
-        @endforeach
-      </ul>
-    </x-ui.alert>
-  @endif
 
   <form id="form-receta" method="POST" action="{{ route('doctor.recetas.update') }}" class="card p-6 space-y-4">
     @csrf
@@ -54,7 +45,7 @@
 
     <div class="grid gap-4">
       <div>
-        <label for="diagnostico" class="form-label">Diagnóstico / Motivo</label>
+        <label for="diagnostico" class="form-label">DiagnÃ³stico / Motivo</label>
         <textarea id="diagnostico" name="diagnostico" required class="form-textarea">{{ old('diagnostico', $receta->diagnostico) }}</textarea>
         @error('diagnostico')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
@@ -89,7 +80,7 @@
         <small class="text-xs text-slate-500">Archivo actual: {{ $receta->pdf_path }}</small>
       @endif
     </div>
-    <div id="reenviar-note" class="text-xs text-slate-500">Al guardar, se enviará la <strong>receta actualizada</strong> al paciente.</div>
+    <div id="reenviar-note" class="text-xs text-slate-500">Al guardar, se enviarÃ¡ la <strong>receta actualizada</strong> al paciente.</div>
 
     <x-ui.form-actions>
       <x-slot:left>
@@ -112,3 +103,4 @@
 @push('scripts')
   @vite('resources/js/doctor/recetas-editar.js')
 @endpush
+

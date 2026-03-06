@@ -1,9 +1,10 @@
 <aside class="dashboard-sidebar fixed top-0 bottom-0 left-0 z-40 h-screen -translate-x-full overflow-y-auto border-r border-slate-200/70 bg-white px-4 pb-6 pt-0 shadow-xl lg:translate-x-0 lg:shrink-0">
     <div class="top flex items-center justify-between">
-        <a href="{{ route('doctor.dashboard') }}" class="flex items-center gap-3">
-            <div>
-                <p class="text-xs uppercase tracking-wide text-slate-500">Panel</p>
-                <p class="text-sm font-semibold text-slate-800">Doctor Don Bosco</p>
+        <a href="{{ route('doctor.dashboard') }}" class="sidebar-brand">
+            <span class="sidebar-brand__icon"><i class="ri-stethoscope-line"></i></span>
+            <div class="sidebar-brand__text">
+                <small>Panel Médico</small>
+                <strong>Clínica Don Bosco</strong>
             </div>
         </a>
         <button class="close btn btn-ghost px-2 lg:hidden" aria-label="Cerrar menú">
@@ -25,16 +26,16 @@
             <i class="ri-file-list-3-line text-lg"></i> Historial de recetas
         </a>
 
-        <a href="{{ route('doctor.perfil.edit') }}" class="flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors {{ $current === 'perfil' ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-50' }}">
-            <i class="ri-account-circle-line text-lg"></i> Perfil
-        </a>
-
         <a href="{{ route('doctor.agenda') }}" class="flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors {{ $current === 'agenda' ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-50' }}">
             <i class="ri-calendar-event-line text-lg"></i> Agenda semanal
         </a>
 
         <a href="{{ route('doctor.horario.index') }}" class="flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors {{ $current === 'horario' ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-50' }}">
             <i class="ri-time-line text-lg"></i> Mi horario
+        </a>
+
+        <a href="{{ route('doctor.perfil.edit') }}" class="flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors {{ $current === 'perfil' ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-50' }}">
+            <i class="ri-account-circle-line text-lg"></i> Perfil
         </a>
 
         <form id="doctor-logout-form" action="{{ route('salir') }}" method="POST" class="hidden">@csrf</form>

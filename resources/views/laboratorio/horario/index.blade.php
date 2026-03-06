@@ -2,16 +2,16 @@
 @section('title','Mi horario | Laboratorio')
 @section('activeSidebar','horario')
 @section('header-title','Mi horario')
-@section('header-subtitle','Configura y revisa tus bloques de atención')
+@section('header-subtitle','Configura y revisa tus bloques de atenciÃ³n')
 
-@section('content')
+@section('main')
   <div class="space-y-6">
     <section class="card p-6">
       <div class="flex flex-wrap items-center justify-between gap-4">
         <div>
           <p class="text-xs uppercase tracking-widest text-slate-500">Horario</p>
           <h1 class="mt-2 text-2xl font-semibold text-slate-900">Mi horario</h1>
-          <p class="text-slate-600">Configura y revisa tus bloques de atención.</p>
+          <p class="text-slate-600">Configura y revisa tus bloques de atenciÃ³n.</p>
         </div>
         <span class="badge info"><i class="ri-time-line"></i> Laboratorio</span>
       </div>
@@ -19,9 +19,6 @@
 
     @if(session('success'))
       <x-ui.alert tone="success">{{ session('success') }}</x-ui.alert>
-    @endif
-    @if($errors->any())
-      <x-ui.alert tone="error">{{ $errors->first() }}</x-ui.alert>
     @endif
 
     <section class="card p-6">
@@ -44,7 +41,7 @@
     </section>
 
     <section class="card p-6">
-      <h3 class="text-lg font-semibold text-slate-900">Crear horario (un dia)</h3>
+      <h3 class="text-lg font-semibold text-slate-900">Crear horario (un dÃ­a)</h3>
       <form method="POST" action="{{ route('laboratorio.horario.store') }}" class="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         @csrf
         <div>
@@ -91,7 +88,7 @@
         </div>
 
         <div class="md:col-span-4">
-          <label class="form-label">Dias</label>
+          <label class="form-label">DÃ­as</label>
           @php($dias=[1=>'Lun',2=>'Mar',3=>'Mie',4=>'Jue',5=>'Vie',6=>'Sab',7=>'Dom'])
           <div class="mt-2 flex flex-wrap gap-2">
             @foreach($dias as $k=>$v)
@@ -125,7 +122,7 @@
           <label class="flex items-center gap-2 text-sm text-slate-600">
             <input type="hidden" name="sobrescribir" value="0">
             <input type="checkbox" name="sobrescribir" value="1" class="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500">
-            <span>Sobrescribir dias existentes</span>
+            <span>Sobrescribir dÃ­as existentes</span>
           </label>
           @error('sobrescribir')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
         </div>
@@ -177,3 +174,4 @@
     </section>
   </div>
 @endsection
+

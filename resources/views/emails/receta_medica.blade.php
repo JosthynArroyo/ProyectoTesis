@@ -28,7 +28,7 @@
                 Adjuntamos su {{ $motivo === 'actualizacion' ? 'receta actualizada' : 'nueva receta' }}
                 correspondiente a la cita con el Dr(a).
                 <strong>{{ $cita->doctor->name ?? '-' }}</strong>
-                del dia {{ \Carbon\Carbon::parse($cita->fecha)->format('d/m/Y') }}
+                del día {{ \Carbon\Carbon::parse($cita->fecha)->format('d/m/Y') }}
                 a las {{ \Carbon\Carbon::parse($cita->hora)->format('H:i') }}.
               </p>
 

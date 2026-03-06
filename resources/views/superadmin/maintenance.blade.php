@@ -13,9 +13,6 @@
     </div>
   </section>
 
-  @if ($errors->any())
-    <x-ui.alert tone="error">@foreach ($errors->all() as $e)<div>{{ $e }}</div>@endforeach</x-ui.alert>
-  @endif
   @if (session('success'))
     <x-ui.alert tone="success">{{ session('success') }}</x-ui.alert>
   @endif
@@ -32,7 +29,7 @@
       @error('maintenance_enabled')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
 
       <div>
-        <label class="form-label" for="maintenance_message">Mensaje público</label>
+        <label class="form-label" for="maintenance_message">Mensaje pÃºblico</label>
         <textarea class="form-textarea" id="maintenance_message" name="maintenance_message" rows="3" required>{{ old('maintenance_message', $settings['maintenance.message'] ?? '') }}</textarea>
         @error('maintenance_message')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
@@ -49,7 +46,7 @@
           <input class="form-input" id="maintenance_allow_ips" name="maintenance_allow_ips"
                  value="{{ old('maintenance_allow_ips', $settings['maintenance.allow_ips'] ?? '') }}"
                  placeholder="Ej: 127.0.0.1, 190.0.0.10" required>
-          <p class="mt-1 text-xs text-slate-500">Solo estas IPs podrán acceder sin ser superadmin.</p>
+          <p class="mt-1 text-xs text-slate-500">Solo estas IPs podrÃ¡n acceder sin ser superadmin.</p>
           @error('maintenance_allow_ips')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
         </div>
       </div>
@@ -57,9 +54,10 @@
 
     <div class="flex flex-wrap items-center justify-end gap-3">
       <button class="btn btn-primary" type="submit">
-        <i class="ri-save-line"></i> Guardar configuración
+        <i class="ri-save-line"></i> Guardar configuraciÃ³n
       </button>
     </div>
   </form>
 </div>
 @endsection
+

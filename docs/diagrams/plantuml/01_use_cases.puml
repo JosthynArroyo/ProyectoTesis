@@ -1,0 +1,108 @@
+@startuml
+left to right direction
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam usecase {
+  BackgroundColor white
+  BorderColor #3B4A5A
+}
+
+actor superadmin as Superadmin
+actor administrador as Administrador
+actor doctor as Doctor
+actor paciente as Paciente
+actor laboratorio as Laboratorio
+
+rectangle "Sistema de Gestion de Citas Medicas" {
+  usecase "Iniciar sesion" as UCLogin
+  usecase "Ver dashboard por rol" as UCDashboard
+  usecase "Gestionar administradores" as UCAdmins
+  usecase "Gestionar usuarios\n(asignar rol y especialidad)" as UCUsers
+  usecase "Solicitar acceso a\npersonalizacion" as UCFeatureRequest
+  usecase "Aprobar / rechazar / revocar\nacceso a personalizacion" as UCFeatureReview
+  usecase "Personalizar contenido\ninstitucional" as UCCustom
+  usecase "Gestionar horarios" as UCHours
+  usecase "Consultar tarifa y\nslots disponibles" as UCBookingData
+  usecase "Agendar cita" as UCBook
+  usecase "Reprogramar cita" as UCReschedule
+  usecase "Cancelar cita" as UCCancel
+  usecase "Listar citas" as UCListAppointments
+  usecase "Aceptar / rechazar /\nrealizar citas" as UCDoctorFlow
+  usecase "Registrar y firmar\nHistoria Clinica SOAP" as UCSoap
+  usecase "Consultar Historia Clinica" as UCHistory
+  usecase "Generar / editar / reenviar /\ndescargar receta" as UCPrescription
+  usecase "Solicitar examen de laboratorio" as UCPatientLab
+  usecase "Crear orden de laboratorio\ndesde consulta" as UCDoctorLab
+  usecase "Gestionar resultados de\nlaboratorio" as UCLabResults
+  usecase "Gestionar pagos,\nordenes y recibos" as UCPayments
+  usecase "Exportar reportes y listados" as UCReports
+  usecase "Ajustar prioridad de cita" as UCPriority
+}
+
+Superadmin --> UCLogin
+Superadmin --> UCDashboard
+Superadmin --> UCAdmins
+Superadmin --> UCFeatureReview
+Superadmin --> UCCustom
+
+Administrador --> UCLogin
+Administrador --> UCDashboard
+Administrador --> UCUsers
+Administrador --> UCFeatureRequest
+Administrador --> UCCustom
+Administrador --> UCHours
+Administrador --> UCHistory
+Administrador --> UCPayments
+Administrador --> UCReports
+Administrador --> UCPriority
+
+Doctor --> UCLogin
+Doctor --> UCDashboard
+Doctor --> UCListAppointments
+Doctor --> UCDoctorFlow
+Doctor --> UCSoap
+Doctor --> UCHistory
+Doctor --> UCPrescription
+Doctor --> UCDoctorLab
+Doctor --> UCHours
+Doctor --> UCReports
+Doctor --> UCPriority
+
+Paciente --> UCLogin
+Paciente --> UCDashboard
+Paciente --> UCBookingData
+Paciente --> UCBook
+Paciente --> UCReschedule
+Paciente --> UCCancel
+Paciente --> UCListAppointments
+Paciente --> UCHistory
+Paciente --> UCPatientLab
+Paciente --> UCLabResults
+Paciente --> UCPayments
+
+Laboratorio --> UCLogin
+Laboratorio --> UCDashboard
+Laboratorio --> UCLabResults
+
+UCBook --> UCBookingData : <<include>>
+UCReschedule --> UCBookingData : <<include>>
+UCDoctorFlow ..> UCSoap : <<include>>\npara realizar cita
+UCPrescription ..> UCDoctorFlow : <<extend>>
+UCDoctorLab ..> UCDoctorFlow : <<extend>>
+
+note bottom of UCUsers
+No se detecto un CRUD
+independiente de roles.
+Los roles se asignan dentro
+de la gestion de usuarios
+y administradores.
+end note
+
+note right of UCLabResults
+El actor laboratorio opera
+por las rutas /laboratorio/ordenes:
+marcar muestra, subir resultado
+y descargar PDF.
+end note
+
+@enduml

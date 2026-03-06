@@ -17,36 +17,6 @@ class DoctorSlotController extends Controller
         $limiteHora = $ahora->copy()->addHour();
         $date = Carbon::parse($fecha, $tz)->toDateString();
         $esHoy = $date === $ahora->toDateString();
-        $isLab = $doctor->hasRole('laboratorio');
-
-        if ($isLab) {
-            $inicio = Carbon::parse("{$date} 08:00", $tz);
-            $fin    = Carbon::parse("{$date} 18:00", $tz);
-            $step   = 15;
-
-            $ocupadas = Cita::where('doctor_id', $doctor->id)
-                ->whereDate('fecha', $date)
-                ->where('activo', true)
-                ->whereIn('estado', [Cita::ESTADO_PENDIENTE, Cita::ESTADO_CONFIRMADA])
-                ->pluck('hora')
-                ->map(fn ($t) => substr($t, 0, 5))
-                ->toArray();
-
-            $slots = [];
-            for ($t = $inicio->copy(); $t->lt($fin); $t->addMinutes($step)) {
-                if ($esHoy && $t->lt($limiteHora)) {
-                    continue;
-                }
-
-                $hhmm = $t->format('H:i');
-                $slots[] = [
-                    'hora'   => $hhmm,
-                    'estado' => in_array($hhmm, $ocupadas, true) ? 'ocupado' : 'libre',
-                ];
-            }
-
-            return response()->json(['slots' => $slots]);
-        }
 
         // Horarios del dia
         $horarios = Horario::where('doctor_id', $doctor->id)
@@ -95,4 +65,3 @@ class DoctorSlotController extends Controller
         return response()->json(['slots' => array_values($slots)]);
     }
 }
-

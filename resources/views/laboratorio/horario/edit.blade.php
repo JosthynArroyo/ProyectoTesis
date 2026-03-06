@@ -4,7 +4,7 @@
 @section('header-title','Flujo continuo')
 @section('header-subtitle','Cola en tiempo real y bloques de 5 min')
 
-@section('content')
+@section('main')
   <div class="space-y-6">
     <section class="card p-6">
       <div class="flex flex-wrap items-center justify-between gap-4">

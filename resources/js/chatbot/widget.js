@@ -137,7 +137,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const title = document.createElement('div');
     title.className = 'chat-verificacion-text';
-    title.textContent = `Para verificar que no eres un robot, escribe el numero de: ${reto.targetLabelEs}.`;
+    title.textContent = `Para verificar que no eres un robot, escribe el número de: ${reto.targetLabelEs}.`;
 
     const grid = document.createElement('div');
     grid.className = 'chat-verificacion-grid';
@@ -413,7 +413,7 @@ document.addEventListener('DOMContentLoaded', function () {
       const saludoNombre = state.identidad.nombre ? `Hola, ${state.identidad.nombre}.` : 'Hola.';
       const notaCorreo = data.existe && data.paciente && data.paciente.email
         ? 'Usaremos el correo registrado para verificarte.'
-        : 'Necesito tu correo para enviarte un codigo de verificacion.';
+        : 'Necesito tu correo para enviarte un código de verificación.';
       addMessage('bot', `${saludoNombre} ${notaCorreo}\n\nEscribe tu correo:`);
     } catch (error) {
       console.error(error);
@@ -459,10 +459,10 @@ document.addEventListener('DOMContentLoaded', function () {
       const enviado = await enviarCodigoVerificacion(emailNormalizado);
       if (!enviado) {
         state.step = 'email';
-        return addMessage('bot','Escribe tu correo nuevamente para intentar enviar el codigo:');
+        return addMessage('bot','Escribe tu correo nuevamente para intentar enviar el código:');
       }
       state.step = 'codigo';
-      addMessage('bot', 'Te enviamos un codigo de 6 digitos a tu correo. Ingresa el codigo para continuar:');
+      addMessage('bot', 'Te enviamos un código de 6 dígitos a tu correo. Ingresa el código para continuar:');
     } catch (error) {
       console.error(error);
       addMessage('bot','No fue posible verificar tu correo en este momento. Intenta nuevamente.');
@@ -486,13 +486,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
       const data = await res.json();
       if (!res.ok || data.ok === false) {
-        addMessage('bot', data.message || 'No se pudo enviar el codigo de verificacion.');
+        addMessage('bot', data.message || 'No se pudo enviar el código de verificación.');
         return false;
       }
       return true;
     } catch (error) {
       console.error(error);
-      addMessage('bot','No pudimos enviar el codigo de verificacion. Intenta mas tarde.');
+      addMessage('bot','No pudimos enviar el código de verificación. Intenta más tarde.');
       return false;
     }
   }
@@ -503,22 +503,22 @@ document.addEventListener('DOMContentLoaded', function () {
       return addMessage('bot','Necesito tu cédula y correo para enviarte un nuevo código.');
     }
 
-    addMessage('bot','Enviando un nuevo codigo...');
+    addMessage('bot','Enviando un nuevo código...');
     const enviado = await enviarCodigoVerificacion(state.identidad.email);
     if (!enviado) {
-      return addButtons([{ label:'Enviar nuevo codigo', action:'reenviar_codigo' }]);
+      return addButtons([{ label:'Enviar nuevo código', action:'reenviar_codigo' }]);
     }
 
     state.step = 'codigo';
-    addMessage('bot','Te enviamos un nuevo codigo de 6 digitos a tu correo. Ingresa el codigo para continuar:');
+    addMessage('bot','Te enviamos un nuevo código de 6 dígitos a tu correo. Ingresa el código para continuar:');
   }
 
   async function procesarCodigo(codigo) {
     if (!/^\d{6}$/.test(codigo)) {
-      return addMessage('bot','El codigo debe tener 6 digitos.');
+      return addMessage('bot','El código debe tener 6 dígitos.');
     }
 
-    addMessage('bot','Validando codigo...');
+    addMessage('bot','Validando código...');
 
     try {
       const res = await fetch(`${baseUrl}/chatbot/verificar-codigo`, {
@@ -538,10 +538,10 @@ document.addEventListener('DOMContentLoaded', function () {
       const data = await res.json();
       if (!res.ok || data.ok === false) {
         if (data.error === 'codigo_vencido' || data.allow_resend) {
-          addMessage('bot', data.message || 'El codigo ya vencio. Solicita uno nuevo.');
-          return addButtons([{ label:'Enviar nuevo codigo', action:'reenviar_codigo' }]);
+          addMessage('bot', data.message || 'El código ya venció. Solicita uno nuevo.');
+          return addButtons([{ label:'Enviar nuevo código', action:'reenviar_codigo' }]);
         }
-        return addMessage('bot', data.message || 'Codigo incorrecto.');
+        return addMessage('bot', data.message || 'Código incorrecto.');
       }
 
       if (data.paciente) {
@@ -553,11 +553,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
       state.autenticado = true;
       resetBufferConIdentidad();
-      addMessage('bot', `Codigo verificado. Bienvenido${state.identidad.nombre ? ', ' + state.identidad.nombre : ''}.`);
+      addMessage('bot', `Código verificado. Bienvenido${state.identidad.nombre ? ', ' + state.identidad.nombre : ''}.`);
       showMainMenu(true);
     } catch (error) {
       console.error(error);
-      addMessage('bot','No pudimos validar el codigo en este momento.');
+      addMessage('bot','No pudimos validar el código en este momento.');
     }
   }
 
@@ -576,7 +576,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const saludo = esBienvenida
       ? 'Identidad confirmada.' 
-      : 'Menu principal.';
+      : 'Menú principal.';
     const nombre = state.identidad.nombre ? state.identidad.nombre : '';
 
     addMessage('bot', `${saludo}${nombre ? ' ' + nombre : ''}\n\nSelecciona la gestion que deseas realizar:`);
@@ -594,7 +594,7 @@ document.addEventListener('DOMContentLoaded', function () {
     state.mode = 'finalizado';
     state.step = null;
     state.citasEncontradas = [];
-    addMessage('bot','Se cerró esta gestion. Escribe "menu" para continuar sin reiniciar tu identidad o "reiniciar" para iniciar desde cero.');
+    addMessage('bot','Se cerró esta gestión. Escribe "menu" para continuar sin reiniciar tu identidad o "reiniciar" para iniciar desde cero.');
   }
 
   // ======================
@@ -631,38 +631,38 @@ document.addEventListener('DOMContentLoaded', function () {
         data.map((e) => e.nombre)
       );
       state.step = 'especialidad';
-      addMessage('bot','Escribe el numero de la especialidad que necesitas:');
+      addMessage('bot','Escribe el número de la especialidad que necesitas:');
     } catch (error) {
       console.error(error);
-      addMessage('bot','No pude cargar las especialidades. Vuelve al menu.');
+      addMessage('bot','No pude cargar las especialidades. Vuelve al menú.');
       showMainMenu();
     }
   }
 
   async function pedirDoctores() {
-      addMessage('bot','Consultando medicos disponibles...');
+      addMessage('bot','Consultando médicos disponibles...');
     try {
       const res = await fetch(`${baseUrl}/chatbot/especialidades/${state.buffer.especialidad_id}/doctores`);
       const data = await res.json();
 
       if (!data.ok || !data.doctores.length) {
-        addMessage('bot', data.message || 'No hay medicos activos para esta especialidad.');
+        addMessage('bot', data.message || 'No hay médicos activos para esta especialidad.');
         return showMainMenu();
       }
 
       state.buffer.doctores = data.doctores;
       addNumberedVerticalList(
-        `Medicos disponibles (${data.especialidad}):`,
+        `Médicos disponibles (${data.especialidad}):`,
         data.doctores.map((d) => {
           const tarifa = d.precio_format ? ` - ${d.precio_format}` : '';
           return `${d.nombre}${tarifa}`;
         })
       );
       state.step = 'doctor';
-      addMessage('bot','Escribe el numero del medico que prefieres:');
+      addMessage('bot','Escribe el número del médico que prefieres:');
     } catch (error) {
       console.error(error);
-      addMessage('bot','Error cargando los medicos.');
+      addMessage('bot','Error cargando los médicos.');
       showMainMenu();
     }
   }
@@ -674,10 +674,10 @@ document.addEventListener('DOMContentLoaded', function () {
       const data = await res.json();
 
       if (!data.ok || !data.fechas.length) {
-        addMessage('bot', data.message || 'No hay fechas disponibles con este medico.');
+        addMessage('bot', data.message || 'No hay fechas disponibles con este médico.');
         if (contexto === 'agendar') {
           state.step = 'doctor';
-          return addMessage('bot','Elige otro medico escribiendo su numero:');
+          return addMessage('bot','Elige otro médico escribiendo su número:');
         }
         state.step = 'reagendar_cita';
         return addMessage('bot','Elige otra cita o intenta nuevamente en otro momento.');
@@ -696,10 +696,10 @@ document.addEventListener('DOMContentLoaded', function () {
       );
       if (contexto === 'agendar') {
         state.step = 'fecha';
-        addMessage('bot','Escribe el numero de la fecha:');
+        addMessage('bot','Escribe el número de la fecha:');
       } else {
         state.step = 'reagendar_fecha';
-        addMessage('bot','Elige la nueva fecha escribiendo su numero:');
+        addMessage('bot','Elige la nueva fecha escribiendo su número:');
       }
     } catch (error) {
       console.error(error);
@@ -734,10 +734,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
       if (contexto === 'agendar') {
         state.step = 'hora';
-        addMessage('bot','Escribe el numero del horario:');
+        addMessage('bot','Escribe el número del horario:');
       } else {
         state.step = 'reagendar_hora';
-        addMessage('bot','Elige la nueva hora escribiendo su numero:');
+        addMessage('bot','Elige la nueva hora escribiendo su número:');
       }
     } catch (error) {
       console.error(error);
@@ -785,18 +785,18 @@ document.addEventListener('DOMContentLoaded', function () {
         msg += `\nTarifa: ${state.buffer.doctor_tarifa}`;
       }
       if (data.credenciales_enviadas) {
-        msg += '\nSe creo una cuenta y te enviamos una contraseña temporal a tu correo.';
+        msg += '\nSe creó una cuenta y te enviamos una contraseña temporal a tu correo.';
       }
       if (state.buffer.email) {
-        msg += `\nHemos enviado la confirmacion al correo ${state.buffer.email}.`;
+        msg += `\nHemos enviado la confirmación al correo ${state.buffer.email}.`;
       }
       if (state.buffer.telefono) {
-        msg += `\nEn caso necesario te contactaremos al telefono ${state.buffer.telefono}.`;
+        msg += `\nEn caso necesario te contactaremos al teléfono ${state.buffer.telefono}.`;
       }
 
       addMessage('bot', msg);
       addButtons([
-        { label:'Volver al menu', action:'menu' },
+        { label:'Volver al menú', action:'menu' },
         { label:'Finalizar', action:'finalizar' },
       ]);
       state.mode = 'menu';
@@ -816,10 +816,10 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!state.autenticado) return startIdentidad(true);
     state.mode = 'cancelar';
     state.step = 'cancelar_cita';
-    addMessage('bot','Estas son tus citas vigentes. Selecciona cual deseas cancelar:');
+    addMessage('bot','Estas son tus citas vigentes. Selecciona cuál deseas cancelar:');
     buscarCitasConCredenciales().then(listar => {
       if (!listar) {
-        addButtons([{label:'Volver al menu', action:'menu'}]);
+        addButtons([{label:'Volver al menú', action:'menu'}]);
         return;
       }
       state.citasEncontradas = listar;
@@ -834,7 +834,7 @@ document.addEventListener('DOMContentLoaded', function () {
     addMessage('bot','Selecciona la cita que deseas reprogramar:');
     buscarCitasConCredenciales().then(listar => {
       if (!listar) {
-        addButtons([{label:'Volver al menu', action:'menu'}]);
+        addButtons([{label:'Volver al menú', action:'menu'}]);
         return;
       }
       state.citasEncontradas = listar;
@@ -885,7 +885,7 @@ document.addEventListener('DOMContentLoaded', function () {
     addMessage('bot', msg.trim());
 
     if (contexto === 'cancelar') {
-      addMessage('bot','Selecciona la cita a cancelar (escribe el numero o usa un boton):');
+      addMessage('bot','Selecciona la cita a cancelar (escribe el número o usa un botón):');
       addButtons(citas.map((c,i)=>({
         label:`${i+1}) ${c.fecha} ${c.hora}`,
         action:'cancelar_cita_id',
@@ -894,7 +894,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     if (contexto === 'reagendar') {
-      addMessage('bot','Selecciona la cita a reprogramar (escribe el numero o usa un boton):');
+      addMessage('bot','Selecciona la cita a reprogramar (escribe el número o usa un botón):');
       addButtons(citas.map((c,i)=>({
         label:`${i+1}) ${c.fecha} ${c.hora}`,
         action:'reagendar_cita_id',
@@ -912,7 +912,7 @@ document.addEventListener('DOMContentLoaded', function () {
   function seleccionarCitaCancelarPorIndice(idx) {
     const cita = state.citasEncontradas[idx];
     if (!cita) {
-      return addMessage('bot','Numero invalido, intenta nuevamente.');
+      return addMessage('bot','Número inválido, intenta nuevamente.');
     }
     seleccionarCitaCancelar(cita.id);
   }
@@ -936,7 +936,7 @@ document.addEventListener('DOMContentLoaded', function () {
       const data = await res.json();
       addMessage('bot', data.message || 'Cita cancelada.');
       addButtons([
-        {label:'Volver al menu', action:'menu'},
+        {label:'Volver al menú', action:'menu'},
         {label:'Finalizar', action:'finalizar'},
       ]);
     } catch (error) {
@@ -957,7 +957,7 @@ document.addEventListener('DOMContentLoaded', function () {
   function prepararReagendarPorIndice(idx) {
     const cita = state.citasEncontradas[idx];
     if (!cita) {
-      return addMessage('bot','Numero invalido, intenta nuevamente.');
+      return addMessage('bot','Número inválido, intenta nuevamente.');
     }
     prepararReagendarCita(cita);
   }
@@ -969,7 +969,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     state.buffer.cita_id = cita.id;
     state.buffer.doctor_id = cita.doctor_id;
-    state.buffer.doctor_nombre = cita.doctor || 'tu medico';
+    state.buffer.doctor_nombre = cita.doctor || 'tu médico';
     state.buffer.especialidad_id = cita.especialidad_id || null;
     state.buffer.nueva_fecha = '';
     state.buffer.nueva_hora = '';
@@ -998,7 +998,7 @@ document.addEventListener('DOMContentLoaded', function () {
       const data = await res.json();
       addMessage('bot', data.message || 'Cita reprogramada.');
       addButtons([
-        {label:'Volver al menu', action:'menu'},
+        {label:'Volver al menú', action:'menu'},
         {label:'Finalizar', action:'finalizar'},
       ]);
 
@@ -1033,10 +1033,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const citas = await buscarCitasConCredenciales({ estado, incluir_todas:true });
     if (!citas) {
       const textoEstado = titulo ? titulo.toLowerCase() : 'en este estado';
-      addMessage('bot', `No se encontraron citas ${textoEstado}. Puedes revisar otro estado o volver al menu.`);
+      addMessage('bot', `No se encontraron citas ${textoEstado}. Puedes revisar otro estado o volver al menú.`);
       addButtons([
         { label:'Volver a estados', action:'volver_estados' },
-        { label:'Volver al menu', action:'menu' },
+        { label:'Volver al menú', action:'menu' },
       ]);
       return;
     }
@@ -1048,7 +1048,7 @@ document.addEventListener('DOMContentLoaded', function () {
     addMessage('bot', msg.trim());
     addButtons([
       { label:'Volver a estados', action:'volver_estados' },
-      { label:'Volver al menu', action:'menu' },
+      { label:'Volver al menú', action:'menu' },
     ]);
   }
 
@@ -1122,7 +1122,7 @@ document.addEventListener('DOMContentLoaded', function () {
     msg += `Dirección: ${state.buffer.direccion || 'Sin dirección'}\n`;
     msg += `Fecha de nacimiento: ${state.buffer.fecha_nacimiento || 'No registrada'}\n`;
     msg += `Sexo: ${state.buffer.sexo || 'Sin especificar'}\n`;
-    msg += `Contraseña: ${state.buffer.password_nuevo ? 'Se actualizara' : 'Sin cambios'}`;
+    msg += `Contraseña: ${state.buffer.password_nuevo ? 'Se actualizará' : 'Sin cambios'}`;
     addMessage('bot', msg.trim());
     state.step = 'perfil_confirmar';
     addMessage('bot','¿Confirmas guardar estos cambios (si/no)');
@@ -1176,9 +1176,9 @@ document.addEventListener('DOMContentLoaded', function () {
       state.identidad.cedula = data.perfil.dni || state.identidad.cedula;
       resetBufferConIdentidad();
 
-      addMessage('bot','Listo, tus datos fueron actualizados y se reflejaran en tu panel.');
+      addMessage('bot','Listo, tus datos fueron actualizados y se reflejarán en tu panel.');
       addButtons([
-        { label:'Volver al menu', action:'menu' },
+        { label:'Volver al menú', action:'menu' },
         { label:'Finalizar', action:'finalizar' },
       ]);
       state.mode = 'menu';
@@ -1210,7 +1210,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     if (state.mode === 'finalizado') {
-      return addMessage('bot','La sesion esta cerrada. Escribe "menu" para continuar o "reiniciar" para empezar de nuevo.');
+      return addMessage('bot','La sesión está cerrada. Escribe "menu" para continuar o "reiniciar" para empezar de nuevo.');
     }
 
     if (state.mode === 'identidad') {
@@ -1230,7 +1230,7 @@ document.addEventListener('DOMContentLoaded', function () {
           return;
         }
         if (!respuesta || respuesta < 1 || respuesta > state.retoHumano.images.length) {
-          addMessage('bot','Escribe el numero correspondiente al animal solicitado (1-4).');
+          addMessage('bot','Escribe el número correspondiente al animal solicitado (1-4).');
           return;
         }
 
@@ -1249,7 +1249,7 @@ document.addEventListener('DOMContentLoaded', function () {
           return;
         }
         state.step = 'cedula';
-        return addMessage('bot','Validacion completada.\n\nIngresa tu número de cédula (10 dígitos, solo numeros):');
+        return addMessage('bot','Validación completada.\n\nIngresa tu número de cédula (10 dígitos, solo números):');
       }
       if (state.step === 'cedula') {
         return procesarCedula(text);
@@ -1277,7 +1277,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         state.registro.cedula = cedulaNormalizada;
         state.step = 'registro_email';
-        return addMessage('bot','Escribe tu correo electronico:');
+        return addMessage('bot','Escribe tu correo electrónico:');
       }
 
       if (state.step === 'registro_email') {
@@ -1296,9 +1296,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         state.registro.nombre = text;
         state.step = 'registro_crear';
-        addMessage('bot','Deseas crear un usuario con ese correo y recibir una contraseña temporal');
+        addMessage('bot','¿Deseas crear un usuario con ese correo y recibir una contraseña temporal?');
         return addButtons([
-          { label:'Si, crear usuario', action:'registro_crear_si' },
+          { label:'Sí, crear usuario', action:'registro_crear_si' },
           { label:'No, solo agendar', action:'registro_crear_no' },
         ]);
       }
@@ -1341,7 +1341,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const idx = parseInt(text, 10);
         const list = state.buffer.especialidades || [];
         if (!idx || idx < 1 || idx > list.length) {
-          return addMessage('bot','Numero invalido. Escribe el numero de una especialidad de la lista.');
+          return addMessage('bot','Número inválido. Escribe el número de una especialidad de la lista.');
         }
         const esp = list[idx - 1];
         state.buffer.especialidad_id = esp.id;
@@ -1351,7 +1351,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const idx = parseInt(text, 10);
         const list = state.buffer.doctores || [];
         if (!idx || idx < 1 || idx > list.length) {
-          return addMessage('bot','Numero invalido. Escribe el numero de un medico de la lista.');
+          return addMessage('bot','Número inválido. Escribe el número de un médico de la lista.');
         }
         const doctor = list[idx - 1];
         state.buffer.doctor_id = doctor.id;
@@ -1363,7 +1363,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const idx = parseInt(text, 10);
         const list = state.buffer.fechas || [];
         if (!idx || idx < 1 || idx > list.length) {
-          return addMessage('bot','Numero invalido. Escribe el numero de una fecha de la lista.');
+          return addMessage('bot','Número inválido. Escribe el número de una fecha de la lista.');
         }
         const fechaObj = list[idx - 1];
         state.buffer.fecha = fechaObj.value || fechaObj.fecha || '';
@@ -1374,7 +1374,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const idx = parseInt(text, 10);
         const list = state.buffer.slots || [];
         if (!idx || idx < 1 || idx > list.length) {
-          return addMessage('bot','Numero invalido. Escribe el numero de un horario de la lista.');
+          return addMessage('bot','Número inválido. Escribe el número de un horario de la lista.');
         }
         const slot = list[idx - 1];
         state.buffer.hora = slot.hora;
@@ -1391,7 +1391,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (text.toLowerCase().startsWith('s')) {
           return enviarAgendar();
         }
-        addMessage('bot','Se cancelo el proceso de agendamiento.');
+        addMessage('bot','Se canceló el proceso de agendamiento.');
         return showMainMenu();
       }
     }
@@ -1401,7 +1401,7 @@ document.addEventListener('DOMContentLoaded', function () {
       if (state.mode === 'cancelar' && state.step === 'cancelar_cita') {
         const idx = parseInt(text, 10);
         if (!idx || idx < 1 || Number.isNaN(idx)) {
-          return addMessage('bot','Ingresa un numero valido de la lista.');
+          return addMessage('bot','Ingresa un número válido de la lista.');
         }
         return seleccionarCitaCancelarPorIndice(idx - 1);
       }
@@ -1419,7 +1419,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (state.step === 'reagendar_cita') {
           const idx = parseInt(text, 10);
           if (!idx || idx < 1 || Number.isNaN(idx)) {
-            return addMessage('bot','Ingresa un numero valido de la lista.');
+            return addMessage('bot','Ingresa un número válido de la lista.');
           }
           return prepararReagendarPorIndice(idx - 1);
         }
@@ -1429,7 +1429,7 @@ document.addEventListener('DOMContentLoaded', function () {
           const list = state.buffer.fechasReagendar || [];
           const item = list[idx - 1];
           if (!idx || idx < 1 || Number.isNaN(idx) || !item) {
-            return addMessage('bot','Numero invalido, elige una fecha de la lista.');
+            return addMessage('bot','Número inválido, elige una fecha de la lista.');
           }
           state.buffer.nueva_fecha = item.value;
           state.buffer.nueva_fecha_label = item.label;
@@ -1441,7 +1441,7 @@ document.addEventListener('DOMContentLoaded', function () {
           const list = state.buffer.slotsReagendar || [];
           const slot = list[idx - 1];
           if (!idx || idx < 1 || Number.isNaN(idx) || !slot) {
-            return addMessage('bot','Numero invalido, elige un horario de la lista.');
+            return addMessage('bot','Número inválido, elige un horario de la lista.');
           }
           state.buffer.nueva_hora = slot.hora;
           state.step = 'confirmar_reagendar';
@@ -1535,7 +1535,7 @@ document.addEventListener('DOMContentLoaded', function () {
           }
           state.buffer.fecha_nacimiento = text;
         } else if (!state.buffer.fecha_nacimiento) {
-          return addMessage('bot','Aun no tenemos tu fecha de nacimiento. Ingresa en formato AAAA-MM-DD.');
+          return addMessage('bot','Aún no tenemos tu fecha de nacimiento. Ingresa en formato AAAA-MM-DD.');
         }
         const sexoActual = state.buffer.sexo || 'Sin especificar';
         state.step = 'perfil_sexo';
@@ -1574,16 +1574,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
       if (state.step === 'perfil_password_actual') {
         if (!text) {
-          return addMessage('bot','La contraseña actual no puede estar vacia.');
+          return addMessage('bot','La contraseña actual no puede estar vacía.');
         }
         state.buffer.password_actual = text;
         state.step = 'perfil_password_nueva';
-        return addMessage('bot','Ingresa la nueva contraseña (minimo 8 caracteres, con letras, numeros y un caracter especial):');
+        return addMessage('bot','Ingresa la nueva contraseña (mínimo 8 caracteres, con letras, números y un carácter especial):');
       }
 
       if (state.step === 'perfil_password_nueva') {
         if (text.length < 8 || !/^(=.*[A-Za-z])(=.*\d)(=.*[^A-Za-z0-9]).{8,}$/.test(text)) {
-          return addMessage('bot','La nueva contraseña debe tener minimo 8 caracteres e incluir letras, numeros y un caracter especial.');
+          return addMessage('bot','La nueva contraseña debe tener mínimo 8 caracteres e incluir letras, números y un carácter especial.');
         }
         if (state.buffer.password_actual && text === state.buffer.password_actual) {
           return addMessage('bot','La nueva contraseña debe ser diferente a la actual.');
@@ -1595,7 +1595,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
       if (state.step === 'perfil_password_confirmacion') {
         if (text !== state.buffer.password_nuevo) {
-          return addMessage('bot','La confirmacion no coincide. Intenta de nuevo.');
+          return addMessage('bot','La confirmación no coincide. Intenta de nuevo.');
         }
         state.buffer.password_confirmacion = text;
         return resumenPerfil();

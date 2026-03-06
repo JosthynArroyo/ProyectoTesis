@@ -6,7 +6,7 @@
       <div class="card p-8">
         <div class="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p class="text-xs uppercase tracking-widest text-slate-500">Verificacion</p>
+            <p class="text-xs uppercase tracking-widest text-slate-500">Verificación</p>
             <h1 class="mt-2 text-2xl font-semibold text-slate-900">Verifica tu correo electrónico</h1>
           </div>
           <span class="badge info">Paso requerido</span>
@@ -14,11 +14,11 @@
 
         @if (session('resent'))
           <div class="alert success mt-6" role="alert">
-            Se envio un nuevo enlace de verificacion a tu correo.
+            Se envió un nuevo enlace de verificación a tu correo.
           </div>
         @endif
 
-        <p class="mt-6 text-slate-600">Antes de continuar, revisa tu bandeja de entrada y haz clic en el enlace de verificacion.</p>
+        <p class="mt-6 text-slate-600">Antes de continuar, revisa tu bandeja de entrada y haz clic en el enlace de verificación.</p>
         <div class="mt-6">
           <form method="POST" action="{{ route('verification.resend') }}">
             @csrf

@@ -5,25 +5,37 @@
 @section('header-title','Mis citas')
 @section('header-subtitle','Gestiona tus citas en un solo lugar')
 
+@php
+  $bloqueoPagosPendientes = $bloqueoPagosPendientes ?? (auth()->check() ? auth()->user()->hasPendingPaymentBlocks() : false);
+  $highlightCita = session('highlight_cita');
+@endphp
+
 @section('main')
 <div class="space-y-6">
   <header class="card p-6">
-    <div class="flex flex-wrap items-center justify-between gap-4">
-      <div>
+    <div class="page-header">
+      <div class="page-header__info">
         <p class="text-xs uppercase tracking-widest text-slate-500">Panel del paciente</p>
         <h1 id="citas-heading" class="mt-2 text-2xl font-semibold text-slate-900">Mis citas médicas</h1>
         <p class="text-slate-600">Gestiona, busca y filtra tus citas con una vista clara.</p>
       </div>
-      <div>
-        <a href="{{ route('paciente.crear-cita') }}" class="btn btn-primary" aria-label="Agendar nueva cita">
-          <i class="ri-add-line"></i>
-          <span class="cta-text">Agendar cita</span>
-        </a>
+      <div class="page-header__actions">
+        @if($bloqueoPagosPendientes)
+          <button type="button" class="btn btn-primary btn-full-mobile cursor-not-allowed opacity-60" disabled aria-disabled="true" title="Tiene pagos pendientes. Regularice su cuenta para agendar una nueva cita.">
+            <i class="ri-lock-2-line"></i>
+            <span class="cta-text">Agendar cita</span>
+          </button>
+        @else
+          <a href="{{ route('paciente.crear-cita') }}" class="btn btn-primary btn-full-mobile" aria-label="Agendar nueva cita">
+            <i class="ri-add-line"></i>
+            <span class="cta-text">Agendar cita</span>
+          </a>
+        @endif
       </div>
     </div>
   </header>
 
-<section class="card p-6" aria-label="Barra de búsqueda y filtros">
+  <section class="card p-6" aria-label="Barra de búsqueda y filtros">
     <form class="flex flex-wrap items-end gap-3" method="GET" action="{{ url()->current() }}">
       <div class="flex flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2" role="search">
         <i class="ri-search-line text-slate-400"></i>
@@ -42,7 +54,7 @@
         </select>
         @error('estado')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
       </div>
-      <button class="btn btn-outline" type="submit" aria-label="Aplicar filtros">
+      <button class="btn btn-outline btn-sm" type="submit" aria-label="Aplicar filtros">
         <i class="ri-filter-3-line"></i>
         Filtrar
       </button>
@@ -52,12 +64,26 @@
   @if(session('success') || session('error'))
     <div aria-live="polite" aria-atomic="true">
       @if(session('success'))
-        <x-ui.alert tone="success" role="status">{{ session('success') }}</x-ui.alert>
+        <x-ui.alert tone="success" title="Citas actualizadas">
+          {{ session('success') }}
+          <div class="mt-3">
+            <a class="btn btn-primary btn-sm" href="{{ session('success_action_url', route('paciente.citas')) }}">
+              {{ session('success_action_label', 'Ver mis citas') }}
+            </a>
+          </div>
+        </x-ui.alert>
       @endif
       @if(session('error'))
         <x-ui.alert tone="error" role="alert">{{ session('error') }}</x-ui.alert>
       @endif
     </div>
+  @endif
+
+  @if($bloqueoPagosPendientes)
+    <x-ui.alert tone="warning">
+      Tiene pagos pendientes. Regularice su cuenta para agendar una nueva cita.
+      <a href="{{ route('paciente.pagos.index') }}" class="font-semibold underline">Ir a Mis pagos</a>
+    </x-ui.alert>
   @endif
 
   <section class="grid gap-4" aria-label="Listado de citas">
@@ -67,15 +93,20 @@
       <x-ui.empty-state title="{{ $emptyMessage ?? 'No tienes citas registradas.' }}">
         @if(empty($emptyMessage) || Str::startsWith($emptyMessage, 'No tienes citas registradas'))
           <p>Agenda tu primera cita para verla aquí con su estado y acciones.</p>
-          <a href="{{ route('paciente.crear-cita') }}" class="btn btn-primary">
-            <i class="ri-add-line"></i>
-            Agendar cita
-          </a>
+          @if($bloqueoPagosPendientes)
+            <button type="button" class="btn btn-primary cursor-not-allowed opacity-60" disabled aria-disabled="true">Agendar cita</button>
+            <p class="text-xs text-amber-700">Tiene pagos pendientes. Regularice su cuenta para agendar una nueva cita.</p>
+          @else
+            <a href="{{ route('paciente.crear-cita') }}" class="btn btn-primary">
+              <i class="ri-add-line"></i>
+              Agendar cita
+            </a>
+          @endif
         @endif
       </x-ui.empty-state>
     @else
       @foreach($collection as $cita)
-        <article class="card p-5">
+        <article id="cita-{{ $cita->id }}" class="card p-5 {{ $highlightCita === $cita->id ? 'record-highlight' : '' }}">
           <div class="flex flex-wrap items-start justify-between gap-4">
             <div class="flex items-center gap-3">
               <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-sm font-semibold text-slate-600" aria-hidden="true">
@@ -113,12 +144,12 @@
             <div class="mt-4 flex flex-wrap gap-2">
               <form action="{{ route('paciente.citas.cancelar', $cita->id) }}" method="POST" style="display:inline-block">
                 @csrf
-                <button type="submit" class="btn btn-danger" aria-label="Cancelar cita">
+                <button type="submit" class="btn btn-danger btn-sm" aria-label="Cancelar cita">
                   <i class="ri-close-line"></i>
                   Cancelar
                 </button>
               </form>
-              <a class="btn btn-outline" href="{{ route('paciente.editar-cita', $cita->id) }}" aria-label="Reagendar cita">
+              <a class="btn btn-outline btn-sm" href="{{ route('paciente.editar-cita', $cita->id) }}" aria-label="Reagendar cita">
                 <i class="ri-calendar-line"></i>
                 Reagendar
               </a>
@@ -136,3 +167,21 @@
   @endif
 </div>
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const highlightId = @json($highlightCita);
+  if (!highlightId) {
+    return;
+  }
+
+  const target = document.getElementById(`cita-${highlightId}`);
+  if (!target) {
+    return;
+  }
+
+  target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+});
+</script>
+@endpush

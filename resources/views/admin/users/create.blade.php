@@ -19,7 +19,7 @@
     <x-ui.alert tone="success">{{ session('success') }}</x-ui.alert>
   @endif
 
-  <form class="form space-y-6" method="POST" action="{{ route('admin.usuarios.store') }}" enctype="multipart/form-data" novalidate>
+  <form class="form space-y-6" method="POST" action="{{ route('admin.usuarios.store') }}" enctype="multipart/form-data" novalidate data-email-check-url="{{ route('admin.usuarios.email.check') }}">
     @csrf
     @if($preset)
       <input type="hidden" name="role_id" value="{{ optional($roles->firstWhere('name',$preset))->id }}">

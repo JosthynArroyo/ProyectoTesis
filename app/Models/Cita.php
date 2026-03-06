@@ -2,9 +2,10 @@
 
 namespace App\Models;
 
+use App\Services\PriorityEvaluator;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Carbon\Carbon;
 
 class Cita extends Model
 {
@@ -18,12 +19,18 @@ class Cita extends Model
         'especialidad_id',
         'fecha',
         'hora',
+        'motivo_consulta',
         'estado',
         'activo',
-        'pending_since',
-        'priority_score',
-        'priority_level',
-        'last_priority_notified_at',
+        'prioridad_nivel',
+        'prioridad_fuente',
+        'prioridad_red_flag',
+        'prioridad_red_flag_tipo',
+        'prioridad_comentario',
+        'prioridad_es_adulto_mayor',
+        'prioridad_es_embarazo',
+        'prioridad_es_discapacidad',
+        'prioridad_es_cronico',
     ];
 
     public const ESTADO_PENDIENTE  = 'pendiente';
@@ -31,6 +38,21 @@ class Cita extends Model
     public const ESTADO_CANCELADA  = 'cancelada';
     public const ESTADO_REALIZADA  = 'realizada';
     public const ESTADO_NO_SE_PRESENTO = 'no_se_presento';
+
+    public const PRIORIDAD_BAJA = 'BAJA';
+    public const PRIORIDAD_MEDIA = 'MEDIA';
+    public const PRIORIDAD_ALTA = 'ALTA';
+
+    public const PRIORIDAD_NIVELES = [
+        self::PRIORIDAD_BAJA,
+        self::PRIORIDAD_MEDIA,
+        self::PRIORIDAD_ALTA,
+    ];
+
+    public const FUENTE_PRIORIDAD_AUTOMATICA = 'AUTOMATICA';
+    public const FUENTE_PRIORIDAD_REGLA_RED_FLAG = 'REGLA_RED_FLAG';
+    public const FUENTE_PRIORIDAD_REGLA_VULNERABILIDAD = 'REGLA_VULNERABILIDAD';
+    public const FUENTE_PRIORIDAD_MANUAL = 'MANUAL';
 
     public const ESTADOS = [
         self::ESTADO_PENDIENTE,
@@ -44,10 +66,16 @@ class Cita extends Model
         'fecha'  => 'date',
         'hora'   => 'string',
         'activo' => 'boolean',
-        'pending_since' => 'datetime',
-        'priority_score' => 'integer',
-        'priority_level' => 'string',
-        'last_priority_notified_at' => 'datetime',
+        'motivo_consulta' => 'string',
+        'prioridad_nivel' => 'string',
+        'prioridad_fuente' => 'string',
+        'prioridad_red_flag' => 'boolean',
+        'prioridad_red_flag_tipo' => 'string',
+        'prioridad_comentario' => 'string',
+        'prioridad_es_adulto_mayor' => 'boolean',
+        'prioridad_es_embarazo' => 'boolean',
+        'prioridad_es_discapacidad' => 'boolean',
+        'prioridad_es_cronico' => 'boolean',
     ];
 
     public function paciente()
@@ -71,6 +99,11 @@ class Cita extends Model
         return $this->hasOne(Factura::class, 'cita_id');
     }
 
+    public function pago()
+    {
+        return $this->hasOne(Pago::class, 'cita_id');
+    }
+
     /** Relación con receta (una receta por cita) */
     public function receta()
     {
@@ -88,76 +121,43 @@ class Cita extends Model
         return $this->hasOne(LaboratorioOrden::class, 'cita_id');
     }
 
-    public function calculatePriorityScore(): int
-    {
-        if ($this->estado !== self::ESTADO_PENDIENTE || !$this->activo) {
-            return 0;
-        }
-
-        $score = 0;
-        $flags = $this->paciente?->patientFlag;
-        if ($flags) {
-            $score += $flags->adulto_mayor ? 15 : 0;
-            $score += $flags->embarazo ? 20 : 0;
-            $score += $flags->discapacidad ? 20 : 0;
-            $score += $flags->cronico ? 15 : 0;
-        }
-
-        $pendingSince = $this->pending_since ?: $this->created_at;
-        if ($pendingSince) {
-            $hours = Carbon::now(config('app.timezone', 'UTC'))->diffInHours($pendingSince, false);
-            $hours = $hours < 0 ? 0 : $hours;
-
-            if ($hours >= 48) {
-                $score += 60;
-            } elseif ($hours >= 24) {
-                $score += 30;
-            } elseif ($hours >= 6) {
-                $score += 10;
-            }
-        }
-
-        return $score;
-    }
-
-    public function calculatePriorityLevel(int $score = null): string
-    {
-        $score = $score ?? (int) $this->priority_score;
-
-        if ($score >= 60) {
-            return 'critica';
-        }
-        if ($score >= 30) {
-            return 'alta';
-        }
-        if ($score >= 10) {
-            return 'media';
-        }
-        return 'baja';
-    }
-
     public function refreshPriority(): bool
     {
-        $originalScore = (int) $this->priority_score;
-        $originalLevel = (string) $this->priority_level;
+        $original = [
+            'prioridad_nivel' => (string) $this->prioridad_nivel,
+            'prioridad_fuente' => (string) $this->prioridad_fuente,
+            'prioridad_red_flag' => (bool) $this->prioridad_red_flag,
+            'prioridad_red_flag_tipo' => $this->prioridad_red_flag_tipo,
+            'prioridad_es_adulto_mayor' => (bool) $this->prioridad_es_adulto_mayor,
+            'prioridad_es_embarazo' => (bool) $this->prioridad_es_embarazo,
+            'prioridad_es_discapacidad' => (bool) $this->prioridad_es_discapacidad,
+            'prioridad_es_cronico' => (bool) $this->prioridad_es_cronico,
+        ];
 
-        if ($this->estado !== self::ESTADO_PENDIENTE || !$this->activo) {
-            $this->priority_score = 0;
-            $this->priority_level = 'baja';
-            return $this->priority_score !== $originalScore
-                || $this->priority_level !== $originalLevel;
-        }
+        app(PriorityEvaluator::class)->apply($this);
 
-        if (!$this->pending_since) {
-            $this->pending_since = $this->created_at ?: Carbon::now(config('app.timezone', 'UTC'));
-        }
+        return $original['prioridad_nivel'] !== (string) $this->prioridad_nivel
+            || $original['prioridad_fuente'] !== (string) $this->prioridad_fuente
+            || $original['prioridad_red_flag'] !== (bool) $this->prioridad_red_flag
+            || $original['prioridad_red_flag_tipo'] !== $this->prioridad_red_flag_tipo
+            || $original['prioridad_es_adulto_mayor'] !== (bool) $this->prioridad_es_adulto_mayor
+            || $original['prioridad_es_embarazo'] !== (bool) $this->prioridad_es_embarazo
+            || $original['prioridad_es_discapacidad'] !== (bool) $this->prioridad_es_discapacidad
+            || $original['prioridad_es_cronico'] !== (bool) $this->prioridad_es_cronico;
+    }
 
-        $score = $this->calculatePriorityScore();
-        $this->priority_score = $score;
-        $this->priority_level = $this->calculatePriorityLevel($score);
+    public static function prioridadRank(string $nivel): int
+    {
+        return match (strtoupper($nivel)) {
+            self::PRIORIDAD_ALTA => 3,
+            self::PRIORIDAD_MEDIA => 2,
+            default => 1,
+        };
+    }
 
-        return $this->priority_score !== $originalScore
-            || $this->priority_level !== $originalLevel;
+    public static function prioridadOrderSql(string $column = 'prioridad_nivel'): string
+    {
+        return "CASE {$column} WHEN 'ALTA' THEN 1 WHEN 'MEDIA' THEN 2 ELSE 3 END";
     }
 
     public function inicioProgramado(string $tz = 'America/Guayaquil'): Carbon
@@ -181,3 +181,4 @@ class Cita extends Model
         );
     }
 }
+

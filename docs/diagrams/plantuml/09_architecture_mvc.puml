@@ -1,0 +1,56 @@
+@startuml
+left to right direction
+skinparam shadowing false
+skinparam componentStyle rectangle
+
+package "Presentacion" {
+  [Blade Views\nresources/views] as views
+  [JS + CSS Vite\nresources/js + resources/css] as assets
+}
+
+[Routes web\nroutes/web.php] as routes
+[Middlewares\nAuthenticate\nEnsureUserRole\nEnsureAccountActive\nEnsureFeatureAccess\nEnsureNoPendingPaymentsForBooking] as middleware
+
+package "Aplicacion" {
+  [Controllers\nAuth, Cita, Doctor,\nPaciente, Admin,\nLaboratorio, Superadmin] as controllers
+  [Services\nPagoService\nPriorityEvaluator\nWhatsAppService\nVisionClient] as services
+  [Events / Jobs / Mail] as async
+}
+
+package "Dominio y persistencia" {
+  [Models\nUser, Role, Cita,\nHorario, NotaSoap,\nReceta, LaboratorioOrden,\nLabOrder, Pago, Factura] as models
+  database "SQLite" as db
+  [Storage local] as storage
+}
+
+cloud "SMTP / Twilio / Vision" as external
+
+views --> routes : formularios Blade
+assets --> routes : fetch() / submit
+routes --> middleware
+middleware --> controllers
+controllers --> views : return view()/redirect()
+controllers --> services
+controllers --> models
+services --> models
+models --> db
+controllers --> async
+services --> async
+controllers --> storage
+services --> storage
+async --> external
+
+note right of routes
+No existe `routes/api.php`.
+Los endpoints JSON `/api/...`
+se publican desde `routes/web.php`.
+end note
+
+note bottom of assets
+Evidencia:
+`vite.config.js` registra assets
+para paneles, citas, SOAP,
+laboratorio, autenticacion y chatbot.
+end note
+
+@enduml

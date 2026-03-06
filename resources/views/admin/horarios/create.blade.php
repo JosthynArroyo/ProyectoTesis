@@ -10,19 +10,10 @@
     <div>
       <p class="text-xs uppercase tracking-widest text-slate-500">Nuevo horario</p>
       <h1 class="mt-2 text-2xl font-semibold text-slate-900">Crear horario</h1>
-      <p class="text-slate-600">Define el rango de fechas, selecciona días y asigna franjas.</p>
+      <p class="text-slate-600">Define el rango de fechas, selecciona dÃ­as y asigna franjas.</p>
     </div>
   </section>
 
-  @if ($errors->any())
-    <x-ui.alert tone="error">
-      <ul>
-        @foreach ($errors->all() as $error)
-          <li>{{ $error }}</li>
-        @endforeach
-      </ul>
-    </x-ui.alert>
-  @endif
 
   <form action="{{ route('admin.horarios.store') }}" method="POST" class="card p-6" id="form-horario">
     @csrf
@@ -63,11 +54,11 @@
 
     <div class="mt-6 rounded-2xl border border-slate-200 bg-slate-50/60 p-5">
       <div class="flex flex-wrap items-center gap-3">
-        <span class="badge info"><i class="ri-repeat-line"></i> Repetir por días</span>
-        <p class="text-sm text-slate-500">Elige días y define una franja global o por día.</p>
+        <span class="badge info"><i class="ri-repeat-line"></i> Repetir por dÃ­as</span>
+        <p class="text-sm text-slate-500">Elige dÃ­as y define una franja global o por dÃ­a.</p>
       </div>
 
-      @php $dias = [1=>'Lun',2=>'Mar',3=>'Mié',4=>'Jue',5=>'Vie',6=>'Sáb',7=>'Dom']; @endphp
+      @php $dias = [1=>'Lun',2=>'Mar',3=>'MiÃ©',4=>'Jue',5=>'Vie',6=>'SÃ¡b',7=>'Dom']; @endphp
       <div id="dias-wrap" class="mt-4 flex flex-wrap gap-2">
         @foreach($dias as $num=>$lbl)
           @php $checked = in_array($num, (array)old('dias', [1,2,3,4,5])); @endphp
@@ -89,7 +80,7 @@
       <label class="mt-4 flex items-center gap-2 text-sm text-slate-600" for="misma_franja">
         <input type="hidden" name="misma_franja" value="0">
         <input type="checkbox" id="misma_franja" name="misma_franja" value="1" {{ old('misma_franja',1) ? 'checked' : '' }}>
-        Usar la misma franja para todos los días marcados
+        Usar la misma franja para todos los dÃ­as marcados
       </label>
       @error('misma_franja')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
 
@@ -113,7 +104,7 @@
       </div>
 
       <div id="franjas-por-dia" class="mt-4 space-y-3" style="display:none">
-        <div class="text-xs text-slate-500">Define horas por cada día marcado.</div>
+        <div class="text-xs text-slate-500">Define horas por cada dÃ­a marcado.</div>
         @foreach($dias as $num=>$lbl)
           @php $row = old("horas.$num", ['inicio'=>null,'fin'=>null]); @endphp
           <div class="row-dia flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white/90 px-3 py-2" data-dia="{{ $num }}">
@@ -143,3 +134,4 @@
 @push('scripts')
   @vite('resources/js/admin/horarios/create.js')
 @endpush
+

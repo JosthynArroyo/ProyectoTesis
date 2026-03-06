@@ -4,7 +4,7 @@
 @section('header-title','Editar horario')
 @section('header-subtitle','Actualiza este bloque')
 
-@section('content')
+@section('main')
   <div class="space-y-6">
     <section class="card p-6">
       <div>

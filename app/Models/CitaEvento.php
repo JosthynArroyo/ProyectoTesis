@@ -18,42 +18,31 @@ class CitaEvento extends Model
         'a_fecha',
         'de_hora',
         'a_hora',
+        'valor_anterior',
+        'valor_nuevo',
+        'comentario',
     ];
 
-    // Casts para evitar strings crudos y tener Carbon en fechas
     protected $casts = [
-        'de_fecha'        => 'date',
-        'a_fecha'         => 'date',
-        'created_at'      => 'datetime',
-        'updated_at'      => 'datetime',
+        'de_fecha' => 'date',
+        'a_fecha' => 'date',
+        'valor_anterior' => 'string',
+        'valor_nuevo' => 'string',
+        'comentario' => 'string',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
     ];
 
-    public function getDeFechaAttribute()
-    {
-        return $this->getAttributeFromArray('de_fecha');
-    }
-    public function getAFechaAttribute()
-    {
-        return $this->getAttributeFromArray('a_fecha');
-    }
-    public function getDeHoraAttribute()
-    {
-        return $this->getAttributeFromArray('de_hora');
-    }
-    public function getAHoraAttribute()
-    {
-        return $this->getAttributeFromArray('a_hora');
-    }
-
-    // Relaciones mínimas
     public function cita()
     {
         return $this->belongsTo(\App\Models\Cita::class, 'cita_id');
     }
+
     public function paciente()
     {
         return $this->belongsTo(\App\Models\User::class, 'paciente_id');
     }
+
     public function doctor()
     {
         return $this->belongsTo(\App\Models\User::class, 'doctor_id');

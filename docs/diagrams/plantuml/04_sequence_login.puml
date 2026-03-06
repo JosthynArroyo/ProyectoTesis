@@ -1,0 +1,55 @@
+@startuml
+autonumber
+skinparam shadowing false
+
+actor Usuario
+participant Router
+participant LoginController
+participant "Auth guard" as AuthGuard
+database "users + role_user + roles" as DB
+participant "UpdateLastLoginAndGuardStatus" as LoginListener
+
+note over Router,LoginController
+`Auth::routes(['register' => false])`
+genera las rutas de autenticacion.
+`showLoginForm()` redirige a `/?login=1`.
+end note
+
+Usuario -> Router: POST /login
+Router -> LoginController: login(Request)
+LoginController -> LoginController: validateLogin(email,password,remember)
+LoginController -> AuthGuard: attempt(credentials, remember)
+AuthGuard -> DB: buscar user por email y validar password
+DB --> AuthGuard: user o null
+
+alt credenciales invalidas
+  AuthGuard --> LoginController: fallo
+  LoginController --> Usuario: errores de validacion
+else credenciales validas
+  AuthGuard --> LoginController: user autenticado
+  AuthGuard -> LoginListener: dispatch Login event
+  LoginListener -> DB: update users.last_login_at
+  LoginController -> LoginController: authenticated(request, user)
+  LoginController -> DB: consultar roles via hasRole()
+  DB --> LoginController: rol activo del usuario
+  LoginController -> LoginController: verificar isActive()
+
+  alt cuenta inactiva o suspendida
+    LoginController -> AuthGuard: logout()
+    LoginController --> Usuario: redirect '/?login=1' + error
+  else superadmin
+    LoginController --> Usuario: redirect /superadmin/dashboard
+  else administrador
+    LoginController --> Usuario: redirect /admin/dashboard
+  else paciente
+    LoginController --> Usuario: redirect /paciente/dashboard
+  else doctor
+    LoginController --> Usuario: redirect /doctor/dashboard
+  else laboratorio
+    LoginController --> Usuario: redirect /laboratorio/dashboard
+  else sin rol esperado
+    LoginController --> Usuario: redirect /
+  end
+end
+
+@enduml

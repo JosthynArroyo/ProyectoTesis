@@ -10,7 +10,7 @@
       <h3 class="mt-2 text-lg font-semibold text-slate-900">Credenciales de acceso</h3>
       <p class="text-sm text-slate-500">Nombre visible y credenciales iniciales para el inicio de sesión.</p>
     </div>
-    <div class="mt-4 grid gap-4 md:grid-cols-2">
+    <div class="mt-4 form-grid form-grid--2">
       <div>
         <label for="name" class="form-label">Nombre</label>
         <input class="form-input" id="name" name="name" value="{{ old('name', $u->name) }}" required>
@@ -19,6 +19,7 @@
       <div>
         <label for="email" class="form-label">Correo electrónico</label>
         <input class="form-input" id="email" name="email" type="email" value="{{ old('email', $u->email) }}" required>
+        <p class="mt-1 text-xs text-slate-500" data-email-availability aria-live="polite"></p>
         @error('email')<small class="text-xs text-rose-600">{{ $message }}</small>@enderror
       </div>
 
@@ -49,7 +50,7 @@
       <h3 class="mt-2 text-lg font-semibold text-slate-900">Datos básicos</h3>
       <p class="text-sm text-slate-500">Teléfono, documento y datos demográficos para el expediente.</p>
     </div>
-    <div class="mt-4 grid gap-4 md:grid-cols-2">
+    <div class="mt-4 form-grid form-grid--2">
       <div>
         <label for="telefono" class="form-label">Teléfono</label>
         <input class="form-input" id="telefono" name="telefono" value="{{ old('telefono', $u->telefono) }}" inputmode="numeric" pattern="\d{10}" minlength="10" maxlength="10" data-digits="10" required>
@@ -60,7 +61,7 @@
         <input class="form-input" id="dni" name="dni" value="{{ old('dni', $u->dni) }}" inputmode="numeric" pattern="\d{10}" minlength="10" maxlength="10" data-digits="10" required>
         @error('dni')<small class="text-xs text-rose-600">{{ $message }}</small>@enderror
       </div>
-      <div class="md:col-span-2">
+      <div class="col-span-full">
         <label for="direccion" class="form-label">Dirección</label>
         <input class="form-input" id="direccion" name="direccion" value="{{ old('direccion', $u->direccion) }}" required>
         @error('direccion')<small class="text-xs text-rose-600">{{ $message }}</small>@enderror
@@ -88,7 +89,7 @@
       <h3 class="mt-2 text-lg font-semibold text-slate-900">Indicadores clínicos</h3>
       <p class="text-sm text-slate-500">Solo aplica a pacientes. Marca condiciones relevantes.</p>
     </div>
-    <div class="mt-4 grid gap-3 sm:grid-cols-2">
+    <div class="mt-4 form-grid form-grid--2">
       <label class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2 text-sm">
         <input type="hidden" name="adulto_mayor" value="0">
         <input type="checkbox" name="adulto_mayor" value="1" @checked(old('adulto_mayor', optional($u->patientFlag)->adulto_mayor))>
@@ -122,7 +123,7 @@
       <h3 class="mt-2 text-lg font-semibold text-slate-900">Permisos y especialidad</h3>
       <p class="text-sm text-slate-500">Selecciona rol y define especialidad y tarifa si aplica.</p>
     </div>
-    <div class="mt-4 grid gap-4 md:grid-cols-2">
+    <div class="mt-4 form-grid form-grid--2">
       <div>
         <label for="role_id" class="form-label">Rol</label>
         <select class="form-select" name="role_id" id="role_id" required data-preset-role="{{ strtolower((string)$presetRole) }}" {{ $presetRole ? 'disabled' : '' }}>

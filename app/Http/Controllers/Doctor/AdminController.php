@@ -5,14 +5,14 @@ namespace App\Http\Controllers\Doctor;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\Rule;
 use App\Models\Cita;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use App\Support\ValidationRules;
 use App\Services\CitaNoShowService;
+use App\Services\ImageOptimizer;
+use App\Events\CitaAtendida;
 
 class AdminController extends Controller
 {
@@ -37,11 +37,11 @@ class AdminController extends Controller
 
         $citas = (clone $base)
             ->with(['paciente:id,name'])
-            ->whereDate('fecha', '>=', $hoy)
-            ->orderBy('fecha')
+            ->whereDate('fecha', $hoy)
+            ->orderByRaw(Cita::prioridadOrderSql())
             ->orderBy('hora')
             ->limit(10)
-            ->get(['id','paciente_id','estado','fecha','hora']);
+            ->get(['id','paciente_id','estado','fecha','hora','prioridad_nivel','prioridad_red_flag']);
 
         return view('doctor.dashboard', compact(
             'user',
@@ -77,11 +77,11 @@ class AdminController extends Controller
 
         $citas = (clone $base)
             ->with(['paciente:id,name'])
-            ->whereDate('fecha', '>=', $hoy)
-            ->orderBy('fecha')
+            ->whereDate('fecha', $hoy)
+            ->orderByRaw(Cita::prioridadOrderSql())
             ->orderBy('hora')
             ->limit(10)
-            ->get(['id','paciente_id','estado','fecha','hora']);
+            ->get(['id','paciente_id','estado','fecha','hora','prioridad_nivel','prioridad_red_flag']);
 
         return response()->json([
             'kpis' => [
@@ -98,6 +98,8 @@ class AdminController extends Controller
                 'estado'   => $c->estado,
                 'fecha'    => $c->fecha,
                 'hora'     => $c->hora,
+                'prioridad' => $c->prioridad_nivel,
+                'red_flag' => (bool) $c->prioridad_red_flag,
             ]),
         ]);
     }
@@ -173,6 +175,7 @@ class AdminController extends Controller
 
         $cita->estado = 'realizada';
         $cita->save();
+        event(new CitaAtendida($cita));
 
         return back()->with('success', 'Cita marcada como realizada.');
     }
@@ -183,7 +186,7 @@ class AdminController extends Controller
         return view('doctor.perfil', compact('user'));
     }
 
-    public function actualizarPerfil(Request $request)
+    public function actualizarPerfil(Request $request, ImageOptimizer $imageOptimizer)
     {
         $user = Auth::user();
 
@@ -195,7 +198,7 @@ class AdminController extends Controller
             'direccion'         => ['required','string','max:255'],
             'fecha_nacimiento'  => ['required','date','before:today'],
             'sexo'              => ['required','in:Masculino,Femenino,Otro'],
-            'avatar'            => ['nullable','image','mimes:jpg,jpeg,png,webp','max:2048'],
+            'avatar'            => ['nullable','image','mimes:jpg,jpeg,png,webp,svg','max:2048'],
             'precio_consulta'   => ['required','numeric','min:0','max:99999999.99'],
             'moneda'            => ['required','in:USD'],
 
@@ -212,9 +215,9 @@ class AdminController extends Controller
         // avatar
         if ($request->hasFile('avatar')) {
             if ($user->avatar) {
-                Storage::disk('public')->delete($user->avatar);
+                $imageOptimizer->deleteByStoredPath($user->avatar, 'doctors');
             }
-            $user->avatar = $request->file('avatar')->store('avatars', 'public');
+            $user->avatar = $imageOptimizer->optimizeAndStore($request->file('avatar'), 'doctors');
         }
 
         // datos perfil

@@ -1,11 +1,14 @@
 <?php
 
 use Illuminate\Foundation\Application;
+use App\Http\Middleware\Authenticate;
 use App\Http\Middleware\EnsureUserRole;
 use App\Http\Middleware\EnsureFeatureAccess;
 use App\Http\Middleware\PreventBackHistory;
 use App\Http\Middleware\EnsureAccountActive;
+use App\Http\Middleware\EnsureNoPendingPaymentsForBooking;
 use App\Http\Middleware\PreventRequestsDuringMaintenance;
+use App\Http\Middleware\RedirectIfAuthenticated;
 use Illuminate\Foundation\Http\Middleware\PreventRequestsDuringMaintenance as FrameworkMaintenance;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -23,8 +26,11 @@ return Application::configure(basePath: dirname(__DIR__))
             EnsureAccountActive::class,
         ]);
         $middleware->alias([
+            'auth' => Authenticate::class,
+            'guest' => RedirectIfAuthenticated::class,
             'role'=>EnsureUserRole::class,
             'feature' => EnsureFeatureAccess::class,
+            'no_pending_payments' => EnsureNoPendingPaymentsForBooking::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

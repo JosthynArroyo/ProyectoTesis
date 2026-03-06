@@ -9,8 +9,7 @@ class Authenticate extends Middleware
     protected function redirectTo($request)
     {
         if (! $request->expectsJson()) {
-            // Llevar al home y abrir el modal con el flag
-            return url('/login=1');
+            return url('/') . '?login=1';
         }
     }
 }

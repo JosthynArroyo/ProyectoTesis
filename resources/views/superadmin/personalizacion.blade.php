@@ -1,23 +1,20 @@
 @extends('layouts.superadmin')
-@section('title','Personalización')
-@section('header-title','Personalización')
-@section('header-subtitle','Contenido público y branding')
+@section('title','PersonalizaciÃ³n')
+@section('header-title','PersonalizaciÃ³n')
+@section('header-subtitle','Contenido pÃºblico y branding')
 
 @section('main')
 <div class="space-y-6">
   <section class="card p-6">
     <div class="flex flex-wrap items-center justify-between gap-4">
       <div>
-        <p class="text-xs uppercase tracking-widest text-slate-500">Personalización</p>
-        <h1 class="mt-2 text-2xl font-semibold text-slate-900">Configurar sitio público</h1>
+        <p class="text-xs uppercase tracking-widest text-slate-500">PersonalizaciÃ³n</p>
+        <h1 class="mt-2 text-2xl font-semibold text-slate-900">Configurar sitio pÃºblico</h1>
         <p class="text-slate-600">Supervisa textos, botones y branding del sitio.</p>
       </div>
     </div>
   </section>
 
-  @if ($errors->any())
-    <x-ui.alert tone="error">@foreach ($errors->all() as $e)<div>{{ $e }}</div>@endforeach</x-ui.alert>
-  @endif
   @if (session('success'))
     <x-ui.alert tone="success">{{ session('success') }}</x-ui.alert>
   @endif
@@ -35,3 +32,4 @@
   </form>
 </div>
 @endsection
+

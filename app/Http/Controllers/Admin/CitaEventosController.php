@@ -36,9 +36,7 @@ class CitaEventosController extends Controller
             ->when($estado !== '', function ($qq) use ($estado) {
                 $qq->where(function ($w) use ($estado) {
                     $w->where('a_estado', $estado)
-                      ->orWhere('de_estado', $estado)
-                      ->orWhere('estado_nuevo', $estado)
-                      ->orWhere('estado_anterior', $estado);
+                      ->orWhere('de_estado', $estado);
                 });
             })
             ->when($doctorId, fn($qq) => $qq->whereHas('cita', fn($w) => $w->where('doctor_id', $doctorId)))
@@ -46,7 +44,10 @@ class CitaEventosController extends Controller
             ->when($q !== '', function ($qq) use ($q) {
                 $like = '%'.$q.'%';
                 $qq->where(function ($w) use ($like) {
-                    $w->whereHas('cita', fn($c) => $c->where('id', 'like', $like))
+                    $w->where('valor_anterior', 'like', $like)
+                      ->orWhere('valor_nuevo', 'like', $like)
+                      ->orWhere('comentario', 'like', $like)
+                      ->orWhereHas('cita', fn($c) => $c->where('id', 'like', $like))
                       ->orWhereHas('cita.paciente', fn($c) => $c->where('email', 'like', $like)->orWhere('dni', 'like', $like))
                       ->orWhereHas('cita.doctor', fn($c) => $c->where('name', 'like', $like));
                 });
@@ -68,7 +69,20 @@ class CitaEventosController extends Controller
     {
         $rows = $this->query($request)->get();
 
-        $data = [['Fecha/Hora', 'Evento', 'Cita', 'Paciente', 'Doctor', 'De estado', 'A estado', 'De fecha-hora', 'A fecha-hora']];
+        $data = [[
+            'Fecha/Hora',
+            'Evento',
+            'Cita',
+            'Paciente',
+            'Doctor',
+            'De estado',
+            'A estado',
+            'Valor anterior',
+            'Valor nuevo',
+            'Comentario',
+            'De fecha-hora',
+            'A fecha-hora',
+        ]];
 
         foreach ($rows as $r) {
             // created_at seguro
@@ -76,14 +90,13 @@ class CitaEventosController extends Controller
                 ? $r->created_at->format('Y-m-d H:i')
                 : ($r->created_at ? Carbon::parse($r->created_at)->format('Y-m-d H:i') : '');
 
-            // Fallbacks para nombres alternos de columnas
-            $deEstado = $r->de_estado ?? $r->estado_anterior ?? '';
-            $aEstado  = $r->a_estado ?? $r->estado_nuevo ?? '';
+            $deEstado = $r->de_estado ?? '';
+            $aEstado  = $r->a_estado ?? '';
 
-            $deFecha  = $r->de_fecha ?? $r->fecha_anterior ?? null;
-            $aFecha   = $r->a_fecha ?? $r->fecha_nueva ?? null;
-            $deHora   = $r->de_hora ?? $r->hora_anterior ?? '';
-            $aHora    = $r->a_hora ?? $r->hora_nueva ?? '';
+            $deFecha  = $r->de_fecha ?? null;
+            $aFecha   = $r->a_fecha ?? null;
+            $deHora   = $r->de_hora ?? '';
+            $aHora    = $r->a_hora ?? '';
 
             // Formateo defensivo de fecha
             $deFechaStr = $deFecha
@@ -101,6 +114,9 @@ class CitaEventosController extends Controller
                 optional($r->cita->doctor)->name,
                 $deEstado,
                 $aEstado,
+                $r->valor_anterior,
+                $r->valor_nuevo,
+                $r->comentario,
                 trim($deFechaStr.' '.$deHora),
                 trim($aFechaStr.' '.$aHora),
             ];
@@ -109,7 +125,7 @@ class CitaEventosController extends Controller
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->fromArray($data, null, 'A1', true);
-        foreach (range('A', 'I') as $col) {
+        foreach (range('A', 'L') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
         $sheet->setTitle('Cambios de Citas');
@@ -173,9 +189,7 @@ class CitaEventosController extends Controller
             ->when($estado !== '', function ($qq) use ($estado) {
                 $qq->where(function ($w) use ($estado) {
                     $w->where('a_estado', $estado)
-                      ->orWhere('de_estado', $estado)
-                      ->orWhere('estado_nuevo', $estado)
-                      ->orWhere('estado_anterior', $estado);
+                      ->orWhere('de_estado', $estado);
                 });
             })
             ->when($doctorId, fn($qq) => $qq->whereHas('cita', fn($w) => $w->where('doctor_id', $doctorId)))
@@ -183,7 +197,10 @@ class CitaEventosController extends Controller
             ->when($q !== '', function ($qq) use ($q) {
                 $like = '%'.$q.'%';
                 $qq->where(function ($w) use ($like) {
-                    $w->whereHas('cita', fn($c) => $c->where('id', 'like', $like))
+                    $w->where('valor_anterior', 'like', $like)
+                      ->orWhere('valor_nuevo', 'like', $like)
+                      ->orWhere('comentario', 'like', $like)
+                      ->orWhereHas('cita', fn($c) => $c->where('id', 'like', $like))
                       ->orWhereHas('cita.paciente', fn($c) => $c->where('email', 'like', $like)->orWhere('dni', 'like', $like))
                       ->orWhereHas('cita.doctor', fn($c) => $c->where('name', 'like', $like));
                 });

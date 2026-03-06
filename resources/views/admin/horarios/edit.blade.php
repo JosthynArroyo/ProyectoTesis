@@ -8,21 +8,12 @@
 <div class="space-y-6">
   <section class="card p-6">
     <div>
-      <p class="text-xs uppercase tracking-widest text-slate-500">Edición de horario</p>
+      <p class="text-xs uppercase tracking-widest text-slate-500">EdiciÃ³n de horario</p>
       <h1 class="mt-2 text-2xl font-semibold text-slate-900">Editar horario #{{ $horario->id }}</h1>
       <p class="text-slate-600">Ajusta la fecha y la franja asignada con inputs claros.</p>
     </div>
   </section>
 
-  @if ($errors->any())
-    <x-ui.alert tone="error">
-      <ul>
-        @foreach ($errors->all() as $error)
-          <li>{{ $error }}</li>
-        @endforeach
-      </ul>
-    </x-ui.alert>
-  @endif
 
   <form action="{{ route('admin.horarios.update', $horario) }}" method="POST" class="card p-6" id="form-horario-edit">
     @csrf

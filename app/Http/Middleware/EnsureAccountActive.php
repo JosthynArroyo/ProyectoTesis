@@ -21,7 +21,7 @@ class EnsureAccountActive
             if (!$u->isActive()) {
                 Auth::logout();
                 // NO invalidate aquí para no perder los flashes
-                return redirect()->route('login')
+                return redirect(url('/') . '?login=1')
                     ->withErrors(['email' => 'Tu cuenta está deshabilitada o suspendida.'])
                     ->with('auth_error', 'Tu cuenta está deshabilitada o suspendida.');
             }

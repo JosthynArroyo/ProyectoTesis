@@ -17,7 +17,7 @@
         @auth
           <a href="{{ route('paciente.crear-cita') }}" class="btn btn-primary">{{ $siteSettings->get('services.cta_text', 'Agendar cita') }}</a>
         @else
-          <a href="{{ route('login') }}" class="btn btn-primary">{{ $siteSettings->get('services.cta_text', 'Agendar cita') }}</a>
+          <a href="{{ url('/') . '?login=1' }}" class="btn btn-primary" data-login-trigger>{{ $siteSettings->get('services.cta_text', 'Agendar cita') }}</a>
         @endauth
       </div>
     </div>
@@ -70,7 +70,7 @@
             @auth
               <a href="{{ route('paciente.crear-cita', ['especialidad' => $esp->id]) }}" class="btn btn-outline w-full">Agendar</a>
             @else
-              <a href="{{ route('login') }}" class="btn btn-outline w-full">Agendar</a>
+              <a href="{{ url('/') . '?login=1' }}" class="btn btn-outline w-full" data-login-trigger>Agendar</a>
             @endauth
           </div>
         </article>
@@ -83,7 +83,7 @@
       @auth
         <a href="{{ route('paciente.crear-cita') }}" class="btn btn-primary"><i class="ri-calendar-check-line"></i> Agendar cita</a>
       @else
-        <a href="{{ route('login') }}" class="btn btn-primary"><i class="ri-login-circle-line"></i> Ingresar para agendar</a>
+        <a href="{{ url('/') . '?login=1' }}" class="btn btn-primary" data-login-trigger><i class="ri-login-circle-line"></i> Ingresar para agendar</a>
         <p class="text-sm text-slate-500">O, si lo prefieres, agenda a través de nuestro chatbot.</p>
       @endauth
     </div>

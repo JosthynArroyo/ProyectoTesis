@@ -4,18 +4,20 @@
 @section('header-title','Panel laboratorio')
 @section('header-subtitle','Controla órdenes, resultados y agenda diaria')
 
-@section('content')
+@section('main')
   <div class="space-y-6">
     <section class="card p-6">
-      <div class="flex flex-wrap items-center justify-between gap-4">
-        <div>
+      <div class="page-header">
+        <div class="page-header__info">
           <p class="text-xs uppercase tracking-widest text-slate-500">Panel del laboratorio</p>
           <h1 class="mt-2 text-2xl font-semibold text-slate-900">Resumen de laboratorio</h1>
           <p class="text-slate-600">Controla órdenes, resultados y tu agenda diaria.</p>
         </div>
-        <div class="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white/90 px-3 py-2 text-sm text-slate-600">
-          <i class="ri-calendar-line text-slate-400"></i>
-          <input type="date" value="{{ now()->format('Y-m-d') }}" class="bg-transparent text-sm text-slate-700">
+        <div class="page-header__actions">
+          <div class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2 text-sm text-slate-600">
+            <i class="ri-calendar-line text-slate-400"></i>
+            <input type="date" value="{{ now()->format('Y-m-d') }}" class="bg-transparent text-sm text-slate-700">
+          </div>
         </div>
       </div>
     </section>
@@ -24,9 +26,9 @@
       <x-ui.alert tone="success">{{ session('success') }}</x-ui.alert>
     @endif
 
-    <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+    <section class="stat-grid">
       <x-ui.stat label="Citas de laboratorio" :value="$citasHoy" tone="sky">
-        <p class="text-xs text-slate-500">Agenda del dia</p>
+        <p class="text-xs text-slate-500">Agenda del día</p>
         <x-slot:icon><i class="ri-calendar-check-line"></i></x-slot:icon>
       </x-ui.stat>
       <x-ui.stat label="Órdenes pendientes" :value="$ordenesPendientes" tone="amber">
@@ -40,16 +42,18 @@
     </section>
 
     <section class="card p-6">
-      <div class="flex flex-wrap items-center justify-between gap-4">
-        <div>
+      <div class="page-header">
+        <div class="page-header__info">
           <p class="text-xs uppercase tracking-widest text-slate-500">Citas y resultados</p>
-          <h2 class="mt-2 text-lg font-semibold text-slate-900">Últimas órdenes</h2>
-          <p class="text-sm text-slate-500">?rdenes y citas asignadas a tu cuenta.</p>
+          <h2>Últimas órdenes</h2>
+          <p>Órdenes y citas asignadas a tu cuenta.</p>
         </div>
-        <a class="btn btn-outline" href="{{ route('laboratorio.ordenes.index') }}">Gestionar resultados</a>
+        <div class="page-header__actions">
+          <a class="btn btn-outline btn-full-mobile" href="{{ route('laboratorio.ordenes.index') }}">Gestionar resultados</a>
+        </div>
       </div>
 
-      <div class="mt-4 table-shell">
+      <div class="mt-4 table-shell table-responsive-cards">
         <table class="table">
           <thead>
             <tr>
@@ -76,11 +80,11 @@
                 $accionUrl = route('laboratorio.ordenes.index') . '#orden-' . $orden->id;
               @endphp
               <tr>
-                <td>{{ optional($orden->cita->paciente)->name ?? 'Paciente' }}</td>
-                <td>{{ $orden->tipo_examen }}</td>
-                <td><x-ui.badge :tone="$badge">{{ str_replace('_', ' ', $estado) }}</x-ui.badge></td>
-                <td>{{ optional($orden->cita->fecha)->format('d/m/Y') }}</td>
-                <td><a class="btn btn-ghost" href="{{ $accionUrl }}">{{ $accionLabel }}</a></td>
+                <td data-label="Paciente">{{ optional($orden->cita->paciente)->name ?? 'Paciente' }}</td>
+                <td data-label="Examen">{{ $orden->tipo_examen }}</td>
+                <td data-label="Estado"><x-ui.badge :tone="$badge">{{ str_replace('_', ' ', $estado) }}</x-ui.badge></td>
+                <td data-label="Fecha">{{ optional($orden->cita->fecha)->format('d/m/Y') }}</td>
+                <td data-label="Acción"><a class="btn btn-ghost btn-sm" href="{{ $accionUrl }}">{{ $accionLabel }}</a></td>
               </tr>
             @empty
               <tr>

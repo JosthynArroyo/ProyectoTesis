@@ -6,7 +6,7 @@
 @endonce
 
 <div id="chatbot-widget"
-     class="fixed bottom-6 right-6 z-50"
+     class="fixed bottom-4 right-4 z-30 md:bottom-6 md:right-6"
      data-base-url="{{ url('/') }}"
      data-csrf="{{ csrf_token() }}">
   <button id="chatbot-toggle"

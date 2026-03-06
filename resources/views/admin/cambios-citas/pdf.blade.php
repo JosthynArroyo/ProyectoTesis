@@ -7,7 +7,19 @@
   <style>{!! file_exists($cssPath) ? file_get_contents($cssPath) : '' !!}</style>
 </head>
 <body>
-  <h2>Auditoría de cambios de citas</h2>
+  @php
+    $eventLabels = [
+      'agendada' => 'Agendada',
+      'confirmada' => 'Confirmada',
+      'cancelada' => 'Cancelada',
+      'realizada' => 'Realizada',
+      'no_se_presento' => 'No se presento',
+      'reprogramada' => 'Reprogramada',
+      'prioridad_manual' => 'Prioridad manual',
+    ];
+  @endphp
+
+  <h2>Auditoria de cambios de citas</h2>
   <p>
     @if($tipo) tipo={{ $tipo }}; @endif
     @if($estado) estado={{ $estado }}; @endif
@@ -28,33 +40,44 @@
         <th>Doctor</th>
         <th>De</th>
         <th>A</th>
+        <th>Detalle</th>
       </tr>
     </thead>
     <tbody>
       @forelse($rows as $r)
         <tr>
           <td>{{ $r->created_at->format('Y-m-d H:i') }}</td>
-          <td>{{ ucfirst($r->tipo) }}</td>
+          <td>{{ $eventLabels[$r->tipo] ?? ucfirst($r->tipo) }}</td>
           <td>#{{ $r->cita_id }}</td>
           <td>{{ optional($r->cita->paciente)->name ?? '-' }}</td>
           <td>{{ optional($r->cita->doctor)->name ?? '-' }}</td>
           <td>
-            @if($r->tipo==='reprogramada')
-              {{ $r->de_fecha->format('Y-m-d') }} {{ $r->de_hora }}
+            @if($r->tipo==='reprogramada' && !blank($r->de_fecha))
+              {{ \Illuminate\Support\Carbon::parse($r->de_fecha)->format('Y-m-d') }} {{ $r->de_hora }}
             @else
               {{ $r->de_estado ?? '-' }}
             @endif
           </td>
           <td>
-            @if($r->tipo==='reprogramada')
-              {{ $r->a_fecha->format('Y-m-d') }} {{ $r->a_hora }}
+            @if($r->tipo==='reprogramada' && !blank($r->a_fecha))
+              {{ \Illuminate\Support\Carbon::parse($r->a_fecha)->format('Y-m-d') }} {{ $r->a_hora }}
             @else
               {{ $r->a_estado ?? '-' }}
             @endif
           </td>
+          <td>
+            @if($r->tipo === 'prioridad_manual')
+              {{ $r->valor_anterior ?? '-' }} -> {{ $r->valor_nuevo ?? '-' }}
+              @if(!blank($r->comentario))
+                <br>{{ $r->comentario }}
+              @endif
+            @else
+              {{ $r->comentario ?? '-' }}
+            @endif
+          </td>
         </tr>
       @empty
-        <tr><td colspan="7" style="text-align:center">Sin registros</td></tr>
+        <tr><td colspan="8" style="text-align:center">Sin registros</td></tr>
       @endforelse
     </tbody>
   </table>

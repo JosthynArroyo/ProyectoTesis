@@ -3,7 +3,7 @@
 namespace Tests\Feature;
 
 use App\Jobs\EnviarConfirmacionCitaJob;
-use App\Mail\ConfirmacionCitaMail;
+use App\Mail\CambioEstadoCitaMail;
 use App\Models\Cita;
 use App\Models\Especialidad;
 use App\Models\User;
@@ -31,8 +31,16 @@ class EnviarConfirmacionCitaJobTest extends TestCase
 
         (new EnviarConfirmacionCitaJob($cita))->handle();
 
-        Mail::assertSent(ConfirmacionCitaMail::class, function ($mail) use ($paciente, $doctor) {
-            return $mail->hasTo($paciente->email) && $mail->hasCc($doctor->email);
+        Mail::assertQueued(CambioEstadoCitaMail::class, function ($mail) use ($paciente) {
+            return $mail->hasTo($paciente->email)
+                && $mail->rolReceptor === 'paciente'
+                && $mail->evento === 'agendada';
+        });
+
+        Mail::assertQueued(CambioEstadoCitaMail::class, function ($mail) use ($doctor) {
+            return $mail->hasTo($doctor->email)
+                && $mail->rolReceptor === 'doctor'
+                && $mail->evento === 'agendada';
         });
     }
 }

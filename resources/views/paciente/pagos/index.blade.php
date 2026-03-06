@@ -1,0 +1,222 @@
+﻿@extends('layouts.paciente')
+@section('title', 'Mis pagos')
+@section('header-title', 'Mis pagos')
+@section('header-subtitle', 'Control y estado de cobros por cita')
+
+@section('main')
+<div class="space-y-6">
+  <section class="card p-6">
+    <div class="page-header">
+      <div class="page-header__info">
+        <p class="text-xs uppercase tracking-widest text-slate-500">Cobros</p>
+        <h1 class="mt-2 text-2xl font-semibold text-slate-900">Pagos y Ã³rdenes de cobro</h1>
+        <p class="text-slate-600">La orden de cobro se habilita cuando la cita se marca como realizada.</p>
+      </div>
+      <div class="page-header__actions">
+        <a href="{{ route('paciente.citas') }}" class="btn btn-outline">Ver citas</a>
+      </div>
+    </div>
+  </section>
+
+  @if($bloqueoActivo)
+    <x-ui.alert tone="warning">
+      Tiene pagos pendientes. Regularice su cuenta para agendar una nueva cita.
+    </x-ui.alert>
+  @endif
+
+  @if(session('success'))
+    <x-ui.alert tone="success">{{ session('success') }}</x-ui.alert>
+  @endif
+
+  <section class="card p-6">
+    <form method="GET" action="{{ url()->current() }}" class="flex flex-wrap items-end gap-3">
+      <div>
+        <label class="form-label" for="estado">Estado</label>
+        <select id="estado" name="estado" class="form-select">
+          <option value="all" @selected($estado === '')>Todos</option>
+          <option value="pendiente" @selected($estado === 'pendiente')>Pendiente</option>
+          <option value="en_verificacion" @selected($estado === 'en_verificacion')>En verificaciÃ³n</option>
+          <option value="rechazado" @selected($estado === 'rechazado')>Rechazado</option>
+          <option value="pagado" @selected($estado === 'pagado')>Pagado</option>
+          <option value="anulado" @selected($estado === 'anulado')>Anulado</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-outline btn-sm">Filtrar</button>
+    </form>
+  </section>
+
+  <section class="grid gap-4">
+    @forelse($pagos as $pago)
+      @php
+        $estadoLabel = match($pago->estado) {
+          'pendiente' => 'Pendiente',
+          'en_verificacion' => 'En verificaciÃ³n',
+          'rechazado' => 'Rechazado',
+          'pagado' => 'Pagado',
+          'anulado' => 'Anulado',
+          default => ucfirst((string) $pago->estado),
+        };
+        $estadoTone = match($pago->estado) {
+          'pagado' => 'success',
+          'rechazado' => 'danger',
+          'en_verificacion' => 'info',
+          'anulado' => 'neutral',
+          default => 'warning',
+        };
+
+        $metodoActual = old('metodo_pago', $pago->metodo_pago);
+        $esTransferencia = $metodoActual === 'transferencia';
+        $esEfectivo = $metodoActual === 'efectivo';
+        $ordenDisponible = $pago->tieneOrdenCobro();
+      @endphp
+      <article id="pago-{{ $pago->id }}" class="card p-5">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h3 class="text-base font-semibold text-slate-900">Cita #{{ $pago->cita_id }}</h3>
+            <p class="text-sm text-slate-500">
+              {{ optional($pago->cita?->doctor)->name ?? 'Doctor no disponible' }}
+              Â· {{ optional($pago->cita?->especialidad)->nombre ?? 'Especialidad' }}
+            </p>
+            <p class="text-xs text-slate-500">
+              {{ optional($pago->cita?->fecha)->format('Y-m-d') }} {{ $pago->cita?->hora ? substr((string)$pago->cita->hora, 0, 5) : '' }}
+            </p>
+            <p class="mt-1 text-xs text-slate-500">
+              Folio orden: {{ $pago->folio_unico ?: 'Sin generar' }}
+            </p>
+          </div>
+          <div class="text-right">
+            <p class="text-sm font-semibold text-slate-900">{{ number_format((float)$pago->monto, 2) }} {{ $pago->moneda }}</p>
+            <span class="badge {{ $estadoTone }}">{{ $estadoLabel }}</span>
+          </div>
+        </div>
+
+        <div class="mt-3 flex flex-wrap gap-2">
+          @if($ordenDisponible)
+            <a href="{{ route('paciente.pagos.orden.pdf', $pago) }}" class="btn btn-outline btn-sm" target="_blank" rel="noopener">Descargar orden</a>
+            @if($pago->token_publico)
+              <a href="{{ route('pagos.token.show', $pago->token_publico) }}" class="btn btn-outline btn-sm">Abrir token</a>
+            @endif
+          @endif
+
+          @if($pago->estado === 'pagado' && $pago->receipt)
+            <a href="{{ route('paciente.pagos.recibo.pdf', $pago) }}" class="btn btn-outline btn-sm" target="_blank" rel="noopener">Descargar recibo</a>
+          @endif
+
+          @if($pago->comprobante_path)
+            <a href="{{ route('paciente.pagos.comprobante', $pago) }}" class="btn btn-outline btn-sm" target="_blank" rel="noopener">Ver comprobante</a>
+          @endif
+        </div>
+
+        @if($pago->observacion_admin)
+          <p class="mt-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
+            <strong>ObservaciÃ³n administrativa:</strong> {{ $pago->observacion_admin }}
+          </p>
+        @endif
+
+        @if(!$ordenDisponible)
+          <p class="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
+            La orden de cobro aÃºn no estÃ¡ disponible. Se genera cuando la cita queda en estado realizada.
+          </p>
+        @elseif($pago->esEditablePorPaciente())
+          <form method="POST" action="{{ route('paciente.pagos.submit', $pago) }}" enctype="multipart/form-data" class="mt-4 grid gap-3 md:grid-cols-2" data-pago-form>
+            @csrf
+            <div>
+              <label class="form-label" for="metodo_pago_{{ $pago->id }}">MÃ©todo de pago</label>
+              <select id="metodo_pago_{{ $pago->id }}" name="metodo_pago" class="form-select" required data-metodo-select>
+                <option value="">Seleccione</option>
+                <option value="efectivo" @selected($metodoActual === 'efectivo')>Efectivo</option>
+                <option value="transferencia" @selected($metodoActual === 'transferencia')>Transferencia</option>
+              </select>
+              @error('metodo_pago')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
+            </div>
+
+            <div>
+              <label class="form-label" for="referencia_transaccion_{{ $pago->id }}">Referencia (opcional)</label>
+              <input id="referencia_transaccion_{{ $pago->id }}" type="text" name="referencia_transaccion" value="{{ old('referencia_transaccion', $pago->referencia_transaccion) }}" class="form-input">
+              @error('referencia_transaccion')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
+            </div>
+
+            <div class="md:col-span-2 {{ $esTransferencia ? '' : 'hidden' }}" data-comprobante-wrapper>
+              <label class="form-label" for="comprobante_{{ $pago->id }}">Comprobante (JPG, PNG, WEBP, PDF Â· max. 5MB)</label>
+              <input id="comprobante_{{ $pago->id }}" type="file" name="comprobante" class="form-input" accept=".jpg,.jpeg,.png,.webp,.pdf" data-comprobante-input @if(!$esTransferencia) disabled @endif>
+              @error('comprobante')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
+              <p class="mt-1 text-xs text-slate-500">Para transferencia se requiere comprobante para enviar a verificaciÃ³n.</p>
+            </div>
+
+            <div class="md:col-span-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700 {{ $esEfectivo ? '' : 'hidden' }}" data-efectivo-msg>
+              Pago en clÃ­nica: este pago serÃ¡ confirmado por recepciÃ³n al momento de su atenciÃ³n.
+            </div>
+
+            <div class="md:col-span-2">
+              <button type="submit" class="btn btn-primary" data-submit-label>
+                {{ $esTransferencia ? 'Guardar y enviar' : 'Confirmar que pagarÃ© en clÃ­nica' }}
+              </button>
+            </div>
+          </form>
+        @else
+          <p class="mt-4 text-sm text-slate-500">Este pago no admite cambios en su estado actual.</p>
+        @endif
+      </article>
+    @empty
+      <x-ui.empty-state title="No hay pagos para mostrar." message="Cuando exista una orden de cobro pendiente o pagada, la verÃ¡s aquÃ­ con su estado y las acciones disponibles.">
+        <div class="mt-4 flex flex-wrap justify-center gap-3">
+          <a class="btn btn-primary" href="{{ route('paciente.citas') }}">Ver mis citas</a>
+          <a class="btn btn-outline" href="{{ route('paciente.crear-cita') }}">Agendar cita</a>
+        </div>
+      </x-ui.empty-state>
+    @endforelse
+  </section>
+
+  <div class="flex justify-center">
+    {{ $pagos->links() }}
+  </div>
+</div>
+@endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('[data-pago-form]').forEach((form) => {
+    const metodoSelect = form.querySelector('[data-metodo-select]');
+    const comprobanteWrapper = form.querySelector('[data-comprobante-wrapper]');
+    const comprobanteInput = form.querySelector('[data-comprobante-input]');
+    const efectivoMsg = form.querySelector('[data-efectivo-msg]');
+    const submitButton = form.querySelector('[data-submit-label]');
+
+    if (!metodoSelect || !submitButton) {
+      return;
+    }
+
+    const applyMode = () => {
+      const metodo = metodoSelect.value;
+      const isTransferencia = metodo === 'transferencia';
+      const isEfectivo = metodo === 'efectivo';
+
+      if (comprobanteWrapper) {
+        comprobanteWrapper.classList.toggle('hidden', !isTransferencia);
+      }
+
+      if (comprobanteInput) {
+        comprobanteInput.disabled = !isTransferencia;
+        comprobanteInput.required = isTransferencia;
+        if (!isTransferencia) {
+          comprobanteInput.value = '';
+        }
+      }
+
+      if (efectivoMsg) {
+        efectivoMsg.classList.toggle('hidden', !isEfectivo);
+      }
+
+      submitButton.textContent = isTransferencia
+        ? 'Guardar y enviar'
+        : 'Confirmar que pagarÃ© en clÃ­nica';
+    };
+
+    metodoSelect.addEventListener('change', applyMode);
+    applyMode();
+  });
+});
+</script>
+@endpush
+

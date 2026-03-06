@@ -1,8 +1,8 @@
 @extends('layouts.doctor')
-@section('title', 'Consulta medica')
+@section('title', 'Consulta mÃ©dica')
 @section('activeSidebar', 'citas')
-@section('header-title','Consulta medica')
-@section('header-subtitle','Formulario de atencion medica')
+@section('header-title','Consulta mÃ©dica')
+@section('header-subtitle','Formulario de atenciÃ³n mÃ©dica')
 
 @php
   $nota = $nota ?? null;
@@ -45,11 +45,12 @@
   $controlMinFecha = now(config('app.timezone', 'America/Guayaquil'))->toDateString();
 @endphp
 
-@section('content')
+@section('main')
 <div
   class="space-y-6"
   id="soap-page"
   data-csrf="{{ csrf_token() }}"
+  data-autosave-url="{{ route('doctor.citas.soap.store', $cita->id) }}"
   data-plan-url="{{ route('doctor.citas.proxima.planificada', $cita->id) }}"
   data-slots-url-template="{{ route('api.doctor.slots', ['doctor' => '__DOCTOR__', 'fecha' => '__FECHA__']) }}"
   data-check-url="{{ route('doctor.disponibilidad.check') }}"
@@ -60,8 +61,8 @@
     <div class="flex flex-wrap items-start justify-between gap-3">
       <div>
         <p class="text-xs uppercase tracking-widest text-slate-500">Cita #{{ $cita->id }}</p>
-        <h1 class="mt-2 text-2xl font-semibold text-slate-900">Consulta medica</h1>
-        <p class="text-sm text-slate-600">Formulario de atencion medica.</p>
+        <h1 class="mt-2 text-2xl font-semibold text-slate-900">Consulta mÃ©dica</h1>
+        <p class="text-sm text-slate-600">Formulario de atenciÃ³n mÃ©dica.</p>
         <p class="text-slate-600">
           {{ optional($cita->paciente)->name ?? 'Paciente' }} &middot; {{ optional($cita->especialidad)->nombre ?? '-' }} &middot;
           {{ \Carbon\Carbon::parse($cita->fecha)->format('d/m/Y') }} {{ \Carbon\Carbon::parse($cita->hora)->format('H:i') }}
@@ -84,106 +85,133 @@
     </div>
   @endif
 
+  <section class="card p-4">
+    <div class="flex items-center justify-between gap-3">
+      <p class="text-sm font-semibold text-slate-900">Progreso SOAP</p>
+      <span class="text-xs text-slate-500" data-soap-progress-text>SecciÃ³n 1 de 6</span>
+    </div>
+    <ol class="mt-3 grid gap-2 sm:grid-cols-3 lg:grid-cols-6" data-soap-stepper>
+      <li class="rounded-xl border border-teal-200 bg-teal-50 px-2 py-2 text-xs font-semibold text-teal-700" data-soap-step-item="1" role="button" tabindex="0" aria-controls="soap-section-1">1. Paciente</li>
+      <li class="rounded-xl border border-slate-200 bg-white px-2 py-2 text-xs font-semibold text-slate-500" data-soap-step-item="2" role="button" tabindex="0" aria-controls="soap-section-2">2. Alergias</li>
+      <li class="rounded-xl border border-slate-200 bg-white px-2 py-2 text-xs font-semibold text-slate-500" data-soap-step-item="3" role="button" tabindex="0" aria-controls="soap-section-3">3. Antecedentes</li>
+      <li class="rounded-xl border border-slate-200 bg-white px-2 py-2 text-xs font-semibold text-slate-500" data-soap-step-item="4" role="button" tabindex="0" aria-controls="soap-section-4">4. Examen</li>
+      <li class="rounded-xl border border-slate-200 bg-white px-2 py-2 text-xs font-semibold text-slate-500" data-soap-step-item="5" role="button" tabindex="0" aria-controls="soap-section-5">5. Diagnostico</li>
+      <li class="rounded-xl border border-slate-200 bg-white px-2 py-2 text-xs font-semibold text-slate-500" data-soap-step-item="6" role="button" tabindex="0" aria-controls="soap-section-6">6. Plan</li>
+    </ol>
+    <p class="mt-3 text-xs text-slate-500" data-soap-autosave-status>Autoguardado activo cada 30 segundos.</p>
+  </section>
+
   <section class="card p-6">
     <form method="POST" action="{{ route('doctor.citas.soap.store', $cita->id) }}" class="space-y-6">
       @csrf
 
-      <fieldset class="rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
-        <legend class="px-2 text-sm font-semibold text-slate-900">1) Informacion del paciente</legend>
-        <p class="mb-3 text-xs text-slate-500">Registra solo lo que se mostrara en el historial profesional.</p>
-        <p class="mb-3 text-xs text-slate-500">Esto se vera en: Consultas realizadas.</p>
+      <fieldset class="rounded-2xl border border-slate-200 bg-slate-50/50 p-4" data-soap-section="1" id="soap-section-1">
+        <legend class="px-2 text-sm font-semibold text-slate-900">1) InformaciÃ³n del paciente</legend>
+        <button type="button" class="soap-section-toggle btn btn-outline btn-sm" data-soap-section-toggle="1">Ver seccion</button>
+        <div class="soap-section__body" data-soap-section-body="1">
+          <p class="mb-3 text-xs text-slate-500">Registra solo lo que se mostrara en el historial profesional.</p>
+          <p class="mb-3 text-xs text-slate-500">Esto se vera en: Consultas realizadas.</p>
 
-        <div>
-          <label class="form-label" for="subjetivo_motivo">Por que consulta hoy? *</label>
-          <textarea id="subjetivo_motivo" name="subjetivo_motivo" class="form-textarea" rows="3" required @if($isSigned) readonly @endif>{{ old('subjetivo_motivo', $nota?->subjetivo_motivo) }}</textarea>
-          @error('subjetivo_motivo')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
+          <div>
+            <label class="form-label" for="subjetivo_motivo">Por que consulta hoy? *</label>
+            <textarea id="subjetivo_motivo" name="subjetivo_motivo" class="form-textarea" rows="3" required @if($isSigned) readonly @endif>{{ old('subjetivo_motivo', $nota?->subjetivo_motivo) }}</textarea>
+            @error('subjetivo_motivo')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
+          </div>
+
+          <input type="hidden" name="subjetivo_hpi" value="{{ $internalHpi }}">
+          <input type="hidden" name="subjetivo_ros" value="{{ $internalRos }}">
+          <input type="hidden" name="subjetivo_notas" value="{{ $internalNotas }}">
         </div>
-
-        <input type="hidden" name="subjetivo_hpi" value="{{ $internalHpi }}">
-        <input type="hidden" name="subjetivo_ros" value="{{ $internalRos }}">
-        <input type="hidden" name="subjetivo_notas" value="{{ $internalNotas }}">
       </fieldset>
 
-      <fieldset class="rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
+      <fieldset class="rounded-2xl border border-slate-200 bg-slate-50/50 p-4" data-soap-section="2" id="soap-section-2">
         <legend class="px-2 text-sm font-semibold text-slate-900">2) Alergias</legend>
-        <p class="mb-3 text-xs text-slate-500">Registra alergias activas del paciente para alertas clinicas.</p>
-        <p class="mb-3 text-xs text-slate-500">Esto se vera en: Alergias.</p>
+        <button type="button" class="soap-section-toggle btn btn-outline btn-sm" data-soap-section-toggle="2">Ver seccion</button>
+        <div class="soap-section__body" data-soap-section-body="2">
+          <p class="mb-3 text-xs text-slate-500">Registra alergias activas del paciente para alertas clÃ­nicas.</p>
+          <p class="mb-3 text-xs text-slate-500">Esto se vera en: Alergias.</p>
 
-        <div class="space-y-3">
-          <label class="inline-flex items-center gap-2 text-sm text-slate-700">
-            <input type="checkbox" name="alergias_no_conocidas" value="1" @if($alergiasNoConocidasChecked) checked @endif @if($isSigned) disabled @endif>
-            No conocidas
-          </label>
-          <div>
-            <label class="form-label" for="alergias_detalle">Detalle de alergias</label>
-            <textarea id="alergias_detalle" name="alergias_detalle" class="form-textarea" rows="3" @if($isSigned) readonly @endif>{{ $alergiasDetalle }}</textarea>
+          <div class="space-y-3">
+            <label class="inline-flex items-center gap-2 text-sm text-slate-700">
+              <input type="checkbox" name="alergias_no_conocidas" value="1" @if($alergiasNoConocidasChecked) checked @endif @if($isSigned) disabled @endif>
+              No conocidas
+            </label>
+            <div>
+              <label class="form-label" for="alergias_detalle">Detalle de alergias</label>
+              <textarea id="alergias_detalle" name="alergias_detalle" class="form-textarea" rows="3" @if($isSigned) readonly @endif>{{ $alergiasDetalle }}</textarea>
+            </div>
           </div>
         </div>
       </fieldset>
 
-      <fieldset class="rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
+      <fieldset class="rounded-2xl border border-slate-200 bg-slate-50/50 p-4" data-soap-section="3" id="soap-section-3">
         <legend class="px-2 text-sm font-semibold text-slate-900">3) Antecedentes del paciente</legend>
-        <p class="mb-3 text-xs text-slate-500">Completa antecedentes relevantes para seguimiento medico.</p>
-        <p class="mb-3 text-xs text-slate-500">Esto se vera en: Antecedentes patologicos.</p>
+        <button type="button" class="soap-section-toggle btn btn-outline btn-sm" data-soap-section-toggle="3">Ver seccion</button>
+        <div class="soap-section__body" data-soap-section-body="3">
+          <p class="mb-3 text-xs text-slate-500">Completa antecedentes relevantes para seguimiento mÃ©dico.</p>
+          <p class="mb-3 text-xs text-slate-500">Esto se vera en: Antecedentes patologicos.</p>
 
-        <div class="grid gap-4 lg:grid-cols-2">
-          <div>
-            <label class="form-label" for="antecedentes_cronicas">Enfermedades cronicas</label>
-            <textarea id="antecedentes_cronicas" name="antecedentes_cronicas" class="form-textarea" rows="3" @if($isSigned) readonly @endif>{{ $antecedentesCronicas }}</textarea>
-          </div>
-          <div>
-            <label class="form-label" for="antecedentes_cirugias">Cirugias previas</label>
-            <textarea id="antecedentes_cirugias" name="antecedentes_cirugias" class="form-textarea" rows="3" @if($isSigned) readonly @endif>{{ $antecedentesCirugias }}</textarea>
-          </div>
-          <div>
-            <label class="form-label" for="antecedentes_hospitalizaciones">Hospitalizaciones</label>
-            <textarea id="antecedentes_hospitalizaciones" name="antecedentes_hospitalizaciones" class="form-textarea" rows="3" @if($isSigned) readonly @endif>{{ $antecedentesHospitalizaciones }}</textarea>
-          </div>
-          <div>
-            <label class="form-label" for="antecedentes_diabetes">Diabetes</label>
-            <select id="antecedentes_diabetes" name="antecedentes_diabetes" class="form-select" @if($isSigned) disabled @endif>
-              <option value="">Seleccionar</option>
-              <option value="No" {{ $antecedentesDiabetes === 'No' ? 'selected' : '' }}>No</option>
-              <option value="Tipo 1" {{ $antecedentesDiabetes === 'Tipo 1' ? 'selected' : '' }}>Tipo 1</option>
-              <option value="Tipo 2" {{ $antecedentesDiabetes === 'Tipo 2' ? 'selected' : '' }}>Tipo 2</option>
-              <option value="Gestacional" {{ $antecedentesDiabetes === 'Gestacional' ? 'selected' : '' }}>Gestacional</option>
-              <option value="No aplica" {{ $antecedentesDiabetes === 'No aplica' ? 'selected' : '' }}>No aplica</option>
-            </select>
-          </div>
-          <div>
-            <label class="form-label" for="antecedentes_hipertension">Hipertension</label>
-            <select id="antecedentes_hipertension" name="antecedentes_hipertension" class="form-select" @if($isSigned) disabled @endif>
-              <option value="">Seleccionar</option>
-              <option value="No" {{ $antecedentesHipertension === 'No' ? 'selected' : '' }}>No</option>
-              <option value="Si" {{ $antecedentesHipertension === 'Si' ? 'selected' : '' }}>Si</option>
-              <option value="No documentado" {{ $antecedentesHipertension === 'No documentado' ? 'selected' : '' }}>No documentado</option>
-            </select>
-          </div>
-          <div class="lg:col-span-2">
-            <label class="form-label" for="antecedentes_otros">Otros antecedentes</label>
-            <textarea id="antecedentes_otros" name="antecedentes_otros" class="form-textarea" rows="3" @if($isSigned) readonly @endif>{{ $antecedentesOtros }}</textarea>
+          <div class="grid gap-4 lg:grid-cols-2">
+            <div>
+              <label class="form-label" for="antecedentes_cronicas">Enfermedades cronicas</label>
+              <textarea id="antecedentes_cronicas" name="antecedentes_cronicas" class="form-textarea" rows="3" @if($isSigned) readonly @endif>{{ $antecedentesCronicas }}</textarea>
+            </div>
+            <div>
+              <label class="form-label" for="antecedentes_cirugias">Cirugias previas</label>
+              <textarea id="antecedentes_cirugias" name="antecedentes_cirugias" class="form-textarea" rows="3" @if($isSigned) readonly @endif>{{ $antecedentesCirugias }}</textarea>
+            </div>
+            <div>
+              <label class="form-label" for="antecedentes_hospitalizaciones">Hospitalizaciones</label>
+              <textarea id="antecedentes_hospitalizaciones" name="antecedentes_hospitalizaciones" class="form-textarea" rows="3" @if($isSigned) readonly @endif>{{ $antecedentesHospitalizaciones }}</textarea>
+            </div>
+            <div>
+              <label class="form-label" for="antecedentes_diabetes">Diabetes</label>
+              <select id="antecedentes_diabetes" name="antecedentes_diabetes" class="form-select" @if($isSigned) disabled @endif>
+                <option value="">Seleccionar</option>
+                <option value="No" {{ $antecedentesDiabetes === 'No' ? 'selected' : '' }}>No</option>
+                <option value="Tipo 1" {{ $antecedentesDiabetes === 'Tipo 1' ? 'selected' : '' }}>Tipo 1</option>
+                <option value="Tipo 2" {{ $antecedentesDiabetes === 'Tipo 2' ? 'selected' : '' }}>Tipo 2</option>
+                <option value="Gestacional" {{ $antecedentesDiabetes === 'Gestacional' ? 'selected' : '' }}>Gestacional</option>
+                <option value="No aplica" {{ $antecedentesDiabetes === 'No aplica' ? 'selected' : '' }}>No aplica</option>
+              </select>
+            </div>
+            <div>
+              <label class="form-label" for="antecedentes_hipertension">Hipertension</label>
+              <select id="antecedentes_hipertension" name="antecedentes_hipertension" class="form-select" @if($isSigned) disabled @endif>
+                <option value="">Seleccionar</option>
+                <option value="No" {{ $antecedentesHipertension === 'No' ? 'selected' : '' }}>No</option>
+                <option value="Si" {{ $antecedentesHipertension === 'Si' ? 'selected' : '' }}>Si</option>
+                <option value="No documentado" {{ $antecedentesHipertension === 'No documentado' ? 'selected' : '' }}>No documentado</option>
+              </select>
+            </div>
+            <div class="lg:col-span-2">
+              <label class="form-label" for="antecedentes_otros">Otros antecedentes</label>
+              <textarea id="antecedentes_otros" name="antecedentes_otros" class="form-textarea" rows="3" @if($isSigned) readonly @endif>{{ $antecedentesOtros }}</textarea>
+            </div>
           </div>
         </div>
       </fieldset>
 
-      <fieldset class="rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
-        <legend class="px-2 text-sm font-semibold text-slate-900">4) Examen clinico</legend>
+      <fieldset class="rounded-2xl border border-slate-200 bg-slate-50/50 p-4" data-soap-section="4" id="soap-section-4">
+        <legend class="px-2 text-sm font-semibold text-slate-900">4) Examen clÃ­nico</legend>
+        <button type="button" class="soap-section-toggle btn btn-outline btn-sm" data-soap-section-toggle="4">Ver seccion</button>
+        <div class="soap-section__body" data-soap-section-body="4">
         <p class="mb-3 text-xs text-slate-500">Signos vitales, hallazgos y examen fisico.</p>
-        <p class="mb-3 text-xs text-slate-500">Lo registrado en signos vitales se vera en "Signos vitales" del Historial clinico profesional y se usara para la evolucion con consultas anteriores.</p>
+        <p class="mb-3 text-xs text-slate-500">Lo registrado en signos vitales se vera en "Signos vitales" del Historial clÃ­nico profesional y se usara para la evoluciÃ³n con consultas anteriores.</p>
 
         <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <div>
-            <label class="form-label" for="sv_ta">Presion arterial *</label>
+            <label class="form-label" for="sv_ta">Presión arterial *</label>
             <input id="sv_ta" name="sv_ta" class="form-input" value="{{ old('sv_ta', $sv['ta'] ?? '') }}" required @if($isSigned) readonly @endif>
             @error('sv_ta')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
           </div>
           <div>
-            <label class="form-label" for="sv_fc">Pulso cardiaco *</label>
+            <label class="form-label" for="sv_fc">Pulso cardÃ­aco *</label>
             <input id="sv_fc" name="sv_fc" type="number" class="form-input" value="{{ old('sv_fc', $sv['fc'] ?? '') }}" required @if($isSigned) readonly @endif>
             @error('sv_fc')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
           </div>
           <div>
-            <label class="form-label" for="sv_fr">Respiracion por minuto *</label>
+            <label class="form-label" for="sv_fr">Respiración por minuto *</label>
             <input id="sv_fr" name="sv_fr" type="number" class="form-input" value="{{ old('sv_fr', $sv['fr'] ?? '') }}" required @if($isSigned) readonly @endif>
             @error('sv_fr')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
           </div>
@@ -193,7 +221,7 @@
             @error('sv_temp')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
           </div>
           <div>
-            <label class="form-label" for="sv_spo2">Saturacion de oxigeno *</label>
+            <label class="form-label" for="sv_spo2">Saturación de oxígeno *</label>
             <input id="sv_spo2" name="sv_spo2" type="number" class="form-input" value="{{ old('sv_spo2', $sv['spo2'] ?? '') }}" required @if($isSigned) readonly @endif>
             @error('sv_spo2')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
           </div>
@@ -210,46 +238,53 @@
         </div>
 
         <div class="mt-4 rounded-2xl border border-slate-200 bg-white/80 p-4" id="sv-evolution">
-          <h4 class="text-sm font-semibold text-slate-900">Evolucion automatica de signos vitales</h4>
+          <h4 class="text-sm font-semibold text-slate-900">EvoluciÃ³n automÃ¡tica de signos vitales</h4>
           @if(empty($signosPrevios))
             <p class="mt-2 text-xs text-slate-500">No hay una consulta firmada previa con signos vitales para comparar.</p>
           @else
             <p class="mt-2 text-xs text-slate-500">El sistema compara los valores actuales con la ultima consulta firmada del paciente.</p>
             <div class="mt-3 grid gap-3 md:grid-cols-2">
               <article class="rounded-xl border border-slate-200 bg-slate-50/70 p-3" data-sv-card data-sv-input="sv_ta" data-sv-unit="mmHg" data-sv-previous="{{ e((string) ($signosPrevios['ta'] ?? '')) }}">
-                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Presion arterial</p>
-                <p class="text-sm text-slate-700">Ultimo valor: <strong>{{ $signosPrevios['ta'] ?? 'Sin registro' }}</strong></p>
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Presión arterial</p>
+                <p class="text-sm text-slate-700">Ãšltimo valor: <strong>{{ $signosPrevios['ta'] ?? 'Sin registro' }}</strong></p>
                 <p class="text-xs text-slate-500">Cambio actual: <span data-sv-delta>Ingresa un valor actual para comparar.</span></p>
+                <canvas class="mt-2 h-10 w-full rounded-md bg-white" width="220" height="48" data-sv-sparkline></canvas>
               </article>
               <article class="rounded-xl border border-slate-200 bg-slate-50/70 p-3" data-sv-card data-sv-input="sv_fc" data-sv-unit="lpm" data-sv-previous="{{ e((string) ($signosPrevios['fc'] ?? '')) }}">
-                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Pulso cardiaco</p>
-                <p class="text-sm text-slate-700">Ultimo valor: <strong>{{ $signosPrevios['fc'] ?? 'Sin registro' }}</strong></p>
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Pulso cardÃ­aco</p>
+                <p class="text-sm text-slate-700">Ãšltimo valor: <strong>{{ $signosPrevios['fc'] ?? 'Sin registro' }}</strong></p>
                 <p class="text-xs text-slate-500">Cambio actual: <span data-sv-delta>Ingresa un valor actual para comparar.</span></p>
+                <canvas class="mt-2 h-10 w-full rounded-md bg-white" width="220" height="48" data-sv-sparkline></canvas>
               </article>
               <article class="rounded-xl border border-slate-200 bg-slate-50/70 p-3" data-sv-card data-sv-input="sv_fr" data-sv-unit="rpm" data-sv-previous="{{ e((string) ($signosPrevios['fr'] ?? '')) }}">
-                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Respiracion</p>
-                <p class="text-sm text-slate-700">Ultimo valor: <strong>{{ $signosPrevios['fr'] ?? 'Sin registro' }}</strong></p>
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Respiración</p>
+                <p class="text-sm text-slate-700">Ãšltimo valor: <strong>{{ $signosPrevios['fr'] ?? 'Sin registro' }}</strong></p>
                 <p class="text-xs text-slate-500">Cambio actual: <span data-sv-delta>Ingresa un valor actual para comparar.</span></p>
+                <canvas class="mt-2 h-10 w-full rounded-md bg-white" width="220" height="48" data-sv-sparkline></canvas>
               </article>
               <article class="rounded-xl border border-slate-200 bg-slate-50/70 p-3" data-sv-card data-sv-input="sv_temp" data-sv-unit="C" data-sv-previous="{{ e((string) ($signosPrevios['temp'] ?? '')) }}">
                 <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Temperatura</p>
-                <p class="text-sm text-slate-700">Ultimo valor: <strong>{{ $signosPrevios['temp'] ?? 'Sin registro' }}</strong></p>
+                <p class="text-sm text-slate-700">Ãšltimo valor: <strong>{{ $signosPrevios['temp'] ?? 'Sin registro' }}</strong></p>
                 <p class="text-xs text-slate-500">Cambio actual: <span data-sv-delta>Ingresa un valor actual para comparar.</span></p>
+                <canvas class="mt-2 h-10 w-full rounded-md bg-white" width="220" height="48" data-sv-sparkline></canvas>
               </article>
               <article class="rounded-xl border border-slate-200 bg-slate-50/70 p-3" data-sv-card data-sv-input="sv_spo2" data-sv-unit="%" data-sv-previous="{{ e((string) ($signosPrevios['spo2'] ?? '')) }}">
-                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Saturacion de oxigeno</p>
-                <p class="text-sm text-slate-700">Ultimo valor: <strong>{{ $signosPrevios['spo2'] ?? 'Sin registro' }}</strong></p>
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Saturación de oxígeno</p>
+                <p class="text-sm text-slate-700">Ãšltimo valor: <strong>{{ $signosPrevios['spo2'] ?? 'Sin registro' }}</strong></p>
                 <p class="text-xs text-slate-500">Cambio actual: <span data-sv-delta>Ingresa un valor actual para comparar.</span></p>
+                <canvas class="mt-2 h-10 w-full rounded-md bg-white" width="220" height="48" data-sv-sparkline></canvas>
               </article>
               <article class="rounded-xl border border-slate-200 bg-slate-50/70 p-3" data-sv-card data-sv-input="sv_peso" data-sv-unit="kg" data-sv-previous="{{ e((string) ($signosPrevios['peso'] ?? '')) }}">
                 <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Peso</p>
-                <p class="text-sm text-slate-700">Ultimo valor: <strong>{{ $signosPrevios['peso'] ?? 'Sin registro' }}</strong></p>
+                <p class="text-sm text-slate-700">Ãšltimo valor: <strong>{{ $signosPrevios['peso'] ?? 'Sin registro' }}</strong></p>
                 <p class="text-xs text-slate-500">Cambio actual: <span data-sv-delta>Ingresa un valor actual para comparar.</span></p>
+                <canvas class="mt-2 h-10 w-full rounded-md bg-white" width="220" height="48" data-sv-sparkline></canvas>
               </article>
               <article class="rounded-xl border border-slate-200 bg-slate-50/70 p-3 md:col-span-2" data-sv-card data-sv-input="sv_talla" data-sv-unit="cm" data-sv-previous="{{ e((string) ($signosPrevios['talla'] ?? '')) }}">
                 <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Estatura</p>
-                <p class="text-sm text-slate-700">Ultimo valor: <strong>{{ $signosPrevios['talla'] ?? 'Sin registro' }}</strong></p>
+                <p class="text-sm text-slate-700">Ãšltimo valor: <strong>{{ $signosPrevios['talla'] ?? 'Sin registro' }}</strong></p>
                 <p class="text-xs text-slate-500">Cambio actual: <span data-sv-delta>Ingresa un valor actual para comparar.</span></p>
+                <canvas class="mt-2 h-10 w-full rounded-md bg-white" width="220" height="48" data-sv-sparkline></canvas>
               </article>
             </div>
           @endif
@@ -262,54 +297,60 @@
             @error('examen_fisico')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
           </div>
           <div>
-            <label class="form-label" for="notas_objetivas">Observaciones medicas *</label>
+            <label class="form-label" for="notas_objetivas">Observaciones mÃ©dicas *</label>
             <textarea id="notas_objetivas" name="notas_objetivas" class="form-textarea" required rows="3" @if($isSigned) readonly @endif>{{ old('notas_objetivas', $nota?->notas_objetivas) }}</textarea>
             @error('notas_objetivas')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
           </div>
         </div>
-      </fieldset>
-      <fieldset class="rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
-        <legend class="px-2 text-sm font-semibold text-slate-900">5) Diagnostico</legend>
-        <p class="mb-3 text-xs text-slate-500">Diagnostico presuntivo o confirmado.</p>
-        <p class="mb-3 text-xs text-slate-500">Esto se listara en "Consultas realizadas" del Historial clinico profesional.</p>
-
-        <div>
-          <label class="form-label" for="assessment">Evaluacion medica *</label>
-          <textarea id="assessment" name="assessment" class="form-textarea" required rows="4" @if($isSigned) readonly @endif>{{ old('assessment', $nota?->assessment) }}</textarea>
-          @error('assessment')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
-        </div>
-
-        <div class="mt-4">
-          <div class="flex items-center justify-between">
-            <label class="form-label">Diagnostico *</label>
-            @if(!$isSigned)
-              <button class="btn btn-ghost" type="button" id="add-diagnostico"><i class="ri-add-line"></i> Agregar</button>
-            @endif
-          </div>
-          <div class="space-y-3" id="diagnosticos-wrap">
-            @foreach($diagnosticos as $index => $diag)
-              <div class="grid gap-2 md:grid-cols-[140px_1fr_140px]" data-diag-row="1">
-                <select name="diagnosticos[{{ $index }}][tipo]" class="form-select" required @if($isSigned) disabled @endif>
-                  <option value="principal" {{ ($diag['tipo'] ?? '') === 'principal' ? 'selected' : '' }}>Principal</option>
-                  <option value="secundario" {{ ($diag['tipo'] ?? '') === 'secundario' ? 'selected' : '' }}>Secundario</option>
-                  <option value="diferencial" {{ ($diag['tipo'] ?? '') === 'diferencial' ? 'selected' : '' }}>Diferencial</option>
-                </select>
-                @error("diagnosticos.$index.tipo")<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
-                <input name="diagnosticos[{{ $index }}][texto]" class="form-input" placeholder="Diagnostico" value="{{ $diag['texto'] ?? '' }}" required @if($isSigned) readonly @endif>
-                @error("diagnosticos.$index.texto")<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
-                <input name="diagnosticos[{{ $index }}][cie10]" class="form-input" placeholder="CIE-10 (opcional)" value="{{ $diag['cie10'] ?? '' }}" @if($isSigned) readonly @endif>
-                @error("diagnosticos.$index.cie10")<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
-              </div>
-            @endforeach
-          </div>
-          @error('diagnosticos')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
         </div>
       </fieldset>
+      <fieldset class="rounded-2xl border border-slate-200 bg-slate-50/50 p-4" data-soap-section="5" id="soap-section-5">
+        <legend class="px-2 text-sm font-semibold text-slate-900">5) DiagnÃ³stico</legend>
+        <button type="button" class="soap-section-toggle btn btn-outline btn-sm" data-soap-section-toggle="5">Ver seccion</button>
+        <div class="soap-section__body" data-soap-section-body="5">
+          <p class="mb-3 text-xs text-slate-500">DiagnÃ³stico presuntivo o confirmado.</p>
+          <p class="mb-3 text-xs text-slate-500">Esto se listara en "Consultas realizadas" del Historial clÃ­nico profesional.</p>
 
-      <fieldset class="rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
+          <div>
+            <label class="form-label" for="assessment">Evaluación médica *</label>
+            <textarea id="assessment" name="assessment" class="form-textarea" required rows="4" @if($isSigned) readonly @endif>{{ old('assessment', $nota?->assessment) }}</textarea>
+            @error('assessment')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
+          </div>
+
+          <div class="mt-4">
+            <div class="flex items-center justify-between">
+              <label class="form-label">DiagnÃ³stico *</label>
+              @if(!$isSigned)
+                <button class="btn btn-ghost" type="button" id="add-diagnostico"><i class="ri-add-line"></i> Agregar</button>
+              @endif
+            </div>
+            <div class="space-y-3" id="diagnosticos-wrap">
+              @foreach($diagnosticos as $index => $diag)
+                <div class="grid gap-2 md:grid-cols-[140px_1fr_140px]" data-diag-row="1">
+                  <select name="diagnosticos[{{ $index }}][tipo]" class="form-select" required @if($isSigned) disabled @endif>
+                    <option value="principal" {{ ($diag['tipo'] ?? '') === 'principal' ? 'selected' : '' }}>Principal</option>
+                    <option value="secundario" {{ ($diag['tipo'] ?? '') === 'secundario' ? 'selected' : '' }}>Secundario</option>
+                    <option value="diferencial" {{ ($diag['tipo'] ?? '') === 'diferencial' ? 'selected' : '' }}>Diferencial</option>
+                  </select>
+                  @error("diagnosticos.$index.tipo")<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
+                  <input name="diagnosticos[{{ $index }}][texto]" class="form-input" placeholder="DiagnÃ³stico" value="{{ $diag['texto'] ?? '' }}" required @if($isSigned) readonly @endif>
+                  @error("diagnosticos.$index.texto")<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
+                  <input name="diagnosticos[{{ $index }}][cie10]" class="form-input" placeholder="CIE-10 (opcional)" value="{{ $diag['cie10'] ?? '' }}" @if($isSigned) readonly @endif>
+                  @error("diagnosticos.$index.cie10")<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
+                </div>
+              @endforeach
+            </div>
+            @error('diagnosticos')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="rounded-2xl border border-slate-200 bg-slate-50/50 p-4" data-soap-section="6" id="soap-section-6">
         <legend class="px-2 text-sm font-semibold text-slate-900">6) Tratamiento e indicaciones</legend>
+        <button type="button" class="soap-section-toggle btn btn-outline btn-sm" data-soap-section-toggle="6">Ver seccion</button>
+        <div class="soap-section__body" data-soap-section-body="6">
         <p class="mb-3 text-xs text-slate-500">Tratamiento, indicaciones, examenes y control.</p>
-        <p class="mb-3 text-xs text-slate-500">Esto se listara en "Consultas realizadas" del Historial clinico profesional.</p>
+        <p class="mb-3 text-xs text-slate-500">Esto se listara en "Consultas realizadas" del Historial clÃ­nico profesional.</p>
 
         <div class="grid gap-4 lg:grid-cols-2">
           <div>
@@ -330,7 +371,7 @@
 
           <div class="lg:col-span-2 rounded-2xl border border-slate-200 bg-white/80 p-4" id="plan-control-box">
             <h4 class="text-sm font-semibold text-slate-900">Agendar control</h4>
-            <p class="mt-1 text-xs text-slate-500">Programa la proxima cita de seguimiento sin salir de esta consulta.</p>
+            <p class="mt-1 text-xs text-slate-500">Programa la prÃ³xima cita de seguimiento sin salir de esta consulta.</p>
             @if($isSigned)
               <div class="mt-3 grid gap-3 lg:grid-cols-[1fr_1fr_auto]">
                 <div>
@@ -351,13 +392,14 @@
               </div>
               <p id="control-help" class="mt-2 text-xs text-slate-500">Selecciona una fecha para consultar horarios disponibles.</p>
             @else
-              <p class="mt-2 text-xs text-slate-500">Firma la nota clinica para habilitar este agendamiento.</p>
+              <p class="mt-2 text-xs text-slate-500">Firma la nota clÃ­nica para habilitar este agendamiento.</p>
             @endif
           </div>
         </div>
+        </div>
       </fieldset>
 
-      <x-ui.form-actions>
+      <x-ui.form-actions class="soap-action-bar">
         <x-slot:left>
           <a href="{{ route('doctor.citas') }}" class="btn btn-ghost">Volver</a>
         </x-slot>
@@ -412,7 +454,10 @@
           <textarea id="contenido" name="contenido" class="form-textarea" rows="3" required>{{ old('contenido') }}</textarea>
           @error('contenido')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
         </div>
-        <button class="btn btn-outline" type="submit"><i class="ri-edit-2-line"></i> Registrar enmienda</button>
+        <div class="soap-action-bar flex flex-wrap items-center justify-between gap-3">
+          <a href="{{ route('doctor.citas') }}" class="btn btn-ghost">Volver</a>
+          <button class="btn btn-outline" type="submit"><i class="ri-edit-2-line"></i> Registrar enmienda</button>
+        </div>
       </form>
     </section>
   @endif

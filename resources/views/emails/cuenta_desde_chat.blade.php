@@ -43,7 +43,7 @@
               </p>
 
               <p style="margin:0; color:#475569; line-height:1.6;">
-                Si no reconoces esta acción o crees que se trata de un error, por favor contáctanos.
+                Si no reconoces esta acción o crees que se trata de un error, por favor contáctanios.
               </p>
 
               <p style="margin:20px 0 0;">Atentamente,<br>Clínica Don Bosco</p>

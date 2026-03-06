@@ -14,7 +14,7 @@
         </div>
       </div>
       <form class="mt-4 flex flex-wrap items-end gap-3" method="GET" action="{{ route('admin.historial.index') }}">
-        <div class="flex flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2">
+        <div class="inline-control-shell flex-1">
           <i class="ri-search-line text-slate-400"></i>
           <input type="text" name="q" value="{{ $q ?? '' }}" placeholder="Buscar por paciente, cédula o correo..." class="w-full bg-transparent text-sm text-slate-700" required>
         </div>

@@ -17,6 +17,7 @@
   @php($featuredInput = $especialidadesActivas->take(3)->pluck('id')->all())
 @endif
 @php($featuredInput = count($featuredInput) >= 3 ? array_slice($featuredInput, 0, 3) : array_pad($featuredInput, 3, null))
+@php($pricesHighlightImagePath = old('prices_highlight_image_path', $settings['prices_highlight_image'] ?? 'img/doctor2.jpg'))
 
 @php($assetBase = asset(''))
 @php($storageBase = asset('storage'))
@@ -46,6 +47,16 @@
           @error('hero_subtitle')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
         </div>
         <div>
+          <label class="form-label">Tarjeta lateral: título</label>
+          <input class="form-input" name="hero_followup_title" value="{{ old('hero_followup_title', $settings['hero_followup_title'] ?? '') }}" required>
+          @error('hero_followup_title')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
+        </div>
+        <div>
+          <label class="form-label">Tarjeta lateral: descripción</label>
+          <textarea class="form-textarea" name="hero_followup_subtitle" rows="2" required>{{ old('hero_followup_subtitle', $settings['hero_followup_subtitle'] ?? '') }}</textarea>
+          @error('hero_followup_subtitle')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
+        </div>
+        <div>
           <label class="form-label">Texto botón primario</label>
           <input class="form-input" name="hero_primary_text" value="{{ old('hero_primary_text', $settings['hero_primary_text'] ?? '') }}" required>
           @error('hero_primary_text')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
@@ -66,6 +77,77 @@
             Mostrar botón secundario
           </label>
           @error('hero_show_secondary')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
+        </div>
+      </div>
+    </section>
+
+    <section class="card p-6">
+      <div>
+        <p class="text-xs uppercase tracking-widest text-slate-500">Sección intermedia</p>
+        <h3 class="mt-2 text-lg font-semibold text-slate-900">Bloque Bienvenida</h3>
+        <p class="text-sm text-slate-500">Edita el título, descripción y tarjetas del bloque Gestiona tus citas.</p>
+      </div>
+      <div class="mt-4 grid gap-4 md:grid-cols-2">
+        <div>
+          <label class="form-label">Etiqueta superior</label>
+          <input class="form-input" name="intro_badge" value="{{ old('intro_badge', $settings['intro_badge'] ?? '') }}" required>
+          @error('intro_badge')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
+        </div>
+        <div>
+          <label class="form-label">Título principal</label>
+          <input class="form-input" name="intro_title" value="{{ old('intro_title', $settings['intro_title'] ?? '') }}" required>
+          @error('intro_title')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
+        </div>
+        <div class="md:col-span-2">
+          <label class="form-label">Descripcion principal</label>
+          <textarea class="form-textarea" name="intro_subtitle" rows="2" required>{{ old('intro_subtitle', $settings['intro_subtitle'] ?? '') }}</textarea>
+          @error('intro_subtitle')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
+        </div>
+      </div>
+
+      <div class="mt-4 grid gap-4 md:grid-cols-2">
+        <div>
+          <label class="form-label">Tarjeta 1: título</label>
+          <input class="form-input" name="intro_feature_1_title" value="{{ old('intro_feature_1_title', $settings['intro_feature_1_title'] ?? '') }}" required>
+          @error('intro_feature_1_title')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
+        </div>
+        <div>
+          <label class="form-label">Tarjeta 1: descripción</label>
+          <textarea class="form-textarea" name="intro_feature_1_text" rows="2" required>{{ old('intro_feature_1_text', $settings['intro_feature_1_text'] ?? '') }}</textarea>
+          @error('intro_feature_1_text')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
+        </div>
+
+        <div>
+          <label class="form-label">Tarjeta 2: título</label>
+          <input class="form-input" name="intro_feature_2_title" value="{{ old('intro_feature_2_title', $settings['intro_feature_2_title'] ?? '') }}" required>
+          @error('intro_feature_2_title')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
+        </div>
+        <div>
+          <label class="form-label">Tarjeta 2: descripción</label>
+          <textarea class="form-textarea" name="intro_feature_2_text" rows="2" required>{{ old('intro_feature_2_text', $settings['intro_feature_2_text'] ?? '') }}</textarea>
+          @error('intro_feature_2_text')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
+        </div>
+
+        <div>
+          <label class="form-label">Tarjeta 3: título</label>
+          <input class="form-input" name="intro_feature_3_title" value="{{ old('intro_feature_3_title', $settings['intro_feature_3_title'] ?? '') }}" required>
+          @error('intro_feature_3_title')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
+        </div>
+        <div>
+          <label class="form-label">Tarjeta 3: descripción</label>
+          <textarea class="form-textarea" name="intro_feature_3_text" rows="2" required>{{ old('intro_feature_3_text', $settings['intro_feature_3_text'] ?? '') }}</textarea>
+          @error('intro_feature_3_text')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
+        </div>
+
+        <div>
+          <label class="form-label">Tarjeta 4: título</label>
+          <input class="form-input" name="intro_feature_4_title" value="{{ old('intro_feature_4_title', $settings['intro_feature_4_title'] ?? '') }}" required>
+          @error('intro_feature_4_title')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
+        </div>
+        <div>
+          <label class="form-label">Tarjeta 4: descripción</label>
+          <textarea class="form-textarea" name="intro_feature_4_text" rows="2" required>{{ old('intro_feature_4_text', $settings['intro_feature_4_text'] ?? '') }}</textarea>
+          @error('intro_feature_4_text')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
         </div>
       </div>
     </section>
@@ -97,7 +179,15 @@
               <div class="flex items-center gap-3">
                 <div class="h-20 w-28 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
                   @if($slidePath)
-                    <img class="h-full w-full object-cover" src="{{ $landingWelcome->resolveImageUrl($slidePath) }}" alt="Preview">
+                    @php($slideImage = $imageUrl->variants($slidePath, 'banners', 'banner'))
+                    <img
+                      class="h-full w-full object-cover"
+                      src="{{ $slideImage['thumb'] }}"
+                      @if($slideImage['srcset']) srcset="{{ $slideImage['srcset'] }}" sizes="112px" @endif
+                      alt="Preview"
+                      loading="lazy"
+                      decoding="async"
+                    >
                   @else
                     <div class="flex h-full items-center justify-center text-xs text-slate-400">Sin imagen</div>
                   @endif
@@ -299,6 +389,29 @@
         </button>
       </div>
 
+      <div class="mt-4 grid gap-4 md:grid-cols-2">
+        <div>
+          <label class="form-label">Etiqueta superior</label>
+          <input class="form-input" name="doctors_badge" value="{{ old('doctors_badge', $settings['doctors_badge'] ?? '') }}" required>
+          @error('doctors_badge')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
+        </div>
+        <div>
+          <label class="form-label">Título del bloque</label>
+          <input class="form-input" name="doctors_title" value="{{ old('doctors_title', $settings['doctors_title'] ?? '') }}" required>
+          @error('doctors_title')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
+        </div>
+        <div class="md:col-span-2">
+          <label class="form-label">Descripcion</label>
+          <textarea class="form-textarea" name="doctors_subtitle" rows="2" required>{{ old('doctors_subtitle', $settings['doctors_subtitle'] ?? '') }}</textarea>
+          @error('doctors_subtitle')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
+        </div>
+        <div class="md:col-span-2">
+          <label class="form-label">Texto de etiqueta lateral</label>
+          <input class="form-input" name="doctors_pill" value="{{ old('doctors_pill', $settings['doctors_pill'] ?? '') }}" required>
+          @error('doctors_pill')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
+        </div>
+      </div>
+
       <div class="mt-4 grid gap-4" data-doctor-list data-next-index="{{ count($doctorsInput) }}">
         @foreach($doctorsInput as $index => $doctor)
           @php($doctorPhoto = $doctor['photo_path'] ?? null)
@@ -324,7 +437,15 @@
               <div class="flex items-center gap-3">
                 <div class="h-20 w-28 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
                   @if($doctorPhoto)
-                    <img class="h-full w-full object-cover" src="{{ $landingWelcome->resolveImageUrl($doctorPhoto) }}" alt="Preview">
+                    @php($doctorImage = $imageUrl->variants($doctorPhoto, 'doctors', 'doctor'))
+                    <img
+                      class="h-full w-full object-cover"
+                      src="{{ $doctorImage['thumb'] }}"
+                      @if($doctorImage['srcset']) srcset="{{ $doctorImage['srcset'] }}" sizes="112px" @endif
+                      alt="Preview"
+                      loading="lazy"
+                      decoding="async"
+                    >
                   @else
                     <div class="flex h-full items-center justify-center text-xs text-slate-400">Sin imagen</div>
                   @endif
@@ -399,11 +520,73 @@
         </button>
       </div>
 
-      <div class="mt-4 grid gap-4">
+      <div class="mt-4 grid gap-4 md:grid-cols-2">
         <div>
+          <label class="form-label">Etiqueta superior</label>
+          <input class="form-input" name="prices_badge" value="{{ old('prices_badge', $settings['prices_badge'] ?? '') }}" required>
+          @error('prices_badge')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
+        </div>
+        <div>
+          <label class="form-label">Título del bloque</label>
+          <input class="form-input" name="prices_title" value="{{ old('prices_title', $settings['prices_title'] ?? '') }}" required>
+          @error('prices_title')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
+        </div>
+        <div class="md:col-span-2">
           <label class="form-label">Texto descriptivo</label>
           <textarea class="form-textarea" name="prices_subtitle" rows="2" required>{{ old('prices_subtitle', $settings['prices_subtitle'] ?? '') }}</textarea>
           @error('prices_subtitle')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
+        </div>
+        <div class="md:col-span-2">
+          <label class="form-label">Texto botón principal</label>
+          <input class="form-input" name="prices_button_text" value="{{ old('prices_button_text', $settings['prices_button_text'] ?? '') }}" required>
+          @error('prices_button_text')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
+        </div>
+      </div>
+
+      <div class="mt-4 grid gap-4 md:grid-cols-2">
+        <div>
+          <label class="form-label">Tarjeta lateral: título</label>
+          <input class="form-input" name="prices_highlight_title" value="{{ old('prices_highlight_title', $settings['prices_highlight_title'] ?? '') }}" required>
+          @error('prices_highlight_title')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
+        </div>
+        <div>
+          <label class="form-label">Tarjeta lateral: descripción</label>
+          <textarea class="form-textarea" name="prices_highlight_subtitle" rows="2" required>{{ old('prices_highlight_subtitle', $settings['prices_highlight_subtitle'] ?? '') }}</textarea>
+          @error('prices_highlight_subtitle')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
+        </div>
+        <div>
+          <label class="form-label">Tarjeta lateral: imagen</label>
+          <input class="form-input" type="file" name="prices_highlight_image" accept="image/*" data-image-input>
+          <input type="hidden" name="prices_highlight_image_path" value="{{ $pricesHighlightImagePath }}">
+          @error('prices_highlight_image')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
+          @error('prices_highlight_image_path')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="h-20 w-28 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+            @if($pricesHighlightImagePath)
+              @php($highlightImage = $imageUrl->variants($pricesHighlightImagePath, 'banners', 'doctor'))
+              <img
+                class="h-full w-full object-cover"
+                src="{{ $highlightImage['thumb'] }}"
+                @if($highlightImage['srcset']) srcset="{{ $highlightImage['srcset'] }}" sizes="112px" @endif
+                alt="Preview"
+                loading="lazy"
+                decoding="async"
+              >
+            @else
+              <div class="flex h-full items-center justify-center text-xs text-slate-400">Sin imagen</div>
+            @endif
+          </div>
+        </div>
+        <div>
+          <label class="form-label">Tarjeta inferior: título</label>
+          <input class="form-input" name="prices_visit_title" value="{{ old('prices_visit_title', $settings['prices_visit_title'] ?? '') }}" required>
+          @error('prices_visit_title')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
+        </div>
+        <div>
+          <label class="form-label">Tarjeta inferior: descripción</label>
+          <textarea class="form-textarea" name="prices_visit_subtitle" rows="2" required>{{ old('prices_visit_subtitle', $settings['prices_visit_subtitle'] ?? '') }}</textarea>
+          @error('prices_visit_subtitle')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
         </div>
       </div>
 
@@ -486,11 +669,33 @@
         </label>
         @error('show_services_block')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
+      <div class="mt-4 grid gap-4 md:grid-cols-2">
+        <div>
+          <label class="form-label">Etiqueta superior</label>
+          <input class="form-input" name="services_badge" value="{{ old('services_badge', $settings['services_badge'] ?? '') }}" required>
+          @error('services_badge')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
+        </div>
+        <div>
+          <label class="form-label">Título del bloque</label>
+          <input class="form-input" name="services_title" value="{{ old('services_title', $settings['services_title'] ?? '') }}" required>
+          @error('services_title')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
+        </div>
+        <div class="md:col-span-2">
+          <label class="form-label">Descripcion</label>
+          <textarea class="form-textarea" name="services_subtitle" rows="2" required>{{ old('services_subtitle', $settings['services_subtitle'] ?? '') }}</textarea>
+          @error('services_subtitle')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
+        </div>
+        <div class="md:col-span-2">
+          <label class="form-label">Texto botón Ver todos</label>
+          <input class="form-input" name="services_button_text" value="{{ old('services_button_text', $settings['services_button_text'] ?? '') }}" required>
+          @error('services_button_text')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
+        </div>
+      </div>
       <div class="mt-4 grid gap-3 md:grid-cols-3">
         @for($i = 0; $i < 3; $i++)
           <div>
             <label class="form-label">Especialidad {{ $i + 1 }}</label>
-            <select class="form-input" name="featured_specialties[]" required>
+            <select class="form-input" name="featured_specialties[]">
               <option value="">Seleccionar especialidad</option>
               @foreach($especialidadesActivas as $esp)
                 <option value="{{ $esp->id }}" @selected(($featuredInput[$i] ?? null) == $esp->id)>

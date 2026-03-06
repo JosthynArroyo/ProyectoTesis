@@ -1,11 +1,3 @@
-const themeToggler = document.querySelector('.theme-toggler');
-
-themeToggler.addEventListener('click', () => {
-  document.body.classList.toggle('dark-theme-variables');
-  themeToggler.querySelector('span:nth-child(1)').classList.toggle('active');
-  themeToggler.querySelector('span:nth-child(2)').classList.toggle('active');
-});
-
 // ---- Dashboard data ----
 const meta = document.querySelector('meta[name="doctor-dashboard-data"]');
 const ENDPOINT = meta ? meta.content : '';
@@ -32,6 +24,15 @@ function estadoClass(s){
 }
 
 function cap(s){ return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
+function estadoLabel(s){ return (s || '').toLowerCase() === 'no_se_presento' ? 'No se presento' : cap(s); }
+
+function prioridadClass(nivel){
+  switch ((nivel || '').toUpperCase()) {
+    case 'ALTA': return 'danger';
+    case 'MEDIA': return 'warning';
+    default: return 'neutral';
+  }
+}
 
 // ====== FORMATEO DE FECHA Y HORA (corto) ======
 const TZ = 'America/Guayaquil';
@@ -92,16 +93,20 @@ async function refreshDashboard(){
     const rows = data.citas || [];
     if (els.tbody){
       if (rows.length === 0){
-        els.tbody.innerHTML = `<tr><td colspan="4">Sin citas para hoy.</td></tr>`;
+        els.tbody.innerHTML = `<tr><td colspan="5">Sin citas para hoy.</td></tr>`;
       } else {
         els.tbody.innerHTML = rows.map(c => {
           // Preferir campos ya formateados si existen; si no, helpers
           const fechaCorta = c.fecha_corta || fmtDate(c.fecha);
           const horaCorta  = c.hora ? fmtTime(c.hora) : fmtTime(c.fecha);
+          const prioridad = (c.prioridad || 'BAJA').toUpperCase();
+          const prioridadTone = prioridadClass(prioridad);
+          const redFlag = c.red_flag ? `<span class="badge danger">Red flag</span>` : '';
           return `
             <tr>
               <td>${c.paciente || 'Paciente'}</td>
-              <td class="${estadoClass(c.estado)}">${cap(c.estado || '')}</td>
+              <td class="${estadoClass(c.estado)}">${estadoLabel(c.estado || '')}</td>
+              <td><span class="badge ${prioridadTone}">${prioridad}</span> ${redFlag}</td>
               <td>${fechaCorta}</td>
               <td>${horaCorta}</td>
             </tr>

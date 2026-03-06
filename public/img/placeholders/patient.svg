@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" role="img" aria-labelledby="title desc">
+  <title id="title">Avatar paciente</title>
+  <desc id="desc">Placeholder de paciente</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fef3c7" />
+      <stop offset="100%" stop-color="#fde68a" />
+    </linearGradient>
+  </defs>
+  <rect width="600" height="600" fill="url(#bg)" />
+  <circle cx="300" cy="220" r="96" fill="#92400e" />
+  <path d="M145 520c24-102 98-165 155-165s131 63 155 165H145z" fill="#b45309" />
+  <circle cx="270" cy="212" r="10" fill="#fff" />
+  <circle cx="330" cy="212" r="10" fill="#fff" />
+  <path d="M256 262c14 15 30 24 44 24s30-9 44-24" fill="none" stroke="#fff" stroke-width="12" stroke-linecap="round" />
+</svg>
+

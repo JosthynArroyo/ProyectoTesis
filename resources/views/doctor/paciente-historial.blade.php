@@ -1,14 +1,14 @@
 @extends('layouts.doctor')
-@section('title', 'Historial clinico profesional')
+@section('title', 'Historial clínico profesional')
 @section('activeSidebar', 'citas')
-@section('header-title', 'Historial clinico profesional')
-@section('header-subtitle', 'Expediente medico completo del paciente')
+@section('header-title', 'Historial clínico profesional')
+@section('header-subtitle', 'Expediente médico completo del paciente')
 
 @push('styles')
     <link rel="stylesheet" href="{{ asset('css/medical-record.css') }}">
 @endpush
 
-@section('content')
+@section('main')
     @php
         use App\Models\Cita;
         use App\Models\LaboratorioOrden;
@@ -58,7 +58,7 @@
                 return ['label' => null, 'hint' => 'Registro no habilitado por estado de cita.'];
             }
             if (! $nota) {
-                return ['label' => 'Registrar', 'hint' => 'Sin registro clinico.'];
+                return ['label' => 'Registrar', 'hint' => 'Sin registro clínico.'];
             }
             if ($nota->estado === NotaSoap::ESTADO_BORRADOR) {
                 return ['label' => 'Editar registro', 'hint' => 'Registro en borrador.'];
@@ -102,7 +102,7 @@
 
         $ultimaConsulta = $consultasRealizadas->first() ?: $consultas->first();
         $edadPaciente = $paciente->fecha_nacimiento ? Carbon::parse($paciente->fecha_nacimiento)->age : null;
-        $avatarPaciente = $paciente->avatar ? asset('storage/' . ltrim((string) $paciente->avatar, '/')) : asset('img/doctor1.jpg');
+        $avatarPaciente = $imageUrl->variants($paciente->avatar, 'patients', 'patient');
 
         $historialSignos = NotaSoap::query()
             ->select('notas_soap.signos_vitales', 'citas_medicas.fecha', 'citas_medicas.hora')
@@ -202,28 +202,28 @@
             ],
             [
                 'icon' => 'ri-heart-pulse-line',
-                'label' => 'Presion arterial',
+                'label' => 'Presión arterial',
                 'value' => $formatWithUnit(data_get($ultimoSigno, 'ta'), 'mmHg'),
                 'sparkline' => $buildSparkline($seriePresion),
                 'delta' => $formatDelta($deltaFromLastTwo($seriePresion), 'mmHg', 0),
             ],
             [
                 'icon' => 'ri-heart-line',
-                'label' => 'Frecuencia cardiaca',
+                'label' => 'Frecuencia cardíaca',
                 'value' => $formatWithUnit($formatDecimal($toNumber($ultimoSigno['fc'] ?? null), 0), 'lpm'),
                 'sparkline' => $buildSparkline($serieFc),
                 'delta' => $formatDelta($deltaFromLastTwo($serieFc), 'lpm', 0),
             ],
             [
                 'icon' => 'ri-lungs-line',
-                'label' => 'Respiracion',
+                'label' => 'Respiración',
                 'value' => $formatWithUnit($formatDecimal($toNumber($ultimoSigno['fr'] ?? null), 0), 'rpm'),
                 'sparkline' => $buildSparkline($serieFr),
                 'delta' => $formatDelta($deltaFromLastTwo($serieFr), 'rpm', 0),
             ],
             [
                 'icon' => 'ri-contrast-drop-2-line',
-                'label' => 'Saturacion O2',
+                'label' => 'Saturación O2',
                 'value' => $formatWithUnit($formatDecimal($toNumber($ultimoSigno['spo2'] ?? null), 0), '%'),
                 'sparkline' => $buildSparkline($serieSpo2),
                 'delta' => $formatDelta($deltaFromLastTwo($serieSpo2), '%', 0),
@@ -377,7 +377,7 @@
             $momentoConsulta = $toCitaDateTime($consultaTimeline);
             $notaTimeline = $consultaTimeline->notaSoap;
             $descripcionConsulta = Str::limit(
-                $notaTimeline?->assessment ?: ($notaTimeline?->subjetivo_motivo ?: 'Atencion clinica registrada.'),
+                $notaTimeline?->assessment ?: ($notaTimeline?->subjetivo_motivo ?: 'Atención clínica registrada.'),
                 180
             );
 
@@ -385,7 +385,7 @@
                 'fecha' => $momentoConsulta,
                 'tipo' => 'consulta',
                 'icono' => 'ri-stethoscope-line',
-                'titulo' => 'Consulta medica',
+                'titulo' => 'Consulta médica',
                 'detalle' => $descripcionConsulta,
                 'cita_id' => $consultaTimeline->id,
             ]);
@@ -413,7 +413,7 @@
                     'fecha' => $fechaReceta instanceof Carbon ? $fechaReceta : Carbon::parse($fechaReceta, $timezone),
                     'tipo' => 'receta',
                     'icono' => 'ri-medicine-bottle-line',
-                    'titulo' => 'Receta medica',
+                    'titulo' => 'Receta médica',
                     'detalle' => Str::limit(trim((string) ($recetaTimeline->diagnostico ?: 'Receta emitida.')), 180),
                     'cita_id' => $consultaTimeline->id,
                 ]);
@@ -429,8 +429,8 @@
         <section class="card p-5 medical-toolbar">
             <div class="medical-toolbar__content">
                 <div>
-                    <p class="medical-toolbar__eyebrow">Registro clinico</p>
-                    <h2>Acciones rapidas por cita</h2>
+                    <p class="medical-toolbar__eyebrow">Registro clínico</p>
+                    <h2>Acciones rápidas por cita</h2>
                     <p>Usa el mismo flujo SOAP para registrar, editar o ver notas por cada consulta.</p>
                 </div>
                 <div class="medical-toolbar__actions">
@@ -439,7 +439,7 @@
                         <p>Cita objetivo: {{ $toCitaDateTime($citaConfirmadaProxima)->format('d/m/Y H:i') }} ({{ $estadoConsulta[$citaConfirmadaProxima->estado] ?? $citaConfirmadaProxima->estado }})</p>
                     @else
                         <button class="btn btn-outline" type="button" disabled><i class="ri-stethoscope-line"></i> Registrar consulta de hoy</button>
-                        <p>No hay una cita confirmada disponible para hoy o proximas horas.</p>
+                        <p>No hay una cita confirmada disponible para hoy o próximas horas.</p>
                     @endif
                 </div>
             </div>
@@ -447,13 +447,20 @@
 
         <section class="medical-record">
             <aside class="medical-column medical-column--left">
-                <x-medical.card title="Perfil del paciente" subtitle="Datos de identificacion" icon="ri-user-3-line">
+                <x-medical.card title="Perfil del paciente" subtitle="Datos de identificación" icon="ri-user-3-line">
                     <div class="medical-profile">
-                        <img src="{{ $avatarPaciente }}" alt="Foto paciente" class="medical-profile__avatar">
+                        <img
+                            src="{{ $avatarPaciente['thumb'] }}"
+                            @if($avatarPaciente['srcset']) srcset="{{ $avatarPaciente['srcset'] }}" sizes="112px" @endif
+                            alt="Foto paciente"
+                            class="medical-profile__avatar"
+                            loading="lazy"
+                            decoding="async"
+                        >
                         <div class="medical-profile__content">
                             <h2>{{ $paciente->name }}</h2>
                             <dl>
-                                <div><dt>Edad</dt><dd>{{ $edadPaciente !== null ? $edadPaciente . ' anios' : 'No registrada' }}</dd></div>
+                                <div><dt>Edad</dt><dd>{{ $edadPaciente !== null ? $edadPaciente . ' años' : 'No registrada' }}</dd></div>
                                 <div><dt>Fecha nacimiento</dt><dd>{{ $paciente->fecha_nacimiento ? Carbon::parse($paciente->fecha_nacimiento)->format('d/m/Y') : 'No registrada' }}</dd></div>
                                 <div>
                                     <dt>Ultima consulta</dt>
@@ -471,7 +478,7 @@
                     </div>
                 </x-medical.card>
 
-                <x-medical.card title="Signos vitales" subtitle="Ultimos signos y evolucion" icon="ri-pulse-line">
+                <x-medical.card title="Signos vitales" subtitle="Últimos signos y evolución" icon="ri-pulse-line">
                     <div class="medical-vitals">
                         @foreach($metricasSignos as $metrica)
                             <article class="vital-metric">
@@ -490,13 +497,13 @@
                     </div>
 
                     <div class="medical-vitals-summary">
-                        <h4>Ultimos signos vitales</h4>
+                        <h4>Últimos signos vitales</h4>
                         <p>Peso: {{ $metricasSignos[1]['value'] }} | Altura: {{ $metricasSignos[0]['value'] }}</p>
-                        <p>Presion: {{ $metricasSignos[2]['value'] }} | FC: {{ $metricasSignos[3]['value'] }} | FR: {{ $metricasSignos[4]['value'] }} | SpO2: {{ $metricasSignos[5]['value'] }} | Temp: {{ $metricasSignos[6]['value'] }}</p>
+                        <p>Presión: {{ $metricasSignos[2]['value'] }} | FC: {{ $metricasSignos[3]['value'] }} | FR: {{ $metricasSignos[4]['value'] }} | SpO2: {{ $metricasSignos[5]['value'] }} | Temp: {{ $metricasSignos[6]['value'] }}</p>
                     </div>
 
                     <div class="medical-vitals-evolution">
-                        <h4>Evolucion comparativa automatica</h4>
+                        <h4>Evolución comparativa automática</h4>
                         @foreach($metricasSignos as $metrica)
                             <p>{{ $metrica['label'] }}: {{ $metrica['delta'] }}</p>
                         @endforeach
@@ -517,7 +524,7 @@
                     @endif
                 </x-medical.card>
 
-                <x-medical.card title="Antecedentes patologicos" subtitle="Resumen por categorias" icon="ri-file-history-line">
+                <x-medical.card title="Antecedentes patológicos" subtitle="Resumen por categorías" icon="ri-file-history-line">
                     <div class="medical-grid-details">
                         <article>
                             <h4>Enfermedades cronicas</h4>
@@ -542,7 +549,7 @@
                     </div>
                 </x-medical.card>
 
-                <x-medical.card title="Consultas medicas" subtitle="Historial cronologico descendente y gestion de registro" icon="ri-stethoscope-line">
+                <x-medical.card title="Consultas médicas" subtitle="Historial cronológico descendente y gestión de registro" icon="ri-stethoscope-line">
                     @if($consultas->isEmpty())
                         <p class="medical-empty">No hay consultas registradas para este paciente.</p>
                     @else
@@ -573,7 +580,7 @@
                                                     <i class="ri-file-edit-line"></i> {{ $accionRegistro['label'] }}
                                                 </a>
                                             @else
-                                                <span class="medical-chip medical-chip--muted"><i class="ri-lock-line"></i> Sin accion</span>
+                                                <span class="medical-chip medical-chip--muted"><i class="ri-lock-line"></i> Sin acción</span>
                                             @endif
 
                                             @if($notaCita && $notaCita->estado === NotaSoap::ESTADO_FIRMADA)
@@ -583,10 +590,10 @@
                                     </header>
                                     <dl>
                                         <div><dt>Motivo</dt><dd>{{ $notaCita?->subjetivo_motivo ?: 'Sin detalle' }}</dd></div>
-                                        <div><dt>Examen clinico</dt><dd>{{ $notaCita?->examen_fisico ? Str::limit($notaCita->examen_fisico, 180) : 'Sin hallazgos registrados.' }}</dd></div>
-                                        <div><dt>Observaciones medicas</dt><dd>{{ $notaCita?->notas_objetivas ? Str::limit($notaCita->notas_objetivas, 180) : 'Sin observaciones registradas.' }}</dd></div>
-                                        <div><dt>Evaluacion</dt><dd>{{ $notaCita?->assessment ? Str::limit($notaCita->assessment, 180) : 'Sin evaluacion registrada.' }}</dd></div>
-                                        <div><dt>Diagnostico</dt><dd>{{ $diagnostico ?: 'Sin diagnostico cargado.' }}</dd></div>
+                                        <div><dt>Examen clínico</dt><dd>{{ $notaCita?->examen_fisico ? Str::limit($notaCita->examen_fisico, 180) : 'Sin hallazgos registrados.' }}</dd></div>
+                                        <div><dt>Observaciones médicas</dt><dd>{{ $notaCita?->notas_objetivas ? Str::limit($notaCita->notas_objetivas, 180) : 'Sin observaciones registradas.' }}</dd></div>
+                                        <div><dt>Evaluación</dt><dd>{{ $notaCita?->assessment ? Str::limit($notaCita->assessment, 180) : 'Sin evaluación registrada.' }}</dd></div>
+                                        <div><dt>Diagnóstico</dt><dd>{{ $diagnostico ?: 'Sin diagnóstico cargado.' }}</dd></div>
                                         <div><dt>Tratamiento</dt><dd>{{ $tratamiento ?: 'Sin tratamiento registrado.' }}</dd></div>
                                         <div><dt>Fecha de control</dt><dd>{{ $notaCita?->plan_seguimiento ?: 'Sin control registrado.' }}</dd></div>
                                         <div><dt>Doctor</dt><dd>{{ $cita->doctor?->name ?? 'No asignado' }}</dd></div>
@@ -612,9 +619,9 @@
                     @endif
                 </x-medical.card>
 
-                <x-medical.card title="Linea de tiempo clinica" subtitle="Eventos clinicos del paciente por orden cronologico" icon="ri-time-line">
+                <x-medical.card title="Línea de tiempo clínica" subtitle="Eventos clínicos del paciente por orden cronológico" icon="ri-time-line">
                     @if($lineaTiempoClinica->isEmpty())
-                        <p class="medical-empty">Sin eventos clinicos registrados.</p>
+                        <p class="medical-empty">Sin eventos clínicos registrados.</p>
                     @else
                         <ol class="medical-timeline">
                             @foreach($lineaTiempoClinica as $evento)
@@ -715,7 +722,7 @@
                     @endif
                 </x-medical.card>
 
-                <x-medical.card title="Recetas" subtitle="Indicaciones farmaceuticas" icon="ri-medicine-bottle-line">
+                <x-medical.card title="Recetas" subtitle="Indicaciones farmacéuticas" icon="ri-medicine-bottle-line">
                     @if($recetas->isEmpty())
                         <p class="medical-empty">No hay recetas emitidas.</p>
                     @else
@@ -730,7 +737,7 @@
                                             Receta sin fecha
                                         @endif
                                     </strong>
-                                    <p>{{ Str::limit($receta->diagnostico ?? 'Sin diagnostico', 120) }}</p>
+                                    <p>{{ Str::limit($receta->diagnostico ?? 'Sin diagnóstico', 120) }}</p>
                                     <a href="{{ route('doctor.recetas.edit', $receta->cita_id) }}" class="medical-chip"><i class="ri-file-list-3-line"></i> Ver receta</a>
                                 </article>
                             @endforeach

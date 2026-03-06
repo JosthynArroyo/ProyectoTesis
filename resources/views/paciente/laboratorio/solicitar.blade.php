@@ -25,9 +25,6 @@
 
     <x-ui.alert tone="warning">Esta solicitud genera la orden. La toma de muestra y resultados se gestionan desde el laboratorio.</x-ui.alert>
 
-    @if ($errors->any())
-      <x-ui.alert tone="error">{{ $errors->first() }}</x-ui.alert>
-    @endif
     @if (session('success'))
       <x-ui.alert tone="success">{{ session('success') }}</x-ui.alert>
     @endif
@@ -36,9 +33,9 @@
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 class="text-lg font-semibold text-slate-900">Solicitud de examen</h2>
-          <p class="text-sm text-slate-500">El paciente solo confirma. El sistema gestiona preparación e indicaciones.</p>
+          <p class="text-sm text-slate-500">El paciente solo confirma. El sistema gestiona preparaciÃ³n e indicaciones.</p>
         </div>
-        <span class="badge info" data-origin-badge>Con orden médica</span>
+        <span class="badge info" data-origin-badge>Con orden mÃ©dica</span>
       </div>
 
       <form method="POST" action="{{ route('paciente.laboratorio.solicitar.store') }}" class="mt-6 space-y-6">
@@ -49,7 +46,7 @@
             <input type="radio" name="source" value="{{ \App\Models\LabOrder::SOURCE_MEDICAL_ORDER }}"
               {{ $selectedSource === \App\Models\LabOrder::SOURCE_MEDICAL_ORDER ? 'checked' : '' }}
               {{ $medicalOrders->isEmpty() ? 'disabled' : '' }} required>
-            <span>Con orden médica</span>
+            <span>Con orden mÃ©dica</span>
           </label>
           <label class="flex items-center gap-2 rounded-full border border-slate-200 px-3 py-2 text-sm">
             <input type="radio" name="source" value="{{ \App\Models\LabOrder::SOURCE_ROUTINE }}"
@@ -61,7 +58,7 @@
 
         <div class="text-xs text-slate-500">
           @if($medicalOrders->isEmpty())
-            <span>Sin órdenes médicas disponibles. Puedes solicitar exámenes de rutina.</span>
+            <span>Sin Ã³rdenes mÃ©dicas disponibles. Puedes solicitar exÃ¡menes de rutina.</span>
           @endif
         </div>
 
@@ -69,7 +66,7 @@
           <div class="md:col-span-2" data-origin-section="MEDICAL_ORDER">
             <label for="medical_order_id" class="form-label">Doctor / Orden</label>
             <select id="medical_order_id" name="medical_order_id" data-has-orders="{{ $medicalOrders->isNotEmpty() ? '1' : '0' }}" {{ $medicalOrders->isEmpty() ? 'disabled' : '' }} class="form-select">
-              <option value="">{{ $medicalOrders->isEmpty() ? 'Sin órdenes disponibles' : 'Seleccionar orden' }}</option>
+              <option value="">{{ $medicalOrders->isEmpty() ? 'Sin Ã³rdenes disponibles' : 'Seleccionar orden' }}</option>
               @foreach($medicalOrders as $order)
                 <option value="{{ $order->id }}"
                   data-test-id="{{ $order->labTest->id }}"
@@ -85,8 +82,8 @@
           <div class="md:col-span-2">
             <label for="lab_test_id" class="form-label">Tipo de examen</label>
             <select id="lab_test_id" name="lab_test_id" required
-              data-prep-empty="Selecciona un examen para ver la preparación."
-              data-prep-missing="Este examen no tiene preparación registrada. Contacte a la clínica."
+              data-prep-empty="Selecciona un examen para ver la preparaciÃ³n."
+              data-prep-missing="Este examen no tiene preparaciÃ³n registrada. Contacte a la clÃ­nica."
               data-indicaciones-empty="Selecciona un examen para ver las indicaciones del examen."
               data-indicaciones-missing="Sin indicaciones adicionales para este examen."
               data-exam-wrapper
@@ -119,23 +116,23 @@
 
           <div class="rounded-2xl border border-slate-200 bg-white/90 p-4">
             <div class="info-head">
-              <h4 class="text-sm font-semibold text-slate-900">Preparación del examen</h4>
-              <p class="text-xs text-slate-500">Generada automáticamente según el examen.</p>
+              <h4 class="text-sm font-semibold text-slate-900">PreparaciÃ³n del examen</h4>
+              <p class="text-xs text-slate-500">Generada automÃ¡ticamente segÃºn el examen.</p>
             </div>
-            <p class="mt-2 text-xs text-slate-600" data-prep-text>Selecciona un examen para ver la preparación.</p>
+            <p class="mt-2 text-xs text-slate-600" data-prep-text>Selecciona un examen para ver la preparaciÃ³n.</p>
           </div>
 
           <div class="rounded-2xl border border-slate-200 bg-white/90 p-4">
             <div class="info-head">
               <h4 class="text-sm font-semibold text-slate-900">Indicaciones del examen</h4>
-              <p class="text-xs text-slate-500">Indicaciones estándar del laboratorio.</p>
+              <p class="text-xs text-slate-500">Indicaciones estÃ¡ndar del laboratorio.</p>
             </div>
             <p class="mt-2 text-xs text-slate-600" data-exam-indications>Selecciona un examen para ver las indicaciones.</p>
           </div>
 
           <div class="rounded-2xl border border-slate-200 bg-white/90 p-4" data-origin-section="MEDICAL_ORDER">
             <div class="info-head">
-              <h4 class="text-sm font-semibold text-slate-900">Indicaciones médicas</h4>
+              <h4 class="text-sm font-semibold text-slate-900">Indicaciones mÃ©dicas</h4>
               <p class="text-xs text-slate-500">Definidas por tu doctor.</p>
             </div>
             <p class="mt-2 text-xs text-slate-600" data-doctor-notes>Sin indicaciones adicionales.</p>
@@ -143,10 +140,10 @@
 
           <div class="rounded-2xl border border-slate-200 bg-white/90 p-4" data-origin-section="ROUTINE">
             <div class="info-head">
-              <h4 class="text-sm font-semibold text-slate-900">Indicaciones médicas</h4>
-              <p class="text-xs text-slate-500">Examen de rutina (sin orden médica).</p>
+              <h4 class="text-sm font-semibold text-slate-900">Indicaciones mÃ©dicas</h4>
+              <p class="text-xs text-slate-500">Examen de rutina (sin orden mÃ©dica).</p>
             </div>
-            <p class="mt-2 text-xs text-slate-600">No hay indicaciones médicas personalizadas para esta solicitud.</p>
+            <p class="mt-2 text-xs text-slate-600">No hay indicaciones mÃ©dicas personalizadas para esta solicitud.</p>
           </div>
         </div>
 
@@ -157,3 +154,4 @@
     </section>
   </div>
 @endsection
+

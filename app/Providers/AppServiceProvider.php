@@ -10,6 +10,7 @@ use App\Observers\CitaObserver;
 use Illuminate\Support\Facades\View;
 use App\Services\SiteSettingsService;
 use App\Services\LandingWelcomeService;
+use App\Support\ImageUrl;
 
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\Facades\RateLimiter;
@@ -52,6 +53,7 @@ class AppServiceProvider extends ServiceProvider
 
         View::share('siteSettings', app(SiteSettingsService::class));
         View::share('landingWelcome', app(LandingWelcomeService::class));
+        View::share('imageUrl', app(ImageUrl::class));
 
         RateLimiter::for('contacto', function (Request $request) {
             $email = mb_strtolower((string) $request->input('email', 'anon'));

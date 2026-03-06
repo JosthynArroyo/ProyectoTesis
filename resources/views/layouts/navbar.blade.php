@@ -35,6 +35,7 @@
 @php
   use Illuminate\Support\Facades\Route as R;
   $errors = $errors ?? new \Illuminate\Support\ViewErrorBag();
+  $loginModalUrl = url('/') . '?login=1';
 @endphp
 
 <header class="fixed inset-x-0 top-0 z-50 border-b border-slate-200/70 bg-white" id="cnav-header">
@@ -42,39 +43,50 @@
     <div class="flex items-center justify-between gap-4 py-4">
       <a href="{{ url('/') }}" class="flex items-center gap-3" aria-label="Inicio">
         @php
-          $logoUrl = $landingWelcome->resolveImageUrl($headerLogo);
+          $logoImage = $imageUrl->variants($headerLogo, entity: 'banner');
         @endphp
-        <img src="{{ $logoUrl }}" alt="{{ $headerName }}" class="h-10 w-auto">
+        <img
+          src="{{ $logoImage['thumb'] }}"
+          @if($logoImage['srcset']) srcset="{{ $logoImage['srcset'] }}" sizes="160px" @endif
+          alt="{{ $headerName }}"
+          class="h-10 w-auto"
+          loading="eager"
+          decoding="async"
+        >
         <span class="hidden text-sm font-semibold uppercase tracking-wide text-slate-500 sm:inline">{{ $headerName }}</span>
       </a>
 
-      <div id="cnav-menu" class="cnav__menu fixed inset-0 hidden flex-col gap-6 bg-white/95 p-6 text-slate-700 backdrop-blur lg:static lg:flex lg:flex-row lg:items-center lg:gap-4 lg:bg-transparent lg:p-0">
-        <div class="flex items-center justify-between lg:hidden">
-          <span class="text-sm font-semibold text-slate-500">Menú</span>
-          <button class="btn btn-ghost px-2" id="cnav-close" aria-label="Cerrar menú">
-            <i class="ri-close-line text-lg"></i>
+      {{-- ═══ Mobile-optimized menu overlay ═══ --}}
+      <div id="cnav-menu" class="cnav__menu fixed inset-0 z-50 hidden flex-col bg-white text-slate-700 lg:static lg:flex lg:flex-row lg:items-center lg:gap-4 lg:bg-transparent lg:p-0">
+
+        {{-- Mobile header bar --}}
+        <div class="flex items-center justify-between border-b border-slate-200 px-5 py-4 lg:hidden">
+          <span class="text-base font-semibold text-slate-700">Menú</span>
+          <button class="flex h-11 w-11 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 active:bg-slate-200" id="cnav-close" aria-label="Cerrar menú">
+            <i class="ri-close-line text-xl"></i>
           </button>
         </div>
 
-        <ul class="flex flex-col gap-2 text-sm font-semibold lg:flex-row lg:items-center lg:gap-4" role="menubar">
+        {{-- Navigation links (large touch targets on mobile) --}}
+        <ul class="flex flex-col gap-1 px-4 py-4 text-base font-semibold lg:flex-row lg:items-center lg:gap-4 lg:px-0 lg:py-0 lg:text-sm" role="menubar">
           <li role="none">
-            <a role="menuitem" href="{{ url('/') }}" class="rounded-full px-4 py-2 {{ request()->is('/') ? 'bg-slate-100 text-slate-900' : 'text-slate-600 hover:bg-slate-50' }}">
-              <i class="ri-home-4-line mr-2"></i>Inicio
+            <a role="menuitem" href="{{ url('/') }}" class="flex min-h-[48px] items-center gap-3 rounded-xl px-4 py-3 transition-colors lg:min-h-0 lg:rounded-full lg:px-4 lg:py-2 {{ request()->is('/') ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-50 active:bg-slate-100' }}">
+              <i class="ri-home-4-line text-lg"></i>Inicio
             </a>
           </li>
 
           @if(R::has('servicios.index'))
           <li role="none">
-            <a role="menuitem" href="{{ route('servicios.index') }}" class="rounded-full px-4 py-2 {{ request()->routeIs('servicios.*') ? 'bg-slate-100 text-slate-900' : 'text-slate-600 hover:bg-slate-50' }}">
-              <i class="ri-stethoscope-line mr-2"></i>Servicios
+            <a role="menuitem" href="{{ route('servicios.index') }}" class="flex min-h-[48px] items-center gap-3 rounded-xl px-4 py-3 transition-colors lg:min-h-0 lg:rounded-full lg:px-4 lg:py-2 {{ request()->routeIs('servicios.*') ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-50 active:bg-slate-100' }}">
+              <i class="ri-stethoscope-line text-lg"></i>Servicios
             </a>
           </li>
           @endif
 
           @if(R::has('contacto.form'))
           <li role="none">
-            <a role="menuitem" href="{{ route('contacto.form') }}" class="rounded-full px-4 py-2 {{ request()->routeIs('contacto.*') ? 'bg-slate-100 text-slate-900' : 'text-slate-600 hover:bg-slate-50' }}">
-              <i class="ri-contacts-book-2-line mr-2"></i>Contacto
+            <a role="menuitem" href="{{ route('contacto.form') }}" class="flex min-h-[48px] items-center gap-3 rounded-xl px-4 py-3 transition-colors lg:min-h-0 lg:rounded-full lg:px-4 lg:py-2 {{ request()->routeIs('contacto.*') ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-50 active:bg-slate-100' }}">
+              <i class="ri-contacts-book-2-line text-lg"></i>Contacto
             </a>
           </li>
           @endif
@@ -96,23 +108,23 @@
                   $panel = route('laboratorio.dashboard');
                 }
               @endphp
-              <a role="menuitem" href="{{ $panel }}" class="rounded-full px-4 py-2 {{ request()->routeIs('home') ? 'bg-slate-100 text-slate-900' : 'text-slate-600 hover:bg-slate-50' }}">
-                <i class="ri-dashboard-line mr-2"></i>Mi panel
+              <a role="menuitem" href="{{ $panel }}" class="flex min-h-[48px] items-center gap-3 rounded-xl px-4 py-3 transition-colors lg:min-h-0 lg:rounded-full lg:px-4 lg:py-2 {{ request()->routeIs('home') ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-50 active:bg-slate-100' }}">
+                <i class="ri-dashboard-line text-lg"></i>Mi panel
               </a>
             </li>
-            <li role="none">
-              <form method="POST" action="{{ route('logout') }}">
+            <li role="none" class="mt-2 border-t border-slate-100 pt-2 lg:mt-0 lg:border-0 lg:pt-0">
+              <form method="POST" action="{{ route('salir') }}">
                 @csrf
-                <button type="submit" class="btn btn-ghost px-4">
-                  <i class="ri-logout-box-line"></i>Salir
+                <button type="submit" class="flex min-h-[48px] w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-rose-600 transition-colors hover:bg-rose-50 active:bg-rose-100 lg:min-h-0 lg:w-auto lg:rounded-full lg:px-4 lg:py-2">
+                  <i class="ri-logout-box-line text-lg"></i>Salir
                 </button>
               </form>
             </li>
           @else
             @if(R::has('login'))
-            <li role="none">
-              <a role="menuitem" href="{{ route('login') }}" class="btn btn-outline" data-login-trigger>
-                <i class="ri-login-box-line"></i>Ingresar
+            <li role="none" class="mt-3 lg:mt-0">
+              <a role="menuitem" href="{{ $loginModalUrl }}" class="btn btn-primary flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl text-base lg:min-h-0 lg:w-auto lg:rounded-full lg:text-sm" data-login-trigger>
+                <i class="ri-login-box-line text-lg"></i>Ingresar
               </a>
             </li>
             @endif
@@ -120,11 +132,11 @@
         </ul>
 
         @if($headerShowSocials)
-          <div class="mt-auto flex items-center gap-3 text-xl text-slate-400 lg:mt-0">
-            <a href="https://www.instagram.com/" target="_blank" aria-label="Instagram"><i class="ri-instagram-line"></i></a>
-            <a href="https://wa.me/593998740927" target="_blank" aria-label="WhatsApp"><i class="ri-whatsapp-line"></i></a>
-            <a href="https://www.facebook.com/" target="_blank" aria-label="Facebook"><i class="ri-facebook-circle-line"></i></a>
-            <a href="https://twitter.com/" target="_blank" aria-label="Twitter"><i class="ri-twitter-x-line"></i></a>
+          <div class="mt-auto flex items-center gap-2 border-t border-slate-100 px-5 py-4 text-xl text-slate-400 lg:mt-0 lg:border-0 lg:px-0 lg:py-0">
+            <a href="https://www.instagram.com/" target="_blank" aria-label="Instagram" class="flex h-11 w-11 items-center justify-center rounded-xl hover:bg-slate-50 hover:text-slate-600 active:bg-slate-100 lg:h-auto lg:w-auto lg:rounded-full"><i class="ri-instagram-line"></i></a>
+            <a href="https://wa.me/593998740927" target="_blank" aria-label="WhatsApp" class="flex h-11 w-11 items-center justify-center rounded-xl hover:bg-slate-50 hover:text-slate-600 active:bg-slate-100 lg:h-auto lg:w-auto lg:rounded-full"><i class="ri-whatsapp-line"></i></a>
+            <a href="https://www.facebook.com/" target="_blank" aria-label="Facebook" class="flex h-11 w-11 items-center justify-center rounded-xl hover:bg-slate-50 hover:text-slate-600 active:bg-slate-100 lg:h-auto lg:w-auto lg:rounded-full"><i class="ri-facebook-circle-line"></i></a>
+            <a href="https://twitter.com/" target="_blank" aria-label="Twitter" class="flex h-11 w-11 items-center justify-center rounded-xl hover:bg-slate-50 hover:text-slate-600 active:bg-slate-100 lg:h-auto lg:w-auto lg:rounded-full"><i class="ri-twitter-x-line"></i></a>
           </div>
         @endif
       </div>
@@ -172,7 +184,6 @@
               <div>
                 <label class="form-label">Correo</label>
                 <input type="email" name="email" autocomplete="email" required value="{{ old('email') }}" placeholder="correo@ejemplo.com" inputmode="email" class="form-input">
-                @error('email') <p class="text-xs text-rose-600">{{ $message }}</p> @enderror
               </div>
               <div>
                 <label class="form-label">Contraseña</label>
@@ -182,7 +193,6 @@
                     <i class="ri-eye-line text-lg leading-none" aria-hidden="true"></i>
                   </button>
                 </div>
-                @error('password') <p class="text-xs text-rose-600">{{ $message }}</p> @enderror
               </div>
               <div class="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500">
                 <label class="inline-flex items-center gap-2"><input type="checkbox" name="remember" value="1" class="h-4 w-4 rounded border-slate-300"> Recuérdame</label>

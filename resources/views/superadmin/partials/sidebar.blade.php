@@ -4,10 +4,11 @@
 
 <aside class="dashboard-sidebar fixed top-0 bottom-0 left-0 z-40 h-screen -translate-x-full overflow-y-auto border-r border-slate-200/70 bg-white px-4 pb-6 pt-0 shadow-xl lg:translate-x-0 lg:shrink-0">
     <div class="top flex items-center justify-between">
-        <a href="{{ route('superadmin.dashboard') }}" class="flex items-center gap-3">
-            <div>
-                <p class="text-xs uppercase tracking-wide text-slate-500">Panel</p>
-                <p class="text-sm font-semibold text-slate-800">Superadmin</p>
+        <a href="{{ route('superadmin.dashboard') }}" class="sidebar-brand">
+            <span class="sidebar-brand__icon"><i class="ri-shield-star-line"></i></span>
+            <div class="sidebar-brand__text">
+                <small>Superadmin</small>
+                <strong>Clínica Don Bosco</strong>
             </div>
         </a>
         <button class="close btn btn-ghost px-2 lg:hidden" aria-label="Cerrar menú">
@@ -22,6 +23,10 @@
 
         <a href="{{ route('superadmin.admins.index') }}" class="flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors {{ request()->routeIs('superadmin.admins.*') ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-50' }}">
             <i class="ri-shield-user-line text-lg"></i> Administradores
+        </a>
+
+        <a href="{{ route('superadmin.users.index') }}" class="flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors {{ request()->routeIs('superadmin.users.*') ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-50' }}">
+            <i class="ri-group-line text-lg"></i> Usuarios
         </a>
 
         <a href="{{ route('superadmin.solicitudes.personalizacion.index') }}" class="flex min-h-[44px] items-center justify-between gap-3 rounded-xl px-3 py-2.5 transition-colors {{ request()->routeIs('superadmin.solicitudes.personalizacion.*') ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-50' }}">

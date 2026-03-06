@@ -18,9 +18,6 @@
   @if (session('success'))
     <x-ui.alert tone="success">{{ session('success') }}</x-ui.alert>
   @endif
-  @if ($errors->any())
-    <x-ui.alert tone="error">@foreach ($errors->all() as $e)<div>{{ $e }}</div>@endforeach</x-ui.alert>
-  @endif
 
   <form class="form space-y-6" method="POST" action="{{ route('superadmin.admins.update', $admin) }}" novalidate>
     @csrf

@@ -48,7 +48,6 @@ class EmailCitaActionController extends Controller
 
             $cita->estado = Cita::ESTADO_CONFIRMADA;
             $cita->activo = true;
-            $cita->refreshPriority();
             $cita->save();
 
             // Redirección amistosa
@@ -64,7 +63,6 @@ class EmailCitaActionController extends Controller
 
             $cita->estado = Cita::ESTADO_CANCELADA;
             $cita->activo = false;
-            $cita->refreshPriority();
             $cita->save();
 
             // Según rol, redirigir

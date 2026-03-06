@@ -2,7 +2,7 @@
 @extends('layouts.admin')
 @section('title','Horarios de doctores')
 @section('header-title','Horarios')
-@section('header-subtitle','Planificación semanal de doctores')
+@section('header-subtitle','PlanificaciÃ³n semanal de doctores')
 
 @section('main')
 @php
@@ -18,15 +18,15 @@
 
 <div class="space-y-6">
   <section class="card p-6">
-    <div class="flex flex-wrap items-center justify-between gap-4">
-      <div>
-        <p class="text-xs uppercase tracking-widest text-slate-500">Planificación semanal</p>
+    <div class="page-header">
+      <div class="page-header__info">
+        <p class="text-xs uppercase tracking-widest text-slate-500">PlanificaciÃ³n semanal</p>
         <h1 class="mt-2 text-2xl font-semibold text-slate-900">Horarios de doctores</h1>
         <p class="text-slate-600">Visualiza y controla los bloques semanales con una vista clara.</p>
       </div>
-      <div class="flex items-center gap-2">
+      <div class="page-header__actions">
         <span class="badge info">Semana {{ $weekStart->format('d M') }} - {{ $weekEnd->format('d M') }}</span>
-        <a class="btn btn-primary" href="{{ route('admin.horarios.create') }}">
+        <a class="btn btn-primary btn-full-mobile" href="{{ route('admin.horarios.create') }}">
           <i class="ri-add-line"></i> Nuevo horario
         </a>
       </div>
@@ -35,9 +35,6 @@
 
   @if (session('success'))
     <x-ui.alert tone="success">{{ session('success') }}</x-ui.alert>
-  @endif
-  @if ($errors->any())
-    <x-ui.alert tone="error">@foreach ($errors->all() as $e)<div>{{ $e }}</div>@endforeach</x-ui.alert>
   @endif
 
   <form method="GET" action="{{ route('admin.horarios.index') }}" class="card p-6">
@@ -63,7 +60,7 @@
         @error('week')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
       <div class="lg:col-span-2">
-        <label class="form-label">Navegación</label>
+        <label class="form-label">NavegaciÃ³n</label>
         <div class="flex flex-wrap gap-2">
           <a class="btn btn-outline" href="{{ route('admin.horarios.index',['doctor_id'=>$activeDoctorId,'week'=>$prev]) }}">
             <i class="ri-arrow-left-s-line"></i> Anterior
@@ -78,7 +75,7 @@
     </div>
   </form>
 
-  <div class="flex flex-wrap gap-2 md:hidden" aria-label="Seleccionar día (móvil)">
+  <div class="flex flex-wrap gap-2 md:hidden" aria-label="Seleccionar dÃ­a (mÃ³vil)">
     @foreach($days as $d)
       <button class="day-chip rounded-full border border-slate-200 px-3 py-2 text-xs font-semibold {{ $loop->first ? 'active bg-teal-50 text-teal-700' : 'text-slate-500' }}" data-day-btn="{{ $d->toDateString() }}">
         {{ $d->isoFormat('ddd') }} {{ $d->format('d/m') }}
@@ -99,16 +96,16 @@
         </div>
         <div>
           <p class="text-xs uppercase tracking-widest text-slate-500">Semana completa</p>
-          <strong class="text-base font-semibold text-slate-900">Bloques por día</strong>
+          <strong class="text-base font-semibold text-slate-900">Bloques por dÃ­a</strong>
         </div>
       </div>
       <div class="flex items-center gap-2" data-day-slider>
-        <span class="hidden text-xs text-slate-500 md:inline">Desliza o usa las flechas para ver todos los días</span>
+        <span class="hidden text-xs text-slate-500 md:inline">Desliza o usa las flechas para ver todos los dÃ­as</span>
         <div class="flex gap-2">
-          <button type="button" class="btn btn-ghost px-2" data-day-scroll="prev" aria-label="Desplazar a días anteriores">
+          <button type="button" class="btn btn-ghost px-2" data-day-scroll="prev" aria-label="Desplazar a dÃ­as anteriores">
             <i class="ri-arrow-left-s-line"></i>
           </button>
-          <button type="button" class="btn btn-ghost px-2" data-day-scroll="next" aria-label="Desplazar a días siguientes">
+          <button type="button" class="btn btn-ghost px-2" data-day-scroll="next" aria-label="Desplazar a dÃ­as siguientes">
             <i class="ri-arrow-right-s-line"></i>
           </button>
         </div>
@@ -150,7 +147,7 @@
                         <i class="ri-delete-bin-line"></i>
                       </button>
                     </form>
-                    <button class="slot-more btn btn-ghost px-2" type="button" aria-label="Más acciones">
+                    <button class="slot-more btn btn-ghost px-2" type="button" aria-label="MÃ¡s acciones">
                       <i class="ri-more-2-fill"></i>
                     </button>
                   </div>

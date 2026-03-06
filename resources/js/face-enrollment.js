@@ -31,7 +31,7 @@ const STATUS = {
   lowFocus: 'Camara sin foco',
   verifying: 'Verificando presencia...',
   saving: 'Guardando...',
-  cameraStarting: 'Activando camara...',
+  cameraStarting: 'Activando cámara...',
 };
 
 function wait(ms) {
@@ -426,7 +426,7 @@ export function setupFaceEnrollment({
       }
       const ready = await waitForVideo(video, 2000);
       if (!ready) {
-        throw new Error('No se pudo iniciar la camara.');
+        throw new Error('No se pudo iniciar la cámara.');
       }
       video.classList.add('is-active');
       overlay.classList.add('is-hidden');
@@ -434,10 +434,10 @@ export function setupFaceEnrollment({
     } catch (err) {
       const message =
         err.name === 'NotAllowedError'
-          ? 'Permiso de camara requerido.'
+          ? 'Permiso de cámara requerido.'
           : err.name === 'NotFoundError'
-          ? 'No se detecta camara disponible.'
-          : err.message || 'No se pudo activar la camara.';
+          ? 'No se detecta cámara disponible.'
+          : err.message || 'No se pudo activar la cámara.';
       throw new Error(message);
     }
   }

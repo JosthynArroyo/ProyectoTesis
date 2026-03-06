@@ -12,16 +12,31 @@ use Illuminate\Support\Facades\Storage;
 
 class OrdenController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $estado = strtolower(trim((string) $request->query('estado', 'all')));
+        $allowed = [
+            'all',
+            LaboratorioOrden::ESTADO_ORDEN_CREADA,
+            LaboratorioOrden::ESTADO_CITA_PROGRAMADA,
+            LaboratorioOrden::ESTADO_MUESTRA_TOMADA,
+            LaboratorioOrden::ESTADO_RESULTADO_DISPONIBLE,
+        ];
+        if (!in_array($estado, $allowed, true)) {
+            $estado = 'all';
+        }
+
         $ordenes = LaboratorioOrden::with(['cita.paciente', 'cita.doctor', 'cita.especialidad'])
             ->whereHas('cita', function ($q) {
                 $q->where('doctor_id', Auth::id());
             })
+            ->when($estado !== 'all', function ($query) use ($estado) {
+                $query->where('estado', $estado);
+            })
             ->orderByDesc('id')
             ->paginate(12);
 
-        return view('laboratorio.ordenes.index', compact('ordenes'));
+        return view('laboratorio.ordenes.index', compact('ordenes', 'estado'));
     }
 
     public function marcarMuestra(LaboratorioOrden $orden)

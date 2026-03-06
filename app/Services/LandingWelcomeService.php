@@ -10,8 +10,8 @@ use App\Models\LandingWelcomeDoctor;
 use App\Models\LandingWelcomePrice;
 use App\Models\LandingWelcomeFeaturedSpecialty;
 use App\Models\Especialidad;
+use App\Support\ImageUrl;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Str;
 
 class LandingWelcomeService
 {
@@ -26,16 +26,45 @@ class LandingWelcomeService
 
     private array $defaults = [
         'header_logo' => 'img/logo-welcomeBlanco.jpg',
-        'header_name' => 'Clinica Don Bosco',
+        'header_name' => 'Clínica Don Bosco',
         'header_show_socials' => true,
-        'hero_badge' => 'Salud integral y tecnologia humana',
-        'hero_title' => 'Tu clinica digital para una atencion mas cercana y rapida.',
+        'hero_badge' => 'Salud integral y tecnología humana',
+        'hero_title' => 'Tu clínica digital para una atención más cercana y rápida.',
         'hero_subtitle' => 'Agenda consultas, revisa resultados y recibe recordatorios inteligentes desde cualquier dispositivo. Todo en un mismo lugar.',
+        'hero_followup_title' => 'Seguimiento personalizado',
+        'hero_followup_subtitle' => 'Recibe recordatorios y notificaciones sobre tus citas, resultados y seguimiento médico.',
         'hero_primary_text' => 'Agendar cita',
         'hero_show_primary' => true,
         'hero_secondary_text' => 'Explorar servicios',
         'hero_show_secondary' => true,
+        'intro_badge' => 'Bienvenida',
+        'intro_title' => 'Gestiona tus citas médicas en un entorno seguro.',
+        'intro_subtitle' => 'Accede a consultas con médicos especializados desde cualquier lugar. Organiza tus visitas en pocos pasos y mantente informado.',
+        'intro_feature_1_title' => 'Agenda inteligente',
+        'intro_feature_1_text' => 'Confirmaciones automáticas, recordatorios y reprogramación sencilla.',
+        'intro_feature_2_title' => 'Historial centralizado',
+        'intro_feature_2_text' => 'Tus recetas, resultados y citas siempre disponibles.',
+        'intro_feature_3_title' => 'Seguridad y privacidad',
+        'intro_feature_3_text' => 'Control de acceso por rol y datos protegidos.',
+        'intro_feature_4_title' => 'Atención humana',
+        'intro_feature_4_text' => 'Personal médico listo para responder tus dudas.',
+        'services_badge' => 'Servicios',
+        'services_title' => 'Especialidades destacadas',
+        'services_subtitle' => 'Atención médica integral con profesionales certificados.',
+        'services_button_text' => 'Ver todos',
+        'prices_badge' => 'Tarifario',
+        'prices_title' => 'Precios transparentes',
         'prices_subtitle' => 'Consulta los valores aproximados y pregunta por promociones actuales.',
+        'prices_button_text' => 'Agendar cita',
+        'prices_highlight_title' => 'Equipo profesional',
+        'prices_highlight_subtitle' => 'Especialistas enfocados en un trato cercano y humano.',
+        'prices_highlight_image' => 'img/doctor2.jpg',
+        'prices_visit_title' => 'Agenda tu visita en minutos',
+        'prices_visit_subtitle' => 'Nuestro sistema te guía paso a paso para seleccionar especialista, fecha y hora.',
+        'doctors_badge' => 'Equipo',
+        'doctors_title' => 'Nuestros doctores',
+        'doctors_subtitle' => 'Profesionales comprometidos con tu bienestar.',
+        'doctors_pill' => 'Atención personalizada',
         'show_services_block' => true,
     ];
 
@@ -43,7 +72,7 @@ class LandingWelcomeService
         [
             'label' => 'Pacientes activos',
             'value' => '+6.2k',
-            'note' => 'Atencion continua',
+            'note' => 'Atención continua',
             'is_active' => true,
             'sort_order' => 1,
         ],
@@ -57,7 +86,7 @@ class LandingWelcomeService
         [
             'label' => 'Respuesta',
             'value' => '15 min',
-            'note' => 'Promedio en linea',
+            'note' => 'Promedio en línea',
             'is_active' => true,
             'sort_order' => 3,
         ],
@@ -66,19 +95,19 @@ class LandingWelcomeService
     private array $defaultSlides = [
         [
             'image_path' => 'img/hero1.jpg',
-            'alt' => 'Fachada principal de la clinica',
+            'alt' => 'Fachada principal de la clínica',
             'sort_order' => 1,
             'is_active' => true,
         ],
         [
             'image_path' => 'img/hero2.jpg',
-            'alt' => 'Recepcion y sala de espera',
+            'alt' => 'Recepción y sala de espera',
             'sort_order' => 2,
             'is_active' => true,
         ],
         [
             'image_path' => 'img/hero3.jpg',
-            'alt' => 'Equipos medicos y consultorios',
+            'alt' => 'Equipos médicos y consultorios',
             'sort_order' => 3,
             'is_active' => true,
         ],
@@ -86,7 +115,7 @@ class LandingWelcomeService
 
     private array $defaultInfoCards = [
         [
-            'title' => 'Atencion 24/7',
+            'title' => 'Atención 24/7',
             'value' => null,
             'description' => 'Soporte y seguimiento continuo.',
             'icon' => 'ri-time-line',
@@ -96,7 +125,7 @@ class LandingWelcomeService
         [
             'title' => 'Especialistas certificados',
             'value' => null,
-            'description' => 'Medicos con experiencia comprobada.',
+            'description' => 'Médicos con experiencia comprobada.',
             'icon' => 'ri-stethoscope-line',
             'is_active' => true,
             'sort_order' => 2,
@@ -110,7 +139,7 @@ class LandingWelcomeService
             'sort_order' => 3,
         ],
         [
-            'title' => 'Recordatorios automaticos',
+            'title' => 'Recordatorios automáticos',
             'value' => null,
             'description' => 'Alertas claras para tus citas.',
             'icon' => 'ri-notification-4-line',
@@ -121,22 +150,22 @@ class LandingWelcomeService
 
     private array $defaultDoctors = [
         [
-            'name' => 'Dra. Ana Martinez',
-            'specialty' => 'Dermatologia',
+            'name' => 'Dra. Ana Martínez',
+            'specialty' => 'Dermatología',
             'photo_path' => 'img/doctora1.jpg',
             'is_active' => true,
             'sort_order' => 1,
         ],
         [
-            'name' => 'Dr. Carlos Perez',
-            'specialty' => 'Pediatria',
+            'name' => 'Dr. Carlos Pérez',
+            'specialty' => 'Pediatría',
             'photo_path' => 'img/doctor1.jpg',
             'is_active' => true,
             'sort_order' => 2,
         ],
         [
             'name' => 'Dr. Juan Torres',
-            'specialty' => 'Cardiologia',
+            'specialty' => 'Cardiología',
             'photo_path' => 'img/doctor2.jpg',
             'is_active' => true,
             'sort_order' => 3,
@@ -151,19 +180,19 @@ class LandingWelcomeService
             'sort_order' => 1,
         ],
         [
-            'service' => 'Cardiologia',
+            'service' => 'Cardiología',
             'price' => '$40',
             'is_active' => true,
             'sort_order' => 2,
         ],
         [
-            'service' => 'Pediatria',
+            'service' => 'Pediatría',
             'price' => '$35',
             'is_active' => true,
             'sort_order' => 3,
         ],
         [
-            'service' => 'Dermatologia',
+            'service' => 'Dermatología',
             'price' => '$30',
             'is_active' => true,
             'sort_order' => 4,
@@ -394,7 +423,7 @@ class LandingWelcomeService
             ->pluck('especialidad_id')
             ->all();
 
-        $this->featuredIdsCache = $ids;
+        $this->featuredIdsCache = array_slice(array_values(array_unique(array_filter($ids))), 0, 3);
 
         return $this->featuredIdsCache;
     }
@@ -447,21 +476,13 @@ class LandingWelcomeService
         return $this->defaultPrices;
     }
 
-    public function resolveImageUrl(string $path): ?string
+    public function resolveImageUrl(?string $path): ?string
     {
         if (! $path) {
             return null;
         }
 
-        if (Str::startsWith($path, ['http://', 'https://'])) {
-            return $path;
-        }
-
-        if (Str::startsWith($path, ['img/', 'storage/'])) {
-            return asset($path);
-        }
-
-        return asset('storage/' . ltrim($path, '/'));
+        return app(ImageUrl::class)->url($path, entity: 'banner', size: 'large');
     }
 
     private function settings(): ?LandingWelcomeSetting

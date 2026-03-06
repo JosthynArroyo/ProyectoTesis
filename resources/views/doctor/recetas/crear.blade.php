@@ -4,7 +4,7 @@
 @section('header-title','Generar receta')
 @section('header-subtitle','Crea y envia una receta')
 
-@section('content')
+@section('main')
 <div class="rx-wrap space-y-6">
   <div class="card p-6">
     <h1 class="text-2xl font-semibold text-slate-900">Generar Receta</h1>
@@ -14,15 +14,6 @@
     </div>
   </div>
 
-  @if ($errors->any())
-    <x-ui.alert tone="error" class="rx-alert">
-      <ul>
-        @foreach ($errors->all() as $error)
-          <li>{{ $error }}</li>
-        @endforeach
-      </ul>
-    </x-ui.alert>
-  @endif
 
   <form method="POST" action="{{ route('doctor.recetas.store') }}" class="card p-6 space-y-4">
     @csrf
@@ -30,7 +21,7 @@
 
     <div class="grid gap-4">
       <div>
-        <label for="diagnostico" class="form-label">Diagnóstico / Motivo</label>
+        <label for="diagnostico" class="form-label">DiagnÃ³stico / Motivo</label>
         <textarea id="diagnostico" name="diagnostico" required class="form-textarea">{{ old('diagnostico') }}</textarea>
         @error('diagnostico')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
@@ -59,3 +50,4 @@
   </form>
 </div>
 @endsection
+

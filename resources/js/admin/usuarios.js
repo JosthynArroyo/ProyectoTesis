@@ -2,7 +2,17 @@ document.addEventListener('DOMContentLoaded', () => {
   const chips = document.querySelectorAll('.filter-chip');
   const moreFiltersBtn = document.getElementById('btn-more-filters');
   const filtersWrap = document.getElementById('filters-wrap');
-  const kebabs = document.querySelectorAll('[data-kebab]');
+  const rows = Array.from(document.querySelectorAll('.users tbody tr[data-user-row]'));
+  const mobileQuery = window.matchMedia('(max-width: 768px)');
+  const confirmSheet = document.querySelector('[data-confirm-sheet]');
+  const confirmTitle = confirmSheet ? confirmSheet.querySelector('[data-confirm-title]') : null;
+  const confirmMessage = confirmSheet ? confirmSheet.querySelector('[data-confirm-message]') : null;
+  const confirmSubmit = confirmSheet ? confirmSheet.querySelector('[data-confirm-submit]') : null;
+  const suspendSheet = document.querySelector('[data-suspend-sheet]');
+  const suspendForm = suspendSheet ? suspendSheet.querySelector('[data-suspend-sheet-form]') : null;
+  const suspendTitle = suspendSheet ? suspendSheet.querySelector('[data-suspend-title]') : null;
+  const suspendName = suspendSheet ? suspendSheet.querySelector('[data-suspend-name]') : null;
+  let pendingFormId = null;
 
   const sync = (chip) => {
     const input = chip.querySelector('input[type="checkbox"]');
@@ -39,50 +49,145 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  window.openSuspend = (id) => {
-    const row = document.getElementById('susp-row-' + id);
-    if (row) row.style.display = 'table-row';
-  };
-  window.closeSuspend = (id) => {
-    const row = document.getElementById('susp-row-' + id);
-    if (row) row.style.display = 'none';
+  const setBodyScrollLock = () => {
+    const hasOpenModal = document.querySelector('.modal.is-open');
+    document.body.classList.toggle('modal-open', Boolean(hasOpenModal));
   };
 
-  const mobileToggle = () => {
-    const isMobile = window.matchMedia('(max-width: 720px)').matches;
-    document.querySelectorAll('.users tbody tr').forEach((row) => {
-      const name = row.querySelector('.user-name');
-      if (!name) return;
-      if (isMobile) {
-        if (!name.dataset.bound) {
-          name.addEventListener('click', () => {
-            document.querySelectorAll('.users tbody tr.is-open').forEach((r) => {
-              if (r !== row) r.classList.remove('is-open');
-            });
-            row.classList.toggle('is-open');
-          });
-          name.dataset.bound = '1';
-        }
-      } else {
-        row.classList.remove('is-open');
+  const openSheet = (sheet) => {
+    if (!sheet) {
+      return;
+    }
+    sheet.classList.add('is-open');
+    sheet.setAttribute('aria-hidden', 'false');
+    setBodyScrollLock();
+  };
+
+  const closeSheet = (sheet) => {
+    if (!sheet) {
+      return;
+    }
+    sheet.classList.remove('is-open');
+    sheet.setAttribute('aria-hidden', 'true');
+    setBodyScrollLock();
+  };
+
+  const setRowState = (row, open) => {
+    row.classList.toggle('is-open', open);
+    row.querySelectorAll('[data-row-toggle]').forEach((button) => {
+      button.setAttribute('aria-expanded', String(open));
+      const label = open
+        ? (button.dataset.openLabel || 'Ocultar detalles')
+        : (button.dataset.closedLabel || 'Ver detalles');
+      button.innerHTML = `<i class="ri-arrow-${open ? 'up' : 'down'}-s-line"></i> ${label}`;
+    });
+  };
+
+  const syncRows = () => {
+    if (!mobileQuery.matches) {
+      rows.forEach((row) => setRowState(row, true));
+      return;
+    }
+
+    rows.forEach((row) => {
+      if (!row.dataset.initialized) {
+        setRowState(row, row.classList.contains('is-open'));
+        row.dataset.initialized = '1';
       }
     });
   };
 
-  mobileToggle();
-  window.addEventListener('resize', mobileToggle);
-
-  kebabs.forEach((btn) => {
-    const menu = document.getElementById(btn.dataset.kebab);
-    if (!menu) return;
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const open = menu.getAttribute('data-open') === '1';
-      document.querySelectorAll('.kebab-menu').forEach((m) => m.setAttribute('data-open','0'));
-      if (!open) menu.setAttribute('data-open','1');
+  rows.forEach((row) => {
+    row.querySelectorAll('[data-row-toggle]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const open = !row.classList.contains('is-open');
+        if (mobileQuery.matches) {
+          rows.forEach((item) => {
+            if (item !== row) {
+              setRowState(item, false);
+            }
+          });
+        }
+        setRowState(row, open);
+      });
     });
   });
-  document.addEventListener('click', () => {
-    document.querySelectorAll('.kebab-menu').forEach((m) => m.setAttribute('data-open','0'));
+
+  syncRows();
+  if (mobileQuery.addEventListener) {
+    mobileQuery.addEventListener('change', syncRows);
+  } else {
+    window.addEventListener('resize', syncRows);
+  }
+
+  document.addEventListener('click', (event) => {
+    const confirmTrigger = event.target.closest('[data-confirm-form]');
+    if (confirmTrigger && confirmSheet) {
+      event.preventDefault();
+      pendingFormId = confirmTrigger.dataset.confirmForm || null;
+      if (confirmTitle) {
+        confirmTitle.textContent = confirmTrigger.dataset.confirmTitle || 'Confirmar accion';
+      }
+      if (confirmMessage) {
+        confirmMessage.textContent = confirmTrigger.dataset.confirmMessage || 'Confirma para continuar.';
+      }
+      if (confirmSubmit) {
+        confirmSubmit.textContent = confirmTrigger.dataset.confirmButton || 'Confirmar';
+      }
+      openSheet(confirmSheet);
+      return;
+    }
+
+    const suspendTrigger = event.target.closest('[data-suspend-open]');
+    if (suspendTrigger && suspendSheet && suspendForm) {
+      event.preventDefault();
+      suspendForm.setAttribute('action', suspendTrigger.dataset.suspendAction || suspendForm.getAttribute('action') || '');
+
+      const idInput = suspendForm.querySelector('[name="admin_id"], [name="user_id"]');
+      if (idInput) {
+        idInput.value = suspendTrigger.dataset.suspendId || '';
+      }
+
+      if (suspendTitle) {
+        suspendTitle.textContent = suspendTrigger.dataset.suspendTitle || 'Suspender acceso';
+      }
+      if (suspendName) {
+        suspendName.textContent = suspendTrigger.dataset.suspendName || 'Usuario';
+      }
+      openSheet(suspendSheet);
+    }
   });
+
+  if (confirmSubmit && confirmSheet) {
+    confirmSubmit.addEventListener('click', () => {
+      if (!pendingFormId) {
+        closeSheet(confirmSheet);
+        return;
+      }
+      const form = document.getElementById(pendingFormId);
+      if (form) {
+        form.submit();
+      }
+    });
+  }
+
+  document.querySelectorAll('[data-sheet-close]').forEach((button) => {
+    button.addEventListener('click', () => {
+      closeSheet(button.closest('.modal'));
+    });
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') {
+      return;
+    }
+
+    document.querySelectorAll('.modal.is-open').forEach((sheet) => {
+      closeSheet(sheet);
+    });
+  });
+
+  if (suspendSheet && suspendSheet.dataset.openOnLoad === '1') {
+    openSheet(suspendSheet);
+  }
 });

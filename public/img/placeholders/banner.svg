@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img" aria-labelledby="title desc">
+  <title id="title">Banner no disponible</title>
+  <desc id="desc">Placeholder de banner</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ccfbf1" />
+      <stop offset="100%" stop-color="#99f6e4" />
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="675" fill="url(#bg)" />
+  <circle cx="230" cy="140" r="120" fill="#14b8a6" opacity=".25" />
+  <circle cx="1010" cy="540" r="160" fill="#0f766e" opacity=".18" />
+  <rect x="210" y="210" width="780" height="260" rx="18" fill="#0f766e" opacity=".2" />
+  <path d="M300 430l160-140 140 120 140-100 170 120" fill="none" stroke="#0f766e" stroke-width="26" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="600" y="560" text-anchor="middle" font-family="Arial, sans-serif" font-size="40" fill="#115e59">
+    Banner no disponible
+  </text>
+</svg>
+

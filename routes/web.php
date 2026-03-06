@@ -34,6 +34,12 @@ use App\Http\Controllers\Superadmin\PersonalizacionController as SuperadminPerso
 use App\Http\Controllers\Superadmin\PersonalizacionRequestController as SuperadminPersonalizacionRequestController;
 use App\Http\Controllers\Superadmin\MaintenanceController as SuperadminMaintenanceController;
 use App\Http\Controllers\Admin\HistorialController as AdminHistorialController;
+use App\Http\Controllers\Admin\PagoController as AdminPagoController;
+use App\Http\Controllers\Admin\CitaOverrideController as AdminCitaOverrideController;
+use App\Http\Controllers\Paciente\PagoController as PacientePagoController;
+use App\Http\Controllers\PagoLookupController;
+use App\Http\Controllers\CitaPrioridadController;
+use App\Http\Controllers\PanelThemeController;
 
 
 // API tarifas
@@ -56,6 +62,7 @@ Route::get('/', function () {
             ->where('activo', true)
             ->orderBy('orden')
             ->orderBy('nombre')
+            ->limit(3)
             ->get();
 
     return view('welcome', compact('especialidadesDestacadas'));
@@ -129,11 +136,18 @@ Route::middleware(['auth', 'role:administrador'])
     Route::put('/personalizacion/servicios', [AdminPersonalizacionController::class, 'serviciosUpdate'])
         ->middleware('feature:personalizacion')
         ->name('personalizacion.servicios.update');
+    Route::get('/personalizacion/contacto', [AdminPersonalizacionController::class, 'contactoEdit'])
+        ->middleware('feature:personalizacion')
+        ->name('personalizacion.contacto.edit');
+    Route::put('/personalizacion/contacto', [AdminPersonalizacionController::class, 'contactoUpdate'])
+        ->middleware('feature:personalizacion')
+        ->name('personalizacion.contacto.update');
     Route::post('/personalizacion/solicitar', [AdminPersonalizacionController::class, 'requestAccess'])
         ->name('personalizacion.request');
 
     // Usuarios
     Route::get('/usuarios', [AdminDashboardController::class, 'usuarios'])->name('usuarios.index');
+    Route::get('/usuarios/check-email', [AdminDashboardController::class, 'checkEmail'])->name('usuarios.email.check');
     Route::get('/usuarios/crear', [AdminDashboardController::class, 'usuariosCreate'])->name('usuarios.create');
     Route::post('/usuarios', [AdminDashboardController::class, 'usuariosStore'])->name('usuarios.store');
     Route::get('/usuarios/{user}', [AdminDashboardController::class, 'usuariosShow'])->name('usuarios.show');
@@ -198,6 +212,24 @@ Route::middleware(['auth', 'role:administrador'])
     Route::get('/historial', [AdminHistorialController::class, 'index'])->name('historial.index');
     Route::get('/historial/paciente/{paciente}', [AdminHistorialController::class, 'paciente'])->name('historial.paciente');
     Route::get('/historial/{nota}', [AdminHistorialController::class, 'show'])->name('historial.show');
+
+    // Gestión de pagos
+    Route::get('/pagos', [AdminPagoController::class, 'index'])->name('pagos.index');
+    Route::get('/pagos/{pago}', [AdminPagoController::class, 'show'])->name('pagos.show');
+    Route::post('/pagos/{pago}/monto', [AdminPagoController::class, 'actualizarMonto'])->name('pagos.monto.update');
+    Route::post('/pagos/{pago}/metodo', [AdminPagoController::class, 'actualizarMetodo'])->name('pagos.metodo.update');
+    Route::post('/pagos/{pago}/aprobar', [AdminPagoController::class, 'aprobar'])->name('pagos.aprobar');
+    Route::post('/pagos/{pago}/rechazar', [AdminPagoController::class, 'rechazar'])->name('pagos.rechazar');
+    Route::post('/pagos/{pago}/anular', [AdminPagoController::class, 'anular'])->name('pagos.anular');
+    Route::get('/pagos/{pago}/comprobante', [AdminPagoController::class, 'comprobante'])->name('pagos.comprobante');
+    Route::get('/pagos/{pago}/orden.pdf', [AdminPagoController::class, 'ordenPdf'])->name('pagos.orden.pdf');
+    Route::get('/pagos/{pago}/recibo.pdf', [AdminPagoController::class, 'reciboPdf'])->name('pagos.recibo.pdf');
+
+    // Excepción de agendamiento por pagos pendientes (override)
+    Route::get('/citas/override/crear', [AdminCitaOverrideController::class, 'create'])->name('citas.override.create');
+    Route::post('/citas/override', [AdminCitaOverrideController::class, 'store'])->name('citas.override.store');
+    Route::get('/citas/{cita}/prioridad', [CitaPrioridadController::class, 'editAdmin'])->name('citas.prioridad.edit');
+    Route::patch('/citas/{cita}/prioridad', [CitaPrioridadController::class, 'updateAdmin'])->name('citas.prioridad.update');
 });
 
 // ======================== SUPERADMIN ========================
@@ -205,6 +237,7 @@ Route::middleware(['auth', 'role:superadmin'])
     ->prefix('superadmin')->name('superadmin.')->group(function () {
 
     Route::get('/dashboard', [SuperadminDashboardController::class, 'index'])->name('dashboard');
+    Route::get('/usuarios', [SuperadminDashboardController::class, 'users'])->name('users.index');
 
     // Administradores
     Route::get('/admins', [SuperadminAdminsController::class, 'index'])->name('admins.index');
@@ -240,6 +273,10 @@ Route::middleware(['auth', 'role:superadmin'])
         ->name('personalizacion.servicios.edit');
     Route::put('/personalizacion/servicios', [SuperadminPersonalizacionController::class, 'serviciosUpdate'])
         ->name('personalizacion.servicios.update');
+    Route::get('/personalizacion/contacto', [SuperadminPersonalizacionController::class, 'contactoEdit'])
+        ->name('personalizacion.contacto.edit');
+    Route::put('/personalizacion/contacto', [SuperadminPersonalizacionController::class, 'contactoUpdate'])
+        ->name('personalizacion.contacto.update');
 
     // Mantenimiento
     Route::get('/mantenimiento', [SuperadminMaintenanceController::class, 'edit'])
@@ -254,11 +291,16 @@ Route::middleware(['auth', 'role:paciente'])->prefix('paciente')->group(function
     Route::get('/perfil', [PacienteDashboardController::class, 'editarPerfil'])->name('paciente.perfil.edit');
     Route::post('/perfil', [PacienteDashboardController::class, 'actualizarPerfil'])->name('paciente.perfil.update');
     Route::get('/citas', [CitaController::class, 'index'])->name('paciente.citas');
-    Route::get('/crear-cita', [CitaController::class, 'create'])->name('paciente.crear-cita');
-    Route::post('/crear-cita', [CitaController::class, 'store'])->name('paciente.crear-cita.store');
+    Route::get('/crear-cita', [CitaController::class, 'create'])->middleware('no_pending_payments')->name('paciente.crear-cita');
+    Route::post('/crear-cita', [CitaController::class, 'store'])->middleware('no_pending_payments')->name('paciente.crear-cita.store');
     Route::post('/citas/{id}/cancelar', [CitaController::class, 'cancelar'])->name('paciente.citas.cancelar');
     Route::get('/editar-cita/{id}', [CitaController::class, 'edit'])->name('paciente.editar-cita');
     Route::put('/editar-cita/{id}', [CitaController::class, 'actualizar'])->name('paciente.editar-cita.update');
+    Route::get('/pagos', [PacientePagoController::class, 'index'])->name('paciente.pagos.index');
+    Route::post('/pagos/{pago}/enviar', [PacientePagoController::class, 'submit'])->name('paciente.pagos.submit');
+    Route::get('/pagos/{pago}/comprobante', [PacientePagoController::class, 'comprobante'])->name('paciente.pagos.comprobante');
+    Route::get('/pagos/{pago}/orden.pdf', [PacientePagoController::class, 'ordenPdf'])->name('paciente.pagos.orden.pdf');
+    Route::get('/pagos/{pago}/recibo.pdf', [PacientePagoController::class, 'reciboPdf'])->name('paciente.pagos.recibo.pdf');
     Route::get('/laboratorio', [PacienteLaboratorioController::class, 'index'])->name('paciente.laboratorio.index');
     Route::get('/laboratorio/{orden}/descargar', [PacienteLaboratorioController::class, 'download'])
         ->whereNumber('orden')->name('paciente.laboratorio.download');
@@ -283,6 +325,8 @@ Route::middleware(['auth', 'role:doctor'])->prefix('doctor')->group(function () 
     Route::post('/citas/{id}/aceptar', [CitaController::class, 'aceptar'])->name('doctor.citas.aceptar');
     Route::post('/citas/{id}/rechazar', [CitaController::class, 'rechazar'])->name('doctor.citas.rechazar');
     Route::post('/citas/{id}/realizar', [CitaController::class, 'realizar'])->name('doctor.citas.realizar');
+    Route::get('/citas/{cita}/prioridad', [CitaPrioridadController::class, 'editDoctor'])->name('doctor.citas.prioridad.edit');
+    Route::patch('/citas/{cita}/prioridad', [CitaPrioridadController::class, 'updateDoctor'])->name('doctor.citas.prioridad.update');
     Route::get('/agenda', [DoctorDashboardController::class, 'agenda'])->name('doctor.agenda');
 
     Route::get('/disponibilidad/check', [CitaController::class,'checkDisponibilidad'])
@@ -351,16 +395,7 @@ Route::get('/salir', function (Request $request) {
     return redirect('/');
 })->name('salir.get');
 
-// ============================ LOGIN ==========================
-Route::get('/login', function () {
-    session()->reflash();
-    return redirect('/?login=1');
-})->name('login');
-
-
 // =========================== CHATBOT ===========================
-Route::get('/asistente', [ChatBotController::class, 'index'])->name('chatbot.index');
-
 Route::middleware('throttle:chatbot')->group(function () {
     Route::get('/chatbot/especialidades', [ChatBotController::class, 'especialidades'])->name('chatbot.especialidades');
     Route::get('/chatbot/especialidades/{especialidad}/doctores', [ChatBotController::class, 'doctoresPorEspecialidad'])
@@ -383,10 +418,15 @@ Route::middleware('throttle:chatbot')->group(function () {
 Route::middleware('auth')->group(function () {
     Route::get('/face/enroll', [FaceAuthController::class, 'showEnrollment'])->name('face.enroll');
     Route::post('/face/enroll', [FaceAuthController::class, 'storeEnrollment'])->middleware('throttle:face-enroll');
+    Route::patch('/panel/theme', [PanelThemeController::class, 'update'])->name('panel.theme.update');
 });
 
 Route::middleware('guest')->group(function () {
     Route::post('/face/login', [FaceAuthController::class, 'verifyLogin'])->name('face.login');
+});
+
+Route::middleware('auth')->group(function () {
+    Route::get('/cobro/{token}', [PagoLookupController::class, 'showByToken'])->name('pagos.token.show');
 });
 
 Route::middleware('throttle:chatbot')->group(function () {

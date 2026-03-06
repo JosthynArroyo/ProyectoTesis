@@ -11,6 +11,10 @@
             <p class="text-slate-600">Ingresa con tu correo y contraseña para gestionar tus citas.</p>
           </div>
 
+          @if($errors->any())
+            <x-ui.alert tone="error">{{ $errors->first() }}</x-ui.alert>
+          @endif
+
           <form method="POST" action="{{ route('login') }}" id="loginForm" class="space-y-4">
             @csrf
             <input type="hidden" name="remember" value="0">
@@ -18,7 +22,6 @@
             <div>
               <label class="form-label" for="email">Correo electrónico</label>
               <input id="email" type="email" name="email" placeholder="correo@ejemplo.com" value="{{ old('email') }}" required class="form-input">
-              @error('email')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
             </div>
 
             <div>
@@ -29,7 +32,6 @@
                   <i class="ri-eye-line"></i>
                 </button>
               </div>
-              @error('password')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
             </div>
 
             <x-ui.form-actions>

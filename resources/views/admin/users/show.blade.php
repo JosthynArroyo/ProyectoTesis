@@ -4,8 +4,10 @@
 @section('header-subtitle','Información completa del perfil')
 
 @section('main')
-@php($statusLabel = ['active' => 'Activo', 'inactive' => 'Inactivo', 'blocked' => 'Bloqueado'][$user->status ?? 'active'] ?? 'Activo')
-@php($statusTone = ['active' => 'success', 'inactive' => 'warning', 'blocked' => 'danger'][$user->status ?? 'active'] ?? 'success')
+@php
+  $statusLabel = ['active' => 'Activo', 'inactive' => 'Inactivo', 'blocked' => 'Bloqueado'][$user->status ?? 'active'] ?? 'Activo';
+  $statusTone = ['active' => 'success', 'inactive' => 'warning', 'blocked' => 'danger'][$user->status ?? 'active'] ?? 'success';
+@endphp
 <div class="space-y-6">
   <section class="card p-6">
     <div class="flex flex-wrap items-center justify-between gap-4">
@@ -20,9 +22,29 @@
   </section>
 
   <section class="card p-6">
+    @php
+      $avatarFolder = 'users';
+      $avatarEntity = 'user';
+      $imageUrlService = $imageUrl ?? app(\App\Support\ImageUrl::class);
+      if ($user->hasRole('doctor') || $user->hasRole('laboratorio')) {
+        $avatarFolder = 'doctors';
+        $avatarEntity = 'doctor';
+      } elseif ($user->hasRole('paciente')) {
+        $avatarFolder = 'patients';
+        $avatarEntity = 'patient';
+      }
+      $avatarImage = $imageUrlService->variants($user->avatar, $avatarFolder, $avatarEntity);
+    @endphp
     <div class="flex flex-wrap items-center gap-4">
       <div class="h-20 w-20 overflow-hidden rounded-3xl">
-        <img src="{{ $user->avatar ? asset('storage/'.$user->avatar) : asset('img/doctor1.jpg') }}" alt="Avatar" class="h-full w-full object-cover">
+        <img
+          src="{{ $avatarImage['thumb'] }}"
+          @if($avatarImage['srcset']) srcset="{{ $avatarImage['srcset'] }}" sizes="80px" @endif
+          alt="Avatar"
+          class="h-full w-full object-cover"
+          loading="lazy"
+          decoding="async"
+        >
       </div>
       <div>
         <div class="flex flex-wrap items-center gap-2">

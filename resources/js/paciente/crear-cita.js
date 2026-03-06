@@ -14,6 +14,8 @@
   const labId = form.dataset.laboratorioId || '';
   const labRequired = labSection ? Array.from(labSection.querySelectorAll('[data-lab-required]')) : [];
   const examSel = document.getElementById('tipo_examen');
+  const stepItems = Array.from(document.querySelectorAll('[data-step-item]'));
+  const stepSummary = document.querySelector('[data-step-summary]');
   const prepAyuno = document.querySelector('[data-lab-prep="ayuno"]');
   const prepAgua = document.querySelector('[data-lab-prep="agua"]');
   const prepHorario = document.querySelector('[data-lab-prep="horario"]');
@@ -24,7 +26,7 @@
 
   const oldEsp  = form.dataset.oldEsp || '';
   const oldDoc  = form.dataset.oldDoc || '';
-  const oldHora = form.dataset.oldHora || '';
+  let preferredHour = form.dataset.oldHora || '';
 
   const tarifaUrlFrom = (doctorId) => (tarifaUrlTpl || '').replace('DOC_ID', String(doctorId));
   const slotsUrlFrom  = (doctorId, fecha) =>
@@ -56,6 +58,51 @@
     prepAyuno.textContent = option.dataset.prepAyuno || empty;
     prepAgua.textContent = option.dataset.prepAgua || empty;
     prepHorario.textContent = option.dataset.prepHorario || empty;
+  }
+
+  function markStepState(step, completed, active){
+    const node = stepItems.find((item) => Number(item.dataset.stepItem) === step);
+    if (!node) return;
+    node.classList.remove('border-teal-200', 'bg-teal-50', 'text-teal-700', 'border-emerald-200', 'bg-emerald-50', 'text-emerald-700', 'border-slate-200', 'bg-white', 'text-slate-500');
+    if (completed) {
+      node.classList.add('border-emerald-200', 'bg-emerald-50', 'text-emerald-700');
+      return;
+    }
+    if (active) {
+      node.classList.add('border-teal-200', 'bg-teal-50', 'text-teal-700');
+      return;
+    }
+    node.classList.add('border-slate-200', 'bg-white', 'text-slate-500');
+  }
+
+  function updateStepper(){
+    if (!stepItems.length) return;
+    const hasEspecialidad = Boolean(espSel && espSel.value);
+    const hasDoctor = Boolean(docSel && docSel.value);
+    const hasFechaHora = Boolean(fechaInp && fechaInp.value && horaSel && horaSel.value);
+    const hasMotivo = Boolean(document.getElementById('motivo_consulta')?.value?.trim());
+
+    const completed = {
+      1: hasEspecialidad,
+      2: hasDoctor,
+      3: hasFechaHora,
+      4: hasMotivo,
+    };
+
+    let activeStep = 1;
+    if (completed[1] && !completed[2]) activeStep = 2;
+    if (completed[2] && !completed[3]) activeStep = 3;
+    if (completed[3] && !completed[4]) activeStep = 4;
+    if (completed[4]) activeStep = 4;
+
+    [1,2,3,4].forEach((step) => {
+      markStepState(step, completed[step], step === activeStep && !completed[step]);
+    });
+
+    if (stepSummary) {
+      const nextStep = completed[4] ? 4 : activeStep;
+      stepSummary.textContent = `Paso ${nextStep} de 4`;
+    }
   }
 
   async function fetchTarifa(doctorId){
@@ -95,7 +142,7 @@
       if(!res.ok) throw new Error('HTTP '+res.status);
       const data = await res.json();
       if(!Array.isArray(data) || data.length===0){
-        docSel.innerHTML='<option value="">No hay doctores activos en esta especialidad</option>';
+        docSel.innerHTML='<option value="">No hay profesionales activos en esta especialidad</option>';
       }else{
         let opts='<option value="">Seleccionar</option>';
         for(const d of data){
@@ -105,9 +152,9 @@
         docSel.innerHTML=opts;
       }
       docSel.disabled=false;
-      if (preselectId) { await fetchTarifa(preselectId); await loadSlots(); }
+      if (preselectId) { await fetchTarifa(preselectId); }
     }catch{
-      docSel.innerHTML='<option value="">Error cargando doctores</option>';
+      docSel.innerHTML='<option value="">Error cargando profesionales</option>';
       docSel.disabled=false;
     }
   }
@@ -159,9 +206,10 @@
     }
     // objeto
     if (item && typeof item === 'object') {
+      const availability = String(item.estado ?? item.status ?? '').toLowerCase();
       const value = item.value ?? item.hora ?? item.time ?? item.start ?? item.inicio ?? null;
       const label = item.label ?? item.hora ?? item.time ?? (item.inicio && item.fin ? `${item.inicio} - ${item.fin}` : value);
-      const disabled = Boolean(item.disabled);
+      const disabled = Boolean(item.disabled) || availability === 'ocupado';
       if (!value && !label) return null;
       // Si llega {inicio,fin} sin hora concreta, usa inicio como value para crear la cita
       const val = value ?? (item.inicio ?? null);
@@ -192,7 +240,7 @@
       const hoy = new Date();
       const hoyStr = hoy.toISOString().slice(0, 10);
       const minAdelantoHoy = hoy.getHours() * 60 + hoy.getMinutes() + 60;
-      const filtrados = norm.filter((slot) => {
+      const filtrados = norm.filter((slot) => !slot.disabled).filter((slot) => {
         if (fecha !== hoyStr) return true;
         const mins = hhmmToMinutes(slot.value);
         if (mins === null) return true; // si no se puede parsear, no lo descartamos
@@ -207,12 +255,13 @@
 
       let opts = '<option value="">Seleccionar hora</option>';
       for(const s of filtrados){
-        const sel = String(oldHora || '') === String(s.value) ? ' selected' : '';
+        const sel = String(preferredHour || '') === String(s.value) ? ' selected' : '';
         const dis = s.disabled ? ' disabled' : '';
         opts += `<option value="${s.value}"${sel}${dis}>${s.label}</option>`;
       }
       horaSel.innerHTML = opts;
       horaSel.disabled = false;
+      preferredHour = '';
       horaHelp && (horaHelp.textContent = 'Formato 24h. Se listan solo los horarios disponibles.');
     }catch{
       clearSlots('Error al cargar horarios');
@@ -222,16 +271,22 @@
 
   // ---- listeners ----
   espSel && espSel.addEventListener('change', function(){
+    preferredHour = '';
     toggleLabFields(this.value);
     loadDoctors(this.value, null);
+    updateStepper();
   });
   docSel && docSel.addEventListener('change', function(){
     const id=this.value;
+    preferredHour = '';
     if(!id){ hideTarifa(); clearSlots(); return; }
     fetchTarifa(id);
     loadSlots();
+    updateStepper();
   });
-  fechaInp && fechaInp.addEventListener('change', loadSlots);
+  fechaInp && fechaInp.addEventListener('change', () => { preferredHour = ''; loadSlots(); updateStepper(); });
+  horaSel && horaSel.addEventListener('change', () => { preferredHour = horaSel.value || ''; updateStepper(); });
+  document.getElementById('motivo_consulta')?.addEventListener('input', updateStepper);
   examSel && examSel.addEventListener('change', updateLabPrep);
 
   // ---- init ----
@@ -242,5 +297,6 @@
       if (oldDoc && fechaInp && fechaInp.value) await loadSlots();
     }
     updateLabPrep();
+    updateStepper();
   })();
 })();

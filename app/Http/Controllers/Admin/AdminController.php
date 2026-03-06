@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Hash;
 use App\Models\Cita;
@@ -19,17 +18,26 @@ use Dompdf\Dompdf;
 use Dompdf\Options;
 use Illuminate\Support\Str;
 use App\Services\CitaNoShowService;
+use App\Services\ImageOptimizer;
+use Illuminate\Support\Facades\Validator;
 
 class AdminController extends Controller
 {
     // ===== Dashboard =====
-    public function dashboard()
+    public function dashboard(Request $request)
     {
         app(CitaNoShowService::class)->marcarVencidas();
         $user = Auth::user();
+        $prioridad = strtoupper(trim((string) $request->get('prioridad', '')));
+        if ($prioridad === 'ALL' || !in_array($prioridad, Cita::PRIORIDAD_NIVELES, true)) {
+            $prioridad = '';
+        }
 
         $citas = Cita::with(['paciente', 'doctor'])
-            ->orderBy('created_at', 'desc')
+            ->when($prioridad !== '', fn ($query) => $query->where('prioridad_nivel', $prioridad))
+            ->orderByRaw(Cita::prioridadOrderSql())
+            ->orderBy('fecha', 'asc')
+            ->orderBy('hora', 'asc')
             ->limit(50)
             ->get();
 
@@ -37,9 +45,9 @@ class AdminController extends Controller
         $totalCitasPendientes = Cita::where('estado', 'pendiente')->count();
         $totalCitasRealizadas = Cita::where('estado', 'realizada')->count();
         $totalCitasCanceladas = Cita::where('estado', 'cancelada')->count();
-        $totalCitasPendientesCriticas = Cita::where('estado', 'pendiente')
+        $totalCitasPendientesAlta = Cita::where('estado', 'pendiente')
             ->where('activo', true)
-            ->where('priority_level', 'critica')
+            ->where('prioridad_nivel', Cita::PRIORIDAD_ALTA)
             ->count();
         $totalPacientes       = User::whereHas('roles', fn($q) => $q->where('name', 'paciente'))->count();
         $totalDoctores        = User::whereHas('roles', fn($q) => $q->where('name', 'doctor'))->count();
@@ -50,12 +58,13 @@ class AdminController extends Controller
             'citas',
             'totalCitas',
             'totalCitasPendientes',
-            'totalCitasPendientesCriticas',
+            'totalCitasPendientesAlta',
             'totalCitasRealizadas',
             'totalCitasCanceladas',
             'totalPacientes',
             'totalDoctores',
-            'usuariosActivosHoy'
+            'usuariosActivosHoy',
+            'prioridad'
         ));
     }
 
@@ -80,7 +89,7 @@ class AdminController extends Controller
         return view('admin.perfil', compact('user'));
     }
 
-    public function actualizarPerfil(Request $request)
+    public function actualizarPerfil(Request $request, ImageOptimizer $imageOptimizer)
     {
         $user = Auth::user();
 
@@ -92,7 +101,7 @@ class AdminController extends Controller
             'direccion'         => ['required','string','max:255'],
             'fecha_nacimiento'  => ['required','date','before:today'],
             'sexo'              => ['required','in:Masculino,Femenino,Otro'],
-            'avatar'            => ['nullable','image','mimes:jpg,jpeg,png,webp','max:2048'],
+            'avatar'            => ['nullable','image','mimes:jpg,jpeg,png,webp,svg','max:2048'],
             'current_password'  => ['nullable','string'],
             'password'          => array_merge(
                 ValidationRules::passwordOptional(),
@@ -107,10 +116,11 @@ class AdminController extends Controller
         $data = $request->validate($rules, $messages);
 
         if ($request->hasFile('avatar')) {
+            $imageFolder = $this->resolveAvatarFolder($user);
             if ($user->avatar) {
-                Storage::disk('public')->delete($user->avatar);
+                $imageOptimizer->deleteByStoredPath($user->avatar, $imageFolder);
             }
-            $data['avatar'] = $request->file('avatar')->store('avatars','public');
+            $data['avatar'] = $imageOptimizer->optimizeAndStore($request->file('avatar'), $imageFolder);
         }
 
         $user->name = $data['name'];
@@ -163,7 +173,7 @@ class AdminController extends Controller
         if (empty($cols)) $cols = $allColumns;
         $request->session()->put('usuarios.cols', $cols);
 
-        $usersQ = User::with(['roles', 'especialidades'])
+        $usersQ = User::with(['roles', 'especialidades', 'patientFlag'])
             ->orderBy('created_at', 'desc')
             ->search($buscar)
             ->role($role)
@@ -174,6 +184,36 @@ class AdminController extends Controller
 
         return view('admin.usuarios', compact('users', 'roles', 'buscar', 'cols', 'allColumns', 'perPage'))
             ->with('role', $role);
+    }
+
+    public function checkEmail(Request $request)
+    {
+        $email = mb_strtolower(trim((string) $request->query('email', '')));
+        if ($email === '') {
+            return response()->json([
+                'ok' => false,
+                'available' => false,
+                'message' => 'Ingresa un correo electrónico.',
+            ], 422);
+        }
+
+        $validator = Validator::make(['email' => $email], [
+            'email' => ValidationRules::emailUnique(),
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'ok' => true,
+                'available' => false,
+                'message' => $validator->errors()->first('email'),
+            ]);
+        }
+
+        return response()->json([
+            'ok' => true,
+            'available' => true,
+            'message' => 'Correo disponible.',
+        ]);
     }
 
     // ===== CRUD usuario rápido =====
@@ -382,6 +422,19 @@ class AdminController extends Controller
         ];
     }
 
+    private function resolveAvatarFolder(User $user): string
+    {
+        if ($user->hasRole('doctor') || $user->hasRole('laboratorio')) {
+            return 'doctors';
+        }
+
+        if ($user->hasRole('paciente')) {
+            return 'patients';
+        }
+
+        return 'users';
+    }
+
     private function isPrivilegedRole(string $roleName): bool
     {
         return in_array($roleName, ['administrador', 'superadmin'], true);
@@ -414,12 +467,12 @@ class AdminController extends Controller
         return view('admin.doctor-create', compact('especialidades'));
     }
 
-    public function storeDoctor(Request $request)
+    public function storeDoctor(Request $request, ImageOptimizer $imageOptimizer)
     {
-        return $this->guardarDoctor($request);
+        return $this->guardarDoctor($request, $imageOptimizer);
     }
 
-    public function guardarDoctor(Request $request)
+    public function guardarDoctor(Request $request, ImageOptimizer $imageOptimizer)
     {
         $rules = [
             'name'             => ['required', 'string', 'max:255'],
@@ -430,7 +483,7 @@ class AdminController extends Controller
             'direccion'        => ['required', 'string', 'max:255'],
             'fecha_nacimiento' => ['required', 'date', 'before:today'],
             'sexo'             => ['required', 'in:Masculino,Femenino,Otro'],
-            'avatar'           => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'avatar'           => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,svg', 'max:2048'],
             'especialidad_id'  => ['required', 'integer', 'exists:especialidades,id'],
             'precio_consulta'  => ['required', 'numeric', 'min:0', 'max:99999999.99'],
             'moneda'           => ['required', 'in:USD'],
@@ -452,7 +505,7 @@ class AdminController extends Controller
         $user->moneda           = 'USD';
 
         if ($request->hasFile('avatar')) {
-            $user->avatar = $request->file('avatar')->store('avatars', 'public');
+            $user->avatar = $imageOptimizer->optimizeAndStore($request->file('avatar'), 'doctors');
         }
 
         $user->save();

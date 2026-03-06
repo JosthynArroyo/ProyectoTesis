@@ -1,9 +1,10 @@
 <aside class="dashboard-sidebar fixed top-0 bottom-0 left-0 z-40 h-screen -translate-x-full overflow-y-auto border-r border-slate-200/70 bg-white px-4 pb-6 pt-0 shadow-xl lg:translate-x-0 lg:shrink-0">
     <div class="top flex items-center justify-between">
-        <a href="{{ route('admin.dashboard') }}" class="flex items-center gap-3">
-            <div>
-                <p class="text-xs uppercase tracking-wide text-slate-500">Panel</p>
-                <p class="text-sm font-semibold text-slate-800">Clínica Don Bosco</p>
+        <a href="{{ route('admin.dashboard') }}" class="sidebar-brand">
+            <span class="sidebar-brand__icon"><i class="ri-hospital-line"></i></span>
+            <div class="sidebar-brand__text">
+                <small>Panel Admin</small>
+                <strong>Clínica Don Bosco</strong>
             </div>
         </a>
         <button class="close btn btn-ghost px-2 lg:hidden" aria-label="Cerrar menú">
@@ -61,10 +62,15 @@
                 Servicios
               </button>
             @endif
-            <div class="flex min-h-[40px] items-center justify-between rounded-lg px-3 py-2 text-sm font-semibold text-slate-400 opacity-70">
-              <span>Contacto</span>
-              <span class="badge">Próximamente</span>
-            </div>
+            @if($canPersonalizacion)
+              <a href="{{ route('admin.personalizacion.contacto.edit') }}" class="flex min-h-[40px] items-center rounded-lg px-3 py-2 text-sm font-semibold {{ request()->routeIs('admin.personalizacion.contacto.*') ? 'bg-white text-teal-700' : 'text-slate-600 hover:bg-white' }}">
+                Contacto
+              </a>
+            @else
+              <button type="button" data-open-personalizacion class="flex min-h-[40px] items-center rounded-lg px-3 py-2 text-left text-sm font-semibold text-slate-600 hover:bg-white">
+                Contacto
+              </button>
+            @endif
           </div>
         </details>
 
@@ -72,8 +78,12 @@
             <i class="ri-time-line text-lg"></i> Horarios
         </a>
 
-        <a href="{{ route('admin.perfil.edit') }}" class="flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors {{ request()->routeIs('admin.perfil.*') ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-50' }}">
-            <i class="ri-account-circle-line text-lg"></i> Perfil
+        <a href="{{ route('admin.pagos.index') }}" class="flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors {{ request()->routeIs('admin.pagos.*') ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-50' }}">
+            <i class="ri-wallet-3-line text-lg"></i> Gestión de pagos
+        </a>
+
+        <a href="{{ route('admin.citas.override.create') }}" class="flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors {{ request()->routeIs('admin.citas.override.*') ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-50' }}">
+            <i class="ri-calendar-check-line text-lg"></i> Agendar (override)
         </a>
 
         <a href="{{ route('admin.cambios-citas.index') }}" class="flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors {{ request()->routeIs('admin.cambios-citas.*') ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-50' }}">
@@ -84,9 +94,14 @@
             <i class="ri-file-list-2-line text-lg"></i> Historial clínico
         </a>
 
+        <a href="{{ route('admin.perfil.edit') }}" class="flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors {{ request()->routeIs('admin.perfil.*') ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-50' }}">
+            <i class="ri-account-circle-line text-lg"></i> Perfil
+        </a>
+
         <form id="logout-form" action="{{ route('salir') }}" method="POST" class="hidden">@csrf</form>
         <a href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();" class="mt-5 flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 text-rose-600 transition-colors hover:bg-rose-50">
             <i class="ri-logout-circle-r-line text-lg"></i> Cerrar sesión
         </a>
     </nav>
 </aside>
+

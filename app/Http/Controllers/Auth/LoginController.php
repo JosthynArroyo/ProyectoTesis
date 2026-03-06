@@ -18,10 +18,9 @@ class LoginController extends Controller
         $this->middleware('auth')->only('logout');
     }
 
-    // Evitar ver la pantalla /login y usar el modal del home
-    protected function showLoginForm()
+    public function showLoginForm()
     {
-        return redirect('/login=1');
+        return redirect(url('/') . '?login=1');
     }
 
     protected function validateLogin(Request $request)
@@ -48,7 +47,7 @@ class LoginController extends Controller
     {
         if (!$user->isActive()) {
             \Auth::logout();
-            return redirect()->route('login')
+            return redirect(url('/') . '?login=1')
                 ->withErrors(['email' => 'Tu cuenta está deshabilitada o suspendida.'])
                 ->with('auth_error', 'Tu cuenta está deshabilitada o suspendida.');
         }
@@ -67,7 +66,7 @@ class LoginController extends Controller
         $user = Auth::user();
 
         if ($user && !$user->isActive()) {
-            return route('login');
+            return url('/') . '?login=1';
         }
 
         if ($user && $user->hasRole('superadmin')) {
@@ -83,6 +82,11 @@ class LoginController extends Controller
         }
 
         return '/';
+    }
+
+    protected function loggedOut(Request $request)
+    {
+        return redirect('/');
     }
 
     protected function sendFailedLoginResponse(Request $request)

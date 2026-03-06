@@ -4,17 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title', 'Area de Paciente')</title>
+    @include('layouts.partials.panel-theme-head')
     @include('layouts.partials.favicon')
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2family=Sora:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.2.0/remixicon.min.css">
-    @vite(['resources/css/app.css','resources/js/app.js'])
+    @vite(['resources/css/app.css','resources/css/panel-theme.css','resources/js/app.js','resources/js/panel-theme.js'])
     @stack('head')
 </head>
-@php($hasRight = $__env->hasSection('right'))
-@php($headerTitle = trim($__env->yieldContent('header-title')) ?: 'Panel del paciente')
-@php($headerSubtitle = trim($__env->yieldContent('header-subtitle')) ?: 'Resumen personal y citas')
+@php
+    $hasRight = $__env->hasSection('right');
+    $sidebarRoutes = ['paciente.dashboard', 'paciente.citas', 'paciente.pagos.index', 'paciente.historial', 'paciente.laboratorio.index', 'paciente.laboratorio.solicitar*', 'paciente.crear-cita*', 'paciente.perfil.*'];
+    $headerTitle = trim($__env->yieldContent('header-title')) ?: 'Panel del paciente';
+    $headerSubtitle = trim($__env->yieldContent('header-subtitle')) ?: 'Resumen personal y citas';
+@endphp
 <body class="min-h-screen text-slate-900 dashboard-shell @yield('body-class')">
     <div class="min-h-screen lg:flex dashboard-layout">
         @include('paciente.partials.sidebar')
@@ -26,16 +30,23 @@
             <div class="dashboard-content flex-1 px-4 pb-10 lg:px-8">
                 @if($hasRight)
                     <div class="grid gap-6 lg:grid-cols-[1fr_320px]">
-                        <main class="space-y-6">@yield('main')</main>
+                        <main class="space-y-6">
+                            <x-layout.panel-back-button :fallback-url="route('paciente.dashboard')" :sidebar-routes="$sidebarRoutes" />
+                            @yield('main')
+                        </main>
                         <aside class="space-y-4">@yield('right')</aside>
                     </div>
                 @else
-                    <main class="space-y-6">@yield('main')</main>
+                    <main class="space-y-6">
+                        <x-layout.panel-back-button :fallback-url="route('paciente.dashboard')" :sidebar-routes="$sidebarRoutes" />
+                        @yield('main')
+                    </main>
                 @endif
             </div>
         </div>
     </div>
 
+    @stack('modals')
     @stack('scripts')
 </body>
 </html>

@@ -13,7 +13,7 @@ class ValidationRules
             'string',
             'min:8',
             'confirmed',
-            'regex:/^(=.*[A-Za-z])(=.*\\d)(=.*[^A-Za-z0-9]).{8,}$/',
+            'regex:/^(?=.*[A-Za-z])(?=.*\\d)(?=.*[^A-Za-z0-9]).{8,}$/',
         ];
     }
 
@@ -24,7 +24,7 @@ class ValidationRules
             'string',
             'min:8',
             'confirmed',
-            'regex:/^(=.*[A-Za-z])(=.*\\d)(=.*[^A-Za-z0-9]).{8,}$/',
+            'regex:/^(?=.*[A-Za-z])(?=.*\\d)(?=.*[^A-Za-z0-9]).{8,}$/',
         ];
     }
 
@@ -51,5 +51,16 @@ class ValidationRules
     public static function telefono(): array
     {
         return ['required', 'digits:10'];
+    }
+
+    public static function motivoConsulta(bool $required = true): array
+    {
+        return [
+            $required ? 'required' : 'nullable',
+            'string',
+            'min:3',
+            'max:80',
+            'regex:/^[^\r\n]+$/u',
+        ];
     }
 }

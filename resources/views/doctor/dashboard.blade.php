@@ -13,13 +13,13 @@
     @vite(['resources/js/dashboard-doctor.js'])
 @endpush
 
-@section('content')
+@section('main')
     <div class="space-y-6">
         @if(session('success'))
             <x-ui.alert tone="success">{{ session('success') }}</x-ui.alert>
         @endif
 
-        <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <section class="stat-grid">
             <x-ui.stat label="Mis citas hoy" :value="$citasHoy" tone="teal">
                 <x-slot:icon><i class="ri-calendar-line"></i></x-slot:icon>
                 <p class="text-xs text-slate-500">Agenda del día</p>
@@ -40,17 +40,20 @@
 
         <section class="grid gap-6 lg:grid-cols-[1.3fr_0.7fr]">
             <article class="card p-6">
-                <div>
-                    <p class="text-xs uppercase tracking-widest text-slate-500">Agenda</p>
-                    <h2 class="mt-2 text-lg font-semibold text-slate-900">Citas recientes</h2>
-                    <p class="text-sm text-slate-500">Actualizadas en tiempo real</p>
+                <div class="page-header">
+                    <div class="page-header__info">
+                        <p class="text-xs uppercase tracking-widest text-slate-500">Agenda</p>
+                        <h2>Citas recientes</h2>
+                        <p>Actualizadas en tiempo real</p>
+                    </div>
                 </div>
-                <div class="mt-4 table-shell">
+                <div class="mt-4 table-shell table-responsive-cards">
                     <table class="table">
                         <thead>
                             <tr>
                                 <th>Paciente</th>
                                 <th>Estado</th>
+                                <th>Prioridad</th>
                                 <th>Fecha</th>
                                 <th>Hora</th>
                             </tr>
@@ -64,12 +67,25 @@
                                             {{ $c->estado === 'no_se_presento' ? 'No se presentó' : ucfirst($c->estado) }}
                                         </x-ui.badge>
                                     </td>
+                                    <td data-label="Prioridad">
+                                        @php
+                                            $priorityTone = match($c->prioridad_nivel) {
+                                                'ALTA' => 'danger',
+                                                'MEDIA' => 'warning',
+                                                default => 'neutral',
+                                            };
+                                        @endphp
+                                        <x-ui.badge :tone="$priorityTone">{{ $c->prioridad_nivel ?? 'BAJA' }}</x-ui.badge>
+                                        @if($c->prioridad_red_flag)
+                                            <span class="badge danger">Red flag</span>
+                                        @endif
+                                    </td>
                                     <td data-label="Fecha">{{ \Illuminate\Support\Carbon::parse($c->fecha)->format('d/m/Y') }}</td>
                                     <td data-label="Hora">{{ $c->hora }}</td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="4">Sin citas para hoy.</td>
+                                    <td colspan="5">Sin citas para hoy.</td>
                                 </tr>
                             @endforelse
                         </tbody>
@@ -114,17 +130,19 @@
         </section>
 
         <section class="card p-6">
-            <div class="flex flex-wrap items-center justify-between gap-4">
-                <div>
+            <div class="page-header">
+                <div class="page-header__info">
                     <p class="text-xs uppercase tracking-widest text-slate-500">En tiempo real</p>
-                    <h2 class="mt-2 text-lg font-semibold text-slate-900">Indicadores dinámicos</h2>
+                    <h2>Indicadores dinámicos</h2>
                 </div>
-                <div class="flex items-center gap-3 rounded-xl border border-slate-200 bg-white/90 px-3 py-2">
-                    <i class="ri-calendar-line text-slate-400"></i>
-                    <input type="date" value="{{ now()->format('Y-m-d') }}" class="bg-transparent text-sm text-slate-600">
+                <div class="page-header__actions">
+                    <div class="flex items-center gap-3 rounded-xl border border-slate-200 bg-white/90 px-3 py-2">
+                        <i class="ri-calendar-line text-slate-400"></i>
+                        <input type="date" value="{{ now()->format('Y-m-d') }}" class="bg-transparent text-sm text-slate-600">
+                    </div>
                 </div>
             </div>
-            <div class="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div class="mt-4 stat-grid">
                 <div class="card p-4">
                     <p class="text-xs uppercase tracking-widest text-slate-500">Hoy</p>
                     <p class="mt-2 text-2xl font-semibold" id="k-hoy">{{ $citasHoy }}</p>

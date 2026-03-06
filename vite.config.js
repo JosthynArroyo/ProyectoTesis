@@ -16,6 +16,7 @@ export default defineConfig({
       input: [
         // CSS
         'resources/css/app.css',
+        'resources/css/panel-theme.css',
         'resources/css/login.css',
         'resources/css/register.css',
         'resources/css/welcome.css',
@@ -23,7 +24,6 @@ export default defineConfig({
         'resources/css/navbar.css',
         'resources/css/modal.css',
         'resources/css/contacto.css',
-        'resources/css/chatbot/index.css',
         'resources/css/chatbot/widget.css',
         'resources/css/panel/account-pages.css',
         'resources/css/auth/password-email.css',
@@ -38,7 +38,6 @@ export default defineConfig({
         'resources/css/paciente/editar-cita.css',
         'resources/css/paciente/paciente.css',
         'resources/css/paciente/dashboard.css',
-        'resources/css/paciente/perfil.css',
         'resources/css/paciente/perfil.css',
         'resources/css/paciente/laboratorio.css',
         //Admin
@@ -66,14 +65,14 @@ export default defineConfig({
         'resources/css/doctor/laboratorio.css',
         // Emails / PDFs
         'resources/css/emails/cita-estado.css',
-        
+
 
         // JS
         'resources/js/app.js',
+        'resources/js/panel-theme.js',
         'resources/js/bootstrap.js',
         'resources/js/sidebar-toggle.js',
         'resources/js/navbar.js',
-        'resources/js/chatbot/index.js',
         'resources/js/chatbot/widget.js',
         'resources/js/servicios.js',
         'resources/js/face-login-modal.js',
@@ -86,6 +85,7 @@ export default defineConfig({
         //Doctor
         'resources/js/doctor/agenda.js',
         'resources/js/doctor/citas.js',
+        'resources/js/doctor/laboratorio-create.js',
         'resources/js/doctor/perfil.js',
         'resources/js/doctor/recetas-editar.js',
         //Paciente
@@ -103,6 +103,7 @@ export default defineConfig({
         'resources/js/admin/horarios/index.js',
         'resources/js/admin/users/show.js',
         'resources/js/admin/cambios-citas.js',
+        'resources/js/admin/override-create.js',
         'resources/js/admin/personalizacion-modal.js',
         'resources/js/admin/personalizacion-bienvenida.js',
         'resources/js/admin/personalizacion-servicios.js',

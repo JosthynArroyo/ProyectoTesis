@@ -1,7 +1,13 @@
 @extends('layouts.superadmin')
 @section('title','Administradores')
 @section('header-title','Administradores')
-@section('header-subtitle','Gestión de cuentas de administrador')
+@section('header-subtitle','Gestion de cuentas de administrador')
+
+@php
+  $suspendTarget = old('until')
+    ? $admins->getCollection()->firstWhere('id', (int) old('admin_id'))
+    : null;
+@endphp
 
 @section('main')
 <div class="space-y-6">
@@ -20,9 +26,9 @@
 
   <form class="card p-5" method="GET" action="{{ route('superadmin.admins.index') }}">
     <div class="flex flex-wrap gap-4">
-      <div class="flex flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2">
+      <div class="inline-control-shell flex-1">
         <i class="ri-search-line text-slate-400"></i>
-        <input type="search" name="buscar" value="{{ $buscar ?? '' }}" placeholder="Buscar por nombre, correo o cédula" class="w-full bg-transparent text-sm text-slate-700" required>
+        <input type="search" name="buscar" value="{{ $buscar ?? '' }}" placeholder="Buscar por nombre, correo o cedula" required>
       </div>
       @error('buscar')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
       <select class="form-select" name="per_page" onchange="this.form.submit()" required>
@@ -35,15 +41,12 @@
     </div>
   </form>
 
-  @if ($errors->any())
-    <x-ui.alert tone="error">@foreach ($errors->all() as $e)<div>{{ $e }}</div>@endforeach</x-ui.alert>
-  @endif
   @if (session('success'))
     <x-ui.alert tone="success">{{ session('success') }}</x-ui.alert>
   @endif
 
   <div class="card p-0">
-    <div class="table-shell users">
+    <div class="table-shell users table-responsive-cards">
       <table class="table users" role="region" aria-label="Listado de administradores">
         <thead>
           <tr>
@@ -54,23 +57,30 @@
           </tr>
         </thead>
         <tbody>
-        @foreach($admins as $admin)
+        @forelse($admins as $admin)
           @php
             $estado = $admin->status ?? 'active';
             $isSusp = $admin->suspended_until && now()->lt($admin->suspended_until);
-            $rowError = (string)old('admin_id') === (string)$admin->id;
           @endphp
           <form id="delete-{{ $admin->id }}" action="{{ route('superadmin.admins.destroy', $admin) }}" method="POST">@csrf @method('DELETE')</form>
-          <form id="block-{{ $admin->id }}" action="{{ route('superadmin.admins.block', $admin) }}" method="POST">@csrf @method('PATCH')</form>
-          <form id="suspend-{{ $admin->id }}" action="{{ route('superadmin.admins.suspend', $admin) }}" method="POST">
-            @csrf @method('PATCH')
-            <input type="hidden" name="admin_id" value="{{ $admin->id }}">
+          <form id="block-{{ $admin->id }}" action="{{ route('superadmin.admins.block', $admin) }}" method="POST">
+            @csrf
+            @method('PATCH')
+            <input type="hidden" name="reason" value="Bloqueo manual">
           </form>
-          <form id="activate-{{ $admin->id }}" action="{{ route('superadmin.admins.activate', $admin) }}" method="POST">@csrf @method('PATCH')</form>
-          <form id="deactivate-{{ $admin->id }}" action="{{ route('superadmin.admins.deactivate', $admin) }}" method="POST">@csrf @method('PATCH')</form>
+          <form id="activate-{{ $admin->id }}" action="{{ route('superadmin.admins.activate', $admin) }}" method="POST">
+            @csrf
+            @method('PATCH')
+            <input type="hidden" name="reason" value="">
+          </form>
+          <form id="deactivate-{{ $admin->id }}" action="{{ route('superadmin.admins.deactivate', $admin) }}" method="POST">
+            @csrf
+            @method('PATCH')
+            <input type="hidden" name="reason" value="Inactivacion manual">
+          </form>
 
-          <tr>
-            <td>
+          <tr data-user-row>
+            <td data-label="Administrador">
               <div class="flex items-center gap-3">
                 <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-sm font-semibold text-slate-600">{{ \Illuminate\Support\Str::substr($admin->name,0,1) }}</div>
                 <div>
@@ -79,7 +89,7 @@
                 </div>
               </div>
             </td>
-            <td>
+            <td data-label="Contacto">
               <div class="space-y-1">
                 <div class="text-sm text-slate-700">{{ $admin->email }}</div>
                 @if(!empty($admin->telefono))
@@ -87,75 +97,99 @@
                 @endif
               </div>
             </td>
-            <td>
+            <td data-label="Estado">
               <div class="space-y-1">
-                @if($estado==='blocked')
+                @if($estado === 'blocked')
                   <span class="badge danger">Bloqueado</span>
-                @elseif($estado==='inactive')
+                @elseif($estado === 'inactive')
                   <span class="badge danger">Inactivo</span>
                 @elseif($isSusp)
                   <span class="badge warning">Suspendido</span>
                 @else
                   <span class="badge success">Activo</span>
                 @endif
-                <span class="text-xs text-slate-500">Último acceso: {{ $admin->last_login_at?->diffForHumans() ?? 'N/D' }}</span>
+                <span class="text-xs text-slate-500">Ultimo acceso: {{ $admin->last_login_at?->diffForHumans() ?? 'N/D' }}</span>
               </div>
             </td>
-            <td>
+            <td data-label="Acciones">
               <div class="table-actions">
-                <a class="btn btn-outline" href="{{ route('superadmin.admins.edit', $admin) }}" title="Editar">
-                  <i class="ri-edit-line"></i>
+                <a class="btn btn-outline btn-sm" href="{{ route('superadmin.admins.edit', $admin) }}">
+                  <i class="ri-edit-line"></i> Editar
                 </a>
-                <button form="delete-{{ $admin->id }}" type="submit" class="btn btn-outline" onclick="return confirm('Eliminar administrador {{ $admin->name }}');" title="Eliminar">
-                  <i class="ri-delete-bin-line"></i>
-                </button>
-                @if($estado !== 'blocked')
-                  <button form="block-{{ $admin->id }}" type="submit" class="btn btn-outline" onclick="return confirm('Bloquear a {{ $admin->name }}');" title="Bloquear">
-                    <i class="ri-forbid-line"></i>
+                <div class="relative">
+                  <button type="button" class="btn btn-outline btn-sm" data-kebab="admin-actions-{{ $admin->id }}" aria-label="Mas acciones para {{ $admin->name }}">
+                    <i class="ri-more-2-fill"></i>
                   </button>
-                @endif
-                @if($estado !== 'inactive')
-                  <button form="deactivate-{{ $admin->id }}" type="submit" class="btn btn-outline" onclick="return confirm('Marcar inactivo a {{ $admin->name }}');" title="Inactivar">
-                    <i class="ri-user-unfollow-line"></i>
-                  </button>
-                @endif
-                <button type="button" class="btn btn-outline" onclick="openSuspend('{{ $admin->id }}')" title="Suspender">
-                  <i class="ri-timer-line"></i>
-                </button>
-                @if($estado!=='active' || $isSusp)
-                  <button form="activate-{{ $admin->id }}" type="submit" class="btn btn-outline" onclick="return confirm('Reactivar acceso de {{ $admin->name }}');" title="Reactivar">
-                    <i class="ri-user-follow-line"></i>
-                  </button>
-                @endif
-              </div>
-              <input type="hidden" form="block-{{ $admin->id }}" name="reason" value="Bloqueo manual">
-              <input type="hidden" form="deactivate-{{ $admin->id }}" name="reason" value="Inactivación manual">
-              <input type="hidden" form="activate-{{ $admin->id }}" name="reason" value="">
-            </td>
-          </tr>
-
-          <tr id="susp-row-{{ $admin->id }}" style="display:none;">
-            <td colspan="4" class="bg-slate-50/60">
-              <div class="m-4 rounded-2xl border border-dashed border-slate-200 bg-white p-4">
-                  <div class="action-group">
-                    <div class="font-semibold text-slate-700">Suspender hasta:</div>
-                  <input class="form-input w-full sm:w-auto sm:max-w-[240px]" form="suspend-{{ $admin->id }}" type="datetime-local" name="until" required>
-                  @if($rowError)
-                    @error('until')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
-                  @endif
-                  <input class="form-input w-full sm:flex-1 sm:min-w-[220px]" form="suspend-{{ $admin->id }}" type="text" name="reason" placeholder="Motivo de suspensión" required>
-                  @if($rowError)
-                    @error('reason')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
-                  @endif
-                  <button class="btn btn-primary" form="suspend-{{ $admin->id }}" type="submit">
-                    <i class="ri-time-line"></i> Confirmar
-                  </button>
-                  <button class="btn btn-outline" type="button" onclick="closeSuspend('{{ $admin->id }}')">Cancelar</button>
+                  <div id="admin-actions-{{ $admin->id }}" class="kebab-menu" role="menu">
+                    <button
+                      type="button"
+                      class="btn btn-ghost btn-sm justify-start"
+                      data-suspend-open
+                      data-suspend-id="{{ $admin->id }}"
+                      data-suspend-name="{{ $admin->name }}"
+                      data-suspend-title="Suspender administrador"
+                      data-suspend-action="{{ route('superadmin.admins.suspend', $admin) }}"
+                    >
+                      <i class="ri-timer-line"></i> Suspender
+                    </button>
+                    @if($estado !== 'blocked')
+                      <button
+                        type="button"
+                        class="btn btn-ghost btn-sm justify-start"
+                        data-confirm-form="block-{{ $admin->id }}"
+                        data-confirm-title="Bloquear administrador"
+                        data-confirm-message="Se bloqueara el acceso de {{ $admin->name }}."
+                        data-confirm-button="Bloquear"
+                      >
+                        <i class="ri-forbid-line"></i> Bloquear
+                      </button>
+                    @endif
+                    @if($estado !== 'inactive')
+                      <button
+                        type="button"
+                        class="btn btn-ghost btn-sm justify-start"
+                        data-confirm-form="deactivate-{{ $admin->id }}"
+                        data-confirm-title="Inactivar administrador"
+                        data-confirm-message="La cuenta de {{ $admin->name }} quedara inactiva."
+                        data-confirm-button="Inactivar"
+                      >
+                        <i class="ri-user-unfollow-line"></i> Inactivar
+                      </button>
+                    @endif
+                    @if($estado !== 'active' || $isSusp)
+                      <button
+                        type="button"
+                        class="btn btn-ghost btn-sm justify-start"
+                        data-confirm-form="activate-{{ $admin->id }}"
+                        data-confirm-title="Reactivar acceso"
+                        data-confirm-message="Se restaurara el acceso de {{ $admin->name }}."
+                        data-confirm-button="Reactivar"
+                      >
+                        <i class="ri-user-follow-line"></i> Reactivar
+                      </button>
+                    @endif
+                    <button
+                      type="button"
+                      class="btn btn-ghost btn-sm justify-start text-rose-600"
+                      data-confirm-form="delete-{{ $admin->id }}"
+                      data-confirm-title="Eliminar administrador"
+                      data-confirm-message="Se eliminara la cuenta de {{ $admin->name }}."
+                      data-confirm-button="Eliminar"
+                    >
+                      <i class="ri-delete-bin-line"></i> Eliminar
+                    </button>
+                  </div>
                 </div>
               </div>
             </td>
           </tr>
-        @endforeach
+        @empty
+          <tr>
+            <td colspan="4">
+              <x-ui.empty-state title="No hay administradores para mostrar." message="Ajusta la busqueda o crea una nueva cuenta de administrador desde esta misma pantalla." />
+            </td>
+          </tr>
+        @endforelse
         </tbody>
       </table>
     </div>
@@ -163,7 +197,7 @@
     <div class="flex flex-wrap items-center justify-between gap-4 px-6 py-4 text-sm text-slate-500">
       <div>
         @if ($admins->hasPages())
-          Página {{ $admins->currentPage() }} de {{ $admins->lastPage() }}
+          Pagina {{ $admins->currentPage() }} de {{ $admins->lastPage() }}
         @else
           Mostrando {{ $admins->count() }} registros
         @endif
@@ -173,7 +207,76 @@
   </div>
 </div>
 
+<div class="modal modal--sheet" data-confirm-sheet aria-hidden="true">
+  <div class="modal-backdrop" data-sheet-close></div>
+  <div class="modal-dialog modal-dialog--sheet" role="document" tabindex="-1">
+    <div class="card modal-sheet p-6">
+      <div class="flex items-center justify-between gap-3 border-b border-slate-100 pb-4">
+        <div>
+          <p class="text-xs uppercase tracking-widest text-slate-500">Confirmacion</p>
+          <h3 class="mt-2 text-lg font-semibold text-slate-900" data-confirm-title>Confirmar accion</h3>
+        </div>
+        <button type="button" class="btn btn-ghost px-2" data-sheet-close aria-label="Cerrar">
+          <i class="ri-close-line"></i>
+        </button>
+      </div>
+      <p class="mt-4 text-sm text-slate-600" data-confirm-message>Confirma para continuar.</p>
+      <div class="mt-6 flex flex-wrap justify-end gap-3">
+        <button type="button" class="btn btn-outline" data-sheet-close>Cancelar</button>
+        <button type="button" class="btn btn-primary" data-confirm-submit>Confirmar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal modal--sheet" data-suspend-sheet aria-hidden="true" @if($suspendTarget) data-open-on-load="1" @endif>
+  <div class="modal-backdrop" data-sheet-close></div>
+  <div class="modal-dialog modal-dialog--sheet" role="document" tabindex="-1">
+    <div class="card modal-sheet p-6">
+      <div class="flex items-center justify-between gap-3 border-b border-slate-100 pb-4">
+        <div>
+          <p class="text-xs uppercase tracking-widest text-slate-500">Suspension</p>
+          <h3 class="mt-2 text-lg font-semibold text-slate-900" data-suspend-title>Suspender administrador</h3>
+          <p class="text-sm text-slate-500">Cuenta: <span data-suspend-name>{{ $suspendTarget?->name ?? 'Administrador' }}</span></p>
+        </div>
+        <button type="button" class="btn btn-ghost px-2" data-sheet-close aria-label="Cerrar">
+          <i class="ri-close-line"></i>
+        </button>
+      </div>
+
+      <form
+        method="POST"
+        class="mt-4 space-y-4"
+        data-suspend-sheet-form
+        action="{{ $suspendTarget ? route('superadmin.admins.suspend', $suspendTarget) : '' }}"
+      >
+        @csrf
+        @method('PATCH')
+        <input type="hidden" name="admin_id" value="{{ old('admin_id') }}">
+
+        <div>
+          <label class="form-label" for="sheet-admin-until">Suspender hasta</label>
+          <input id="sheet-admin-until" class="form-input" type="datetime-local" name="until" value="{{ old('until') }}" required>
+          @error('until')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
+        </div>
+
+        <div>
+          <label class="form-label" for="sheet-admin-reason">Motivo</label>
+          <input id="sheet-admin-reason" class="form-input" type="text" name="reason" value="{{ old('reason') }}" placeholder="Motivo de suspension" required>
+          @error('reason')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
+        </div>
+
+        <div class="flex flex-wrap justify-end gap-3">
+          <button type="button" class="btn btn-outline" data-sheet-close>Cancelar</button>
+          <button class="btn btn-primary" type="submit">Guardar suspension</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 @push('scripts')
   @vite('resources/js/admin/usuarios.js')
 @endpush
 @endsection
+

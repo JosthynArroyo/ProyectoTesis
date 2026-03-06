@@ -1,7 +1,7 @@
 @extends('layouts.superadmin')
-@section('title','Solicitudes de personalización')
+@section('title','Solicitudes de personalizaciÃ³n')
 @section('header-title','Solicitudes')
-@section('header-subtitle','Permisos de acceso a personalización')
+@section('header-subtitle','Permisos de acceso a personalizaciÃ³n')
 
 @section('main')
 <div class="space-y-6">
@@ -9,7 +9,7 @@
     <div class="flex flex-wrap items-center justify-between gap-4">
       <div>
         <p class="text-xs uppercase tracking-widest text-slate-500">Permisos</p>
-        <h1 class="mt-2 text-2xl font-semibold text-slate-900">Solicitudes de personalización</h1>
+        <h1 class="mt-2 text-2xl font-semibold text-slate-900">Solicitudes de personalizaciÃ³n</h1>
         <p class="text-slate-600">Aprueba o rechaza accesos solicitados por administradores.</p>
       </div>
     </div>
@@ -27,16 +27,13 @@
     </div>
   </form>
 
-  @if ($errors->any())
-    <x-ui.alert tone="error">@foreach ($errors->all() as $e)<div>{{ $e }}</div>@endforeach</x-ui.alert>
-  @endif
   @if (session('success'))
     <x-ui.alert tone="success">{{ session('success') }}</x-ui.alert>
   @endif
 
   <div class="card p-0">
     <div class="table-shell">
-      <table class="table" role="region" aria-label="Solicitudes de personalización">
+      <table class="table" role="region" aria-label="Solicitudes de personalizaciÃ³n">
         <thead>
           <tr>
             <th>Admin</th>
@@ -134,7 +131,7 @@
     <div class="flex flex-wrap items-center justify-between gap-4 px-6 py-4 text-sm text-slate-500">
       <div>
         @if ($requests->hasPages())
-          Página {{ $requests->currentPage() }} de {{ $requests->lastPage() }}
+          PÃ¡gina {{ $requests->currentPage() }} de {{ $requests->lastPage() }}
         @else
           Mostrando {{ $requests->count() }} registros
         @endif
@@ -144,3 +141,4 @@
   </div>
 </div>
 @endsection
+

@@ -129,7 +129,7 @@ class CambioEstadoCitaMail extends Mailable
                 $mensaje = $esAutor ? 'Aceptaste la cita.' : 'Tu cita fue aceptada.';
             }
         } elseif ($evento === 'prioridad') {
-            $nivel = ucfirst((string) ($this->cita->priority_level ?? 'baja'));
+            $nivel = ucfirst(strtolower((string) ($this->cita->prioridad_nivel ?? 'BAJA')));
             if ($rol === 'doctor') {
                 $mensaje = 'La prioridad de esta cita se actualizo a '.$nivel.'.';
             } else {

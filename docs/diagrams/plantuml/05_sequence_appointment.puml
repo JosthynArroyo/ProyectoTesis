@@ -1,0 +1,84 @@
+@startuml
+autonumber
+skinparam shadowing false
+
+actor Paciente
+participant "crear-cita.js" as JS
+participant Router
+participant "EnsureNoPendingPaymentsForBooking" as BookingGuard
+participant CitaController
+participant PagoService
+participant PriorityEvaluator
+participant Horario
+participant Cita
+participant LaboratorioOrden
+database "SQLite / tablas clinicas" as DB
+
+note over JS
+La vista `resources/views/paciente/crear-cita.blade.php`
+usa `resources/js/paciente/crear-cita.js`
+para consultar doctores, tarifa y slots antes
+de enviar el formulario principal.
+end note
+
+Paciente -> Router: POST /paciente/crear-cita
+Router -> BookingGuard: middleware no_pending_payments
+BookingGuard -> PagoService: pacienteTieneBloqueo(Auth::id())
+PagoService -> DB: query pagos bloqueantes
+DB --> PagoService: bloqueado / libre
+
+alt tiene pagos pendientes
+  BookingGuard --> Paciente: redirect /paciente/pagos + error
+else puede continuar
+  BookingGuard -> CitaController: store(request, PriorityEvaluator)
+  CitaController -> CitaController: validar doctor, especialidad,\nfecha, hora y motivo
+
+  alt especialidad = Laboratorio Clinico
+    CitaController -> DB: validar que doctor_id tenga rol laboratorio
+  end
+
+  CitaController -> CitaController: validar anticipacion >= 1 hora
+  CitaController -> Horario: horarioParaSlot(doctor, fecha, hora)
+  Horario -> DB: buscar horario del profesional
+  DB --> Horario: horario o null
+  CitaController -> CitaController: validar alineacion del slot
+
+  CitaController -> Cita: consultar citas activas del profesional
+  Cita -> DB: SELECT citas del dia
+  DB --> Cita: citas existentes
+
+  alt sin horario o existe choque
+    CitaController --> Paciente: redirect back con errores
+  else datos validos
+    CitaController -> PriorityEvaluator: sanitizeMotivo()
+    PriorityEvaluator --> CitaController: motivo normalizado
+
+    CitaController -> DB: begin transaction
+    CitaController -> Cita: create(estado=pendiente, activo=true)
+    Cita -> DB: INSERT citas_medicas
+
+    CitaController -> PriorityEvaluator: apply(cita)
+    PriorityEvaluator -> DB: cargar paciente y patient_flags si hace falta
+    DB --> PriorityEvaluator: datos de vulnerabilidad
+    PriorityEvaluator --> CitaController: prioridad calculada
+    CitaController -> Cita: save()
+    Cita -> DB: UPDATE prioridad
+
+    opt cita de laboratorio
+      CitaController -> LaboratorioOrden: create(origen='paciente')
+      LaboratorioOrden -> DB: INSERT laboratorio_ordenes
+    end
+
+    CitaController -> DB: commit
+    note right of CitaController
+      Despues del commit:
+      - dispatch CitaAgendada
+      - dispatch EnviarConfirmacionCitaJob
+      - listeners crean factura borrador
+        y pago pendiente
+    end note
+    CitaController --> Paciente: redirect /paciente/citas + success
+  end
+end
+
+@enduml

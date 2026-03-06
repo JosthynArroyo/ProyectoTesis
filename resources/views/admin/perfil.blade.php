@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @section('title','Perfil del administrador')
 @section('header-title','Perfil')
-@section('header-subtitle','Actualiza tu información y seguridad')
+@section('header-subtitle','Actualiza tu informaciÃ³n y seguridad')
 
 @section('main')
   <div class="space-y-6">
@@ -19,8 +19,20 @@
     <div class="grid gap-6 lg:grid-cols-[0.7fr_1.3fr]">
       <aside class="card p-6">
         <div class="avatar flex flex-col items-center text-center">
+          @php
+            $imageUrlService = $imageUrl ?? app(\App\Support\ImageUrl::class);
+            $avatarImage = $imageUrlService->variants($user->avatar, 'users', 'user');
+          @endphp
           <div class="relative">
-            <img id="avatarPreview" src="{{ $user->avatar ? asset('storage/'.$user->avatar) : asset('img/doctor1.jpg') }}" alt="Avatar" class="h-32 w-32 rounded-3xl object-cover">
+            <img
+              id="avatarPreview"
+              src="{{ $avatarImage['thumb'] }}"
+              @if($avatarImage['srcset']) srcset="{{ $avatarImage['srcset'] }}" sizes="128px" @endif
+              alt="Avatar"
+              class="h-32 w-32 rounded-3xl object-cover"
+              loading="eager"
+              decoding="async"
+            >
             <button type="button" id="changePhoto" class="absolute inset-x-2 bottom-2 rounded-full bg-slate-900/70 px-3 py-1 text-xs font-semibold text-white">Cambiar foto</button>
           </div>
           <h2 class="mt-4 text-lg font-semibold text-slate-900">{{ $user->name }}</h2>
@@ -40,23 +52,18 @@
 
       <section class="card p-6">
         <div>
-          <p class="text-xs uppercase tracking-widest text-slate-500">Información y seguridad</p>
+          <p class="text-xs uppercase tracking-widest text-slate-500">InformaciÃ³n y seguridad</p>
           <h3 class="mt-2 text-lg font-semibold text-slate-900">Datos del administrador</h3>
-          <p class="text-sm text-slate-500">Los cambios se aplican inmediatamente después de guardar.</p>
+          <p class="text-sm text-slate-500">Los cambios se aplican inmediatamente despuÃ©s de guardar.</p>
         </div>
 
         @if(session('success'))
           <x-ui.alert tone="success" class="mt-4">{{ session('success') }}</x-ui.alert>
         @endif
-        @if ($errors->any())
-          <x-ui.alert tone="error" class="mt-4">
-            <ul>@foreach ($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
-          </x-ui.alert>
-        @endif
 
         <form method="POST" action="{{ route('admin.perfil.update') }}" enctype="multipart/form-data" class="mt-6 space-y-6">
           @csrf
-          <input id="avatarInput" type="file" name="avatar" accept="image/png,image/jpeg,image/jpg,image/webp" hidden>
+          <input id="avatarInput" type="file" name="avatar" accept="image/png,image/jpeg,image/jpg,image/webp,image/svg+xml" hidden>
 
           <section>
             <h4 class="text-sm font-semibold text-slate-700">Datos principales</h4>
@@ -67,30 +74,30 @@
                 @error('name')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
               </div>
               <div>
-                <label class="form-label">Correo electrónico</label>
+                <label class="form-label">Correo electrÃ³nico</label>
                 <input class="form-input" type="email" name="email" value="{{ old('email', $user->email) }}" required>
                 @error('email')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
               </div>
               <div>
-                <label class="form-label">Teléfono</label>
+                <label class="form-label">TelÃ©fono</label>
                 <input class="form-input" type="tel" name="telefono" value="{{ old('telefono', $user->telefono) }}" inputmode="numeric" pattern="\d{10}" minlength="10" maxlength="10" data-digits="10" placeholder="0998740927" required>
-                <div class="text-xs text-slate-500">Formato: 10 dígitos.</div>
+                <div class="text-xs text-slate-500">Formato: 10 dÃ­gitos.</div>
                 @error('telefono')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
               </div>
               <div>
-                <label class="form-label">Cédula</label>
+                <label class="form-label">CÃ©dula</label>
                 <input class="form-input" type="text" name="dni" value="{{ old('dni', $user->dni) }}" inputmode="numeric" pattern="\d{10}" minlength="10" maxlength="10" data-digits="10" placeholder="1723456789" required>
-                <div class="text-xs text-slate-500">Exactamente 10 dígitos.</div>
+                <div class="text-xs text-slate-500">Exactamente 10 dÃ­gitos.</div>
                 @error('dni')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
               </div>
             </div>
           </section>
 
           <section>
-            <h4 class="text-sm font-semibold text-slate-700">Información adicional</h4>
+            <h4 class="text-sm font-semibold text-slate-700">InformaciÃ³n adicional</h4>
             <div class="mt-4 grid gap-4 md:grid-cols-2">
               <div>
-                <label class="form-label">Dirección</label>
+                <label class="form-label">DirecciÃ³n</label>
                 <input class="form-input" type="text" name="direccion" value="{{ old('direccion', $user->direccion) }}" required>
                 @error('direccion')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
               </div>
@@ -115,30 +122,30 @@
           <section>
             <div class="flex flex-wrap items-center justify-between gap-3">
               <h4 class="text-sm font-semibold text-slate-700">Seguridad</h4>
-              <span class="text-xs text-slate-500">Protege tu cuenta con contraseña y rostro.</span>
+              <span class="text-xs text-slate-500">Protege tu cuenta con contraseÃ±a y rostro.</span>
             </div>
             <div class="mt-4 grid gap-4 md:grid-cols-2">
               <div>
-                <label class="form-label">Contraseña actual</label>
+                <label class="form-label">ContraseÃ±a actual</label>
                 <div class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2">
-                  <input class="flex-1 bg-transparent text-sm" type="password" name="current_password" id="current_password" autocomplete="current-password" placeholder="••••••••">
+                  <input class="flex-1 bg-transparent text-sm" type="password" name="current_password" id="current_password" autocomplete="current-password" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢">
                   <button type="button" class="btn-eye" data-target="#current_password" aria-label="Mostrar u ocultar"><i class="ri-eye-line"></i></button>
                 </div>
                 @error('current_password')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
               </div>
               <div>
-                <label class="form-label">Nueva contraseña</label>
+                <label class="form-label">Nueva contraseÃ±a</label>
                 <div class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2">
-                  <input class="flex-1 bg-transparent text-sm" type="password" name="password" id="password" autocomplete="new-password" minlength="8" placeholder="Mín. 8 caracteres">
+                  <input class="flex-1 bg-transparent text-sm" type="password" name="password" id="password" autocomplete="new-password" minlength="8" placeholder="MÃ­n. 8 caracteres">
                   <button type="button" class="btn-eye" data-target="#password" aria-label="Mostrar u ocultar"><i class="ri-eye-line"></i></button>
                 </div>
-                <div class="text-xs text-slate-500">Mínimo 8 caracteres e incluye letras, números y un carácter especial.</div>
+                <div class="text-xs text-slate-500">MÃ­nimo 8 caracteres e incluye letras, nÃºmeros y un carÃ¡cter especial.</div>
                 @error('password')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
               </div>
               <div>
-                <label class="form-label">Confirmar nueva contraseña</label>
+                <label class="form-label">Confirmar nueva contraseÃ±a</label>
                 <div class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2">
-                  <input class="flex-1 bg-transparent text-sm" type="password" name="password_confirmation" id="password_confirmation" autocomplete="new-password" minlength="8" placeholder="Repite la contraseña">
+                  <input class="flex-1 bg-transparent text-sm" type="password" name="password_confirmation" id="password_confirmation" autocomplete="new-password" minlength="8" placeholder="Repite la contraseÃ±a">
                   <button type="button" class="btn-eye" data-target="#password_confirmation" aria-label="Mostrar u ocultar"><i class="ri-eye-line"></i></button>
                 </div>
                 @error('password_confirmation')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
@@ -150,14 +157,14 @@
             <div class="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h4 class="text-sm font-semibold text-slate-700">Reconocimiento facial</h4>
-                <p class="text-xs text-slate-500">Registro facial para inicio de sesión.</p>
+                <p class="text-xs text-slate-500">Registro facial para inicio de sesiÃ³n.</p>
               </div>
             </div>
             <div class="mt-4 grid gap-4 md:grid-cols-[1.2fr_0.8fr]">
               <div class="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-900">
                 <video id="faceEnrollVideo" autoplay muted playsinline class="h-56 w-full object-cover"></video>
                 <div id="faceEnrollOverlay" class="absolute inset-0 flex items-center justify-center bg-slate-900/60 text-sm text-white">
-                  {{ $user->faceProfile ? 'Rostro registrado.' : 'Cámara lista para captura.' }}
+                  {{ $user->faceProfile ? 'Rostro registrado.' : 'CÃ¡mara lista para captura.' }}
                 </div>
               </div>
               <div class="space-y-3">
@@ -204,3 +211,4 @@
 @push('scripts')
   @vite(['resources/js/admin/perfil.js'])
 @endpush
+

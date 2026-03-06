@@ -130,12 +130,12 @@
         @error('home_about_label')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
       <div>
-        <label class="form-label" for="home_about_title">Titulo</label>
+        <label class="form-label" for="home_about_title">Título</label>
         <input class="form-input" id="home_about_title" name="home_about_title" value="{{ old('home_about_title', $settings['home.about_title'] ?? '') }}" required>
         @error('home_about_title')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
       <div class="md:col-span-2">
-        <label class="form-label" for="home_about_body">Descripcion</label>
+        <label class="form-label" for="home_about_body">Descripción</label>
         <textarea class="form-textarea" id="home_about_body" name="home_about_body" rows="3" required>{{ old('home_about_body', $settings['home.about_body'] ?? '') }}</textarea>
         @error('home_about_body')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
@@ -154,12 +154,12 @@
         @error('home_services_label')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
       <div>
-        <label class="form-label" for="home_services_title">Titulo</label>
+        <label class="form-label" for="home_services_title">Título</label>
         <input class="form-input" id="home_services_title" name="home_services_title" value="{{ old('home_services_title', $settings['home.services_title'] ?? '') }}" required>
         @error('home_services_title')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
       <div class="md:col-span-2">
-        <label class="form-label" for="home_services_subtitle">Subtitulo</label>
+        <label class="form-label" for="home_services_subtitle">Subtítulo</label>
         <input class="form-input" id="home_services_subtitle" name="home_services_subtitle" value="{{ old('home_services_subtitle', $settings['home.services_subtitle'] ?? '') }}" required>
         @error('home_services_subtitle')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
@@ -183,12 +183,12 @@
         @error('home_team_label')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
       <div>
-        <label class="form-label" for="home_team_title">Titulo</label>
+        <label class="form-label" for="home_team_title">Título</label>
         <input class="form-input" id="home_team_title" name="home_team_title" value="{{ old('home_team_title', $settings['home.team_title'] ?? '') }}" required>
         @error('home_team_title')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
       <div class="md:col-span-2">
-        <label class="form-label" for="home_team_subtitle">Subtitulo</label>
+        <label class="form-label" for="home_team_subtitle">Subtítulo</label>
         <input class="form-input" id="home_team_subtitle" name="home_team_subtitle" value="{{ old('home_team_subtitle', $settings['home.team_subtitle'] ?? '') }}" required>
         @error('home_team_subtitle')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
@@ -207,12 +207,12 @@
     </div>
     <div class="mt-4 grid gap-4 md:grid-cols-2">
       <div>
-        <label class="form-label" for="services_title">Titulo</label>
+        <label class="form-label" for="services_title">Título</label>
         <input class="form-input" id="services_title" name="services_title" value="{{ old('services_title', $settings['services.title'] ?? '') }}" required>
         @error('services_title')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
       <div>
-        <label class="form-label" for="services_subtitle">Subtitulo</label>
+        <label class="form-label" for="services_subtitle">Subtítulo</label>
         <input class="form-input" id="services_subtitle" name="services_subtitle" value="{{ old('services_subtitle', $settings['services.subtitle'] ?? '') }}" required>
         @error('services_subtitle')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
@@ -231,12 +231,12 @@
     </div>
     <div class="mt-4 grid gap-4 md:grid-cols-2">
       <div>
-        <label class="form-label" for="contact_title">Titulo</label>
+        <label class="form-label" for="contact_title">Título</label>
         <input class="form-input" id="contact_title" name="contact_title" value="{{ old('contact_title', $settings['contact.title'] ?? '') }}" required>
         @error('contact_title')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
       <div>
-        <label class="form-label" for="contact_subtitle">Subtitulo</label>
+        <label class="form-label" for="contact_subtitle">Subtítulo</label>
         <input class="form-input" id="contact_subtitle" name="contact_subtitle" value="{{ old('contact_subtitle', $settings['contact.subtitle'] ?? '') }}" required>
         @error('contact_subtitle')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
@@ -256,7 +256,7 @@
         @error('contact_hours')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
       <div>
-        <label class="form-label" for="contact_form_title">Titulo formulario</label>
+        <label class="form-label" for="contact_form_title">Título formulario</label>
         <input class="form-input" id="contact_form_title" name="contact_form_title" value="{{ old('contact_form_title', $settings['contact.form_title'] ?? '') }}" required>
         @error('contact_form_title')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>

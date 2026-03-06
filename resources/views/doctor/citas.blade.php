@@ -1,28 +1,29 @@
-@extends('layouts.doctor')
+﻿@extends('layouts.doctor')
 @section('title', 'Mis citas (doctor)')
 @section('activeSidebar', 'citas')
 @section('header-title','Mis citas')
 @section('header-subtitle','Gestiona tus citas activas')
 
-@section('content')
+@section('main')
 @php
   $estadoFiltro = $estado ?? '';
+  $prioridadFiltro = $prioridad ?? '';
 @endphp
 <section class="appointments-page space-y-6"
          data-csrf="{{ csrf_token() }}"
          data-check-url="{{ route('doctor.disponibilidad.check') }}"
          data-plan-url="{{ route('doctor.citas.proxima.planificada',['cita'=>'__ID__']) }}"
          data-slots-url="{{ route('api.doctor.slots',['doctor'=>'__D__','fecha'=>'__F__']) }}"
-         data-login-url="{{ route('login') }}">
+         data-login-url="{{ url('/') . '?login=1' }}">
   <header class="card p-6">
-    <div class="flex flex-wrap items-center justify-between gap-4">
-      <div>
+    <div class="page-header">
+      <div class="page-header__info">
         <p class="text-xs uppercase tracking-widest text-slate-500">Panel médico</p>
         <h1 class="mt-2 text-2xl font-semibold text-slate-900">Mis citas</h1>
         <p class="text-slate-600">Revisa y gestiona tus citas con acciones rápidas.</p>
       </div>
-      <div class="flex items-center gap-2">
-        <button id="btn-refresh" class="btn btn-outline" type="button">
+      <div class="page-header__actions">
+        <button id="btn-refresh" class="btn btn-outline btn-sm" type="button">
           <i class="ri-refresh-line"></i> Actualizar
         </button>
       </div>
@@ -49,25 +50,35 @@
           </select>
           @error('estado')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
         </div>
-        <button class="btn btn-primary" type="submit">
+        <div>
+          <label for="prioridad" class="form-label">Prioridad</label>
+          <select id="prioridad" name="prioridad" class="form-select" required>
+            <option value="all" @selected($prioridadFiltro==='' || $prioridadFiltro==='all')>Todas</option>
+            <option value="ALTA" @selected($prioridadFiltro === 'ALTA')>ALTA</option>
+            <option value="MEDIA" @selected($prioridadFiltro === 'MEDIA')>MEDIA</option>
+            <option value="BAJA" @selected($prioridadFiltro === 'BAJA')>BAJA</option>
+          </select>
+          @error('prioridad')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
+        </div>
+        <button class="btn btn-primary btn-sm" type="submit">
           <i class="ri-filter-3-line"></i> Filtrar
         </button>
-        @if($estadoFiltro !== '')
-          <a class="btn btn-ghost" href="{{ route('doctor.citas') }}">Limpiar</a>
+        @if($estadoFiltro !== '' || $prioridadFiltro !== '')
+          <a class="btn btn-ghost btn-sm" href="{{ route('doctor.citas') }}">Limpiar</a>
         @endif
       </form>
       <div class="flex flex-wrap gap-2">
-        <a class="btn btn-outline" href="{{ route('doctor.citas.export.excel', request()->query()) }}">
+        <a class="btn btn-outline btn-sm btn-full-mobile" href="{{ route('doctor.citas.export.excel', request()->query()) }}">
           <i class="ri-file-excel-2-line"></i> Exportar Excel
         </a>
-        <a class="btn btn-outline" href="{{ route('doctor.citas.export.pdf', request()->query()) }}">
+        <a class="btn btn-outline btn-sm btn-full-mobile" href="{{ route('doctor.citas.export.pdf', request()->query()) }}">
           <i class="ri-file-pdf-line"></i> Exportar PDF
         </a>
       </div>
     </div>
 
-    <div class="mt-4 table-shell">
-      <table class="table appointments-table mobile-cards" id="tabla-citas">
+    <div class="mt-4 table-shell table-responsive-cards">
+      <table class="table appointments-table" id="tabla-citas">
         <thead>
           <tr>
             <th class="col-idx">#</th>
@@ -76,6 +87,7 @@
             <th>Fecha</th>
             <th>Hora</th>
             <th>Estado</th>
+            <th>Prioridad</th>
             <th class="text-right">Acciones</th>
           </tr>
         </thead>
@@ -92,15 +104,15 @@
                 default => 'neutral',
               };
               $soapEstado = $cita->notaSoap?->estado ?? null;
-              $priorityLevel = $cita->priority_level ?? 'baja';
-              $priorityLabel = [
-                'baja' => 'Baja',
-                'media' => 'Media',
-                'alta' => 'Alta',
-                'critica' => 'Crítica',
-              ];
+              $priorityLevel = $cita->prioridad_nivel ?? 'BAJA';
+              $priorityTone = match($priorityLevel) {
+                'ALTA' => 'danger',
+                'MEDIA' => 'warning',
+                default => 'neutral',
+              };
+              $prioridadUrl = route('doctor.citas.prioridad.edit', $cita).'?redirect_to='.urlencode(request()->fullUrl());
             @endphp
-            <tr class="{{ $estado === 'pendiente' && $priorityLevel === 'critica' ? 'priority-row priority-row--critica' : '' }}">
+            <tr class="{{ $estado === 'pendiente' && $priorityLevel === 'ALTA' ? 'priority-row priority-row--alta' : '' }}">
               <td data-label="#" class="col-idx">{{ $loop->iteration }}</td>
               <td data-label="Paciente">{{ optional($cita->paciente)->name ?? '—' }}</td>
               <td data-label="Especialidad">{{ optional($cita->especialidad)->nombre ?? '—' }}</td>
@@ -110,8 +122,11 @@
                 <x-ui.badge :tone="$badge">
                   {{ $estado === 'no_se_presento' ? 'No se presentó' : ucfirst($estado) }}
                 </x-ui.badge>
-                @if($estado === 'pendiente')
-                  <span class="badge warning">{{ $priorityLabel[$priorityLevel] ?? 'Baja' }}</span>
+              </td>
+              <td data-label="Prioridad">
+                <x-ui.badge :tone="$priorityTone">{{ $priorityLevel }}</x-ui.badge>
+                @if($cita->prioridad_red_flag)
+                  <span class="badge danger">Red flag</span>
                 @endif
               </td>
 
@@ -120,6 +135,11 @@
                   <i class="ri-more-2-line"></i>
                 </button>
                 <div class="actions-scroll table-actions">
+                  <div class="row-actions flex flex-wrap gap-2">
+                    <a href="{{ $prioridadUrl }}" class="btn btn-outline">
+                      <i class="ri-flag-2-line"></i> Ajustar prioridad
+                    </a>
+                  </div>
 
                   @if($estado === 'pendiente')
                     <div class="row-actions flex flex-wrap gap-2">
@@ -166,8 +186,10 @@
                   @if($estado === 'realizada')
                     @php
                       $px = $cita->proxima_cita ?? null;
-                      $hayProxima = $px && \Carbon\Carbon::parse($px->fecha)
-                                    ->gte(\Carbon\Carbon::now('America/Guayaquil')->startOfDay());
+                      $hayProxima = $px
+                                    && ($px->activo ?? false)
+                                    && !in_array($px->estado, ['cancelada', 'realizada', 'no_se_presento'], true)
+                                    && \Carbon\Carbon::parse($px->fecha)->gte(\Carbon\Carbon::now('America/Guayaquil')->startOfDay());
                     @endphp
 
                     <div class="stack space-y-2">
@@ -243,7 +265,7 @@
     <div id="toast-warn" class="toast-warn is-hidden">
       No tienes horarios configurados esta semana.
       <div class="toast-warn-actions">
-        <a href="{{ route('doctor.horario.index') }}" class="btn btn-outline">Ir a “Mi horario”</a>
+        <a href="{{ route('doctor.horario.index') }}" class="btn btn-outline">Ir a "Mi horario"</a>
       </div>
     </div>
 

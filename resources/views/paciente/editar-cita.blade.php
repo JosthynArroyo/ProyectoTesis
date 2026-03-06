@@ -73,6 +73,26 @@
                     <div class="text-xs text-slate-500" id="horaHelp">Formato 24 horas. Se muestran solo horarios disponibles.</div>
                 </div>
 
+                <div class="md:col-span-2">
+                    <label for="motivo_consulta" class="form-label">Motivo de consulta</label>
+                    <input id="motivo_consulta"
+                           type="text"
+                           name="motivo_consulta"
+                           value="{{ old('motivo_consulta', $cita->motivo_consulta) }}"
+                           required
+                           minlength="3"
+                           maxlength="80"
+                           class="form-input"
+                           placeholder="Ej: dolor de garganta">
+                    @error('motivo_consulta')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
+                    <div class="mt-1 text-xs text-slate-500">Campo obligatorio, breve y en una sola linea (3-80 caracteres).</div>
+                    <div class="mt-2 flex flex-wrap gap-2" data-motivo-chip-group data-target="#motivo_consulta">
+                        @foreach(['Fiebre','Dolor de garganta','Dolor abdominal','Tos','Dolor de cabeza','Nauseas','Diarrea','Malestar general'] as $chip)
+                            <button type="button" class="chip" data-motivo-chip="{{ $chip }}">{{ $chip }}</button>
+                        @endforeach
+                    </div>
+                </div>
+
                 <div class="md:col-span-2 flex justify-end">
                     <button type="submit" class="btn btn-primary">Guardar cambios</button>
                 </div>
