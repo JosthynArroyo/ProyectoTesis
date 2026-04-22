@@ -12,12 +12,12 @@ class EnsureNoPendingPaymentsForBooking
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
-        if (!$user || !$user->hasRole('paciente')) {
+        if (! $user || ! $user->hasRole('paciente')) {
             return $next($request);
         }
 
         $pagoService = app(PagoService::class);
-        if (!$pagoService->pacienteTieneBloqueo($user->id)) {
+        if (! $pagoService->pacienteTieneBloqueo($user->id)) {
             return $next($request);
         }
 

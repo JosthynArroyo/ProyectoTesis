@@ -1,7 +1,7 @@
 @extends('layouts.superadmin')
 @section('title','Administradores')
 @section('header-title','Administradores')
-@section('header-subtitle','Gestion de cuentas de administrador')
+@section('header-subtitle','Gestión de cuentas de administrador')
 
 @php
   $suspendTarget = old('until')
@@ -11,27 +11,21 @@
 
 @section('main')
 <div class="space-y-6">
-  <section class="card p-6">
-    <div class="flex flex-wrap items-center justify-between gap-4">
-      <div>
-        <p class="text-xs uppercase tracking-widest text-slate-500">Superadmin</p>
-        <h1 class="mt-2 text-2xl font-semibold text-slate-900">Cuentas de administrador</h1>
-        <p class="text-slate-600">Solo el superadmin puede crear y administrar cuentas de administrador.</p>
-      </div>
-      <a class="btn btn-primary" href="{{ route('superadmin.admins.create') }}">
-        <i class="ri-user-add-line"></i> Crear administrador
-      </a>
-    </div>
-  </section>
+  <p class="sr-only">Cuentas de administrador</p>
+  <div class="panel-action-bar">
+    <a class="btn btn-primary" href="{{ route('superadmin.admins.create') }}">
+      <i class="ri-user-add-line"></i> Crear administrador
+    </a>
+  </div>
 
   <form class="card p-5" method="GET" action="{{ route('superadmin.admins.index') }}">
     <div class="flex flex-wrap gap-4">
       <div class="inline-control-shell flex-1">
         <i class="ri-search-line text-slate-400"></i>
-        <input type="search" name="buscar" value="{{ $buscar ?? '' }}" placeholder="Buscar por nombre, correo o cedula" required>
+        <input type="search" name="buscar" value="{{ $buscar ?? '' }}" placeholder="Buscar por nombre, correo o cédula">
       </div>
       @error('buscar')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
-      <select class="form-select" name="per_page" onchange="this.form.submit()" required>
+      <select class="form-select" name="per_page" onchange="this.form.submit()">
         @foreach([12,24,48] as $pp)
           <option value="{{ $pp }}" @selected(($perPage ?? 12) == $pp)>{{ $pp }}/pag</option>
         @endforeach
@@ -46,7 +40,7 @@
   @endif
 
   <div class="card p-0">
-    <div class="table-shell users table-responsive-cards">
+    <div class="table-shell table-shell--overflow-visible users table-responsive-cards">
       <table class="table users" role="region" aria-label="Listado de administradores">
         <thead>
           <tr>
@@ -76,7 +70,7 @@
           <form id="deactivate-{{ $admin->id }}" action="{{ route('superadmin.admins.deactivate', $admin) }}" method="POST">
             @csrf
             @method('PATCH')
-            <input type="hidden" name="reason" value="Inactivacion manual">
+            <input type="hidden" name="reason" value="Inactivación manual">
           </form>
 
           <tr data-user-row>
@@ -108,7 +102,7 @@
                 @else
                   <span class="badge success">Activo</span>
                 @endif
-                <span class="text-xs text-slate-500">Ultimo acceso: {{ $admin->last_login_at?->diffForHumans() ?? 'N/D' }}</span>
+                <span class="text-xs text-slate-500">Último acceso: {{ $admin->last_login_at?->diffForHumans() ?? 'N/D' }}</span>
               </div>
             </td>
             <td data-label="Acciones">
@@ -117,7 +111,7 @@
                   <i class="ri-edit-line"></i> Editar
                 </a>
                 <div class="relative">
-                  <button type="button" class="btn btn-outline btn-sm" data-kebab="admin-actions-{{ $admin->id }}" aria-label="Mas acciones para {{ $admin->name }}">
+                  <button type="button" class="btn btn-outline btn-sm" data-kebab="admin-actions-{{ $admin->id }}" data-kebab-placement="top" aria-label="Más acciones para {{ $admin->name }}">
                     <i class="ri-more-2-fill"></i>
                   </button>
                   <div id="admin-actions-{{ $admin->id }}" class="kebab-menu" role="menu">
@@ -186,7 +180,7 @@
         @empty
           <tr>
             <td colspan="4">
-              <x-ui.empty-state title="No hay administradores para mostrar." message="Ajusta la busqueda o crea una nueva cuenta de administrador desde esta misma pantalla." />
+              <x-ui.empty-state title="No hay administradores para mostrar." message="Ajusta la búsqueda o crea una nueva cuenta de administrador desde esta misma pantalla." />
             </td>
           </tr>
         @endforelse
@@ -197,7 +191,7 @@
     <div class="flex flex-wrap items-center justify-between gap-4 px-6 py-4 text-sm text-slate-500">
       <div>
         @if ($admins->hasPages())
-          Pagina {{ $admins->currentPage() }} de {{ $admins->lastPage() }}
+          Página {{ $admins->currentPage() }} de {{ $admins->lastPage() }}
         @else
           Mostrando {{ $admins->count() }} registros
         @endif
@@ -213,8 +207,8 @@
     <div class="card modal-sheet p-6">
       <div class="flex items-center justify-between gap-3 border-b border-slate-100 pb-4">
         <div>
-          <p class="text-xs uppercase tracking-widest text-slate-500">Confirmacion</p>
-          <h3 class="mt-2 text-lg font-semibold text-slate-900" data-confirm-title>Confirmar accion</h3>
+          <p class="text-xs uppercase tracking-widest text-slate-500">Confirmación</p>
+          <h3 class="mt-2 text-lg font-semibold text-slate-900" data-confirm-title>Confirmar acción</h3>
         </div>
         <button type="button" class="btn btn-ghost px-2" data-sheet-close aria-label="Cerrar">
           <i class="ri-close-line"></i>
@@ -235,7 +229,7 @@
     <div class="card modal-sheet p-6">
       <div class="flex items-center justify-between gap-3 border-b border-slate-100 pb-4">
         <div>
-          <p class="text-xs uppercase tracking-widest text-slate-500">Suspension</p>
+          <p class="text-xs uppercase tracking-widest text-slate-500">Suspensión</p>
           <h3 class="mt-2 text-lg font-semibold text-slate-900" data-suspend-title>Suspender administrador</h3>
           <p class="text-sm text-slate-500">Cuenta: <span data-suspend-name>{{ $suspendTarget?->name ?? 'Administrador' }}</span></p>
         </div>
@@ -262,13 +256,13 @@
 
         <div>
           <label class="form-label" for="sheet-admin-reason">Motivo</label>
-          <input id="sheet-admin-reason" class="form-input" type="text" name="reason" value="{{ old('reason') }}" placeholder="Motivo de suspension" required>
+          <input id="sheet-admin-reason" class="form-input" type="text" name="reason" value="{{ old('reason') }}" placeholder="Motivo de suspensión" required>
           @error('reason')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
         </div>
 
         <div class="flex flex-wrap justify-end gap-3">
           <button type="button" class="btn btn-outline" data-sheet-close>Cancelar</button>
-          <button class="btn btn-primary" type="submit">Guardar suspension</button>
+          <button class="btn btn-primary" type="submit">Guardar suspensión</button>
         </div>
       </form>
     </div>

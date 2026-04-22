@@ -9,12 +9,17 @@ use Carbon\Carbon;
 class PriorityEvaluator
 {
     public const NIVEL_BAJA = 'BAJA';
+
     public const NIVEL_MEDIA = 'MEDIA';
+
     public const NIVEL_ALTA = 'ALTA';
 
     public const FUENTE_AUTOMATICA = 'AUTOMATICA';
+
     public const FUENTE_REGLA_RED_FLAG = 'REGLA_RED_FLAG';
+
     public const FUENTE_REGLA_VULNERABILIDAD = 'REGLA_VULNERABILIDAD';
+
     public const FUENTE_MANUAL = 'MANUAL';
 
     private const RED_FLAGS = [
@@ -113,7 +118,7 @@ class PriorityEvaluator
     private function resolveVulnerability(?User $patient): array
     {
         $adultoMayor = false;
-        if (!empty($patient?->fecha_nacimiento)) {
+        if (! empty($patient?->fecha_nacimiento)) {
             try {
                 $adultoMayor = Carbon::parse($patient->fecha_nacimiento)->age >= 65;
             } catch (\Throwable $e) {
@@ -165,4 +170,3 @@ class PriorityEvaluator
         return trim($normalized);
     }
 }
-

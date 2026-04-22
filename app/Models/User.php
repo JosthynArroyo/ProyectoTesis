@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Notifications\CustomResetPasswordNotification;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -11,6 +12,12 @@ use Illuminate\Notifications\Notifiable;
 class User extends Authenticatable
 {
     use HasFactory, Notifiable;
+
+    public const STATUS_ACTIVE = 'active';
+
+    public const STATUS_INACTIVE = 'inactive';
+
+    public const STATUS_BLOCKED = 'blocked';
 
     protected $fillable = [
         'name',
@@ -39,15 +46,45 @@ class User extends Authenticatable
     ];
 
     protected $casts = [
+        'active' => 'boolean',
         'email_verified_at' => 'datetime',
-        'password'          => 'hashed',
-        'fecha_nacimiento'  => 'date',
-        'theme_preference'  => 'string',
-        'precio_consulta'   => 'decimal:2',
-        'last_login_at'     => 'datetime',
-        'last_activity_at'  => 'datetime',
-        'suspended_until'   => 'datetime',
+        'password' => 'hashed',
+        'fecha_nacimiento' => 'date',
+        'theme_preference' => 'string',
+        'precio_consulta' => 'decimal:2',
+        'last_login_at' => 'datetime',
+        'last_activity_at' => 'datetime',
+        'suspended_until' => 'datetime',
     ];
+
+    protected static function booted(): void
+    {
+        static::saving(function (self $user): void {
+            $statusDirty = $user->isDirty('status');
+            $activeDirty = $user->isDirty('active');
+
+            $status = $statusDirty
+                ? $user->normalizeStatus($user->status)
+                : (string) ($user->status ?? '');
+
+            if ($status === '') {
+                if ($activeDirty) {
+                    $status = $user->active ? self::STATUS_ACTIVE : self::STATUS_INACTIVE;
+                } else {
+                    $status = self::STATUS_ACTIVE;
+                }
+            } elseif ($activeDirty && ! $statusDirty) {
+                $status = $user->active ? self::STATUS_ACTIVE : self::STATUS_INACTIVE;
+            }
+
+            $user->status = $status;
+            $user->active = $status === self::STATUS_ACTIVE;
+
+            if ($status !== self::STATUS_ACTIVE && ! $user->isDirty('suspended_until')) {
+                $user->suspended_until = null;
+            }
+        });
+    }
 
     public function roles()
     {
@@ -92,7 +129,14 @@ class User extends Authenticatable
 
     public function hasRole(string $roleName): bool
     {
-        return $this->roles()->where('name', $roleName)->exists();
+        $roleName = trim($roleName);
+        if ($roleName === '') {
+            return false;
+        }
+
+        $this->loadMissing('roles');
+
+        return $this->roles->contains('name', $roleName);
     }
 
     public function hasPendingPaymentBlocks(): bool
@@ -100,18 +144,42 @@ class User extends Authenticatable
         return $this->pagos()->conBloqueoAgendamiento()->exists();
     }
 
-    public function isBlocked(): bool   { return $this->status === 'blocked'; }
-    public function isInactive(): bool  { return $this->status === 'inactive'; }
-    public function isSuspended(): bool { return $this->suspended_until && now()->lt($this->suspended_until); }
-    public function isActive(): bool    { return $this->status === 'active' && !$this->isSuspended(); }
+    public function isBlocked(): bool
+    {
+        return $this->status === self::STATUS_BLOCKED;
+    }
+
+    public function isInactive(): bool
+    {
+        return $this->status === self::STATUS_INACTIVE;
+    }
+
+    public function isSuspended(): bool
+    {
+        return $this->suspended_until && now()->lt($this->suspended_until);
+    }
+
+    public function isActive(): bool
+    {
+        return $this->status === self::STATUS_ACTIVE && ! $this->isSuspended();
+    }
 
     public function scopeOnlyActive($q)
     {
-        return $q->where('status', 'active')
+        return $q->where('status', self::STATUS_ACTIVE)
             ->where(function ($qq) {
                 $qq->whereNull('suspended_until')
-                   ->orWhere('suspended_until', '<=', now());
+                    ->orWhere('suspended_until', '<=', now());
             });
+    }
+
+    protected function normalizeStatus(?string $status): string
+    {
+        return match (trim(strtolower((string) $status))) {
+            self::STATUS_INACTIVE => self::STATUS_INACTIVE,
+            self::STATUS_BLOCKED => self::STATUS_BLOCKED,
+            default => self::STATUS_ACTIVE,
+        };
     }
 
     public function scopeDoctors($q)
@@ -121,21 +189,27 @@ class User extends Authenticatable
 
     public function scopeRole($q, string $role)
     {
-        if (!$role) return $q;
+        if (! $role) {
+            return $q;
+        }
+
         return $q->whereHas('roles', fn ($r) => $r->where('name', $role));
     }
 
     public function scopeSearch($q, string $term)
     {
         $term = trim((string) $term);
-        if ($term === '') return $q;
+        if ($term === '') {
+            return $q;
+        }
 
         $like = '%'.$term.'%';
+
         return $q->where(function ($w) use ($like) {
             $w->where('name', 'like', $like)
-              ->orWhere('email', 'like', $like)
-              ->orWhere('dni', 'like', $like)
-              ->orWhere('telefono', 'like', $like);
+                ->orWhere('email', 'like', $like)
+                ->orWhere('dni', 'like', $like)
+                ->orWhere('telefono', 'like', $like);
         });
     }
 
@@ -149,8 +223,18 @@ class User extends Authenticatable
         return $this->hasOne(PatientFlag::class);
     }
 
+    public function clinicalRecord(): HasOne
+    {
+        return $this->hasOne(ClinicalRecord::class, 'patient_id');
+    }
+
     public function featureAccessRequests()
     {
         return $this->hasMany(FeatureAccessRequest::class);
+    }
+
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new CustomResetPasswordNotification($token));
     }
 }

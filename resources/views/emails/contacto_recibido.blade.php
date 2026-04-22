@@ -1,100 +1,58 @@
 @php
-  $brandDark = '#0f172a';
-  $brandMain = '#0f766e';
-  $brandLite = '#f8fafc';
-  $border = '#e2e8f0';
-  $text = '#0f172a';
+    $nombre = $datos['nombre'] ?? '-';
+    $email = $datos['email'] ?? null;
+    $telefono = $datos['telefono'] ?? 'No indicado';
+    $asunto = $datos['asunto'] ?? 'Sin asunto';
+    $mensaje = $datos['mensaje'] ?? 'Sin contenido';
 @endphp
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="utf-8">
-  <meta name="x-apple-disable-message-reformatting">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Nuevo contacto</title>
-</head>
-<body style="margin:0;padding:0;background:{{ $brandLite }};font-family:'Segoe UI', Arial, sans-serif;color:{{ $text }};">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:{{ $brandLite }};padding:24px 0;">
-    <tr>
-      <td align="center">
-        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:92%;background:#ffffff;border:1px solid {{ $border }};border-radius:16px;overflow:hidden;box-shadow:0 10px 30px rgba(15,23,42,0.08);">
-          <tr>
-            <td style="padding:18px 20px;background:#0f766e;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td style="width:56px;" valign="middle">
-                    <img src="{{ asset('img/logo-welcomeBlanco.jpg') }}" alt="Don Bosco" width="48" height="48" style="display:block;border:0;outline:none;">
-                  </td>
-                  <td valign="middle" align="left">
-                    <div style="font-size:18px;line-height:1.2;font-weight:800;color:#ffffff;">Don Bosco</div>
-                    <div style="font-size:12px;color:#ccfbf1;">Nuevo mensaje de contacto</div>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
 
-          <tr>
-            <td style="padding:18px 20px 6px;">
-              <h1 style="margin:0;font-size:18px;line-height:1.35;color:{{ $brandDark }};">Detalles del mensaje</h1>
+<x-email.layout
+    eyebrow="Contacto web"
+    title="Nuevo mensaje recibido"
+    intro="Se registró una nueva solicitud desde el formulario de contacto del sitio web."
+    badge="Revisar y responder"
+    preheader="Nuevo mensaje enviado desde el formulario público de la clínica."
+    footer-note="Este mensaje fue generado automáticamente desde la sección de contacto del sitio."
+>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%; border-collapse:separate; border-spacing:0; border:1px solid #dbe4ee; border-radius:22px; overflow:hidden; background:#ffffff;">
+        <tr>
+            <td style="width:34%; padding:14px 18px; border-bottom:1px solid #eef2f7; background:#f8fafc; font-size:13px; font-weight:700; color:#64748b;">Nombre</td>
+            <td style="padding:14px 18px; border-bottom:1px solid #eef2f7; font-size:14px; font-weight:600; color:#0f172a;">{{ $nombre }}</td>
+        </tr>
+        <tr>
+            <td style="padding:14px 18px; border-bottom:1px solid #eef2f7; background:#f8fafc; font-size:13px; font-weight:700; color:#64748b;">Correo electrónico</td>
+            <td style="padding:14px 18px; border-bottom:1px solid #eef2f7; font-size:14px; font-weight:600; color:#0f172a;">
+                @if ($email)
+                    <a href="mailto:{{ $email }}" style="color:#0f766e; text-decoration:none;">{{ $email }}</a>
+                @else
+                    -
+                @endif
             </td>
-          </tr>
+        </tr>
+        <tr>
+            <td style="padding:14px 18px; border-bottom:1px solid #eef2f7; background:#f8fafc; font-size:13px; font-weight:700; color:#64748b;">Teléfono</td>
+            <td style="padding:14px 18px; border-bottom:1px solid #eef2f7; font-size:14px; font-weight:600; color:#0f172a;">{{ $telefono }}</td>
+        </tr>
+        <tr>
+            <td style="padding:14px 18px; background:#f8fafc; font-size:13px; font-weight:700; color:#64748b;">Asunto</td>
+            <td style="padding:14px 18px; font-size:14px; font-weight:600; color:#0f172a;">{{ $asunto }}</td>
+        </tr>
+    </table>
 
-          <tr>
-            <td style="padding:8px 20px 0;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid {{ $border }};border-radius:12px;overflow:hidden;">
-                @php
-                  $rows = [
-                    'Nombre' => $datos['nombre'] ?? '-',
-                    'Correo electrónico' => $datos['email'] ?? '-',
-                    'Teléfono' => $datos['telefono'] ?? 'No indicado',
-                    'Asunto' => $datos['asunto'] ?? 'Sin asunto',
-                  ];
-                @endphp
-                @foreach($rows as $k => $v)
-                  <tr>
-                    <td style="width:160px;padding:10px 12px;border-bottom:1px solid {{ $border }};background:#f1f5f9;font-weight:700;font-size:13px;">{{ $k }}</td>
-                    <td style="padding:10px 12px;border-bottom:1px solid {{ $border }};font-size:13px;">
-                      @if($k === 'Correo electrónico' && !empty($datos['email']))
-                        <a href="mailto:{{ $datos['email'] }}" style="color:{{ $brandMain }};text-decoration:none;">{{ $v }}</a>
-                      @else
-                        {{ $v }}
-                      @endif
-                    </td>
-                  </tr>
-                @endforeach
-              </table>
-            </td>
-          </tr>
+    <div style="margin-top:20px; padding:20px; border-radius:22px; background:#f8fafc; border:1px solid #dbe4ee;">
+        <div style="font-size:13px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#0f766e;">
+            Mensaje
+        </div>
+        <div style="margin-top:12px; font-size:14px; line-height:1.75; color:#334155; white-space:pre-wrap;">
+            {{ $mensaje }}
+        </div>
+    </div>
 
-          <tr>
-            <td style="padding:16px 20px 8px;">
-              <div style="font-size:13px;font-weight:700;margin-bottom:6px;color:{{ $brandDark }};">Mensaje</div>
-              <div style="font-size:14px;line-height:1.55;white-space:pre-wrap;border:1px solid {{ $border }};border-radius:12px;padding:12px;background:#ffffff;">
-                {{ $datos['mensaje'] }}
-              </div>
-            </td>
-          </tr>
-
-          <tr>
-            <td style="padding:10px 20px 22px;">
-              <a href="mailto:{{ $datos['email'] ?? '' }}"
-                 style="display:inline-block;background:{{ $brandMain }};color:#ffffff;text-decoration:none;padding:10px 16px;border-radius:10px;font-size:14px;font-weight:700;">
-                Responder
-              </a>
-            </td>
-          </tr>
-
-          <tr>
-            <td style="padding:12px 20px;background:#f1f5f9;border-top:1px solid {{ $border }};">
-              <div style="font-size:12px;color:#64748b;">
-                Este correo fue generado por el formulario de contacto del sitio.
-              </div>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
+    @if ($email)
+        <x-slot:actions>
+            <a href="mailto:{{ $email }}" style="display:inline-block; padding:14px 24px; border-radius:14px; background:#0f766e; color:#ffffff; text-decoration:none; font-size:14px; font-weight:700;">
+                Responder al remitente
+            </a>
+        </x-slot:actions>
+    @endif
+</x-email.layout>

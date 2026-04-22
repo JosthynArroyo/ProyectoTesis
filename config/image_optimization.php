@@ -41,4 +41,3 @@ return [
         'banner' => 'img/placeholders/banner.svg',
     ],
 ];
-

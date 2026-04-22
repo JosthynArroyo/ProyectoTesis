@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\LabTest;
+use Illuminate\Database\Seeder;
 
 class LabTestsSeeder extends Seeder
 {

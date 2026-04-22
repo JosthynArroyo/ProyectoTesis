@@ -6,16 +6,9 @@
 
 @section('main')
   <div class="space-y-6">
-    <section class="card p-6">
-      <div class="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <p class="text-xs uppercase tracking-widest text-slate-500">Laboratorio</p>
-          <h1 class="mt-2 text-2xl font-semibold text-slate-900">Flujo continuo</h1>
-          <p class="text-slate-600">Cola en tiempo real con bloques de 5 min. La duración se calcula automáticamente por examen.</p>
-        </div>
-        <button type="button" class="btn btn-outline">Ingreso prioritario</button>
-      </div>
-    </section>
+    <div class="panel-action-bar">
+      <button type="button" class="btn btn-outline">Ingreso prioritario</button>
+    </div>
 
     @php($indicadores = $indicadores ?? [])
     <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

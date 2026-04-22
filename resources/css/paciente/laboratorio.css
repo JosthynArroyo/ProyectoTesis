@@ -60,7 +60,7 @@ body.paciente-body--laboratorio main{margin:0;padding:0;background:transparent;w
 }
 .page-hero .eyebrow{
   text-transform:uppercase;
-  letter-spacing:.08em;
+  letter-spacing:0;
   font-size:.78rem;
   color:var(--lb-muted);
   margin:0;
@@ -70,7 +70,7 @@ body.paciente-body--laboratorio main{margin:0;padding:0;background:transparent;w
 .page-hero .lede{margin:0;color:var(--lb-muted)}
 .eyebrow{
   text-transform:uppercase;
-  letter-spacing:.08em;
+  letter-spacing:0;
   font-size:.78rem;
   color:var(--lb-muted);
   margin:0;

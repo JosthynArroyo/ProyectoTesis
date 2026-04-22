@@ -7,8 +7,8 @@ use App\Models\LandingWelcomeSlide;
 use App\Models\User;
 use App\Services\ImageOptimizer;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Symfony\Component\Finder\Finder;
 use Throwable;
@@ -31,6 +31,7 @@ class OptimizeExistingImages extends Command
         $references = $this->collectReferences();
         if (empty($references)) {
             $this->warn('No se encontraron imagenes para procesar.');
+
             return self::SUCCESS;
         }
 
@@ -41,6 +42,7 @@ class OptimizeExistingImages extends Command
         foreach ($references as $reference) {
             if ($folderFilter && $reference['folder'] !== $folderFilter) {
                 $skipped++;
+
                 continue;
             }
 
@@ -51,11 +53,13 @@ class OptimizeExistingImages extends Command
             $source = $this->resolveSource($optimizer, $reference['path']);
             if (! $source) {
                 $skipped++;
+
                 continue;
             }
 
             if (Str::startsWith($source['normalized'], 'images/')) {
                 $skipped++;
+
                 continue;
             }
 
@@ -72,6 +76,7 @@ class OptimizeExistingImages extends Command
 
             if ($dryRun) {
                 $processed++;
+
                 continue;
             }
 
@@ -93,11 +98,13 @@ class OptimizeExistingImages extends Command
                 if (! $result) {
                     $failed++;
                     $this->warn('  - No se pudo optimizar: '.$source['normalized']);
+
                     continue;
                 }
             } catch (Throwable $exception) {
                 $failed++;
                 $this->warn('  - Error: '.$exception->getMessage());
+
                 continue;
             }
 
@@ -242,7 +249,7 @@ class OptimizeExistingImages extends Command
             return [];
         }
 
-        $finder = (new Finder())
+        $finder = (new Finder)
             ->files()
             ->in($absoluteDirectory)
             ->name('/\.(jpg|jpeg|png|webp|svg)$/i');
@@ -322,6 +329,7 @@ class OptimizeExistingImages extends Command
         }
 
         $limit = max(0, (int) $value);
+
         return $limit > 0 ? $limit : null;
     }
 

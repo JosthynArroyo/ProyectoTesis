@@ -13,9 +13,13 @@
     </div>
 
     @php
-      $featureStatus = app(\App\Services\FeatureAccessService::class)->status(auth()->user(), 'personalizacion');
+      $layoutMetrics = $adminLayoutMetrics ?? [];
+      $featureStatus = $layoutMetrics['personalizacion'] ?? ['can_access' => false, 'pending' => false, 'expires_at' => null];
+      $recordatoriosPendientes = (int) ($layoutMetrics['recordatoriosPendientes'] ?? 0);
       $canPersonalizacion = $featureStatus['can_access'] ?? false;
       $pendingPersonalizacion = $featureStatus['pending'] ?? false;
+      $isUsuariosSection = request()->routeIs('admin.usuarios.*') && ! request()->routeIs('admin.usuarios.create');
+      $personalizacionOpen = request()->routeIs('admin.personalizacion.*');
     @endphp
 
     <nav class="mt-7 flex flex-col gap-1.5 text-[0.95rem] font-semibold leading-6">
@@ -23,7 +27,8 @@
             <i class="ri-dashboard-line text-lg"></i> Inicio
         </a>
 
-        @php($isUsuariosSection = request()->routeIs('admin.usuarios.*') && !request()->routeIs('admin.usuarios.create'))
+        <p class="mt-4 px-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Gestión</p>
+
         <a href="{{ route('admin.usuarios.index') }}" class="flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors {{ $isUsuariosSection ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-50' }}">
             <i class="ri-group-line text-lg"></i> Usuarios
         </a>
@@ -32,7 +37,6 @@
             <i class="ri-user-add-line text-lg"></i> Registrar usuario
         </a>
 
-        @php($personalizacionOpen = request()->routeIs('admin.personalizacion.*'))
         <details class="group rounded-xl {{ $personalizacionOpen ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-50' }}" {{ $personalizacionOpen ? 'open' : '' }}>
           <summary class="flex min-h-[44px] cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-3 py-2.5 transition-colors">
             <span class="flex items-center gap-3"><i class="ri-palette-line text-lg"></i> Personalización</span>
@@ -45,57 +49,76 @@
           </summary>
           <div class="mb-2 flex flex-col gap-1 pl-11 pr-3">
             @if($canPersonalizacion)
-              <a href="{{ route('admin.personalizacion.bienvenida.edit') }}" class="flex min-h-[40px] items-center rounded-lg px-3 py-2 text-sm font-semibold {{ request()->routeIs('admin.personalizacion.bienvenida.*') ? 'bg-white text-teal-700' : 'text-slate-600 hover:bg-white' }}">
+              <a href="{{ route('admin.personalizacion.bienvenida.edit') }}" class="panel-subaction-button {{ request()->routeIs('admin.personalizacion.bienvenida.*') ? 'border-slate-200 bg-white text-teal-700 shadow-sm' : '' }}">
                 Bienvenida
               </a>
             @else
-              <button type="button" data-open-personalizacion class="flex min-h-[40px] items-center rounded-lg px-3 py-2 text-left text-sm font-semibold text-slate-600 hover:bg-white">
+              <button type="button" data-open-personalizacion class="panel-subaction-button">
                 Bienvenida
               </button>
             @endif
             @if($canPersonalizacion)
-              <a href="{{ route('admin.personalizacion.servicios.edit') }}" class="flex min-h-[40px] items-center rounded-lg px-3 py-2 text-sm font-semibold {{ request()->routeIs('admin.personalizacion.servicios.*') ? 'bg-white text-teal-700' : 'text-slate-600 hover:bg-white' }}">
+              <a href="{{ route('admin.personalizacion.servicios.edit') }}" class="panel-subaction-button {{ request()->routeIs('admin.personalizacion.servicios.*') ? 'border-slate-200 bg-white text-teal-700 shadow-sm' : '' }}">
                 Servicios
               </a>
             @else
-              <button type="button" data-open-personalizacion class="flex min-h-[40px] items-center rounded-lg px-3 py-2 text-left text-sm font-semibold text-slate-600 hover:bg-white">
+              <button type="button" data-open-personalizacion class="panel-subaction-button">
                 Servicios
               </button>
             @endif
             @if($canPersonalizacion)
-              <a href="{{ route('admin.personalizacion.contacto.edit') }}" class="flex min-h-[40px] items-center rounded-lg px-3 py-2 text-sm font-semibold {{ request()->routeIs('admin.personalizacion.contacto.*') ? 'bg-white text-teal-700' : 'text-slate-600 hover:bg-white' }}">
+              <a href="{{ route('admin.personalizacion.contacto.edit') }}" class="panel-subaction-button {{ request()->routeIs('admin.personalizacion.contacto.*') ? 'border-slate-200 bg-white text-teal-700 shadow-sm' : '' }}">
                 Contacto
               </a>
             @else
-              <button type="button" data-open-personalizacion class="flex min-h-[40px] items-center rounded-lg px-3 py-2 text-left text-sm font-semibold text-slate-600 hover:bg-white">
+              <button type="button" data-open-personalizacion class="panel-subaction-button">
                 Contacto
               </button>
             @endif
           </div>
         </details>
 
+        <a href="{{ route('admin.historial.index') }}" class="flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors {{ request()->routeIs('admin.historial.*') ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-50' }}">
+            <i class="ri-file-list-2-line text-lg"></i> Historial clínico
+        </a>
+
+        <p class="mt-4 px-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Citas</p>
+
         <a href="{{ route('admin.horarios.index') }}" class="flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors {{ request()->routeIs('admin.horarios.*') ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-50' }}">
             <i class="ri-time-line text-lg"></i> Horarios
         </a>
 
-        <a href="{{ route('admin.pagos.index') }}" class="flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors {{ request()->routeIs('admin.pagos.*') ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-50' }}">
-            <i class="ri-wallet-3-line text-lg"></i> Gestión de pagos
+        <a href="{{ route('admin.recordatorios.index') }}" class="flex min-h-[44px] items-center justify-between gap-3 rounded-xl px-3 py-2.5 transition-colors {{ request()->routeIs('admin.recordatorios.*') ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-50' }}">
+            <span class="flex items-center gap-3">
+                <i class="ri-whatsapp-line text-lg"></i> Recordatorios
+            </span>
+            @if($recordatoriosPendientes > 0)
+                <span class="badge warning">{{ $recordatoriosPendientes }}</span>
+            @endif
         </a>
 
         <a href="{{ route('admin.citas.override.create') }}" class="flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors {{ request()->routeIs('admin.citas.override.*') ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-50' }}">
-            <i class="ri-calendar-check-line text-lg"></i> Agendar (override)
+            <i class="ri-calendar-check-line text-lg"></i> Agendar manualmente
         </a>
 
         <a href="{{ route('admin.cambios-citas.index') }}" class="flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors {{ request()->routeIs('admin.cambios-citas.*') ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-50' }}">
             <i class="ri-refresh-line text-lg"></i> Cambios de citas
         </a>
 
-        <a href="{{ route('admin.historial.index') }}" class="flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors {{ request()->routeIs('admin.historial.*') ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-50' }}">
-            <i class="ri-file-list-2-line text-lg"></i> Historial clínico
+        <p class="mt-4 px-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Financiero</p>
+
+        <a href="{{ route('admin.pagos.index') }}" class="flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors {{ request()->routeIs('admin.pagos.*') ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-50' }}">
+            <i class="ri-wallet-3-line text-lg"></i> Gestión de pagos
         </a>
+
+        <p class="mt-4 px-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Configuración</p>
 
         <a href="{{ route('admin.perfil.edit') }}" class="flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors {{ request()->routeIs('admin.perfil.*') ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-50' }}">
             <i class="ri-account-circle-line text-lg"></i> Perfil
+        </a>
+
+        <a href="{{ route('admin.contacto.mensajes') }}" class="flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors {{ request()->routeIs('admin.contacto.mensajes*') ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-50' }}">
+            <i class="ri-mail-line text-lg"></i> Notificaciones de contacto
         </a>
 
         <form id="logout-form" action="{{ route('salir') }}" method="POST" class="hidden">@csrf</form>
@@ -104,4 +127,3 @@
         </a>
     </nav>
 </aside>
-

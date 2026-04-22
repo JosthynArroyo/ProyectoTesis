@@ -22,26 +22,26 @@ class TarifaDoctorTest extends TestCase
     public function test_devuelve_tarifa_de_doctor_activo()
     {
         $doctor = User::factory()->create([
-            'active'          => true,
+            'status' => User::STATUS_ACTIVE,
             'precio_consulta' => 25.50,
-            'moneda'          => 'USD',
+            'moneda' => 'USD',
         ]);
-        $doctor->roles()->sync([Role::where('name','doctor')->first()->id]);
+        $doctor->roles()->sync([Role::where('name', 'doctor')->first()->id]);
 
         $res = $this->get(route('api.tarifa.doctor.show', ['id' => $doctor->id]));
         $res->assertOk()
             ->assertJson([
-                'ok'        => true,
+                'ok' => true,
                 'doctor_id' => $doctor->id,
-                'precio'    => 25.50,
-                'moneda'    => 'USD',
-                'definido'  => true,
+                'precio' => 25.50,
+                'moneda' => 'USD',
+                'definido' => true,
             ]);
     }
 
     public function test_404_si_no_es_doctor_o_inactivo()
     {
-        $user = User::factory()->create(['active' => false]);
+        $user = User::factory()->inactive()->create();
 
         $this->get(route('api.tarifa.doctor.show', ['id' => $user->id]))
             ->assertStatus(404);

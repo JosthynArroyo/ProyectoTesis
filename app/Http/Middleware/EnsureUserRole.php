@@ -14,8 +14,8 @@ class EnsureUserRole
             return $next($request);
         }
 
-        if (!$request->user()) {
-            return redirect()->guest(url('/') . '?login=1');
+        if (! $request->user()) {
+            return redirect()->guest(url('/').'?login=1');
         }
 
         if ($request->user()->roles->contains('name', 'superadmin')) {

@@ -10,8 +10,8 @@ class UpdateEstadoInCitasMedicasTable extends Migration
     {
         Schema::table('citas_medicas', function (Blueprint $table) {
             $table->enum('estado', ['pendiente', 'confirmada', 'cancelada', 'realizada'])
-                  ->default('pendiente')
-                  ->change();
+                ->default('pendiente')
+                ->change();
         });
     }
 
@@ -19,8 +19,8 @@ class UpdateEstadoInCitasMedicasTable extends Migration
     {
         Schema::table('citas_medicas', function (Blueprint $table) {
             $table->enum('estado', ['pendiente', 'cancelada', 'reagendada'])
-                  ->default('pendiente')
-                  ->change();
+                ->default('pendiente')
+                ->change();
         });
     }
 }

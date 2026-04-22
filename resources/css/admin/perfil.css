@@ -3,17 +3,17 @@
   --font-heading:'Space Grotesk','Montserrat','Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
   --ink:#0f172a;
   --muted:#5b6b7c;
-  --border:#d9e2ff;
-  --border-strong:#c7d2fe;
+  --border:#cbd5e1;
+  --border-strong:#94a3b8;
   --card:#fff;
   --surface:linear-gradient(145deg,#f6f8ff 0%,#eef2ff 100%);
   --primary:#2b63f8;
   --primary-strong:#1f4de4;
   --danger:#b91c1c;
-  --shadow:0 18px 36px rgba(31,77,228,.08);
-  --shadow-soft:0 12px 24px rgba(15,23,42,.06);
-  --radius-lg:24px;
-  --radius:16px;
+  --shadow:0 18px 36px rgba(15,23,42,.11);
+  --shadow-soft:0 12px 24px rgba(15,23,42,.08);
+  --radius-lg:8px;
+  --radius:8px;
 }
 
 body{background:#f5f7fb;}
@@ -46,7 +46,8 @@ body{background:#f5f7fb;}
   margin:2px 0 6px;
   font-size:28px;
   font-family:var(--font-heading);
-  letter-spacing:-0.02em;
+  letter-spacing:0;
+  line-height:1.2;
 }
 .hero-text .lede{
   margin:0;
@@ -57,7 +58,7 @@ body{background:#f5f7fb;}
 .eyebrow{
   margin:0;
   text-transform:uppercase;
-  letter-spacing:.1em;
+  letter-spacing:0;
   font-size:12px;
   font-weight:800;
   color:var(--muted);
@@ -250,7 +251,7 @@ body{background:#f5f7fb;}
   margin:0;
   font-weight:800;
   color:var(--ink);
-  letter-spacing:-0.01em;
+  letter-spacing:0;
 }
 .input,.select{
   width:100%;
@@ -351,7 +352,7 @@ body{background:#f5f7fb;}
   border:1px solid var(--border);
   background:#fff;
   font-weight:800;
-  letter-spacing:-0.01em;
+  letter-spacing:0;
   cursor:pointer;
   transition:.15s ease;
   display:inline-flex;

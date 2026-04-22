@@ -9,7 +9,7 @@ class Authenticate extends Middleware
     protected function redirectTo($request)
     {
         if (! $request->expectsJson()) {
-            return url('/') . '?login=1';
+            return url('/').'?login=1';
         }
     }
 }

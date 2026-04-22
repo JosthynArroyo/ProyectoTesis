@@ -12,6 +12,7 @@ class CuentaCreadaDesdeChat extends Mailable
     use Queueable, SerializesModels;
 
     public $user;
+
     public $passwordPlano;
 
     public function __construct(User $user, string $passwordPlano)
@@ -22,7 +23,7 @@ class CuentaCreadaDesdeChat extends Mailable
 
     public function build()
     {
-        return $this->subject('Tu cuenta en el sistema de citas médicas')
-                    ->view('emails.cuenta_desde_chat');
+        return $this->subject('Tu cuenta ya está lista - Clínica Don Bosco')
+            ->view('emails.cuenta_desde_chat');
     }
 }

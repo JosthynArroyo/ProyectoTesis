@@ -5,14 +5,12 @@ namespace App\Http\Controllers\Captcha;
 use App\Http\Controllers\Controller;
 use App\Models\CaptchaChallenge;
 use App\Models\CaptchaImage;
-use App\Services\VisionClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
-use Throwable;
 
 class CaptchaController extends Controller
 {
@@ -51,7 +49,7 @@ class CaptchaController extends Controller
             ->inRandomOrder()
             ->first();
 
-        if (!$correctImage) {
+        if (! $correctImage) {
             return response()->json([
                 'message' => 'No se pudo generar el reto CAPTCHA.',
             ], 500);
@@ -67,7 +65,7 @@ class CaptchaController extends Controller
                 ->inRandomOrder()
                 ->first();
 
-            if (!$distractorImage) {
+            if (! $distractorImage) {
                 return response()->json([
                     'message' => 'No se pudieron obtener distractores para el reto.',
                 ], 500);
@@ -97,7 +95,7 @@ class CaptchaController extends Controller
         ]);
     }
 
-    public function verify(Request $request, VisionClient $visionClient): JsonResponse
+    public function verify(Request $request): JsonResponse
     {
         $data = $request->validate([
             'challenge_id' => ['required', 'integer', 'exists:captcha_challenges,id'],
@@ -105,7 +103,7 @@ class CaptchaController extends Controller
         ]);
 
         $challenge = CaptchaChallenge::query()->find($data['challenge_id']);
-        if (!$challenge) {
+        if (! $challenge) {
             return response()->json([
                 'ok' => false,
                 'message' => 'Reto CAPTCHA no encontrado.',
@@ -141,7 +139,7 @@ class CaptchaController extends Controller
             ->values()
             ->all();
 
-        if (!in_array($selectedImageId, $optionImageIds, true)) {
+        if (! in_array($selectedImageId, $optionImageIds, true)) {
             $challenge->increment('attempts');
             $challenge->refresh();
 
@@ -155,7 +153,7 @@ class CaptchaController extends Controller
         }
 
         $selectedImage = CaptchaImage::query()->find($selectedImageId);
-        if (!$selectedImage) {
+        if (! $selectedImage) {
             $challenge->increment('attempts');
             $challenge->refresh();
 
@@ -168,25 +166,9 @@ class CaptchaController extends Controller
             ], 422);
         }
 
-        try {
-            $prediction = $visionClient->classify($selectedImage->fullPath());
-        } catch (Throwable $exception) {
-            report($exception);
-
-            return response()->json([
-                'ok' => false,
-                'message' => 'No se pudo validar el CAPTCHA con el servicio de vision.',
-            ], 502);
-        }
-
-        $predictedLabel = (string) ($prediction['label'] ?? '');
-        $confidence = (float) ($prediction['confidence'] ?? 0.0);
-        $threshold = (float) config('captcha.confidence_threshold', 0.75);
-
-        $isCorrect = $predictedLabel === $challenge->target_key
-            && $confidence >= $threshold;
-
-        if ($isCorrect) {
+        // The challenge already knows the target label for each image, so
+        // verification should not depend on an external classifier being online.
+        if ($selectedImage->class_key === $challenge->target_key) {
             $challenge->update([
                 'verified_at' => now(),
             ]);
@@ -196,8 +178,8 @@ class CaptchaController extends Controller
             return response()->json([
                 'ok' => true,
                 'verified' => true,
-                'label' => $predictedLabel,
-                'confidence' => $confidence,
+                'label' => $selectedImage->class_key,
+                'confidence' => 1.0,
             ]);
         }
 
@@ -207,8 +189,8 @@ class CaptchaController extends Controller
         return response()->json([
             'ok' => false,
             'verified' => false,
-            'label' => $predictedLabel,
-            'confidence' => $confidence,
+            'label' => $selectedImage->class_key,
+            'confidence' => 1.0,
             'message' => 'CAPTCHA incorrecto.',
             'attempts' => $challenge->attempts,
             'remaining_attempts' => max(0, $challenge->max_attempts - $challenge->attempts),
@@ -238,12 +220,14 @@ class CaptchaController extends Controller
     private function classKeys(): array
     {
         $classKeys = config('captcha.classes', []);
+
         return is_array($classKeys) ? array_values($classKeys) : [];
     }
 
     private function labelsEs(): array
     {
         $labels = config('captcha.labels_es', []);
+
         return is_array($labels) ? $labels : [];
     }
 
@@ -259,13 +243,13 @@ class CaptchaController extends Controller
 
         foreach ($classKeys as $classKey) {
             $dirPath = public_path("captcha_animals/{$classKey}");
-            if (!is_dir($dirPath)) {
+            if (! is_dir($dirPath)) {
                 continue;
             }
 
             foreach (File::files($dirPath) as $file) {
                 $ext = strtolower($file->getExtension());
-                if (!in_array($ext, ['jpg', 'jpeg', 'png', 'webp'], true)) {
+                if (! in_array($ext, ['jpg', 'jpeg', 'png', 'webp'], true)) {
                     continue;
                 }
 

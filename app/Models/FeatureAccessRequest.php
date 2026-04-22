@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Builder;
 
 class FeatureAccessRequest extends Model
 {
@@ -64,6 +64,14 @@ class FeatureAccessRequest extends Model
             });
     }
 
+    public function scopeApprovedExpired(Builder $query): Builder
+    {
+        return $query->where('status', 'approved')
+            ->whereNull('revoked_at')
+            ->whereNotNull('approved_until')
+            ->where('approved_until', '<=', now());
+    }
+
     public function isActive(): bool
     {
         if ($this->status !== 'approved' || $this->revoked_at) {
@@ -75,5 +83,13 @@ class FeatureAccessRequest extends Model
         }
 
         return $this->approved_until->isFuture();
+    }
+
+    public function isExpired(): bool
+    {
+        return $this->status === 'approved'
+            && ! $this->revoked_at
+            && $this->approved_until
+            && ! $this->approved_until->isFuture();
     }
 }

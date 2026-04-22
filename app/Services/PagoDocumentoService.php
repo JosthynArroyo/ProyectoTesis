@@ -38,7 +38,7 @@ class PagoDocumentoService
 
         $pdfOutput = $this->renderizarPdf($html);
         $folder = 'pagos/ordenes';
-        if (!Storage::disk('local')->exists($folder)) {
+        if (! Storage::disk('local')->exists($folder)) {
             Storage::disk('local')->makeDirectory($folder);
         }
 
@@ -69,7 +69,7 @@ class PagoDocumentoService
 
         $pdfOutput = $this->renderizarPdf($html);
         $folder = 'pagos/recibos';
-        if (!Storage::disk('local')->exists($folder)) {
+        if (! Storage::disk('local')->exists($folder)) {
             Storage::disk('local')->makeDirectory($folder);
         }
 
@@ -82,7 +82,7 @@ class PagoDocumentoService
 
     protected function renderizarPdf(string $html): string
     {
-        $options = new Options();
+        $options = new Options;
         $options->set('isRemoteEnabled', true);
         $options->set('defaultFont', 'DejaVu Sans');
 
@@ -97,7 +97,7 @@ class PagoDocumentoService
     protected function generarQrDataUri(string $url): string
     {
         $result = Builder::create()
-            ->writer(new PngWriter())
+            ->writer(new PngWriter)
             ->data($url)
             ->encoding(new Encoding('UTF-8'))
             ->errorCorrectionLevel(ErrorCorrectionLevel::Medium)
@@ -112,7 +112,7 @@ class PagoDocumentoService
     protected function logoBase64(): ?string
     {
         $path = public_path('img/logopdf.jpg');
-        if (!is_file($path)) {
+        if (! is_file($path)) {
             return null;
         }
 
@@ -122,4 +122,3 @@ class PagoDocumentoService
         return $data === '' ? null : "data:{$mime};base64,{$data}";
     }
 }
-

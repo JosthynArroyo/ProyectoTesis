@@ -21,22 +21,6 @@
 
 @section('main')
   <div class="space-y-6">
-    <section class="card p-6">
-      <div class="page-header">
-        <div class="page-header__info">
-          <p class="text-xs uppercase tracking-widest text-slate-500">Panel del paciente</p>
-          <h1 class="mt-2 text-2xl font-semibold text-slate-900">Mi panel</h1>
-          <p class="text-slate-600">Resumen claro de tus citas próximas y estado de tu agenda.</p>
-        </div>
-        <div class="page-header__actions">
-          <div class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2">
-            <i class="ri-calendar-line text-slate-400"></i>
-            <input type="date" value="{{ \Carbon\Carbon::now()->format('Y-m-d') }}" class="bg-transparent text-sm text-slate-600">
-          </div>
-        </div>
-      </div>
-    </section>
-
     <section class="stat-grid">
       <x-ui.stat label="Citas agendadas" :value="$totalCitas" tone="teal">
         <x-slot:icon><i class="ri-calendar-check-line"></i></x-slot:icon>
@@ -59,7 +43,9 @@
           <p>Control de obligaciones por cita y estado de revisión.</p>
         </div>
         <div class="page-header__actions">
-          <a href="{{ route('paciente.pagos.index') }}" class="btn btn-outline">Ir a Mis pagos</a>
+          <a href="{{ route('paciente.pagos.index') }}" class="btn btn-outline">
+            <i class="ri-wallet-3-line"></i> Ir a mis pagos
+          </a>
         </div>
       </div>
 
@@ -80,7 +66,7 @@
 
       @if($bloqueoPagosPendientes ?? false)
         <x-ui.alert tone="warning" class="mt-4">
-          Tiene pagos pendientes. Regularice su cuenta para agendar una nueva cita.
+          Tienes órdenes de pago vencidas de citas concluidas. Regulariza tu cuenta para agendar una nueva cita.
         </x-ui.alert>
       @endif
     </section>
@@ -93,7 +79,9 @@
             <p>Estado de tu examen, sin detalles técnicos.</p>
           </div>
           <div class="page-header__actions">
-            <a class="btn btn-outline" href="{{ route('paciente.laboratorio.index') }}">Ver detalles</a>
+            <a class="btn btn-outline" href="{{ route('paciente.laboratorio.index') }}">
+              <i class="ri-eye-line"></i> Ver detalles
+            </a>
           </div>
         </div>
 
@@ -103,7 +91,9 @@
               <p class="text-sm font-semibold text-emerald-800">Resultado disponible</p>
               <p class="text-sm text-emerald-700">Tu informe ya está listo para revisar.</p>
             </div>
-            <a class="btn btn-primary btn-full-mobile" href="{{ route('paciente.laboratorio.download', $labResultadoDestacado->id) }}">Ver o descargar</a>
+            <a class="btn btn-primary btn-full-mobile" href="{{ route('paciente.laboratorio.download', $labResultadoDestacado->id) }}">
+              <i class="ri-download-line"></i> Ver o descargar
+            </a>
           </div>
         @endif
 
@@ -186,7 +176,9 @@
           <p>Solicitudes activas y recientes.</p>
         </div>
         <div class="page-header__actions">
-          <a class="btn btn-outline btn-full-mobile" href="{{ route('paciente.laboratorio.solicitar') }}">Solicitar examen</a>
+          <a class="btn btn-outline btn-full-mobile" href="{{ route('paciente.laboratorio.solicitar') }}">
+            <i class="ri-flask-line"></i> Solicitar examen
+          </a>
         </div>
       </div>
 
@@ -225,7 +217,9 @@
           <p>Las 4 más cercanas en tu agenda</p>
         </div>
         <div class="page-header__actions">
-          <a class="btn btn-ghost" href="{{ route('paciente.citas') }}">Ver todas mis citas</a>
+          <a class="btn btn-ghost" href="{{ route('paciente.citas') }}">
+            <i class="ri-arrow-right-line"></i> Ver todas mis citas
+          </a>
         </div>
       </div>
       <div class="mt-4 table-shell table-responsive-cards">
@@ -274,7 +268,9 @@
           <p>Últimos resultados disponibles</p>
         </div>
         <div class="page-header__actions">
-          <a class="btn btn-ghost" href="{{ route('paciente.laboratorio.index') }}">Ver resultados</a>
+          <a class="btn btn-ghost" href="{{ route('paciente.laboratorio.index') }}">
+            <i class="ri-file-search-line"></i> Ver resultados
+          </a>
         </div>
       </div>
       <div class="mt-4 table-shell table-responsive-cards">
@@ -300,7 +296,9 @@
               </td>
               <td data-label="Archivo">
                 @if($orden->resultado_path)
-                  <a href="{{ route('paciente.laboratorio.download', $orden->id) }}" class="btn btn-outline btn-sm">Descargar</a>
+                  <a href="{{ route('paciente.laboratorio.download', $orden->id) }}" class="btn btn-outline btn-sm">
+                    <i class="ri-download-line"></i> Descargar
+                  </a>
                 @else
                   <span class="text-xs text-slate-500">Pendiente</span>
                 @endif

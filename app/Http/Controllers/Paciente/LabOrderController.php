@@ -3,10 +3,13 @@
 namespace App\Http\Controllers\Paciente;
 
 use App\Http\Controllers\Controller;
+use App\Models\Especialidad;
 use App\Models\LabOrder;
 use App\Models\LabOrderItem;
 use App\Models\LabTest;
 use App\Models\MedicalOrder;
+use App\Models\User;
+use App\Services\ClinicalRecordService;
 use Database\Seeders\LabTestsSeeder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -15,12 +18,27 @@ use Illuminate\Validation\Rule;
 
 class LabOrderController extends Controller
 {
+    protected function laboratoriosDisponibles()
+    {
+        $labId = Especialidad::laboratorioClinicoId();
+        if (! $labId) {
+            return collect();
+        }
+
+        return User::query()
+            ->onlyActive()
+            ->whereHas('roles', fn ($query) => $query->where('name', 'laboratorio'))
+            ->whereHas('especialidades', fn ($query) => $query->where('especialidad_id', $labId))
+            ->orderBy('name')
+            ->get(['id', 'name']);
+    }
+
     public function create()
     {
         $patient = Auth::user();
         $labTests = LabTest::where('activo', true)->orderBy('nombre')->get();
         if ($labTests->isEmpty()) {
-            (new LabTestsSeeder())->run();
+            (new LabTestsSeeder)->run();
             $labTests = LabTest::where('activo', true)->orderBy('nombre')->get();
         }
 
@@ -49,13 +67,28 @@ class LabOrderController extends Controller
                 : LabOrder::SOURCE_ROUTINE;
         }
 
-        return view('paciente.laboratorio.solicitar', compact('labTests', 'medicalOrders', 'defaultSource'));
+        $laboratoriosDisponibles = $this->laboratoriosDisponibles();
+        $laboratorioDisponible = $laboratoriosDisponibles->isNotEmpty();
+
+        return view('paciente.laboratorio.solicitar', compact(
+            'labTests',
+            'medicalOrders',
+            'defaultSource',
+            'laboratoriosDisponibles',
+            'laboratorioDisponible'
+        ));
     }
 
     public function store(Request $request)
     {
         $patientId = Auth::id();
         $source = $request->input('source');
+
+        if ($this->laboratoriosDisponibles()->isEmpty()) {
+            return back()
+                ->withErrors(['source' => 'No hay laboratorios activos disponibles para procesar solicitudes.'])
+                ->withInput();
+        }
 
         $rules = [
             'source' => ['required', Rule::in([LabOrder::SOURCE_MEDICAL_ORDER, LabOrder::SOURCE_ROUTINE])],
@@ -167,11 +200,19 @@ class LabOrderController extends Controller
             $indicacionesSnapshot,
             &$labOrderId
         ) {
+            $record = app(ClinicalRecordService::class)->ensureForPatient($patientId, $patientId);
+
+            if ($medicalOrder && (int) $medicalOrder->clinical_record_id !== (int) $record->id) {
+                $medicalOrder->forceFill(['clinical_record_id' => $record->id])->save();
+            }
+
             $labOrder = LabOrder::create([
                 'patient_id' => $patientId,
+                'clinical_record_id' => $record->id,
                 'source' => $source,
                 'doctor_id' => $doctorId,
                 'medical_order_id' => $medicalOrder?->id,
+                'laboratorio_id' => null,
                 'priority' => $priority,
                 'status' => LabOrder::STATUS_PENDIENTE_TOMA,
                 'doctor_notes' => $doctorNotes,

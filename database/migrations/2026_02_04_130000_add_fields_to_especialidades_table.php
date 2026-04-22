@@ -9,13 +9,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('especialidades', function (Blueprint $table) {
-            if (!Schema::hasColumn('especialidades', 'icono')) {
+            if (! Schema::hasColumn('especialidades', 'icono')) {
                 $table->string('icono', 80)->nullable()->after('descripcion');
             }
-            if (!Schema::hasColumn('especialidades', 'activo')) {
+            if (! Schema::hasColumn('especialidades', 'activo')) {
                 $table->boolean('activo')->default(true)->after('icono');
             }
-            if (!Schema::hasColumn('especialidades', 'orden')) {
+            if (! Schema::hasColumn('especialidades', 'orden')) {
                 $table->unsignedInteger('orden')->default(0)->after('activo');
             }
         });

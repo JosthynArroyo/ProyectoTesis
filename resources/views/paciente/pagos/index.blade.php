@@ -5,22 +5,13 @@
 
 @section('main')
 <div class="space-y-6">
-  <section class="card p-6">
-    <div class="page-header">
-      <div class="page-header__info">
-        <p class="text-xs uppercase tracking-widest text-slate-500">Cobros</p>
-        <h1 class="mt-2 text-2xl font-semibold text-slate-900">Pagos y Ã³rdenes de cobro</h1>
-        <p class="text-slate-600">La orden de cobro se habilita cuando la cita se marca como realizada.</p>
-      </div>
-      <div class="page-header__actions">
-        <a href="{{ route('paciente.citas') }}" class="btn btn-outline">Ver citas</a>
-      </div>
-    </div>
-  </section>
+  <div class="panel-action-bar">
+    <a href="{{ route('paciente.citas') }}" class="btn btn-outline">Ver citas</a>
+  </div>
 
   @if($bloqueoActivo)
     <x-ui.alert tone="warning">
-      Tiene pagos pendientes. Regularice su cuenta para agendar una nueva cita.
+      Tienes órdenes de pago vencidas de citas concluidas. Regulariza tu cuenta para agendar una nueva cita.
     </x-ui.alert>
   @endif
 
@@ -35,7 +26,7 @@
         <select id="estado" name="estado" class="form-select">
           <option value="all" @selected($estado === '')>Todos</option>
           <option value="pendiente" @selected($estado === 'pendiente')>Pendiente</option>
-          <option value="en_verificacion" @selected($estado === 'en_verificacion')>En verificaciÃ³n</option>
+          <option value="en_verificacion" @selected($estado === 'en_verificacion')>En verificación</option>
           <option value="rechazado" @selected($estado === 'rechazado')>Rechazado</option>
           <option value="pagado" @selected($estado === 'pagado')>Pagado</option>
           <option value="anulado" @selected($estado === 'anulado')>Anulado</option>
@@ -50,7 +41,7 @@
       @php
         $estadoLabel = match($pago->estado) {
           'pendiente' => 'Pendiente',
-          'en_verificacion' => 'En verificaciÃ³n',
+          'en_verificacion' => 'En verificación',
           'rechazado' => 'Rechazado',
           'pagado' => 'Pagado',
           'anulado' => 'Anulado',
@@ -75,7 +66,7 @@
             <h3 class="text-base font-semibold text-slate-900">Cita #{{ $pago->cita_id }}</h3>
             <p class="text-sm text-slate-500">
               {{ optional($pago->cita?->doctor)->name ?? 'Doctor no disponible' }}
-              Â· {{ optional($pago->cita?->especialidad)->nombre ?? 'Especialidad' }}
+              · {{ optional($pago->cita?->especialidad)->nombre ?? 'Especialidad' }}
             </p>
             <p class="text-xs text-slate-500">
               {{ optional($pago->cita?->fecha)->format('Y-m-d') }} {{ $pago->cita?->hora ? substr((string)$pago->cita->hora, 0, 5) : '' }}
@@ -109,19 +100,19 @@
 
         @if($pago->observacion_admin)
           <p class="mt-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
-            <strong>ObservaciÃ³n administrativa:</strong> {{ $pago->observacion_admin }}
+            <strong>Observación administrativa:</strong> {{ $pago->observacion_admin }}
           </p>
         @endif
 
         @if(!$ordenDisponible)
           <p class="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
-            La orden de cobro aÃºn no estÃ¡ disponible. Se genera cuando la cita queda en estado realizada.
+            La orden de cobro aún no está disponible. Solo se genera cuando la cita queda en estado realizada.
           </p>
         @elseif($pago->esEditablePorPaciente())
           <form method="POST" action="{{ route('paciente.pagos.submit', $pago) }}" enctype="multipart/form-data" class="mt-4 grid gap-3 md:grid-cols-2" data-pago-form>
             @csrf
             <div>
-              <label class="form-label" for="metodo_pago_{{ $pago->id }}">MÃ©todo de pago</label>
+              <label class="form-label" for="metodo_pago_{{ $pago->id }}">Método de pago</label>
               <select id="metodo_pago_{{ $pago->id }}" name="metodo_pago" class="form-select" required data-metodo-select>
                 <option value="">Seleccione</option>
                 <option value="efectivo" @selected($metodoActual === 'efectivo')>Efectivo</option>
@@ -137,19 +128,19 @@
             </div>
 
             <div class="md:col-span-2 {{ $esTransferencia ? '' : 'hidden' }}" data-comprobante-wrapper>
-              <label class="form-label" for="comprobante_{{ $pago->id }}">Comprobante (JPG, PNG, WEBP, PDF Â· max. 5MB)</label>
+              <label class="form-label" for="comprobante_{{ $pago->id }}">Comprobante (JPG, PNG, WEBP, PDF · max. 5MB)</label>
               <input id="comprobante_{{ $pago->id }}" type="file" name="comprobante" class="form-input" accept=".jpg,.jpeg,.png,.webp,.pdf" data-comprobante-input @if(!$esTransferencia) disabled @endif>
               @error('comprobante')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
-              <p class="mt-1 text-xs text-slate-500">Para transferencia se requiere comprobante para enviar a verificaciÃ³n.</p>
+              <p class="mt-1 text-xs text-slate-500">Para transferencia se requiere comprobante para enviar a verificación.</p>
             </div>
 
             <div class="md:col-span-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700 {{ $esEfectivo ? '' : 'hidden' }}" data-efectivo-msg>
-              Pago en clÃ­nica: este pago serÃ¡ confirmado por recepciÃ³n al momento de su atenciÃ³n.
+              Pago en clí­nica: este pago será confirmado por recepción al momento de su atención.
             </div>
 
             <div class="md:col-span-2">
               <button type="submit" class="btn btn-primary" data-submit-label>
-                {{ $esTransferencia ? 'Guardar y enviar' : 'Confirmar que pagarÃ© en clÃ­nica' }}
+                {{ $esTransferencia ? 'Guardar y enviar' : 'Confirmar que pagaré en clínica' }}
               </button>
             </div>
           </form>
@@ -158,7 +149,7 @@
         @endif
       </article>
     @empty
-      <x-ui.empty-state title="No hay pagos para mostrar." message="Cuando exista una orden de cobro pendiente o pagada, la verÃ¡s aquÃ­ con su estado y las acciones disponibles.">
+      <x-ui.empty-state title="No hay pagos para mostrar." message="Las citas futuras y sus comprobantes de agendamiento no aparecen aquí. Solo se listan órdenes de pago reales.">
         <div class="mt-4 flex flex-wrap justify-center gap-3">
           <a class="btn btn-primary" href="{{ route('paciente.citas') }}">Ver mis citas</a>
           <a class="btn btn-outline" href="{{ route('paciente.crear-cita') }}">Agendar cita</a>
@@ -210,7 +201,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       submitButton.textContent = isTransferencia
         ? 'Guardar y enviar'
-        : 'Confirmar que pagarÃ© en clÃ­nica';
+        : 'Confirmar que pagaré en clínica';
     };
 
     metodoSelect.addEventListener('change', applyMode);
@@ -219,4 +210,3 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 @endpush
-

@@ -20,12 +20,12 @@ class NotificarDoctorListenerTest extends TestCase
         $doctor = new User(['name' => 'Dr. House']);
         $paciente = new User(['name' => 'John Doe']);
 
-        $cita = new Cita();
+        $cita = new Cita;
         $cita->setRelation('doctor', $doctor);
         $cita->setRelation('paciente', $paciente);
 
         $event = new CitaAgendada($cita);
 
-        (new NotificarDoctorListener())->handle($event);
+        (new NotificarDoctorListener)->handle($event);
     }
 }

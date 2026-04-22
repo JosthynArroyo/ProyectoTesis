@@ -26,25 +26,29 @@ class EnviarRecordatorioWhatsappCitaJob implements ShouldQueue
     public function handle(WhatsAppService $whatsapp): void
     {
         $cita = Cita::with(['paciente', 'doctor', 'especialidad'])->find($this->citaId);
-        if (!$cita) {
+        if (! $cita) {
             return;
         }
 
-        if ($cita->estado !== Cita::ESTADO_CONFIRMADA || !$cita->activo) {
+        if ($cita->estado !== Cita::ESTADO_CONFIRMADA || ! $cita->activo) {
             return;
         }
 
         $tz = config('app.timezone', 'America/Guayaquil');
-        $hours = (int) config('services.whatsapp.reminder_hours', 6);
+        $dispatchHour = (int) config('services.whatsapp.reminder_previous_day_hour', 12);
         $window = (int) config('services.whatsapp.reminder_window_minutes', 10);
 
         $now = Carbon::now($tz);
-        $start = $now->copy()->addHours($hours)->subMinutes($window);
-        $end = $now->copy()->addHours($hours)->addMinutes($window);
+        $start = $now->copy()->subMinutes($window);
+        $end = $now->copy()->addMinutes($window);
         $inicio = $cita->inicioProgramado($tz);
+        $objetivo = $inicio->copy()
+            ->subDay()
+            ->setTime($dispatchHour, 0, 0);
 
-        if (!$inicio->between($start, $end)) {
+        if ($inicio->toDateString() <= $now->toDateString() || ! $objetivo->between($start, $end)) {
             Log::info("EnviarRecordatorioWhatsappCitaJob: cita {$cita->id} fuera de ventana.");
+
             return;
         }
 

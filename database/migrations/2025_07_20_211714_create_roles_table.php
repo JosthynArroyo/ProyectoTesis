@@ -11,22 +11,22 @@ return new class extends Migration
      */
     public function up(): void
     {
-        if (!Schema::hasTable('roles')) {
+        if (! Schema::hasTable('roles')) {
             Schema::create('roles', function (Blueprint $table) {
                 $table->id();
                 $table->string('name')->unique();
-                $table->string('description')->nullable(); 
+                $table->string('description')->nullable();
                 $table->timestamps();
             });
         }
 
-        if (!Schema::hasTable('role_user')) {
+        if (! Schema::hasTable('role_user')) {
             Schema::create('role_user', function (Blueprint $table) {
                 $table->id();
-                $table->foreignId('user_id')->constrained()->onDelete('cascade'); 
+                $table->foreignId('user_id')->constrained()->onDelete('cascade');
                 $table->foreignId('role_id')->constrained()->onDelete('cascade');
                 $table->timestamps();
-                
+
                 $table->unique(['user_id', 'role_id']);
             });
         }

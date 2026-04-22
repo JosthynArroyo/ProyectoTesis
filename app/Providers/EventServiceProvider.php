@@ -2,15 +2,15 @@
 
 namespace App\Providers;
 
-use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 use App\Events\CitaAgendada;
 use App\Events\CitaAtendida;
-use App\Listeners\NotificarDoctorListener;
 use App\Listeners\CrearFacturaBorrador;
-use App\Listeners\CrearPagoPendiente;
+use App\Listeners\GenerarComprobanteCita;
 use App\Listeners\GenerarOrdenCobroAlAtenderCita;
-use Illuminate\Auth\Events\Login;
+use App\Listeners\NotificarDoctorListener;
 use App\Listeners\UpdateLastLoginAndGuardStatus;
+use Illuminate\Auth\Events\Login;
+use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 
 class EventServiceProvider extends ServiceProvider
 {
@@ -18,7 +18,7 @@ class EventServiceProvider extends ServiceProvider
         CitaAgendada::class => [
             NotificarDoctorListener::class,
             CrearFacturaBorrador::class,
-            CrearPagoPendiente::class,
+            GenerarComprobanteCita::class,
         ],
         CitaAtendida::class => [
             GenerarOrdenCobroAlAtenderCita::class,
@@ -29,5 +29,9 @@ class EventServiceProvider extends ServiceProvider
     ];
 
     public function boot(): void {}
-    public function shouldDiscoverEvents(): bool { return false; }
+
+    public function shouldDiscoverEvents(): bool
+    {
+        return false;
+    }
 }

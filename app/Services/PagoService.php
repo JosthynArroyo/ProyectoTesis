@@ -9,51 +9,76 @@ use App\Models\PaymentReceipt;
 use App\Models\PaymentReceiptLog;
 use App\Models\PaymentStatusLog;
 use App\Models\User;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
+use RuntimeException;
 
 class PagoService
 {
-    public const MENSAJE_BLOQUEO = 'Tiene pagos pendientes. Regularice su cuenta para agendar una nueva cita.';
+    public const MENSAJE_BLOQUEO = 'Tienes ordenes de pago vencidas de citas concluidas. Regulariza tu cuenta para agendar una nueva cita.';
 
-    public function __construct(private readonly PagoDocumentoService $documentoService)
-    {
-    }
+    private const TRANSACTION_ATTEMPTS = 3;
+
+    private const IDENTIFIER_SAVE_ATTEMPTS = 5;
+
+    private const TOKEN_GENERATION_ATTEMPTS = 20;
+
+    private const FOLIO_COLLISION_ATTEMPTS = 100;
+
+    public function __construct(private readonly PagoDocumentoService $documentoService) {}
 
     public function crearParaCita(Cita $cita, ?User $actor = null): Pago
     {
-        return DB::transaction(function () use ($cita, $actor): Pago {
-            $existente = Pago::query()->where('cita_id', $cita->id)->first();
-            if ($existente) {
-                return $existente;
+        try {
+            return DB::transaction(function () use ($cita, $actor): Pago {
+                $citaBloqueada = Cita::query()
+                    ->with('doctor:id,precio_consulta,moneda')
+                    ->whereKey($cita->getKey())
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                $existente = Pago::query()
+                    ->where('cita_id', $citaBloqueada->id)
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($existente) {
+                    return $existente->refresh();
+                }
+
+                $pago = Pago::query()->create([
+                    'cita_id' => $citaBloqueada->id,
+                    'paciente_id' => $citaBloqueada->paciente_id,
+                    'monto' => (float) ($citaBloqueada->doctor?->precio_consulta ?? 0),
+                    'moneda' => $citaBloqueada->doctor?->moneda ?: 'USD',
+                    'metodo_pago' => null,
+                    'estado' => Pago::ESTADO_PENDIENTE,
+                    'creado_por' => $actor?->id,
+                ]);
+
+                $this->registrarLog(
+                    pago: $pago,
+                    estadoAnterior: null,
+                    estadoNuevo: Pago::ESTADO_PENDIENTE,
+                    actor: $actor,
+                    motivo: 'Creacion automatica de orden de pago tras concluir la cita.'
+                );
+
+                return $pago->refresh();
+            }, self::TRANSACTION_ATTEMPTS);
+        } catch (QueryException $e) {
+            if ($this->esViolacionUnica($e)) {
+                $existente = Pago::query()->where('cita_id', $cita->getKey())->first();
+                if ($existente) {
+                    return $existente->refresh();
+                }
             }
 
-            if (!$cita->relationLoaded('doctor')) {
-                $cita->load('doctor:id,precio_consulta,moneda');
-            }
-
-            $pago = Pago::query()->create([
-                'cita_id' => $cita->id,
-                'paciente_id' => $cita->paciente_id,
-                'monto' => (float) ($cita->doctor?->precio_consulta ?? 0),
-                'moneda' => $cita->doctor?->moneda ?: 'USD',
-                'metodo_pago' => null,
-                'estado' => Pago::ESTADO_PENDIENTE,
-                'creado_por' => $actor?->id,
-            ]);
-
-            $this->registrarLog(
-                pago: $pago,
-                estadoAnterior: null,
-                estadoNuevo: Pago::ESTADO_PENDIENTE,
-                actor: $actor,
-                motivo: 'Creacion automatica de obligacion de pago.'
-            );
-
-            return $pago;
-        });
+            throw $e;
+        }
     }
 
     public function crearOrdenParaCitaRealizada(Cita $cita, ?User $actor = null): Pago
@@ -62,7 +87,7 @@ class PagoService
         $pago = $this->asegurarDatosOrden(
             $pago,
             $actor,
-            'Orden de cobro generada automaticamente al marcar la cita como realizada.'
+            'Orden de cobro generada automaticamente al concluir la cita.'
         );
 
         $this->obtenerOGenerarOrdenPdf($pago, $actor);
@@ -72,32 +97,46 @@ class PagoService
 
     public function asegurarDatosOrden(Pago $pago, ?User $actor = null, ?string $motivo = null): Pago
     {
-        return DB::transaction(function () use ($pago, $actor, $motivo): Pago {
-            $pago->refresh();
-            $actualizar = [];
+        for ($attempt = 1; $attempt <= self::IDENTIFIER_SAVE_ATTEMPTS; $attempt++) {
+            try {
+                return DB::transaction(function () use ($pago, $actor, $motivo): Pago {
+                    $pagoBloqueado = Pago::query()
+                        ->whereKey($pago->getKey())
+                        ->lockForUpdate()
+                        ->firstOrFail();
 
-            if (empty($pago->folio_unico)) {
-                $actualizar['folio_unico'] = $this->generarFolioOrden($pago);
+                    $actualizar = [];
+
+                    if (empty($pagoBloqueado->folio_unico)) {
+                        $actualizar['folio_unico'] = $this->generarFolioOrden($pagoBloqueado);
+                    }
+                    if (empty($pagoBloqueado->token_publico)) {
+                        $actualizar['token_publico'] = $this->generarTokenPublico($pagoBloqueado);
+                    }
+
+                    if (! empty($actualizar)) {
+                        $pagoBloqueado->fill($actualizar);
+                        $pagoBloqueado->save();
+
+                        $this->registrarLog(
+                            pago: $pagoBloqueado,
+                            estadoAnterior: $pagoBloqueado->estado,
+                            estadoNuevo: $pagoBloqueado->estado,
+                            actor: $actor,
+                            motivo: $motivo ?: 'Datos de orden de cobro generados.'
+                        );
+                    }
+
+                    return $pagoBloqueado->refresh();
+                }, self::TRANSACTION_ATTEMPTS);
+            } catch (QueryException $e) {
+                if (! $this->esViolacionUnica($e) || $attempt === self::IDENTIFIER_SAVE_ATTEMPTS) {
+                    throw $e;
+                }
             }
-            if (empty($pago->token_publico)) {
-                $actualizar['token_publico'] = $this->generarTokenPublico($pago);
-            }
+        }
 
-            if (!empty($actualizar)) {
-                $pago->fill($actualizar);
-                $pago->save();
-
-                $this->registrarLog(
-                    pago: $pago,
-                    estadoAnterior: $pago->estado,
-                    estadoNuevo: $pago->estado,
-                    actor: $actor,
-                    motivo: $motivo ?: 'Datos de orden de cobro generados.'
-                );
-            }
-
-            return $pago->refresh();
-        });
+        throw new RuntimeException('No fue posible asignar identificadores unicos a la orden de cobro.');
     }
 
     public function obtenerOGenerarOrdenPdf(Pago $pago, ?User $actor = null): string
@@ -135,7 +174,7 @@ class PagoService
         /** @var PaymentReceipt|null $existente */
         $existente = $pago->receipt()->first();
         if ($existente) {
-            if (!$existente->pdf_path || !Storage::disk('local')->exists($existente->pdf_path)) {
+            if (! $existente->pdf_path || ! Storage::disk('local')->exists($existente->pdf_path)) {
                 $path = $this->documentoService->generarReciboPagoPdf($pago, $existente);
                 $existente->pdf_path = $path;
                 $existente->save();
@@ -153,6 +192,17 @@ class PagoService
         }
 
         return DB::transaction(function () use ($pago, $actor, $motivo): PaymentReceipt {
+            $pago = Pago::query()
+                ->whereKey($pago->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            /** @var PaymentReceipt|null $existente */
+            $existente = $pago->receipt()->lockForUpdate()->first();
+            if ($existente) {
+                return $existente->refresh();
+            }
+
             $receipt = PaymentReceipt::query()->create([
                 'pago_id' => $pago->id,
                 'folio_recibo' => $this->generarFolioRecibo($pago),
@@ -177,7 +227,7 @@ class PagoService
             );
 
             return $receipt->refresh();
-        });
+        }, self::TRANSACTION_ATTEMPTS);
     }
 
     public function pacienteTieneBloqueo(int $pacienteId): bool
@@ -205,7 +255,7 @@ class PagoService
         ?string $motivo = null,
         array $extra = []
     ): Pago {
-        if (!in_array($nuevoEstado, Pago::ESTADOS, true)) {
+        if (! in_array($nuevoEstado, Pago::ESTADOS, true)) {
             throw new InvalidArgumentException('Estado de pago invalido: '.$nuevoEstado);
         }
 
@@ -300,9 +350,13 @@ class PagoService
 
     protected function generarFolioOrden(Pago $pago): string
     {
+        if (! $pago->getKey()) {
+            throw new RuntimeException('No se puede generar folio para una orden de cobro sin ID persistido.');
+        }
+
         $pago->loadMissing('cita:id,fecha');
 
-        $fecha = $pago->cita?->fecha?->format('Ymd') ?: now()->format('Ymd');
+        $fecha = $pago->cita?->fecha?->format('Ymd') ?: now('America/Guayaquil')->format('Ymd');
         $base = sprintf('OC-%s-%06d', $fecha, $pago->id);
         $folio = $base;
 
@@ -313,6 +367,10 @@ class PagoService
                 ->where('id', '!=', $pago->id)
                 ->exists()
         ) {
+            if ($i >= self::FOLIO_COLLISION_ATTEMPTS) {
+                throw new RuntimeException('No fue posible generar un folio unico para la orden de cobro.');
+            }
+
             $i++;
             $folio = $base.'-'.$i;
         }
@@ -322,25 +380,33 @@ class PagoService
 
     protected function generarTokenPublico(Pago $pago): string
     {
-        do {
+        for ($attempt = 1; $attempt <= self::TOKEN_GENERATION_ATTEMPTS; $attempt++) {
             $token = Str::lower(Str::random(48));
-        } while (
-            Pago::query()
+
+            $existe = Pago::query()
                 ->where('token_publico', $token)
                 ->where('id', '!=', $pago->id)
-                ->exists()
-        );
+                ->exists();
 
-        return $token;
+            if (! $existe) {
+                return $token;
+            }
+        }
+
+        throw new RuntimeException('No fue posible generar un token publico unico para la orden de cobro.');
     }
 
     protected function generarFolioRecibo(Pago $pago): string
     {
-        $base = sprintf('RP-%s-%06d', now()->format('Ymd'), $pago->id);
+        $base = sprintf('RP-%s-%06d', now('America/Guayaquil')->format('Ymd'), $pago->id);
         $folio = $base;
 
         $i = 1;
         while (PaymentReceipt::query()->where('folio_recibo', $folio)->exists()) {
+            if ($i >= self::FOLIO_COLLISION_ATTEMPTS) {
+                throw new RuntimeException('No fue posible generar un folio unico para el recibo de pago.');
+            }
+
             $i++;
             $folio = $base.'-'.$i;
         }
@@ -350,7 +416,7 @@ class PagoService
 
     protected function resolverRolActor(?User $actor): ?string
     {
-        if (!$actor) {
+        if (! $actor) {
             return 'sistema';
         }
 
@@ -363,10 +429,22 @@ class PagoService
 
     protected function esActorAdministrativo(?User $actor): bool
     {
-        if (!$actor) {
+        if (! $actor) {
             return false;
         }
 
         return $actor->hasRole('administrador') || $actor->hasRole('superadmin');
+    }
+
+    protected function esViolacionUnica(QueryException $e): bool
+    {
+        $sqlState = (string) ($e->errorInfo[0] ?? $e->getCode());
+        $driverCode = (string) ($e->errorInfo[1] ?? '');
+        $message = Str::lower($e->getMessage());
+
+        return in_array($sqlState, ['23000', '23505'], true)
+            || in_array($driverCode, ['1062', '1555', '2067'], true)
+            || str_contains($message, 'duplicate')
+            || str_contains($message, 'unique constraint');
     }
 }

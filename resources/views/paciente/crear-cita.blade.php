@@ -10,14 +10,6 @@
 
 @section('main')
 <div class="space-y-6">
-    <section class="card p-6">
-        <div>
-            <p class="text-xs uppercase tracking-widest text-slate-500">Agendar</p>
-            <h1 class="mt-2 text-2xl font-semibold text-slate-900">Agendar nueva cita</h1>
-            <p class="text-slate-600">Elige especialidad, doctor, fecha y hora disponibles.</p>
-        </div>
-    </section>
-
     <section class="card p-4">
         <div class="flex items-center justify-between gap-3">
             <p class="text-sm font-semibold text-slate-900">Progreso del formulario</p>
@@ -33,6 +25,7 @@
 
     @php($selectedEsp = old('especialidad_id', $prefEspecialidad ?? ''))
     @php($labExamenes = $labExamenes ?? [])
+
     <div class="card p-6">
         @if ($errors->has('error'))
             <x-ui.alert tone="error">{{ $errors->first('error') }}</x-ui.alert>
@@ -45,54 +38,112 @@
               data-old-hora="{{ old('hora') }}"
               data-tarifa-template="{{ route('api.tarifa.doctor.show', ['id' => 'DOC_ID']) }}"
               data-slots-template="{{ url('/api/doctor/DOC_ID/fecha/FECHA/slots') }}"
-              data-laboratorio-id="{{ $laboratorioId ?? '' }}" class="space-y-6">
+              data-laboratorio-id="{{ $laboratorioId ?? '' }}"
+              class="space-y-5">
             @csrf
 
-            <div class="grid gap-4 md:grid-cols-2">
-                <div class="md:col-span-2">
-                    <label for="especialidad_id" class="form-label">Especialidad</label>
-                    <select id="especialidad_id" name="especialidad_id" required class="form-select" data-step-field="1">
-                        <option value="">Seleccione una especialidad</option>
-                        @foreach($especialidades as $esp)
-                            <option value="{{ $esp->id }}" {{ (string)$selectedEsp === (string)$esp->id ? 'selected' : '' }}>
-                                {{ $esp->nombre }}
-                            </option>
-                        @endforeach
-                    </select>
-                    @error('especialidad_id')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
+            <section class="panel-form-section">
+                <div class="panel-form-section__header">
+                    <div class="panel-form-section__heading">
+                        <h2 class="panel-form-section__title">
+                            <span class="panel-form-section__icon"><i class="ri-stethoscope-line"></i></span>
+                            Seleccion de atencion
+                        </h2>
+                        <p class="panel-form-section__hint">Primero elige la especialidad y luego el profesional disponible para esa atencion.</p>
+                    </div>
                 </div>
 
-                <div class="md:col-span-2">
-                    <label for="doctor_id" class="form-label">Doctor</label>
-                    <select id="doctor_id" name="doctor_id" required disabled class="form-select" data-step-field="2">
-                        <option value="">{{ old('especialidad_id') ? 'Cargando…' : 'Seleccione una especialidad primero' }}</option>
-                    </select>
-                    @error('doctor_id')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
+                <div class="grid gap-4 md:grid-cols-2">
+                    <div class="md:col-span-2">
+                        <label for="especialidad_id" class="form-label">Especialidad</label>
+                        <select id="especialidad_id" name="especialidad_id" required class="form-select" data-step-field="1">
+                            <option value="">Seleccione una especialidad</option>
+                            @foreach($especialidades as $esp)
+                                <option value="{{ $esp->id }}" {{ (string) $selectedEsp === (string) $esp->id ? 'selected' : '' }}>
+                                    {{ $esp->nombre }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('especialidad_id')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
+                    </div>
 
-                    <div id="tarifaPanel" class="mt-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2 text-sm text-slate-600" aria-live="polite" hidden>
-                        <span id="tarifaLabel">Tarifa: —</span>
+                    <div class="md:col-span-2">
+                        <label for="doctor_id" class="form-label">Doctor</label>
+                        <div class="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                            <select id="doctor_id" name="doctor_id" required disabled class="form-select" data-step-field="2">
+                                <option value="">{{ old('especialidad_id') ? 'Cargando...' : 'Seleccione una especialidad primero' }}</option>
+                            </select>
+                            <button id="doctorProfileButton" type="button" class="btn btn-outline w-full sm:w-auto" data-doctor-profile-open disabled>
+                                <i class="ri-user-search-line"></i> Ver perfil
+                            </button>
+                        </div>
+                        @error('doctor_id')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
+
+                        <div id="tarifaPanel" class="mt-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2 text-sm text-slate-600" aria-live="polite" hidden>
+                            <span id="tarifaLabel">Tarifa: -</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="panel-form-section">
+                <div class="panel-form-section__header">
+                    <div class="panel-form-section__heading">
+                        <h2 class="panel-form-section__title">
+                            <span class="panel-form-section__icon"><i class="ri-calendar-check-line"></i></span>
+                            Disponibilidad
+                        </h2>
+                        <p class="panel-form-section__hint">Solo se muestran fechas validas y horarios realmente disponibles para el profesional elegido.</p>
+                    </div>
+                    <x-ui.context-pill label="Horario">
+                        <x-slot:icon><i class="ri-time-line"></i></x-slot:icon>
+                        24 h
+                    </x-ui.context-pill>
+                </div>
+
+                <div class="grid gap-4 md:grid-cols-2">
+                    <div>
+                        <label for="fecha" class="form-label">Fecha</label>
+                        <div class="relative mt-1">
+                            <input id="fecha" type="date" name="fecha"
+                                   value="{{ old('fecha') }}"
+                                   required
+                                   class="form-input form-input-native-date mt-0 pr-11"
+                                   data-step-field="3"
+                                   min="{{ \Carbon\Carbon::now('America/Guayaquil')->toDateString() }}"
+                                   placeholder="AAAA-MM-DD"
+                                   autocomplete="off">
+                            <button id="paciente-cita-fecha-trigger" type="button" class="field-action-button" data-native-date-open="#fecha" aria-label="Abrir calendario para la fecha de la cita">
+                                <i class="ri-calendar-line"></i>
+                            </button>
+                        </div>
+                        @error('fecha')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
+                        <div class="text-xs text-slate-500">Solo se permiten fechas a partir de hoy.</div>
+                    </div>
+
+                    <div>
+                        <label for="hora" class="form-label">Hora</label>
+                        <select id="hora" name="hora" required disabled class="form-select" data-step-field="3">
+                            <option value="">{{ old('doctor_id') && old('fecha') ? 'Cargando horarios...' : 'Seleccione doctor y fecha' }}</option>
+                        </select>
+                        @error('hora')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
+                        <div id="horaHelp" class="text-xs text-slate-500">Se listan solo horarios disponibles y en formato de 24 horas.</div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="panel-form-section">
+                <div class="panel-form-section__header">
+                    <div class="panel-form-section__heading">
+                        <h2 class="panel-form-section__title">
+                            <span class="panel-form-section__icon"><i class="ri-file-text-line"></i></span>
+                            Motivo de consulta
+                        </h2>
+                        <p class="panel-form-section__hint">Describe el motivo en una sola linea. Puedes usar sugerencias rapidas si te ayudan.</p>
                     </div>
                 </div>
 
                 <div>
-                    <label for="fecha" class="form-label">Fecha</label>
-                    <input id="fecha" type="date" name="fecha"
-                           value="{{ old('fecha') }}"
-                           min="{{ \Carbon\Carbon::now('America/Guayaquil')->toDateString() }}" required class="form-input" data-step-field="3">
-                    @error('fecha')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
-                    <div class="text-xs text-slate-500">Solo se permiten fechas a partir de hoy.</div>
-                </div>
-
-                <div>
-                    <label for="hora" class="form-label">Hora</label>
-                    <select id="hora" name="hora" required disabled class="form-select" data-step-field="3">
-                        <option value="">{{ old('doctor_id') && old('fecha') ? 'Cargando horarios…' : 'Seleccione doctor y fecha' }}</option>
-                    </select>
-                    @error('hora')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
-                    <div id="horaHelp" class="text-xs text-slate-500">Formato de 24 horas. Se listan solo los horarios disponibles.</div>
-                </div>
-
-                <div class="md:col-span-2">
                     <label for="motivo_consulta" class="form-label">Motivo de consulta</label>
                     <input id="motivo_consulta"
                            type="text"
@@ -112,71 +163,140 @@
                         @endforeach
                     </div>
                 </div>
+            </section>
 
-                <div class="md:col-span-2 lab-section" id="labSection" hidden>
-                    <div class="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
-                        <div class="flex flex-wrap items-center justify-between gap-3">
-                            <div>
-                                <h3 class="text-sm font-semibold text-slate-900">Examen de laboratorio</h3>
-                                <p class="text-xs text-slate-500">Selecciona el examen y confirma la solicitud.</p>
-                            </div>
+            <section class="panel-form-section lab-section" id="labSection" hidden>
+                <div class="panel-form-section__header">
+                    <div class="panel-form-section__heading">
+                        <h2 class="panel-form-section__title">
+                            <span class="panel-form-section__icon"><i class="ri-flask-line"></i></span>
+                            Examen de laboratorio
+                        </h2>
+                        <p class="panel-form-section__hint">Completa estos datos solo si la especialidad corresponde a laboratorio.</p>
+                    </div>
+                </div>
+
+                <div class="grid gap-4 md:grid-cols-2">
+                    <div>
+                        <label for="tipo_examen" class="form-label">Tipo de examen</label>
+                        <select id="tipo_examen" name="tipo_examen" data-lab-required data-prep-empty="Selecciona un examen para ver la preparacion." class="form-select">
+                            <option value="">Seleccionar examen</option>
+                            @foreach($labExamenes as $examen)
+                                @php($value = $examen['value'] ?? '')
+                                @php($prep = $examen['prep'] ?? [])
+                                <option value="{{ $value }}"
+                                    {{ old('tipo_examen') === $value ? 'selected' : '' }}
+                                    data-prep-ayuno="{{ $prep['ayuno'] ?? '' }}"
+                                    data-prep-agua="{{ $prep['agua'] ?? '' }}"
+                                    data-prep-horario="{{ $prep['horario'] ?? '' }}">
+                                    {{ $examen['label'] ?? $value }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('tipo_examen')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
+                    </div>
+
+                    <div>
+                        <label for="prioridad" class="form-label">Prioridad</label>
+                        <select id="prioridad" name="prioridad" data-lab-required class="form-select">
+                            <option value="normal" {{ old('prioridad', 'normal') === 'normal' ? 'selected' : '' }}>Normal</option>
+                            <option value="urgente" {{ old('prioridad') === 'urgente' ? 'selected' : '' }}>Urgente</option>
+                        </select>
+                        @error('prioridad')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
+                    </div>
+
+                    <div class="md:col-span-2 grid gap-3 sm:grid-cols-2">
+                        <div class="rounded-2xl border border-slate-200 bg-white/90 p-3">
+                            <h3 class="text-xs font-semibold text-slate-700">Preparacion previa</h3>
+                            <ul class="mt-2 space-y-1 text-xs text-slate-500">
+                                <li><strong>Ayuno:</strong> <span data-lab-prep="ayuno">Selecciona un examen para ver la preparacion.</span></li>
+                                <li><strong>Agua:</strong> <span data-lab-prep="agua">Selecciona un examen para ver la preparacion.</span></li>
+                                <li><strong>Horario recomendado:</strong> <span data-lab-prep="horario">Selecciona un examen para ver la preparacion.</span></li>
+                            </ul>
                         </div>
-                        <div class="mt-4 grid gap-4 md:grid-cols-2">
-                            <div>
-                                <label for="tipo_examen" class="form-label">Tipo de examen</label>
-                                <select id="tipo_examen" name="tipo_examen" data-lab-required data-prep-empty="Selecciona un examen para ver la preparación." class="form-select">
-                                    <option value="">Seleccionar examen</option>
-                                    @foreach($labExamenes as $examen)
-                                        @php($value = $examen['value'] ?? '')
-                                        @php($prep = $examen['prep'] ?? [])
-                                        <option value="{{ $value }}"
-                                            {{ old('tipo_examen') === $value ? 'selected' : '' }}
-                                            data-prep-ayuno="{{ $prep['ayuno'] ?? '' }}"
-                                            data-prep-agua="{{ $prep['agua'] ?? '' }}"
-                                            data-prep-horario="{{ $prep['horario'] ?? '' }}">
-                                            {{ $examen['label'] ?? $value }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('tipo_examen')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
-                            </div>
 
-                            <div>
-                                <label for="prioridad" class="form-label">Prioridad (si aplica)</label>
-                                <select id="prioridad" name="prioridad" data-lab-required class="form-select">
-                                    <option value="normal" {{ old('prioridad', 'normal') === 'normal' ? 'selected' : '' }}>Normal</option>
-                                    <option value="urgente" {{ old('prioridad') === 'urgente' ? 'selected' : '' }}>Urgente</option>
-                                </select>
-                                @error('prioridad')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
-                            </div>
-
-                            <div class="md:col-span-2 grid gap-3 sm:grid-cols-2">
-                                <div class="rounded-2xl border border-slate-200 bg-white/90 p-3">
-                                    <h4 class="text-xs font-semibold text-slate-700">Preparación previa</h4>
-                                    <ul class="mt-2 space-y-1 text-xs text-slate-500">
-                                        <li><strong>Ayuno:</strong> <span data-lab-prep="ayuno">Selecciona un examen para ver la preparación.</span></li>
-                                        <li><strong>Agua:</strong> <span data-lab-prep="agua">Selecciona un examen para ver la preparación.</span></li>
-                                        <li><strong>Horario recomendado:</strong> <span data-lab-prep="horario">Selecciona un examen para ver la preparación.</span></li>
-                                    </ul>
-                                </div>
-
-                                <div class="rounded-2xl border border-slate-200 bg-white/90 p-3">
-                                    <h4 class="text-xs font-semibold text-slate-700">Indicaciones del médico</h4>
-                                    <p class="mt-2 text-xs text-slate-500" data-lab-indicaciones>Sin indicaciones adicionales.</p>
-                                </div>
-                            </div>
+                        <div class="rounded-2xl border border-slate-200 bg-white/90 p-3">
+                            <h3 class="text-xs font-semibold text-slate-700">Indicaciones del medico</h3>
+                            <p class="mt-2 text-xs text-slate-500" data-lab-indicaciones>Sin indicaciones adicionales.</p>
                         </div>
                     </div>
                 </div>
-            </div>
+            </section>
 
             <x-ui.form-actions>
-                <x-slot:left>
-                    <a href="{{ route('paciente.citas') }}" class="btn btn-ghost">Cancelar</a>
-                </x-slot>
-                <button type="submit" class="btn btn-primary">Registrar cita</button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="ri-calendar-check-line"></i> Registrar cita
+                </button>
             </x-ui.form-actions>
         </form>
     </div>
 </div>
 @endsection
+
+@push('modals')
+<div id="doctorProfileModal" class="modal" data-doctor-profile-modal aria-hidden="true">
+    <div class="modal-backdrop" data-doctor-profile-close></div>
+    <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="doctorProfileTitle" tabindex="-1">
+        <article class="card w-full max-w-3xl overflow-hidden">
+            <div class="flex items-start justify-between gap-4 border-b border-slate-200 p-4 sm:p-6">
+                <div class="flex min-w-0 items-center gap-4">
+                    <img
+                        data-doctor-profile-avatar
+                        src="{{ app(\App\Support\ImageUrl::class)->fallback('doctor') }}"
+                        data-fallback-src="{{ app(\App\Support\ImageUrl::class)->fallback('doctor') }}"
+                        alt="Foto del doctor"
+                        class="doctor-avatar-photo h-20 w-20 flex-none rounded-lg border border-slate-200 sm:h-24 sm:w-24"
+                        loading="lazy"
+                        decoding="async">
+                    <div class="min-w-0">
+                        <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">Perfil profesional</p>
+                        <h2 id="doctorProfileTitle" class="mt-1 break-words text-xl font-semibold text-slate-900 sm:text-2xl" data-doctor-profile-name>Doctor</h2>
+                        <p class="mt-1 text-sm text-slate-500" data-doctor-profile-role>Especialista activo</p>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-ghost px-3" data-doctor-profile-close aria-label="Cerrar perfil del doctor">
+                    <i class="ri-close-line"></i>
+                </button>
+            </div>
+
+            <div class="grid gap-4 p-4 sm:grid-cols-2 sm:p-6">
+                <div class="rounded-xl border border-slate-200 bg-slate-50/80 p-4">
+                    <div class="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                        <i class="ri-stethoscope-line text-teal-600"></i>
+                        Especialidades
+                    </div>
+                    <div class="mt-3 flex flex-wrap gap-2" data-doctor-profile-specialties></div>
+                </div>
+
+                <div class="rounded-xl border border-slate-200 bg-slate-50/80 p-4">
+                    <div class="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                        <i class="ri-money-dollar-circle-line text-teal-600"></i>
+                        Tarifa
+                    </div>
+                    <p class="mt-3 text-sm text-slate-600" data-doctor-profile-price>Tarifa no configurada</p>
+                </div>
+
+                <div class="rounded-xl border border-slate-200 bg-white p-4">
+                    <div class="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                        <i class="ri-phone-line text-teal-600"></i>
+                        Contacto
+                    </div>
+                    <p class="mt-3 break-words text-sm text-slate-600" data-doctor-profile-phone>No registrado</p>
+                </div>
+
+                <div class="rounded-xl border border-slate-200 bg-white p-4">
+                    <div class="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                        <i class="ri-map-pin-line text-teal-600"></i>
+                        Ubicacion
+                    </div>
+                    <p class="mt-3 break-words text-sm text-slate-600" data-doctor-profile-address>No registrada</p>
+                </div>
+            </div>
+
+            <div class="border-t border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-500 sm:px-6">
+                Selecciona fecha y hora despues de revisar la disponibilidad del profesional.
+            </div>
+        </article>
+    </div>
+</div>
+@endpush

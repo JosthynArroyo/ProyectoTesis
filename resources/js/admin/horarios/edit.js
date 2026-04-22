@@ -3,6 +3,19 @@ document.addEventListener('DOMContentLoaded', () => {
   const hi = document.getElementById('hora_inicio');
   const hf = document.getElementById('hora_fin');
   const fecha = document.getElementById('fecha');
+  const fechaTrigger = document.getElementById('admin-horario-edit-fecha-trigger');
+
+  function openNativePicker(input) {
+    if (!input) return;
+    input.focus({ preventScroll: true });
+    if (typeof input.showPicker === 'function') {
+      try {
+        input.showPicker();
+        return;
+      } catch (_err) {}
+    }
+    input.click();
+  }
 
   function validRange() {
     if (!hi.value || !hf.value) {
@@ -40,6 +53,13 @@ document.addEventListener('DOMContentLoaded', () => {
     fecha.addEventListener('change', () => {
       fecha.setCustomValidity('');
       fecha.reportValidity();
+    });
+  }
+
+  if (fechaTrigger && fecha) {
+    fechaTrigger.addEventListener('click', (event) => {
+      event.preventDefault();
+      openNativePicker(fecha);
     });
   }
 

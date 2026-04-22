@@ -1,38 +1,22 @@
 @extends('layouts.laboratorio')
-@section('title', 'Panel del laboratorio - Clínica Don Bosco')
+@section('title', 'Panel del laboratorio - Clinica Don Bosco')
 @section('activeSidebar', 'dashboard')
 @section('header-title','Panel laboratorio')
-@section('header-subtitle','Controla órdenes, resultados y agenda diaria')
+@section('header-subtitle','Controla ordenes, resultados y agenda diaria')
 
 @section('main')
   <div class="space-y-6">
-    <section class="card p-6">
-      <div class="page-header">
-        <div class="page-header__info">
-          <p class="text-xs uppercase tracking-widest text-slate-500">Panel del laboratorio</p>
-          <h1 class="mt-2 text-2xl font-semibold text-slate-900">Resumen de laboratorio</h1>
-          <p class="text-slate-600">Controla órdenes, resultados y tu agenda diaria.</p>
-        </div>
-        <div class="page-header__actions">
-          <div class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2 text-sm text-slate-600">
-            <i class="ri-calendar-line text-slate-400"></i>
-            <input type="date" value="{{ now()->format('Y-m-d') }}" class="bg-transparent text-sm text-slate-700">
-          </div>
-        </div>
-      </div>
-    </section>
-
     @if(session('success'))
       <x-ui.alert tone="success">{{ session('success') }}</x-ui.alert>
     @endif
 
     <section class="stat-grid">
       <x-ui.stat label="Citas de laboratorio" :value="$citasHoy" tone="sky">
-        <p class="text-xs text-slate-500">Agenda del día</p>
+        <p class="text-xs text-slate-500">Agenda del dia</p>
         <x-slot:icon><i class="ri-calendar-check-line"></i></x-slot:icon>
       </x-ui.stat>
-      <x-ui.stat label="Órdenes pendientes" :value="$ordenesPendientes" tone="amber">
-        <p class="text-xs text-slate-500">Por procesar</p>
+      <x-ui.stat label="Ordenes pendientes" :value="$ordenesPendientes" tone="amber">
+        <p class="text-xs text-slate-500">Legacy y auto-solicitudes</p>
         <x-slot:icon><i class="ri-flask-line"></i></x-slot:icon>
       </x-ui.stat>
       <x-ui.stat label="Resultados hoy" :value="$resultadosHoy" tone="teal">
@@ -45,11 +29,13 @@
       <div class="page-header">
         <div class="page-header__info">
           <p class="text-xs uppercase tracking-widest text-slate-500">Citas y resultados</p>
-          <h2>Últimas órdenes</h2>
-          <p>Órdenes y citas asignadas a tu cuenta.</p>
+          <h2>Ultimas ordenes</h2>
+          <p>Ordenes con cita y solicitudes directas asignadas a tu cuenta.</p>
         </div>
         <div class="page-header__actions">
-          <a class="btn btn-outline btn-full-mobile" href="{{ route('laboratorio.ordenes.index') }}">Gestionar resultados</a>
+          <a class="btn btn-outline btn-full-mobile" href="{{ route('laboratorio.ordenes.index') }}">
+            <i class="ri-file-list-3-line"></i> Gestionar resultados
+          </a>
         </div>
       </div>
 
@@ -61,34 +47,25 @@
               <th>Examen</th>
               <th>Estado</th>
               <th>Fecha</th>
-              <th>Acción</th>
+              <th>Accion</th>
             </tr>
           </thead>
           <tbody>
             @forelse($ordenesRecientes as $orden)
-              @php
-                $estado = $orden->estado;
-                $badge = match($estado) {
-                  'orden_creada' => 'warning',
-                  'cita_programada' => 'info',
-                  'muestra_tomada' => 'neutral',
-                  'resultado_disponible' => 'success',
-                  default => 'neutral',
-                };
-                $isResultado = $orden->resultado_path;
-                $accionLabel = $isResultado ? 'Ver resultado' : 'Subir resultado';
-                $accionUrl = route('laboratorio.ordenes.index') . '#orden-' . $orden->id;
-              @endphp
               <tr>
-                <td data-label="Paciente">{{ optional($orden->cita->paciente)->name ?? 'Paciente' }}</td>
-                <td data-label="Examen">{{ $orden->tipo_examen }}</td>
-                <td data-label="Estado"><x-ui.badge :tone="$badge">{{ str_replace('_', ' ', $estado) }}</x-ui.badge></td>
-                <td data-label="Fecha">{{ optional($orden->cita->fecha)->format('d/m/Y') }}</td>
-                <td data-label="Acción"><a class="btn btn-ghost btn-sm" href="{{ $accionUrl }}">{{ $accionLabel }}</a></td>
+                <td data-label="Paciente">{{ $orden->patient_name }}</td>
+                <td data-label="Examen">{{ $orden->exam_name }}</td>
+                <td data-label="Estado"><x-ui.badge :tone="$orden->badge_tone">{{ $orden->status_label }}</x-ui.badge></td>
+                <td data-label="Fecha">{{ $orden->date_label }}</td>
+                <td data-label="Accion">
+                  <a class="btn btn-ghost btn-sm" href="{{ $orden->action_url }}">
+                    <i class="ri-eye-line"></i> {{ $orden->action_label }}
+                  </a>
+                </td>
               </tr>
             @empty
               <tr>
-                <td colspan="5">Sin órdenes recientes.</td>
+                <td colspan="5">Sin ordenes recientes.</td>
               </tr>
             @endforelse
           </tbody>

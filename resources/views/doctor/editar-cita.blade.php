@@ -9,7 +9,7 @@
 
         <div class="mt-4 text-sm text-slate-600">
           <p><strong>Doctor:</strong> {{ optional($cita->doctor)->name ?? 'Sin asignar' }}</p>
-          <p><strong>Especialidad:</strong> {{ optional($cita->especialidad)->nombre ?? 'â€”' }}</p>
+          <p><strong>Especialidad:</strong> {{ optional($cita->especialidad)->nombre ?? '—' }}</p>
         </div>
 
         <form method="POST" action="

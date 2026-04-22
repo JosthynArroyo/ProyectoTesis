@@ -1,20 +1,10 @@
 @extends('layouts.superadmin')
 @section('title','Editar administrador')
-@section('header-title','Editar administrador')
-@section('header-subtitle','Actualiza datos y credenciales')
+@section('header-title', $admin->name)
+@section('header-subtitle','Administrador #'.$admin->id.' | Actualiza datos y credenciales')
 
 @section('main')
 <div class="space-y-6">
-  <section class="card p-6">
-    <div class="flex flex-wrap items-center justify-between gap-4">
-      <div>
-        <p class="text-xs uppercase tracking-widest text-slate-500">Administrador #{{ $admin->id }}</p>
-        <h1 class="mt-2 text-2xl font-semibold text-slate-900">{{ $admin->name }}</h1>
-        <p class="text-slate-600">Actualiza datos personales y acceso.</p>
-      </div>
-    </div>
-  </section>
-
   @if (session('success'))
     <x-ui.alert tone="success">{{ session('success') }}</x-ui.alert>
   @endif

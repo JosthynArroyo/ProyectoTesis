@@ -1,7 +1,3 @@
-@php
-  $pendingPersonalizacion = \App\Models\FeatureAccessRequest::forFeature('personalizacion')->pending()->count();
-@endphp
-
 <aside class="dashboard-sidebar fixed top-0 bottom-0 left-0 z-40 h-screen -translate-x-full overflow-y-auto border-r border-slate-200/70 bg-white px-4 pb-6 pt-0 shadow-xl lg:translate-x-0 lg:shrink-0">
     <div class="top flex items-center justify-between">
         <a href="{{ route('superadmin.dashboard') }}" class="sidebar-brand">

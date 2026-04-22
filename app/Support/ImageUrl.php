@@ -157,18 +157,59 @@ class ImageUrl
         }
 
         if (Str::startsWith($path, 'storage/')) {
-            return asset($path);
+            $storedPath = substr($path, 8);
+
+            return $this->withVersion(asset($path), $this->storageVersion($storedPath));
         }
 
         if (Storage::disk('public')->exists($path)) {
-            return asset('storage/'.$path);
+            return $this->withVersion(asset('storage/'.$path), $this->storageVersion($path));
         }
 
         if (is_file(public_path($path))) {
-            return asset($path);
+            return $this->withVersion(asset($path), $this->publicVersion($path));
         }
 
         return asset('storage/'.$path);
+    }
+
+    private function withVersion(string $url, ?int $version): string
+    {
+        if (! $version) {
+            return $url;
+        }
+
+        $separator = str_contains($url, '?') ? '&' : '?';
+
+        return $url.$separator.'v='.$version;
+    }
+
+    private function storageVersion(string $path): ?int
+    {
+        $path = ltrim(str_replace('\\', '/', $path), '/');
+
+        try {
+            if (Storage::disk('public')->exists($path)) {
+                return Storage::disk('public')->lastModified($path);
+            }
+        } catch (\Throwable) {
+            return null;
+        }
+
+        return null;
+    }
+
+    private function publicVersion(string $path): ?int
+    {
+        $absolutePath = public_path(ltrim(str_replace('\\', '/', $path), '/'));
+
+        if (! is_file($absolutePath)) {
+            return null;
+        }
+
+        $modifiedAt = filemtime($absolutePath);
+
+        return $modifiedAt !== false ? $modifiedAt : null;
     }
 
     private function pathExists(string $path): bool
@@ -213,4 +254,3 @@ class ImageUrl
         };
     }
 }
-

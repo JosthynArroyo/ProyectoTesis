@@ -11,8 +11,10 @@ class Factura extends Model
     protected $table = 'facturas';
 
     public const ESTADO_BORRADOR = 'borrador';
-    public const ESTADO_EMITIDA  = 'emitida';
-    public const ESTADO_ANULADA  = 'anulada';
+
+    public const ESTADO_EMITIDA = 'emitida';
+
+    public const ESTADO_ANULADA = 'anulada';
 
     protected $fillable = [
         'cita_id',
@@ -28,9 +30,9 @@ class Factura extends Model
     ];
 
     protected $casts = [
-        'subtotal'   => 'decimal:2',
-        'impuestos'  => 'decimal:2',
-        'total'      => 'decimal:2',
+        'subtotal' => 'decimal:2',
+        'impuestos' => 'decimal:2',
+        'total' => 'decimal:2',
         'emitida_en' => 'datetime',
     ];
 
@@ -65,9 +67,9 @@ class Factura extends Model
         $total = $subtotal + $impuestos;
 
         $this->update([
-            'subtotal'  => $subtotal,
+            'subtotal' => $subtotal,
             'impuestos' => $impuestos,
-            'total'     => $total,
+            'total' => $total,
         ]);
     }
 

@@ -13,6 +13,7 @@ class PaymentStatusLog extends Model
     protected $table = 'payment_status_logs';
 
     public $timestamps = true;
+
     public const UPDATED_AT = null;
 
     protected $fillable = [

@@ -9,12 +9,12 @@ class VisionClient
 {
     public function classify(string $imagePath): array
     {
-        if (!is_file($imagePath)) {
+        if (! is_file($imagePath)) {
             throw new RuntimeException("Image not found: {$imagePath}");
         }
 
         $baseUrl = rtrim((string) config('captcha.vision_url'), '/');
-        $url = $baseUrl . '/classify';
+        $url = $baseUrl.'/classify';
 
         $stream = fopen($imagePath, 'r');
         if ($stream === false) {
@@ -30,8 +30,8 @@ class VisionClient
             fclose($stream);
         }
 
-        if (!$response->successful()) {
-            throw new RuntimeException('Vision API request failed with status ' . $response->status());
+        if (! $response->successful()) {
+            throw new RuntimeException('Vision API request failed with status '.$response->status());
         }
 
         $payload = $response->json();

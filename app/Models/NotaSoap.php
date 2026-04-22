@@ -12,10 +12,12 @@ class NotaSoap extends Model
     protected $table = 'notas_soap';
 
     public const ESTADO_BORRADOR = 'draft';
+
     public const ESTADO_FIRMADA = 'signed';
 
     protected $fillable = [
         'cita_id',
+        'clinical_record_id',
         'estado',
         'signed_at',
         'signed_by',
@@ -29,6 +31,8 @@ class NotaSoap extends Model
         'assessment',
         'plan_general',
         'plan_seguimiento',
+        'follow_up_date',
+        'follow_up_notes',
         'plan_notas',
     ];
 
@@ -36,11 +40,17 @@ class NotaSoap extends Model
         'subjetivo_ros' => 'array',
         'signos_vitales' => 'array',
         'signed_at' => 'datetime',
+        'follow_up_date' => 'date',
     ];
 
     public function cita()
     {
         return $this->belongsTo(Cita::class, 'cita_id');
+    }
+
+    public function clinicalRecord()
+    {
+        return $this->belongsTo(ClinicalRecord::class);
     }
 
     public function diagnosticos()

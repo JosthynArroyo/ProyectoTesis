@@ -12,7 +12,7 @@
             <h1 class="mt-2 text-2xl font-semibold text-slate-900">Recuperar acceso</h1>
             <p class="text-slate-600">Ingresa tu correo para enviarte un enlace de restablecimiento.</p>
           </div>
-          <span class="badge info">Soporte 24/7</span>
+          <span class="badge info">Cuenta registrada</span>
         </div>
 
         @if (session('status'))

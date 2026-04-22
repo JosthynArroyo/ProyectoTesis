@@ -22,6 +22,11 @@ class Cita extends Model
         'motivo_consulta',
         'estado',
         'activo',
+        'folio_cita',
+        'token_validacion',
+        'comprobante_pdf_path',
+        'comprobante_emitido_en',
+        'comprobante_actualizado_en',
         'prioridad_nivel',
         'prioridad_fuente',
         'prioridad_red_flag',
@@ -33,14 +38,20 @@ class Cita extends Model
         'prioridad_es_cronico',
     ];
 
-    public const ESTADO_PENDIENTE  = 'pendiente';
+    public const ESTADO_PENDIENTE = 'pendiente';
+
     public const ESTADO_CONFIRMADA = 'confirmada';
-    public const ESTADO_CANCELADA  = 'cancelada';
-    public const ESTADO_REALIZADA  = 'realizada';
+
+    public const ESTADO_CANCELADA = 'cancelada';
+
+    public const ESTADO_REALIZADA = 'realizada';
+
     public const ESTADO_NO_SE_PRESENTO = 'no_se_presento';
 
     public const PRIORIDAD_BAJA = 'BAJA';
+
     public const PRIORIDAD_MEDIA = 'MEDIA';
+
     public const PRIORIDAD_ALTA = 'ALTA';
 
     public const PRIORIDAD_NIVELES = [
@@ -50,8 +61,11 @@ class Cita extends Model
     ];
 
     public const FUENTE_PRIORIDAD_AUTOMATICA = 'AUTOMATICA';
+
     public const FUENTE_PRIORIDAD_REGLA_RED_FLAG = 'REGLA_RED_FLAG';
+
     public const FUENTE_PRIORIDAD_REGLA_VULNERABILIDAD = 'REGLA_VULNERABILIDAD';
+
     public const FUENTE_PRIORIDAD_MANUAL = 'MANUAL';
 
     public const ESTADOS = [
@@ -63,10 +77,12 @@ class Cita extends Model
     ];
 
     protected $casts = [
-        'fecha'  => 'date',
-        'hora'   => 'string',
+        'fecha' => 'date',
+        'hora' => 'string',
         'activo' => 'boolean',
         'motivo_consulta' => 'string',
+        'comprobante_emitido_en' => 'datetime',
+        'comprobante_actualizado_en' => 'datetime',
         'prioridad_nivel' => 'string',
         'prioridad_fuente' => 'string',
         'prioridad_red_flag' => 'boolean',
@@ -116,9 +132,19 @@ class Cita extends Model
         return $this->hasOne(NotaSoap::class, 'cita_id');
     }
 
+    public function certificadoMedico()
+    {
+        return $this->hasOne(CertificadoMedico::class, 'cita_id');
+    }
+
     public function laboratorioOrden()
     {
         return $this->hasOne(LaboratorioOrden::class, 'cita_id');
+    }
+
+    public function recordatorio()
+    {
+        return $this->hasOne(CitaRecordatorio::class, 'cita_id');
     }
 
     public function refreshPriority(): bool
@@ -166,6 +192,7 @@ class Cita extends Model
             ? $this->fecha->copy()
             : Carbon::parse($this->fecha, $tz);
         $hora = $this->hora ? substr((string) $this->hora, 0, 5) : '00:00';
+
         return Carbon::parse($fecha->format('Y-m-d').' '.$hora, $tz);
     }
 
@@ -180,5 +207,28 @@ class Cita extends Model
             $this->finProgramado($tz, $duracionMin)
         );
     }
-}
 
+    public function tieneComprobanteCita(): bool
+    {
+        return ! empty($this->folio_cita) && ! empty($this->token_validacion);
+    }
+
+    public function comprobanteEstaVigente(): bool
+    {
+        return in_array($this->estado, [
+            self::ESTADO_PENDIENTE,
+            self::ESTADO_CONFIRMADA,
+        ], true);
+    }
+
+    public function estadoComprobante(): string
+    {
+        return match ($this->estado) {
+            self::ESTADO_CONFIRMADA => 'Confirmada',
+            self::ESTADO_CANCELADA => 'Cancelada',
+            self::ESTADO_REALIZADA => 'Atendida',
+            self::ESTADO_NO_SE_PRESENTO => 'No se presento',
+            default => 'Pendiente',
+        };
+    }
+}

@@ -66,11 +66,13 @@
         <input class="form-input" id="direccion" name="direccion" value="{{ old('direccion', $u->direccion) }}" required>
         @error('direccion')<small class="text-xs text-rose-600">{{ $message }}</small>@enderror
       </div>
-      <div>
-        <label for="fecha_nacimiento" class="form-label">Fecha de nacimiento</label>
-        <input class="form-input" id="fecha_nacimiento" name="fecha_nacimiento" type="date" value="{{ old('fecha_nacimiento', optional($u->fecha_nacimiento)->format('Y-m-d')) }}" required>
-        @error('fecha_nacimiento')<small class="text-xs text-rose-600">{{ $message }}</small>@enderror
-      </div>
+      <x-ui.date-parts
+        field="fecha_nacimiento"
+        label="Fecha de nacimiento"
+        :value="optional($u->fecha_nacimiento)->format('Y-m-d')"
+        required
+        help="Ingresa día, mes y año sin abrir un calendario."
+      />
       <div>
         <label for="sexo" class="form-label">Sexo</label>
         <select class="form-select" id="sexo" name="sexo" required>

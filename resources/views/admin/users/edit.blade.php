@@ -1,26 +1,15 @@
 @extends('layouts.admin')
 @section('title','Editar usuario')
-@section('header-title','Editar usuario')
+@section('header-title','Editar usuario #'.$user->id)
 @section('header-subtitle','Actualiza información y permisos')
 
 @section('main')
 @php($statusLabel = ['active' => 'Activo', 'inactive' => 'Inactivo', 'blocked' => 'Bloqueado'][$user->status ?? 'active'] ?? 'Activo')
 <div class="space-y-6">
-  <section class="card p-6">
-    <div class="flex flex-wrap items-center justify-between gap-4">
-      <div>
-        <x-ui.button :href="route('admin.usuarios.index')" variant="outline">
-          <i class="ri-arrow-left-line"></i>
-          Volver
-        </x-ui.button>
-        <h1 class="mt-2 text-2xl font-semibold text-slate-900">Editar usuario #{{ $user->id }}</h1>
-        <p class="text-slate-600">Modifica datos personales, contacto y rol.</p>
-      </div>
-      <div class="flex items-center gap-2">
-        <span class="badge neutral">{{ optional($user->roles->first())->name ?? '-' }}</span>
-      </div>
-    </div>
-  </section>
+  <div class="panel-action-bar">
+    <span class="badge neutral">{{ optional($user->roles->first())->name ?? '-' }}</span>
+    <span class="badge {{ ($user->status ?? 'active') === 'active' ? 'success' : (($user->status ?? 'active') === 'inactive' ? 'warning' : 'danger') }}">{{ $statusLabel }}</span>
+  </div>
 
   @if (session('success'))
     <x-ui.alert tone="success">{{ session('success') }}</x-ui.alert>

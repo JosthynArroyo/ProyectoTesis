@@ -22,6 +22,10 @@
             <i class="ri-flask-line text-lg"></i> Citas y resultados
         </a>
 
+        <a href="{{ route('laboratorio.horario.index') }}" class="flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors {{ $current === 'horario' ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-50' }}">
+            <i class="ri-calendar-schedule-line text-lg"></i> Horarios
+        </a>
+
         <form id="laboratorio-logout-form" action="{{ route('salir') }}" method="POST" class="hidden">@csrf</form>
         <a href="#" onclick="event.preventDefault(); document.getElementById('laboratorio-logout-form').submit();" class="mt-5 flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 text-rose-600 transition-colors hover:bg-rose-50">
             <i class="ri-logout-circle-r-line text-lg"></i> Cerrar sesión

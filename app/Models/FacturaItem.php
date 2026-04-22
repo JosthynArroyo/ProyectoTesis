@@ -18,9 +18,9 @@ class FacturaItem extends Model
     ];
 
     protected $casts = [
-        'cantidad'        => 'integer',
+        'cantidad' => 'integer',
         'precio_unitario' => 'decimal:2',
-        'total_linea'     => 'decimal:2',
+        'total_linea' => 'decimal:2',
     ];
 
     public function factura(): BelongsTo

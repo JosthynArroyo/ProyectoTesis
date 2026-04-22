@@ -1,37 +1,33 @@
 @extends('layouts.admin')
-@section('title', 'Historial clínico')
-@section('header-title','Historial clínico')
-@section('header-subtitle','Notas SOAP firmadas')
+@section('title', 'Historiales clínicos')
+@section('header-title','Historiales clínicos')
+@section('header-subtitle','Acceso administrativo al expediente longitudinal por paciente')
 
 @section('main')
+  @php
+    $hasNotas = method_exists($notas, 'count')
+        ? $notas->count() > 0
+        : collect($notas ?? [])->isNotEmpty();
+  @endphp
+
   <div class="space-y-6">
     <section class="card p-6">
-      <div class="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <p class="text-xs uppercase tracking-widest text-slate-500">Historial</p>
-          <h1 class="mt-2 text-2xl font-semibold text-slate-900">Historial clínico</h1>
-          <p class="text-slate-600">Consulta notas SOAP firmadas por paciente.</p>
-        </div>
-      </div>
-      <form class="mt-4 flex flex-wrap items-end gap-3" method="GET" action="{{ route('admin.historial.index') }}">
+      <form class="flex flex-wrap items-end gap-3" method="GET" action="{{ route('admin.historial.index') }}">
         <div class="inline-control-shell flex-1">
           <i class="ri-search-line text-slate-400"></i>
-          <input type="text" name="q" value="{{ $q ?? '' }}" placeholder="Buscar por paciente, cédula o correo..." class="w-full bg-transparent text-sm text-slate-700" required>
+          <input type="text" name="q" value="{{ $q ?? '' }}" placeholder="Buscar por paciente, cedula o correo..." class="w-full bg-transparent text-sm text-slate-700" required>
         </div>
-        @error('q')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
-        <button class="btn btn-outline" type="submit">
-          <i class="ri-filter-3-line"></i> Filtrar
-        </button>
+        <button class="btn btn-outline" type="submit">Filtrar</button>
       </form>
     </section>
 
-    @if(collect($notas ?? [])->isEmpty())
+    @if(! $hasNotas)
       <section class="card p-6">
-        <x-ui.empty-state title="Sin notas registradas" message="No hay notas SOAP firmadas con los filtros actuales."></x-ui.empty-state>
+        <x-ui.empty-state title="No hay historiales clinicos disponibles" message="No existen historiales clinicos firmados para mostrar con los filtros actuales."></x-ui.empty-state>
       </section>
     @else
       <section class="card p-6">
-        <div class="table-shell">
+        <div class="table-shell table-responsive-cards">
           <table class="table w-full">
             <thead>
               <tr>
@@ -45,19 +41,14 @@
             <tbody>
               @foreach($notas as $nota)
                 <tr>
-                  <td>{{ optional($nota->cita->paciente)->name ?? 'Paciente' }}</td>
-                  <td>{{ optional($nota->cita->doctor)->name ?? 'Doctor/a' }}</td>
-                  <td>{{ optional($nota->cita->especialidad)->nombre ?? '-' }}</td>
-                  <td>
-                    {{ $nota->cita->fecha ? \Carbon\Carbon::parse($nota->cita->fecha)->format('d/m/Y') : '-' }}
-                    {{ $nota->cita->hora ? \Carbon\Carbon::parse($nota->cita->hora)->format('H:i') : '' }}
-                  </td>
-                  <td class="text-right">
-                    <a href="{{ route('admin.historial.show', $nota->id) }}" class="btn btn-outline">
-                      <i class="ri-file-list-2-line"></i> Ver
-                    </a>
+                  <td data-label="Paciente">{{ optional($nota->cita->paciente)->name ?? 'Paciente' }}</td>
+                  <td data-label="Doctor">{{ optional($nota->cita->doctor)->name ?? 'Doctor/a' }}</td>
+                  <td data-label="Especialidad">{{ optional($nota->cita->especialidad)->nombre ?? '-' }}</td>
+                  <td data-label="Fecha">{{ $nota->cita->fecha ? \Carbon\Carbon::parse($nota->cita->fecha)->format('d/m/Y') : '-' }} {{ $nota->cita->hora ? \Carbon\Carbon::parse($nota->cita->hora)->format('H:i') : '' }}</td>
+                  <td class="text-right" data-label="Acciones">
+                    <a href="{{ route('admin.historial.show', $nota->id) }}" class="btn btn-outline">Ver historial</a>
                     @if($nota->cita->paciente_id)
-                      <a href="{{ route('admin.historial.paciente', $nota->cita->paciente_id) }}" class="btn btn-ghost">Paciente</a>
+                      <a href="{{ route('admin.historial.paciente', $nota->cita->paciente_id) }}" class="btn btn-ghost">Notas firmadas</a>
                     @endif
                   </td>
                 </tr>

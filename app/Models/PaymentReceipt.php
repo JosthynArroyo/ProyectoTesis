@@ -13,6 +13,7 @@ class PaymentReceipt extends Model
     use HasFactory;
 
     public const ESTADO_EMITIDO = 'emitido';
+
     public const ESTADO_REEMITIDO = 'reemitido';
 
     protected $table = 'payment_receipts';
@@ -54,4 +55,3 @@ class PaymentReceipt extends Model
         return Str::endsWith(Str::lower((string) $this->pdf_path), '.pdf');
     }
 }
-

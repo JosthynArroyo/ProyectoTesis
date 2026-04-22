@@ -266,7 +266,7 @@ aside .sidebar a:last-child {
 
 .dash-hero .hero-main { display: flex; gap: 1rem; align-items: center; }
 .dash-hero .hero-main .eyebrow {
-  letter-spacing: .08em;
+  letter-spacing: 0;
   text-transform: uppercase;
   color: var(--clr-dark-variant);
   font-weight: 700;
@@ -509,7 +509,7 @@ aside .sidebar a:last-child {
   box-shadow: inset 0 1px 0 #fff;
 }
 
-.eyebrow { text-transform: uppercase; letter-spacing: .08em; font-weight: 700; color: var(--clr-dark-variant); margin: 0; font-size: 0.78rem; }
+.eyebrow { text-transform: uppercase; letter-spacing: 0; font-weight: 700; color: var(--clr-dark-variant); margin: 0; font-size: 0.78rem; }
 .muted { color: var(--clr-dark-variant); font-size: 0.9rem; }
 
 .alert.success {

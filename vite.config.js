@@ -1,14 +1,49 @@
 import { defineConfig } from 'vite'
 import tailwindcss from '@tailwindcss/vite'
 import laravel from 'laravel-vite-plugin'
+import { fileURLToPath } from 'node:url'
 
 export default defineConfig({
   base: '',
+  resolve: {
+    alias: {
+      '@tensorflow/tfjs-core': fileURLToPath(new URL('./node_modules/@tensorflow/tfjs-core/dist/index.js', import.meta.url)),
+    },
+  },
   build: {
     outDir: 'public/build',
     assetsDir: 'assets',
     manifest: 'manifest.json',
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined
+
+          if (id.includes('face-api.js')) {
+            return 'face-api'
+          }
+
+          if (id.includes('@tensorflow/tfjs-core')) {
+            if (id.includes('/backends/webgl/') || id.includes('\\backends\\webgl\\')) {
+              return 'tfjs-webgl'
+            }
+
+            if (id.includes('/backends/cpu/') || id.includes('\\backends\\cpu\\')) {
+              return 'tfjs-cpu'
+            }
+
+            if (id.includes('/ops/') || id.includes('\\ops\\')) {
+              return 'tfjs-ops'
+            }
+
+            return 'tfjs-core'
+          }
+
+          return 'vendor'
+        },
+      },
+    },
   },
   plugins: [
     tailwindcss(),
@@ -26,6 +61,7 @@ export default defineConfig({
         'resources/css/contacto.css',
         'resources/css/chatbot/widget.css',
         'resources/css/panel/account-pages.css',
+        'resources/css/panel/weekly-schedule.css',
         'resources/css/auth/password-email.css',
         'resources/css/auth/password-reset.css',
         'resources/css/dashboards/admin.css',
@@ -59,6 +95,7 @@ export default defineConfig({
         'resources/css/doctor/horario.css',
         'resources/css/doctor/perfil.css',
         'resources/css/doctor/citas.css',
+        'resources/css/doctor/pacientes-index.css',
         'resources/css/doctor/recetas-form.css',
         'resources/css/doctor/recetas-index.css',
         'resources/css/doctor/receta-pdf.css',
@@ -70,7 +107,6 @@ export default defineConfig({
         // JS
         'resources/js/app.js',
         'resources/js/panel-theme.js',
-        'resources/js/bootstrap.js',
         'resources/js/sidebar-toggle.js',
         'resources/js/navbar.js',
         'resources/js/chatbot/widget.js',
@@ -88,10 +124,16 @@ export default defineConfig({
         'resources/js/doctor/laboratorio-create.js',
         'resources/js/doctor/perfil.js',
         'resources/js/doctor/recetas-editar.js',
+        'resources/js/doctor/clinical-record-editor.js',
+        'resources/js/doctor/soap.js',
         //Paciente
         'resources/js/paciente/crear-cita.js',
+        'resources/js/paciente/editar-cita.js',
         'resources/js/paciente/dashboard-paciente.js',
+        'resources/js/paciente/lab-order.js',
         'resources/js/paciente/perfil.js',
+        //Laboratorio
+        'resources/js/laboratorio/ordenes.js',
         //Admin
         'resources/js/admin/usuarios.js',
         'resources/js/admin/users/edit.js',
@@ -106,6 +148,7 @@ export default defineConfig({
         'resources/js/admin/override-create.js',
         'resources/js/admin/personalizacion-modal.js',
         'resources/js/admin/personalizacion-bienvenida.js',
+        'resources/js/admin/personalizacion-drafts.js',
         'resources/js/admin/personalizacion-servicios.js',
         // Auth
         'resources/js/auth/password-toggle.js',

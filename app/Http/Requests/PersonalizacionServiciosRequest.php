@@ -20,19 +20,19 @@ class PersonalizacionServiciosRequest extends FormRequest
             ->all();
 
         return [
-            'especialidades' => ['required', 'array'],
-            'especialidades.*.nombre' => ['required', 'string', 'max:120'],
-            'especialidades.*.descripcion' => ['required', 'string', 'max:240'],
-            'especialidades.*.icono' => ['required', 'string', 'max:80', Rule::in($allowedIcons)],
-            'especialidades.*.activo' => ['required', 'boolean'],
-            'especialidades.*.orden' => ['required', 'integer', 'min:0', 'max:999'],
+            'especialidades' => ['nullable', 'array'],
+            'especialidades.*.nombre' => ['nullable', 'string', 'max:120'],
+            'especialidades.*.descripcion' => ['nullable', 'string', 'max:240'],
+            'especialidades.*.icono' => ['nullable', 'string', 'max:80', Rule::in($allowedIcons)],
+            'especialidades.*.activo' => ['nullable', 'boolean'],
+            'especialidades.*.orden' => ['nullable', 'integer', 'min:0', 'max:999'],
 
             'nuevas' => ['nullable', 'array'],
-            'nuevas.*.nombre' => ['required', 'string', 'max:120'],
-            'nuevas.*.descripcion' => ['required', 'string', 'max:240'],
-            'nuevas.*.icono' => ['required', 'string', 'max:80', Rule::in($allowedIcons)],
-            'nuevas.*.activo' => ['required', 'boolean'],
-            'nuevas.*.orden' => ['required', 'integer', 'min:0', 'max:999'],
+            'nuevas.*.nombre' => ['nullable', 'string', 'max:120'],
+            'nuevas.*.descripcion' => ['nullable', 'string', 'max:240'],
+            'nuevas.*.icono' => ['nullable', 'string', 'max:80', Rule::in($allowedIcons)],
+            'nuevas.*.activo' => ['nullable', 'boolean'],
+            'nuevas.*.orden' => ['nullable', 'integer', 'min:0', 'max:999'],
         ];
     }
 }

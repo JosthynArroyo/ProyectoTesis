@@ -1,46 +1,49 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Http\Request;
-use App\Http\Controllers\CitaController;
 use App\Http\Controllers\Admin\AdminController as AdminDashboardController;
-use App\Http\Controllers\Admin\PersonalizacionController as AdminPersonalizacionController;
+use App\Http\Controllers\Admin\CitaOverrideController as AdminCitaOverrideController;
+use App\Http\Controllers\Admin\ContactMessageController as AdminContactMessageController;
+use App\Http\Controllers\Admin\HistorialController as AdminHistorialController;
 use App\Http\Controllers\Admin\HorarioController;
-use App\Http\Controllers\ExportCitasController;
-use App\Http\Controllers\Paciente\AdminController as PacienteDashboardController;
-use App\Http\Controllers\Doctor\AdminController as DoctorDashboardController;
-use App\Http\Controllers\ContactoController;
-use App\Http\Controllers\Api\TarifaController;
-use App\Http\Controllers\Doctor\RecetaController;
-use App\Http\Controllers\Doctor\SoapController as DoctorSoapController;
-use App\Http\Controllers\Doctor\HistorialController as DoctorHistorialController;
-use App\Http\Controllers\EmailCitaActionController;
+use App\Http\Controllers\Admin\PagoController as AdminPagoController;
+use App\Http\Controllers\Admin\PersonalizacionController as AdminPersonalizacionController;
+use App\Http\Controllers\Admin\RecordatorioController as AdminRecordatorioController;
+use App\Http\Controllers\Admin\UserStatusController as AdminUserStatusController;
 use App\Http\Controllers\Api\DoctorSlotController;
+use App\Http\Controllers\Api\TarifaController;
+use App\Http\Controllers\ChatBotController;
+use App\Http\Controllers\CitaComprobanteController;
+use App\Http\Controllers\CitaController;
+use App\Http\Controllers\CitaPrioridadController;
+use App\Http\Controllers\ContactoController;
+use App\Http\Controllers\Doctor\AdminController as DoctorDashboardController;
+use App\Http\Controllers\Doctor\CertificadoMedicoController as DoctorCertificadoMedicoController;
+use App\Http\Controllers\Doctor\HistorialController as DoctorHistorialController;
 use App\Http\Controllers\Doctor\HorarioController as DoctorHorarioController;
 use App\Http\Controllers\Doctor\LaboratorioController as DoctorLaboratorioController;
-use App\Http\Controllers\Laboratorio\AdminController as LaboratorioDashboardController;
-use App\Http\Controllers\Laboratorio\OrdenController as LaboratorioOrdenController;
-use App\Models\User;
-use App\Models\Especialidad;
-use App\Http\Controllers\ChatBotController;
+use App\Http\Controllers\Doctor\RecetaController;
+use App\Http\Controllers\Doctor\SoapController as DoctorSoapController;
+use App\Http\Controllers\EmailCitaActionController;
+use App\Http\Controllers\ExportCitasController;
 use App\Http\Controllers\FaceAuthController;
+use App\Http\Controllers\Laboratorio\AdminController as LaboratorioDashboardController;
+use App\Http\Controllers\Laboratorio\HorarioController as LaboratorioHorarioController;
+use App\Http\Controllers\Laboratorio\OrdenController as LaboratorioOrdenController;
+use App\Http\Controllers\Paciente\AdminController as PacienteDashboardController;
+use App\Http\Controllers\Paciente\CertificadoMedicoController as PacienteCertificadoMedicoController;
+use App\Http\Controllers\Paciente\HistorialController as PacienteHistorialController;
 use App\Http\Controllers\Paciente\LaboratorioController as PacienteLaboratorioController;
 use App\Http\Controllers\Paciente\LabOrderController as PacienteLabOrderController;
-use App\Http\Controllers\Paciente\HistorialController as PacienteHistorialController;
-use App\Http\Controllers\Superadmin\DashboardController as SuperadminDashboardController;
-use App\Http\Controllers\Superadmin\AdminsController as SuperadminAdminsController;
-use App\Http\Controllers\Superadmin\PersonalizacionController as SuperadminPersonalizacionController;
-use App\Http\Controllers\Superadmin\PersonalizacionRequestController as SuperadminPersonalizacionRequestController;
-use App\Http\Controllers\Superadmin\MaintenanceController as SuperadminMaintenanceController;
-use App\Http\Controllers\Admin\HistorialController as AdminHistorialController;
-use App\Http\Controllers\Admin\PagoController as AdminPagoController;
-use App\Http\Controllers\Admin\CitaOverrideController as AdminCitaOverrideController;
 use App\Http\Controllers\Paciente\PagoController as PacientePagoController;
 use App\Http\Controllers\PagoLookupController;
-use App\Http\Controllers\CitaPrioridadController;
 use App\Http\Controllers\PanelThemeController;
-
+use App\Http\Controllers\PublicPageController;
+use App\Http\Controllers\Superadmin\AdminsController as SuperadminAdminsController;
+use App\Http\Controllers\Superadmin\DashboardController as SuperadminDashboardController;
+use App\Http\Controllers\Superadmin\MaintenanceController as SuperadminMaintenanceController;
+use App\Http\Controllers\Superadmin\PersonalizacionController as SuperadminPersonalizacionController;
+use App\Http\Controllers\Superadmin\PersonalizacionRequestController as SuperadminPersonalizacionRequestController;
+use Illuminate\Support\Facades\Route;
 
 // API tarifas
 Route::get('/api/tarifa/doctor/{id}', [TarifaController::class, 'precioDoctor'])
@@ -48,25 +51,11 @@ Route::get('/api/tarifa/doctor/{id}', [TarifaController::class, 'precioDoctor'])
 
 // API slots disponibles
 Route::get('/api/doctor/{doctor}/fecha/{fecha}/slots', DoctorSlotController::class)
-    ->whereNumber('doctor')->where('fecha','\d{4}-\d{2}-\d{2}')
+    ->whereNumber('doctor')->where('fecha', '\d{4}-\d{2}-\d{2}')
     ->name('api.doctor.slots');
 
 // Página principal
-Route::get('/', function () {
-    $welcome = app(\App\Services\LandingWelcomeService::class);
-    $featured = $welcome->featuredSpecialties();
-
-    $especialidadesDestacadas = !empty($featured)
-        ? collect($featured)
-        : \App\Models\Especialidad::query()
-            ->where('activo', true)
-            ->orderBy('orden')
-            ->orderBy('nombre')
-            ->limit(3)
-            ->get();
-
-    return view('welcome', compact('especialidadesDestacadas'));
-});
+Route::get('/', [PublicPageController::class, 'welcome'])->name('home.index');
 
 // Auth
 Auth::routes(['register' => false]);
@@ -76,214 +65,181 @@ Route::get('/especialidades/{especialidad}/doctores', [AdminDashboardController:
     ->name('especialidades.doctores');
 
 // Home según rol
-Route::get('/home', function () {
-    if (!Auth::check()) return redirect('/');
-    $u = Auth::user();
-    if ($u->hasRole('superadmin')) return redirect()->route('superadmin.dashboard');
-    if ($u->hasRole('administrador')) return redirect()->route('admin.dashboard');
-    if ($u->hasRole('paciente')) return redirect()->route('paciente.dashboard');
-    if ($u->hasRole('doctor')) return redirect()->route('doctor.dashboard');
-    if ($u->hasRole('laboratorio')) return redirect()->route('laboratorio.dashboard');
-    return redirect('/');
-})->name('home');
+Route::get('/home', [PublicPageController::class, 'home'])->name('home');
 
 // Contacto
 Route::get('/contacto', [ContactoController::class, 'mostrarFormulario'])->name('contacto.form');
-Route::post('/contacto', [ContactoController::class, 'enviarFormulario'])
+Route::post('/contacto', [ContactoController::class, 'storeContacto'])
     ->middleware('throttle:contacto')   // usa el limiter definido
     ->name('contacto.enviar');
 
 // Servicios
-Route::get('/servicios', function () {
-    $especialidades = Especialidad::query()
-        ->where('activo', true)
-        ->orderBy('orden')
-        ->orderBy('nombre')
-        ->get();
-    return view('servicios', compact('especialidades'));
-})->name('servicios.index');
+Route::get('/servicios', [PublicPageController::class, 'servicios'])->name('servicios.index');
 
 // Rutas firmadas por email
 Route::middleware('signed')->get('/email/cita/{cita}/{rol}/{accion}', EmailCitaActionController::class)
     ->where('rol', '^(paciente|doctor)$')->where('accion', '^(aceptar|cancelar)$')
     ->name('email.cita.action');
 
+Route::middleware('auth')
+    ->get('/cita/comprobante/{token}', [CitaComprobanteController::class, 'showByToken'])
+    ->name('citas.comprobante.show');
+
 // =========================== ADMIN ===========================
 Route::middleware(['auth', 'role:administrador'])
     ->prefix('admin')->name('admin.')->group(function () {
 
-    // Dashboard
-    Route::get('/dashboard', [AdminDashboardController::class, 'dashboard'])->name('dashboard');
-    Route::get('/dashboard/resumen', [AdminDashboardController::class, 'resumenGlobal'])->name('dashboard.resumen');
+        // Dashboard
+        Route::get('/dashboard', [AdminDashboardController::class, 'dashboard'])->name('dashboard');
+        Route::get('/dashboard/resumen', [AdminDashboardController::class, 'resumenGlobal'])->name('dashboard.resumen');
 
-    // Perfil
-    Route::get('/perfil', [AdminDashboardController::class, 'editarPerfil'])->name('perfil.edit');
-    Route::post('/perfil', [AdminDashboardController::class, 'actualizarPerfil'])->name('perfil.update');
+        // Perfil
+        Route::get('/perfil', [AdminDashboardController::class, 'editarPerfil'])->name('perfil.edit');
+        Route::post('/perfil', [AdminDashboardController::class, 'actualizarPerfil'])->name('perfil.update');
 
-    // Personalizacion (requiere aprobacion)
-    Route::get('/personalizacion', function () {
-        return redirect()->route('admin.personalizacion.bienvenida.edit');
-    })->middleware('feature:personalizacion');
-    Route::get('/personalizacion/bienvenida', [AdminPersonalizacionController::class, 'edit'])
-        ->middleware('feature:personalizacion')
-        ->name('personalizacion.bienvenida.edit');
-    Route::put('/personalizacion/bienvenida', [AdminPersonalizacionController::class, 'update'])
-        ->middleware('feature:personalizacion')
-        ->name('personalizacion.bienvenida.update');
-    Route::get('/personalizacion/servicios', [AdminPersonalizacionController::class, 'serviciosEdit'])
-        ->middleware('feature:personalizacion')
-        ->name('personalizacion.servicios.edit');
-    Route::put('/personalizacion/servicios', [AdminPersonalizacionController::class, 'serviciosUpdate'])
-        ->middleware('feature:personalizacion')
-        ->name('personalizacion.servicios.update');
-    Route::get('/personalizacion/contacto', [AdminPersonalizacionController::class, 'contactoEdit'])
-        ->middleware('feature:personalizacion')
-        ->name('personalizacion.contacto.edit');
-    Route::put('/personalizacion/contacto', [AdminPersonalizacionController::class, 'contactoUpdate'])
-        ->middleware('feature:personalizacion')
-        ->name('personalizacion.contacto.update');
-    Route::post('/personalizacion/solicitar', [AdminPersonalizacionController::class, 'requestAccess'])
-        ->name('personalizacion.request');
+        // Personalizacion (requiere aprobacion)
+        Route::get('/personalizacion', [AdminPersonalizacionController::class, 'index'])
+            ->middleware('feature:personalizacion')
+            ->name('personalizacion.index');
+        Route::get('/personalizacion/bienvenida', [AdminPersonalizacionController::class, 'edit'])
+            ->middleware('feature:personalizacion')
+            ->name('personalizacion.bienvenida.edit');
+        Route::put('/personalizacion/bienvenida', [AdminPersonalizacionController::class, 'update'])
+            ->middleware('feature:personalizacion')
+            ->name('personalizacion.bienvenida.update');
+        Route::get('/personalizacion/servicios', [AdminPersonalizacionController::class, 'serviciosEdit'])
+            ->middleware('feature:personalizacion')
+            ->name('personalizacion.servicios.edit');
+        Route::put('/personalizacion/servicios', [AdminPersonalizacionController::class, 'serviciosUpdate'])
+            ->middleware('feature:personalizacion')
+            ->name('personalizacion.servicios.update');
+        Route::get('/personalizacion/contacto', [AdminPersonalizacionController::class, 'contactoEdit'])
+            ->middleware('feature:personalizacion')
+            ->name('personalizacion.contacto.edit');
+        Route::put('/personalizacion/contacto', [AdminPersonalizacionController::class, 'contactoUpdate'])
+            ->middleware('feature:personalizacion')
+            ->name('personalizacion.contacto.update');
+        Route::post('/personalizacion/solicitar', [AdminPersonalizacionController::class, 'requestAccess'])
+            ->name('personalizacion.request');
 
-    // Usuarios
-    Route::get('/usuarios', [AdminDashboardController::class, 'usuarios'])->name('usuarios.index');
-    Route::get('/usuarios/check-email', [AdminDashboardController::class, 'checkEmail'])->name('usuarios.email.check');
-    Route::get('/usuarios/crear', [AdminDashboardController::class, 'usuariosCreate'])->name('usuarios.create');
-    Route::post('/usuarios', [AdminDashboardController::class, 'usuariosStore'])->name('usuarios.store');
-    Route::get('/usuarios/{user}', [AdminDashboardController::class, 'usuariosShow'])->name('usuarios.show');
-    Route::get('/usuarios/{user}/editar', [AdminDashboardController::class, 'usuariosEdit'])->name('usuarios.edit');
-    Route::put('/usuarios/{user}', [AdminDashboardController::class, 'usuariosUpdate'])->name('usuarios.update');
-    Route::delete('/usuarios/{user}', [AdminDashboardController::class, 'usuariosDestroy'])->name('usuarios.destroy');
+        // Usuarios
+        Route::get('/usuarios', [AdminDashboardController::class, 'usuarios'])->name('usuarios.index');
+        Route::get('/usuarios/check-email', [AdminDashboardController::class, 'checkEmail'])->name('usuarios.email.check');
+        Route::get('/usuarios/crear', [AdminDashboardController::class, 'usuariosCreate'])->name('usuarios.create');
+        Route::post('/usuarios', [AdminDashboardController::class, 'usuariosStore'])->name('usuarios.store');
+        Route::get('/usuarios/{user}', [AdminDashboardController::class, 'usuariosShow'])->name('usuarios.show');
+        Route::get('/usuarios/{user}/editar', [AdminDashboardController::class, 'usuariosEdit'])->name('usuarios.edit');
+        Route::put('/usuarios/{user}', [AdminDashboardController::class, 'usuariosUpdate'])->name('usuarios.update');
+        Route::delete('/usuarios/{user}', [AdminDashboardController::class, 'usuariosDestroy'])->name('usuarios.destroy');
 
-    // Exportes usuarios
-    Route::get('/usuarios/export/excel', [AdminDashboardController::class, 'usuariosExportExcel'])->name('usuarios.export.excel');
-    Route::get('/usuarios/export/pdf',   [AdminDashboardController::class, 'usuariosExportPdf'])->name('usuarios.export.pdf');
+        // Exportes usuarios
+        Route::get('/usuarios/export/excel', [AdminDashboardController::class, 'usuariosExportExcel'])->name('usuarios.export.excel');
+        Route::get('/usuarios/export/pdf', [AdminDashboardController::class, 'usuariosExportPdf'])->name('usuarios.export.pdf');
 
-    // Estado de cuenta
-    Route::patch('/usuarios/{user}/block', function(User $user){
-        if ($user->hasRole('administrador') || $user->hasRole('superadmin')) {
-            return back()->withErrors(['No puedes bloquear cuentas Administrador o Superadmin.']);
-        }
-        $user->update(['status' => 'blocked', 'suspended_until' => null, 'deactivation_reason' => request('reason')]);
-        return back()->with('success','Usuario bloqueado');
-    })->name('usuarios.block');
+        // Estado de cuenta
+        Route::patch('/usuarios/{user}/block', [AdminUserStatusController::class, 'block'])->name('usuarios.block');
+        Route::patch('/usuarios/{user}/suspend', [AdminUserStatusController::class, 'suspend'])->name('usuarios.suspend');
+        Route::patch('/usuarios/{user}/activate', [AdminUserStatusController::class, 'activate'])->name('usuarios.activate');
+        Route::patch('/usuarios/{user}/deactivate', [AdminUserStatusController::class, 'deactivate'])->name('usuarios.deactivate');
 
-    Route::patch('/usuarios/{user}/suspend', function(User $user){
-        if ($user->hasRole('administrador') || $user->hasRole('superadmin')) {
-            return back()->withErrors(['No puedes suspender cuentas Administrador o Superadmin.']);
-        }
-        $user->update(['status' => 'active', 'suspended_until' => request('until'), 'deactivation_reason' => request('reason')]);
-        return back()->with('success','Usuario suspendido temporalmente');
-    })->name('usuarios.suspend');
+        // Exportar citas
+        Route::get('/citas/export', [ExportCitasController::class, 'exportarCitas'])->name('citas.export');
 
-    Route::patch('/usuarios/{user}/activate', function(User $user){
-        if ($user->hasRole('administrador') || $user->hasRole('superadmin')) {
-            return back()->withErrors(['No puedes reactivar cuentas Administrador o Superadmin.']);
-        }
-        $user->update(['status' => 'active', 'suspended_until' => null, 'deactivation_reason' => null]);
-        return back()->with('success','Usuario reactivado');
-    })->name('usuarios.activate');
+        // Horarios
+        Route::get('/horarios', [HorarioController::class, 'index'])->name('horarios.index');
+        Route::get('/horarios/crear', [HorarioController::class, 'create'])->name('horarios.create');
+        Route::post('/horarios', [HorarioController::class, 'store'])->name('horarios.store');
+        Route::get('/horarios/{horario}/editar', [HorarioController::class, 'edit'])->name('horarios.edit');
+        Route::put('/horarios/{horario}', [HorarioController::class, 'update'])->name('horarios.update');
+        Route::delete('/horarios/{horario}', [HorarioController::class, 'destroy'])->name('horarios.destroy');
 
-    Route::patch('/usuarios/{user}/deactivate', function(User $user){
-        if ($user->hasRole('administrador') || $user->hasRole('superadmin')) {
-            return back()->withErrors(['No puedes desactivar cuentas Administrador o Superadmin.']);
-        }
-        $user->update(['status' => 'inactive', 'suspended_until' => null, 'deactivation_reason' => request('reason')]);
-        return back()->with('success','Usuario marcado como inactivo');
-    })->name('usuarios.deactivate');
+        // Auditoría de cambios de citas
+        Route::get('/cambios-citas', [\App\Http\Controllers\Admin\CitaEventosController::class, 'index'])->name('cambios-citas.index');
+        Route::get('/cambios-citas/export/excel', [\App\Http\Controllers\Admin\CitaEventosController::class, 'exportExcel'])->name('cambios-citas.export.excel');
+        Route::get('/cambios-citas/export/pdf', [\App\Http\Controllers\Admin\CitaEventosController::class, 'exportPdf'])->name('cambios-citas.export.pdf');
+        Route::get('/recordatorios', [AdminRecordatorioController::class, 'index'])->name('recordatorios.index');
+        Route::get('/recordatorios/enviados', [AdminRecordatorioController::class, 'enviados'])->name('recordatorios.enviados');
+        Route::patch('/recordatorios/{recordatorio}/enviado', [AdminRecordatorioController::class, 'marcarEnviado'])->name('recordatorios.enviado');
+        Route::patch('/recordatorios/{recordatorio}/omitido', [AdminRecordatorioController::class, 'marcarOmitido'])->name('recordatorios.omitido');
 
-    // Exportar citas
-    Route::get('/citas/export', [ExportCitasController::class, 'exportarCitas'])->name('citas.export');
+        // Historial clínico (solo lectura)
+        Route::get('/historial', [AdminHistorialController::class, 'index'])->name('historial.index');
+        Route::get('/historial/paciente/{paciente}', [AdminHistorialController::class, 'paciente'])->name('historial.paciente');
+        Route::get('/historial/nota/{nota}', [AdminHistorialController::class, 'showNote'])->name('historial.nota');
+        Route::get('/historial/{nota}', [AdminHistorialController::class, 'show'])->name('historial.show');
 
-    // Horarios
-    Route::get('/horarios', [HorarioController::class, 'index'])->name('horarios.index');
-    Route::get('/horarios/crear', [HorarioController::class, 'create'])->name('horarios.create');
-    Route::post('/horarios', [HorarioController::class, 'store'])->name('horarios.store');
-    Route::get('/horarios/{horario}/editar', [HorarioController::class, 'edit'])->name('horarios.edit');
-    Route::put('/horarios/{horario}', [HorarioController::class, 'update'])->name('horarios.update');
-    Route::delete('/horarios/{horario}', [HorarioController::class, 'destroy'])->name('horarios.destroy');
+        // Gestión de pagos
+        Route::get('/pagos', [AdminPagoController::class, 'index'])->name('pagos.index');
+        Route::get('/pagos/{pago}', [AdminPagoController::class, 'show'])->name('pagos.show');
+        Route::post('/pagos/{pago}/monto', [AdminPagoController::class, 'actualizarMonto'])->name('pagos.monto.update');
+        Route::post('/pagos/{pago}/metodo', [AdminPagoController::class, 'actualizarMetodo'])->name('pagos.metodo.update');
+        Route::post('/pagos/{pago}/aprobar', [AdminPagoController::class, 'aprobar'])->name('pagos.aprobar');
+        Route::post('/pagos/{pago}/rechazar', [AdminPagoController::class, 'rechazar'])->name('pagos.rechazar');
+        Route::post('/pagos/{pago}/anular', [AdminPagoController::class, 'anular'])->name('pagos.anular');
+        Route::get('/pagos/{pago}/comprobante', [AdminPagoController::class, 'comprobante'])->name('pagos.comprobante');
+        Route::get('/pagos/{pago}/orden.pdf', [AdminPagoController::class, 'ordenPdf'])->name('pagos.orden.pdf');
+        Route::get('/pagos/{pago}/recibo.pdf', [AdminPagoController::class, 'reciboPdf'])->name('pagos.recibo.pdf');
 
-    // Auditoría de cambios de citas
-    Route::get('/cambios-citas', [\App\Http\Controllers\Admin\CitaEventosController::class,'index'])->name('cambios-citas.index');
-    Route::get('/cambios-citas/export/excel', [\App\Http\Controllers\Admin\CitaEventosController::class,'exportExcel'])->name('cambios-citas.export.excel');
-    Route::get('/cambios-citas/export/pdf',   [\App\Http\Controllers\Admin\CitaEventosController::class,'exportPdf'])->name('cambios-citas.export.pdf');
-
-    // Historial clínico (solo lectura)
-    Route::get('/historial', [AdminHistorialController::class, 'index'])->name('historial.index');
-    Route::get('/historial/paciente/{paciente}', [AdminHistorialController::class, 'paciente'])->name('historial.paciente');
-    Route::get('/historial/{nota}', [AdminHistorialController::class, 'show'])->name('historial.show');
-
-    // Gestión de pagos
-    Route::get('/pagos', [AdminPagoController::class, 'index'])->name('pagos.index');
-    Route::get('/pagos/{pago}', [AdminPagoController::class, 'show'])->name('pagos.show');
-    Route::post('/pagos/{pago}/monto', [AdminPagoController::class, 'actualizarMonto'])->name('pagos.monto.update');
-    Route::post('/pagos/{pago}/metodo', [AdminPagoController::class, 'actualizarMetodo'])->name('pagos.metodo.update');
-    Route::post('/pagos/{pago}/aprobar', [AdminPagoController::class, 'aprobar'])->name('pagos.aprobar');
-    Route::post('/pagos/{pago}/rechazar', [AdminPagoController::class, 'rechazar'])->name('pagos.rechazar');
-    Route::post('/pagos/{pago}/anular', [AdminPagoController::class, 'anular'])->name('pagos.anular');
-    Route::get('/pagos/{pago}/comprobante', [AdminPagoController::class, 'comprobante'])->name('pagos.comprobante');
-    Route::get('/pagos/{pago}/orden.pdf', [AdminPagoController::class, 'ordenPdf'])->name('pagos.orden.pdf');
-    Route::get('/pagos/{pago}/recibo.pdf', [AdminPagoController::class, 'reciboPdf'])->name('pagos.recibo.pdf');
-
-    // Excepción de agendamiento por pagos pendientes (override)
-    Route::get('/citas/override/crear', [AdminCitaOverrideController::class, 'create'])->name('citas.override.create');
-    Route::post('/citas/override', [AdminCitaOverrideController::class, 'store'])->name('citas.override.store');
-    Route::get('/citas/{cita}/prioridad', [CitaPrioridadController::class, 'editAdmin'])->name('citas.prioridad.edit');
-    Route::patch('/citas/{cita}/prioridad', [CitaPrioridadController::class, 'updateAdmin'])->name('citas.prioridad.update');
-});
+        // Excepción de agendamiento por pagos pendientes (override)
+        Route::get('/citas/override/crear', [AdminCitaOverrideController::class, 'create'])->name('citas.override.create');
+        Route::post('/citas/override', [AdminCitaOverrideController::class, 'store'])->name('citas.override.store');
+        Route::get('/citas/{cita}/prioridad', [CitaPrioridadController::class, 'editAdmin'])->name('citas.prioridad.edit');
+        Route::patch('/citas/{cita}/prioridad', [CitaPrioridadController::class, 'updateAdmin'])->name('citas.prioridad.update');
+        // Notificaciones de contacto
+        Route::get('/contacto/mensajes', [AdminContactMessageController::class, 'index'])->name('contacto.mensajes');
+        Route::get('/contacto/mensajes/{contactMessage}', [AdminContactMessageController::class, 'show'])->name('contacto.mensajes.show');
+    });
 
 // ======================== SUPERADMIN ========================
 Route::middleware(['auth', 'role:superadmin'])
     ->prefix('superadmin')->name('superadmin.')->group(function () {
 
-    Route::get('/dashboard', [SuperadminDashboardController::class, 'index'])->name('dashboard');
-    Route::get('/usuarios', [SuperadminDashboardController::class, 'users'])->name('users.index');
+        Route::get('/dashboard', [SuperadminDashboardController::class, 'index'])->name('dashboard');
+        Route::get('/usuarios', [SuperadminDashboardController::class, 'users'])->name('users.index');
 
-    // Administradores
-    Route::get('/admins', [SuperadminAdminsController::class, 'index'])->name('admins.index');
-    Route::get('/admins/crear', [SuperadminAdminsController::class, 'create'])->name('admins.create');
-    Route::post('/admins', [SuperadminAdminsController::class, 'store'])->name('admins.store');
-    Route::get('/admins/{admin}/editar', [SuperadminAdminsController::class, 'edit'])->name('admins.edit');
-    Route::put('/admins/{admin}', [SuperadminAdminsController::class, 'update'])->name('admins.update');
-    Route::delete('/admins/{admin}', [SuperadminAdminsController::class, 'destroy'])->name('admins.destroy');
-    Route::patch('/admins/{admin}/block', [SuperadminAdminsController::class, 'block'])->name('admins.block');
-    Route::patch('/admins/{admin}/suspend', [SuperadminAdminsController::class, 'suspend'])->name('admins.suspend');
-    Route::patch('/admins/{admin}/activate', [SuperadminAdminsController::class, 'activate'])->name('admins.activate');
-    Route::patch('/admins/{admin}/deactivate', [SuperadminAdminsController::class, 'deactivate'])->name('admins.deactivate');
+        // Administradores
+        Route::get('/admins', [SuperadminAdminsController::class, 'index'])->name('admins.index');
+        Route::get('/admins/crear', [SuperadminAdminsController::class, 'create'])->name('admins.create');
+        Route::post('/admins', [SuperadminAdminsController::class, 'store'])->name('admins.store');
+        Route::get('/admins/{admin}/editar', [SuperadminAdminsController::class, 'edit'])->name('admins.edit');
+        Route::put('/admins/{admin}', [SuperadminAdminsController::class, 'update'])->name('admins.update');
+        Route::delete('/admins/{admin}', [SuperadminAdminsController::class, 'destroy'])->name('admins.destroy');
+        Route::patch('/admins/{admin}/block', [SuperadminAdminsController::class, 'block'])->name('admins.block');
+        Route::patch('/admins/{admin}/suspend', [SuperadminAdminsController::class, 'suspend'])->name('admins.suspend');
+        Route::patch('/admins/{admin}/activate', [SuperadminAdminsController::class, 'activate'])->name('admins.activate');
+        Route::patch('/admins/{admin}/deactivate', [SuperadminAdminsController::class, 'deactivate'])->name('admins.deactivate');
 
-    // Solicitudes de personalizacion
-    Route::get('/solicitudes/personalizacion', [SuperadminPersonalizacionRequestController::class, 'index'])
-        ->name('solicitudes.personalizacion.index');
-    Route::patch('/solicitudes/personalizacion/{accessRequest}/aprobar', [SuperadminPersonalizacionRequestController::class, 'approve'])
-        ->name('solicitudes.personalizacion.aprobar');
-    Route::patch('/solicitudes/personalizacion/{accessRequest}/rechazar', [SuperadminPersonalizacionRequestController::class, 'reject'])
-        ->name('solicitudes.personalizacion.rechazar');
-    Route::patch('/solicitudes/personalizacion/{accessRequest}/revocar', [SuperadminPersonalizacionRequestController::class, 'revoke'])
-        ->name('solicitudes.personalizacion.revocar');
+        // Solicitudes de personalizacion
+        Route::get('/solicitudes/personalizacion', [SuperadminPersonalizacionRequestController::class, 'index'])
+            ->name('solicitudes.personalizacion.index');
+        Route::patch('/solicitudes/personalizacion/{accessRequest}/aprobar', [SuperadminPersonalizacionRequestController::class, 'approve'])
+            ->name('solicitudes.personalizacion.aprobar');
+        Route::patch('/solicitudes/personalizacion/{accessRequest}/rechazar', [SuperadminPersonalizacionRequestController::class, 'reject'])
+            ->name('solicitudes.personalizacion.rechazar');
+        Route::patch('/solicitudes/personalizacion/{accessRequest}/revocar', [SuperadminPersonalizacionRequestController::class, 'revoke'])
+            ->name('solicitudes.personalizacion.revocar');
 
-    // Personalizacion
-    Route::get('/personalizacion', function () {
-        return redirect()->route('superadmin.personalizacion.bienvenida.edit');
+        // Personalizacion
+        Route::get('/personalizacion', [SuperadminPersonalizacionController::class, 'index'])->name('personalizacion.index');
+        Route::get('/personalizacion/bienvenida', [SuperadminPersonalizacionController::class, 'edit'])
+            ->name('personalizacion.bienvenida.edit');
+        Route::put('/personalizacion/bienvenida', [SuperadminPersonalizacionController::class, 'update'])
+            ->name('personalizacion.bienvenida.update');
+        Route::get('/personalizacion/servicios', [SuperadminPersonalizacionController::class, 'serviciosEdit'])
+            ->name('personalizacion.servicios.edit');
+        Route::put('/personalizacion/servicios', [SuperadminPersonalizacionController::class, 'serviciosUpdate'])
+            ->name('personalizacion.servicios.update');
+        Route::get('/personalizacion/contacto', [SuperadminPersonalizacionController::class, 'contactoEdit'])
+            ->name('personalizacion.contacto.edit');
+        Route::put('/personalizacion/contacto', [SuperadminPersonalizacionController::class, 'contactoUpdate'])
+            ->name('personalizacion.contacto.update');
+
+        // Mantenimiento
+        Route::get('/mantenimiento', [SuperadminMaintenanceController::class, 'edit'])
+            ->name('maintenance.edit');
+        Route::put('/mantenimiento', [SuperadminMaintenanceController::class, 'update'])
+            ->name('maintenance.update');
     });
-    Route::get('/personalizacion/bienvenida', [SuperadminPersonalizacionController::class, 'edit'])
-        ->name('personalizacion.bienvenida.edit');
-    Route::put('/personalizacion/bienvenida', [SuperadminPersonalizacionController::class, 'update'])
-        ->name('personalizacion.bienvenida.update');
-    Route::get('/personalizacion/servicios', [SuperadminPersonalizacionController::class, 'serviciosEdit'])
-        ->name('personalizacion.servicios.edit');
-    Route::put('/personalizacion/servicios', [SuperadminPersonalizacionController::class, 'serviciosUpdate'])
-        ->name('personalizacion.servicios.update');
-    Route::get('/personalizacion/contacto', [SuperadminPersonalizacionController::class, 'contactoEdit'])
-        ->name('personalizacion.contacto.edit');
-    Route::put('/personalizacion/contacto', [SuperadminPersonalizacionController::class, 'contactoUpdate'])
-        ->name('personalizacion.contacto.update');
-
-    // Mantenimiento
-    Route::get('/mantenimiento', [SuperadminMaintenanceController::class, 'edit'])
-        ->name('maintenance.edit');
-    Route::put('/mantenimiento', [SuperadminMaintenanceController::class, 'update'])
-        ->name('maintenance.update');
-});
 
 // ========================== PACIENTE =========================
 Route::middleware(['auth', 'role:paciente'])->prefix('paciente')->group(function () {
@@ -294,6 +250,7 @@ Route::middleware(['auth', 'role:paciente'])->prefix('paciente')->group(function
     Route::get('/crear-cita', [CitaController::class, 'create'])->middleware('no_pending_payments')->name('paciente.crear-cita');
     Route::post('/crear-cita', [CitaController::class, 'store'])->middleware('no_pending_payments')->name('paciente.crear-cita.store');
     Route::post('/citas/{id}/cancelar', [CitaController::class, 'cancelar'])->name('paciente.citas.cancelar');
+    Route::get('/citas/{cita}/comprobante.pdf', [CitaComprobanteController::class, 'pdfPaciente'])->name('paciente.citas.comprobante.pdf');
     Route::get('/editar-cita/{id}', [CitaController::class, 'edit'])->name('paciente.editar-cita');
     Route::put('/editar-cita/{id}', [CitaController::class, 'actualizar'])->name('paciente.editar-cita.update');
     Route::get('/pagos', [PacientePagoController::class, 'index'])->name('paciente.pagos.index');
@@ -304,12 +261,18 @@ Route::middleware(['auth', 'role:paciente'])->prefix('paciente')->group(function
     Route::get('/laboratorio', [PacienteLaboratorioController::class, 'index'])->name('paciente.laboratorio.index');
     Route::get('/laboratorio/{orden}/descargar', [PacienteLaboratorioController::class, 'download'])
         ->whereNumber('orden')->name('paciente.laboratorio.download');
+    Route::get('/laboratorio/solicitudes/{order}/descargar', [PacienteLaboratorioController::class, 'downloadAutoOrder'])
+        ->whereNumber('order')->name('paciente.lab-orders.download');
     Route::get('/laboratorio/solicitar', [PacienteLabOrderController::class, 'create'])
         ->name('paciente.laboratorio.solicitar');
     Route::post('/laboratorio/solicitar', [PacienteLabOrderController::class, 'store'])
         ->name('paciente.laboratorio.solicitar.store');
     Route::get('/historial', [PacienteHistorialController::class, 'index'])->name('paciente.historial');
     Route::get('/historial/{nota}', [PacienteHistorialController::class, 'show'])->name('paciente.historial.show');
+    Route::get('/certificados/{certificado}', [PacienteCertificadoMedicoController::class, 'show'])
+        ->name('paciente.certificados.show');
+    Route::get('/certificados/{certificado}/descargar', [PacienteCertificadoMedicoController::class, 'download'])
+        ->name('paciente.certificados.download');
     Route::view('/mensajes', 'paciente.mensajes')->name('paciente.mensajes');
 });
 
@@ -329,11 +292,13 @@ Route::middleware(['auth', 'role:doctor'])->prefix('doctor')->group(function () 
     Route::patch('/citas/{cita}/prioridad', [CitaPrioridadController::class, 'updateDoctor'])->name('doctor.citas.prioridad.update');
     Route::get('/agenda', [DoctorDashboardController::class, 'agenda'])->name('doctor.agenda');
 
-    Route::get('/disponibilidad/check', [CitaController::class,'checkDisponibilidad'])
+    Route::get('/disponibilidad/check', [CitaController::class, 'checkDisponibilidad'])
         ->name('doctor.disponibilidad.check');
 
-    Route::post('/citas/{cita}/proxima/planificar', [CitaController::class,'proximaPlanificada'])
+    Route::post('/citas/{cita}/proxima/planificar', [CitaController::class, 'proximaPlanificada'])
         ->whereNumber('cita')->name('doctor.citas.proxima.planificada');
+    Route::post('/citas/{cita}/proxima/{control}/cancelar', [CitaController::class, 'cancelarControlPlanificado'])
+        ->whereNumber(['cita', 'control'])->name('doctor.citas.proxima.cancelar');
 
     // Recetas
     Route::get('/recetas', [RecetaController::class, 'index'])->name('doctor.recetas.index');
@@ -344,29 +309,48 @@ Route::middleware(['auth', 'role:doctor'])->prefix('doctor')->group(function () 
     Route::post('/recetas/reenviar/{cita}', [RecetaController::class, 'resend'])->name('doctor.recetas.resend');
     Route::get('/recetas/descargar/{cita}', [RecetaController::class, 'download'])->name('doctor.recetas.download');
 
+    // Certificados medicos
+    Route::get('/citas/{cita}/certificado-medico/crear', [DoctorCertificadoMedicoController::class, 'create'])
+        ->name('doctor.certificados.create');
+    Route::post('/citas/{cita}/certificado-medico', [DoctorCertificadoMedicoController::class, 'store'])
+        ->name('doctor.certificados.store');
+    Route::get('/certificados/{certificado}', [DoctorCertificadoMedicoController::class, 'show'])
+        ->name('doctor.certificados.show');
+    Route::get('/certificados/{certificado}/descargar', [DoctorCertificadoMedicoController::class, 'download'])
+        ->name('doctor.certificados.download');
+
     // Orden de laboratorio (doctor)
     Route::get('/laboratorio/ordenar', [DoctorLaboratorioController::class, 'create'])->name('doctor.laboratorio.create');
     Route::post('/laboratorio', [DoctorLaboratorioController::class, 'store'])->name('doctor.laboratorio.store');
 
     // Nota clínica SOAP
-    Route::get('/citas/{cita}/soap', [DoctorSoapController::class, 'show'])->name('doctor.citas.soap');
-    Route::post('/citas/{cita}/soap', [DoctorSoapController::class, 'store'])->name('doctor.citas.soap.store');
-    Route::post('/citas/{cita}/soap/firmar', [DoctorSoapController::class, 'firmar'])->name('doctor.citas.soap.firmar');
-    Route::post('/citas/{cita}/soap/enmienda', [DoctorSoapController::class, 'enmienda'])->name('doctor.citas.soap.enmienda');
+    Route::get('/citas/{cita}/historial-clinico', [DoctorSoapController::class, 'show'])->name('doctor.citas.soap');
+    Route::post('/citas/{cita}/historial-clinico', [DoctorSoapController::class, 'store'])->name('doctor.citas.soap.store');
+    Route::post('/citas/{cita}/historial-clinico/firmar', [DoctorSoapController::class, 'firmar'])->name('doctor.citas.soap.firmar');
+    Route::post('/citas/{cita}/historial-clinico/enmienda', [DoctorSoapController::class, 'enmienda'])->name('doctor.citas.soap.enmienda');
+    Route::get('/pacientes', [DoctorHistorialController::class, 'index'])->name('doctor.pacientes.index');
     Route::get('/pacientes/{paciente}/historial', [DoctorHistorialController::class, 'show'])->name('doctor.pacientes.historial');
+    Route::put('/pacientes/{paciente}/historial', [DoctorHistorialController::class, 'update'])->name('doctor.pacientes.historial.update');
 
     // Horarios
-    Route::get('/horario',                [DoctorHorarioController::class,'index'])->name('doctor.horario.index');
-    Route::post('/horario',               [DoctorHorarioController::class,'store'])->name('doctor.horario.store');
-    Route::get('/horario/{horario}/edit', [DoctorHorarioController::class,'edit'])->name('doctor.horario.edit');
-    Route::put('/horario/{horario}',      [DoctorHorarioController::class,'update'])->name('doctor.horario.update');
-    Route::delete('/horario/{horario}',   [DoctorHorarioController::class,'destroy'])->name('doctor.horario.destroy');
-    Route::post('/horario/generar',       [DoctorHorarioController::class,'generarRango'])->name('doctor.horario.generar');
+    Route::get('/horario', [DoctorHorarioController::class, 'index'])->name('doctor.horario.index');
+    Route::post('/horario', [DoctorHorarioController::class, 'store'])->name('doctor.horario.store');
+    Route::get('/horario/{horario}/edit', [DoctorHorarioController::class, 'edit'])->name('doctor.horario.edit');
+    Route::put('/horario/{horario}', [DoctorHorarioController::class, 'update'])->name('doctor.horario.update');
+    Route::delete('/horario/{horario}', [DoctorHorarioController::class, 'destroy'])->name('doctor.horario.destroy');
+    Route::post('/horario/generar', [DoctorHorarioController::class, 'generarRango'])->name('doctor.horario.generar');
 });
 
 // ======================== LABORATORIO =======================
 Route::middleware(['auth', 'role:laboratorio'])->prefix('laboratorio')->name('laboratorio.')->group(function () {
     Route::get('/dashboard', [LaboratorioDashboardController::class, 'dashboard'])->name('dashboard');
+
+    Route::get('/horario', [LaboratorioHorarioController::class, 'index'])->name('horario.index');
+    Route::post('/horario', [LaboratorioHorarioController::class, 'store'])->name('horario.store');
+    Route::get('/horario/{horario}/edit', [LaboratorioHorarioController::class, 'edit'])->name('horario.edit');
+    Route::put('/horario/{horario}', [LaboratorioHorarioController::class, 'update'])->name('horario.update');
+    Route::delete('/horario/{horario}', [LaboratorioHorarioController::class, 'destroy'])->name('horario.destroy');
+    Route::post('/horario/generar', [LaboratorioHorarioController::class, 'generarRango'])->name('horario.generar');
 
     Route::get('/ordenes', [LaboratorioOrdenController::class, 'index'])->name('ordenes.index');
     Route::post('/ordenes/{orden}/muestra', [LaboratorioOrdenController::class, 'marcarMuestra'])
@@ -375,25 +359,18 @@ Route::middleware(['auth', 'role:laboratorio'])->prefix('laboratorio')->name('la
         ->whereNumber('orden')->name('ordenes.resultado');
     Route::get('/ordenes/{orden}/download', [LaboratorioOrdenController::class, 'download'])
         ->whereNumber('orden')->name('ordenes.download');
+    Route::post('/ordenes/solicitudes/{labOrder}/muestra', [LaboratorioOrdenController::class, 'marcarMuestraAutoOrder'])
+        ->whereNumber('labOrder')->name('lab-orders.muestra');
+    Route::post('/ordenes/solicitudes/{labOrder}/resultado', [LaboratorioOrdenController::class, 'subirResultadoAutoOrder'])
+        ->whereNumber('labOrder')->name('lab-orders.resultado');
+    Route::get('/ordenes/solicitudes/{labOrder}/download', [LaboratorioOrdenController::class, 'downloadAutoOrder'])
+        ->whereNumber('labOrder')->name('lab-orders.download');
 
 });
 
 // =========================== LOGOUT ==========================
-Route::post('/salir', function (Request $request) {
-    Auth::logout();
-    $request->session()->invalidate();
-    $request->session()->regenerateToken();
-    return redirect('/');
-})->name('salir');
-
-Route::get('/salir', function (Request $request) {
-    if ($request->user()) {
-        Auth::logout();
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
-    }
-    return redirect('/');
-})->name('salir.get');
+Route::post('/salir', [PublicPageController::class, 'logout'])->name('salir');
+Route::get('/salir', [PublicPageController::class, 'logout'])->name('salir.get');
 
 // =========================== CHATBOT ===========================
 Route::middleware('throttle:chatbot')->group(function () {
@@ -407,6 +384,7 @@ Route::middleware('throttle:chatbot')->group(function () {
     Route::post('/chatbot/verificar-paciente', [ChatBotController::class, 'verificarPaciente'])->name('chatbot.verificarPaciente');
     Route::post('/chatbot/enviar-codigo', [ChatBotController::class, 'enviarCodigoVerificacion'])->name('chatbot.enviarCodigo');
     Route::post('/chatbot/verificar-codigo', [ChatBotController::class, 'verificarCodigo'])->name('chatbot.verificarCodigo');
+    Route::post('/chatbot/registrar-usuario', [ChatBotController::class, 'registrarUsuario'])->name('chatbot.registrarUsuario');
     Route::post('/chatbot/agendar', [ChatBotController::class, 'agendar'])->name('chatbot.agendar');
     Route::post('/chatbot/buscar-citas', [ChatBotController::class, 'buscarCitas'])->name('chatbot.buscarCitas');
     Route::post('/chatbot/cancelar', [ChatBotController::class, 'cancelar'])->name('chatbot.cancelar');
@@ -417,7 +395,9 @@ Route::middleware('throttle:chatbot')->group(function () {
 
 Route::middleware('auth')->group(function () {
     Route::get('/face/enroll', [FaceAuthController::class, 'showEnrollment'])->name('face.enroll');
-    Route::post('/face/enroll', [FaceAuthController::class, 'storeEnrollment'])->middleware('throttle:face-enroll');
+    Route::post('/face/enroll', [FaceAuthController::class, 'storeEnrollment'])
+        ->middleware('throttle:face-enroll')
+        ->name('face.enroll.store');
     Route::patch('/panel/theme', [PanelThemeController::class, 'update'])->name('panel.theme.update');
 });
 
@@ -439,3 +419,27 @@ Route::middleware('throttle:chatbot')->group(function () {
 Route::get('/captcha/image/{image}', [\App\Http\Controllers\Captcha\CaptchaController::class, 'image'])
     ->whereNumber('image')
     ->name('captcha.image.show');
+
+// Asigna nombre a rutas del framework/UI que se registran sin ->name()
+foreach (Route::getRoutes() as $route) {
+    if ($route->getName() !== null) {
+        continue;
+    }
+
+    $methods = $route->methods();
+    $uri = $route->uri();
+
+    if (in_array('POST', $methods, true) && $uri === 'login') {
+        $route->name('auth.login');
+        continue;
+    }
+
+    if (in_array('POST', $methods, true) && $uri === 'password/confirm') {
+        $route->name('auth.password.confirm');
+        continue;
+    }
+
+    if (in_array('GET', $methods, true) && $uri === 'up') {
+        $route->name('system.health');
+    }
+}

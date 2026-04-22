@@ -136,10 +136,10 @@
                     <h2>Indicadores dinámicos</h2>
                 </div>
                 <div class="page-header__actions">
-                    <div class="flex items-center gap-3 rounded-xl border border-slate-200 bg-white/90 px-3 py-2">
-                        <i class="ri-calendar-line text-slate-400"></i>
-                        <input type="date" value="{{ now()->format('Y-m-d') }}" class="bg-transparent text-sm text-slate-600">
-                    </div>
+                    <x-ui.context-pill label="Agenda activa">
+                        <x-slot:icon><i class="ri-calendar-line"></i></x-slot:icon>
+                        {{ now()->format('d/m/Y') }}
+                    </x-ui.context-pill>
                 </div>
             </div>
             <div class="mt-4 stat-grid">

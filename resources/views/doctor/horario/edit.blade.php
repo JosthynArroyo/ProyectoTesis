@@ -6,21 +6,18 @@
 
 @section('main')
   <div class="space-y-6">
-    <section class="card p-6">
-      <div>
-        <p class="text-xs uppercase tracking-widest text-slate-500">Horario</p>
-        <h1 class="mt-2 text-2xl font-semibold text-slate-900">Editar horario</h1>
-        <p class="text-slate-600">Actualiza este bloque de tu agenda.</p>
-      </div>
-    </section>
-
     <div class="card p-6">
       <h3 class="text-lg font-semibold text-slate-900">Editar horario</h3>
       <form method="POST" action="{{ route('doctor.horario.update',$h) }}" class="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         @csrf @method('PUT')
         <div>
-          <label class="form-label">Fecha</label>
-          <input class="form-input" type="date" name="fecha" value="{{ $h->fecha }}" required>
+          <label class="form-label" for="doctor-horario-edit-fecha">Fecha</label>
+          <div class="relative mt-1">
+            <input class="form-input form-input-native-date mt-0 pr-11" id="doctor-horario-edit-fecha" type="date" name="fecha" value="{{ $h->fecha }}" placeholder="AAAA-MM-DD" autocomplete="off" required>
+            <button id="doctor-horario-edit-fecha-trigger" type="button" class="field-action-button" data-native-date-open="#doctor-horario-edit-fecha" aria-label="Abrir calendario para editar el horario">
+              <i class="ri-calendar-line"></i>
+            </button>
+          </div>
           @error('fecha')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
         </div>
         <div>

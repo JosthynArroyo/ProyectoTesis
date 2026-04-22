@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Carbon\Carbon;
 
 class Horario extends Model
 {
@@ -54,9 +54,8 @@ class Horario extends Model
 
     /**
      * Scope: Filtrar horarios de una semana específica
-     * 
-     * @param \Illuminate\Database\Eloquent\Builder $query
-     * @param \Carbon\Carbon $startDate
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
      * @return \Illuminate\Database\Eloquent\Builder
      */
     public function scopeWeek($query, Carbon $startDate)
@@ -69,9 +68,8 @@ class Horario extends Model
 
     /**
      * Scope: Filtrar horarios de un doctor específico
-     * 
-     * @param \Illuminate\Database\Eloquent\Builder $query
-     * @param int $doctorId
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
      * @return \Illuminate\Database\Eloquent\Builder
      */
     public function scopeForDoctor($query, int $doctorId)
@@ -81,21 +79,19 @@ class Horario extends Model
 
     /**
      * Scope: Horarios disponibles (sin citas confirmadas o pendientes)
-     * 
-     * @param \Illuminate\Database\Eloquent\Builder $query
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
      * @return \Illuminate\Database\Eloquent\Builder
      */
     public function scopeAvailable($query)
     {
-        return $query->whereDoesntHave('citas', function($q) {
+        return $query->whereDoesntHave('citas', function ($q) {
             $q->whereIn('estado', ['confirmada', 'pendiente']);
         });
     }
 
     /**
      * Accessor: Hora de inicio formateada (HH:MM)
-     * 
-     * @return string
      */
     public function getHoraInicioFormattedAttribute(): string
     {
@@ -104,8 +100,6 @@ class Horario extends Model
 
     /**
      * Accessor: Hora de fin formateada (HH:MM)
-     * 
-     * @return string
      */
     public function getHoraFinFormattedAttribute(): string
     {
@@ -114,20 +108,17 @@ class Horario extends Model
 
     /**
      * Accessor: Duración del horario en minutos
-     * 
-     * @return int
      */
     public function getDuracionMinutosAttribute(): int
     {
         $inicio = Carbon::parse($this->hora_inicio);
         $fin = Carbon::parse($this->hora_fin);
+
         return $inicio->diffInMinutes($fin);
     }
 
     /**
      * Accessor: Nombre completo del día de la semana
-     * 
-     * @return string
      */
     public function getDiaNombreAttribute(): string
     {
@@ -136,25 +127,21 @@ class Horario extends Model
 
     /**
      * Método: Verificar si el horario está disponible
-     * 
-     * @return bool
      */
     public function estaDisponible(): bool
     {
         // Si no existe la relación citas, considerar disponible
-        if (!method_exists($this, 'citas')) {
+        if (! method_exists($this, 'citas')) {
             return true;
         }
 
-        return !$this->citas()
+        return ! $this->citas()
             ->whereIn('estado', ['confirmada', 'pendiente'])
             ->exists();
     }
 
     /**
      * Método: Obtener información completa del horario formateada
-     * 
-     * @return string
      */
     public function getInfoCompleta(): string
     {
@@ -169,24 +156,19 @@ class Horario extends Model
 
     /**
      * Método: Verificar si hay solapamiento con otro horario
-     * 
-     * @param string $horaInicio
-     * @param string $horaFin
-     * @param int|null $excludeId
-     * @return bool
      */
-    public function hasSolapamiento(string $horaInicio, string $horaFin, int $excludeId = null): bool
+    public function hasSolapamiento(string $horaInicio, string $horaFin, ?int $excludeId = null): bool
     {
         return static::where('doctor_id', $this->doctor_id)
             ->where('fecha', $this->fecha)
-            ->when($excludeId, fn($q) => $q->where('id', '!=', $excludeId))
+            ->when($excludeId, fn ($q) => $q->where('id', '!=', $excludeId))
             ->where(function ($q) use ($horaInicio, $horaFin) {
                 $q->whereBetween('hora_inicio', [$horaInicio, $horaFin])
-                  ->orWhereBetween('hora_fin', [$horaInicio, $horaFin])
-                  ->orWhere(function($qq) use ($horaInicio, $horaFin) {
-                      $qq->where('hora_inicio', '<=', $horaInicio)
-                         ->where('hora_fin', '>=', $horaFin);
-                  });
+                    ->orWhereBetween('hora_fin', [$horaInicio, $horaFin])
+                    ->orWhere(function ($qq) use ($horaInicio, $horaFin) {
+                        $qq->where('hora_inicio', '<=', $horaInicio)
+                            ->where('hora_fin', '>=', $horaFin);
+                    });
             })->exists();
     }
 }

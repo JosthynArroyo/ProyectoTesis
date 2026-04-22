@@ -11,8 +11,11 @@ use App\Models\CitaEvento;
 use App\Models\NotaSoap;
 use App\Models\NotaSoapDiagnostico;
 use App\Models\NotaSoapEnmienda;
+use App\Services\ClinicalRecordService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class SoapController extends Controller
 {
@@ -29,12 +32,14 @@ class SoapController extends Controller
             ->first();
         $persistenciaClinica = $this->resolvePersistenciaClinica($cita, $nota);
         $signosPrevios = $this->obtenerSignosVitalesPrevios($cita, $nota);
+        $controlCita = $this->controlPosteriorActivo($cita);
 
         return view('doctor.soap', [
             'cita' => $cita->load(['paciente', 'especialidad']),
             'nota' => $nota,
             'persistenciaClinica' => $persistenciaClinica,
             'signosPrevios' => $signosPrevios,
+            'controlCita' => $controlCita,
         ]);
     }
 
@@ -51,13 +56,27 @@ class SoapController extends Controller
             return back()->with('error', 'La nota clínica ya está firmada y no puede editarse.');
         }
 
-        $nota = $nota ?? new NotaSoap(['cita_id' => $cita->id]);
-        $nota->fill($this->mapSoapData($request));
-        $nota->estado = NotaSoap::ESTADO_BORRADOR;
-        $nota->save();
+        DB::transaction(function () use ($request, $cita, $nota): void {
+            $clinicalRecords = app(ClinicalRecordService::class);
+            $record = $clinicalRecords->ensureForPatient($cita->paciente_id, Auth::id());
 
-        $this->syncDiagnosticos($nota, $request->input('diagnosticos', []));
-        $this->logEvento($cita, 'soap_guardada');
+            $nota = $nota ?? new NotaSoap(['cita_id' => $cita->id]);
+            $nota->fill($this->mapSoapData($request));
+            $nota->clinical_record_id = $record->id;
+            $nota->estado = NotaSoap::ESTADO_BORRADOR;
+            $nota->save();
+
+            $this->syncDiagnosticos($nota, $request->input('diagnosticos', []));
+            $nota->load(['diagnosticos', 'cita']);
+            $clinicalRecords->syncFromSoap($cita, $nota, $request->all() + [
+                'clinical_summary' => $request->input('assessment'),
+            ], Auth::id());
+            $this->logEvento($cita, 'soap_guardada');
+        });
+
+        if ($request->expectsJson()) {
+            return response()->json(['ok' => true]);
+        }
 
         return redirect()->route('doctor.citas.soap', $cita->id)
             ->with('success', 'Borrador guardado correctamente.');
@@ -76,15 +95,25 @@ class SoapController extends Controller
             return back()->with('error', 'La nota clínica ya fue firmada.');
         }
 
-        $nota = $nota ?? new NotaSoap(['cita_id' => $cita->id]);
-        $nota->fill($this->mapSoapData($request));
-        $nota->estado = NotaSoap::ESTADO_FIRMADA;
-        $nota->signed_at = now();
-        $nota->signed_by = Auth::id();
-        $nota->save();
+        DB::transaction(function () use ($request, $cita, $nota): void {
+            $clinicalRecords = app(ClinicalRecordService::class);
+            $record = $clinicalRecords->ensureForPatient($cita->paciente_id, Auth::id());
 
-        $this->syncDiagnosticos($nota, $request->input('diagnosticos', []));
-        $this->logEvento($cita, 'soap_firmada');
+            $nota = $nota ?? new NotaSoap(['cita_id' => $cita->id]);
+            $nota->fill($this->mapSoapData($request));
+            $nota->clinical_record_id = $record->id;
+            $nota->estado = NotaSoap::ESTADO_FIRMADA;
+            $nota->signed_at = now();
+            $nota->signed_by = Auth::id();
+            $nota->save();
+
+            $this->syncDiagnosticos($nota, $request->input('diagnosticos', []));
+            $nota->load(['diagnosticos', 'cita']);
+            $clinicalRecords->syncFromSoap($cita, $nota, $request->all() + [
+                'clinical_summary' => $request->input('assessment'),
+            ], Auth::id());
+            $this->logEvento($cita, 'soap_firmada');
+        });
 
         return redirect()->route('doctor.citas.soap', $cita->id)
             ->with('success', 'Nota clínica firmada correctamente.');
@@ -114,6 +143,8 @@ class SoapController extends Controller
                 'assessment',
                 'plan_general',
                 'plan_seguimiento',
+                'follow_up_date',
+                'follow_up_notes',
                 'plan_notas',
             ]),
             'diagnosticos' => $nota->diagnosticos->map(function (NotaSoapDiagnostico $diag) {
@@ -121,15 +152,17 @@ class SoapController extends Controller
             })->values()->all(),
         ];
 
-        NotaSoapEnmienda::create([
-            'nota_soap_id' => $nota->id,
-            'user_id' => Auth::id(),
-            'motivo' => $request->input('motivo'),
-            'contenido' => $request->input('contenido'),
-            'snapshot' => $snapshot,
-        ]);
+        DB::transaction(function () use ($nota, $request, $snapshot, $cita): void {
+            NotaSoapEnmienda::create([
+                'nota_soap_id' => $nota->id,
+                'user_id' => Auth::id(),
+                'motivo' => $request->input('motivo'),
+                'contenido' => $request->input('contenido'),
+                'snapshot' => $snapshot,
+            ]);
 
-        $this->logEvento($cita, 'soap_enmienda');
+            $this->logEvento($cita, 'soap_enmienda');
+        });
 
         return redirect()->route('doctor.citas.soap', $cita->id)
             ->with('success', 'Enmienda registrada correctamente.');
@@ -158,6 +191,37 @@ class SoapController extends Controller
         }
 
         return in_array($cita->estado, [Cita::ESTADO_CONFIRMADA, Cita::ESTADO_REALIZADA], true);
+    }
+
+    protected function controlPosteriorActivo(Cita $cita): ?Cita
+    {
+        $inicio = $this->fechaHoraCita($cita);
+
+        return Cita::query()
+            ->where('id', '<>', $cita->id)
+            ->where('paciente_id', $cita->paciente_id)
+            ->where('doctor_id', $cita->doctor_id)
+            ->where('especialidad_id', $cita->especialidad_id)
+            ->where('activo', true)
+            ->whereNotIn('estado', [Cita::ESTADO_CANCELADA, Cita::ESTADO_REALIZADA, Cita::ESTADO_NO_SE_PRESENTO])
+            ->where(function ($query) use ($inicio) {
+                $query->whereDate('fecha', '>', $inicio->toDateString())
+                    ->orWhere(function ($sameDay) use ($inicio) {
+                        $sameDay->whereDate('fecha', $inicio->toDateString())
+                            ->whereTime('hora', '>', $inicio->format('H:i:s'));
+                    });
+            })
+            ->orderBy('fecha')
+            ->orderBy('hora')
+            ->first();
+    }
+
+    protected function fechaHoraCita(Cita $cita): Carbon
+    {
+        return Carbon::parse(
+            Carbon::parse($cita->fecha)->toDateString().' '.substr((string) $cita->hora, 0, 8),
+            'America/Guayaquil'
+        );
     }
 
     protected function mapSoapData(Request $request): array
@@ -191,90 +255,79 @@ class SoapController extends Controller
             $rosPayload['antecedentes'] = $antecedentes;
         }
 
+        $followUpDate = $this->resolveFollowUpDate($request);
+        $legacyFollowUp = trim((string) $request->input('plan_seguimiento', ''));
+        $followUpNotes = $this->resolveFollowUpNotes($request);
+
+        if ($legacyFollowUp === '' && $followUpDate) {
+            $legacyFollowUp = 'Control previsto para '.$followUpDate;
+        }
+
         return [
             'subjetivo_motivo' => $request->input('subjetivo_motivo'),
             'subjetivo_hpi' => $subjetivoHpi,
-            'subjetivo_ros' => !empty($rosPayload) ? $rosPayload : null,
+            'subjetivo_ros' => ! empty($rosPayload) ? $rosPayload : null,
             'subjetivo_notas' => $subjetivoNotas,
             'signos_vitales' => $signos ?: null,
             'examen_fisico' => $request->input('examen_fisico'),
             'notas_objetivas' => $request->input('notas_objetivas'),
             'assessment' => $request->input('assessment'),
             'plan_general' => $request->input('plan_general'),
-            'plan_seguimiento' => $request->input('plan_seguimiento'),
+            'plan_seguimiento' => $legacyFollowUp !== '' ? $legacyFollowUp : null,
+            'follow_up_date' => $followUpDate,
+            'follow_up_notes' => $followUpNotes,
             'plan_notas' => $request->input('plan_notas'),
         ];
     }
 
+    protected function resolveFollowUpDate(Request $request): ?string
+    {
+        $explicit = trim((string) $request->input('follow_up_date', ''));
+        if ($explicit !== '') {
+            return $explicit;
+        }
+
+        $legacy = trim((string) $request->input('plan_seguimiento', ''));
+        if ($legacy === '') {
+            return null;
+        }
+
+        try {
+            return \Carbon\Carbon::parse($legacy, config('app.timezone', 'America/Guayaquil'))
+                ->toDateString();
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    protected function resolveFollowUpNotes(Request $request): ?string
+    {
+        $notes = trim((string) $request->input('follow_up_notes', ''));
+        if ($notes !== '') {
+            return $notes;
+        }
+
+        $legacy = trim((string) $request->input('plan_seguimiento', ''));
+
+        return $legacy !== '' ? $legacy : null;
+    }
+
     protected function resolvePersistenciaClinica(Cita $cita, ?NotaSoap $nota): array
     {
-        $rosActual = is_array($nota?->subjetivo_ros) ? $nota->subjetivo_ros : [];
-        $alergias = is_array($rosActual['alergias'] ?? null) ? $rosActual['alergias'] : null;
-        $antecedentes = is_array($rosActual['antecedentes'] ?? null) ? $rosActual['antecedentes'] : null;
-
-        if ($alergias && $antecedentes) {
-            return [
-                'alergias' => $alergias,
-                'antecedentes' => $antecedentes,
-            ];
-        }
-
-        $previas = NotaSoap::query()
-            ->select('notas_soap.subjetivo_ros')
-            ->join('citas_medicas', 'notas_soap.cita_id', '=', 'citas_medicas.id')
-            ->where('notas_soap.estado', NotaSoap::ESTADO_FIRMADA)
-            ->where('citas_medicas.paciente_id', $cita->paciente_id)
-            ->where('citas_medicas.doctor_id', $cita->doctor_id)
-            ->where('citas_medicas.id', '!=', $cita->id)
-            ->orderByDesc('citas_medicas.fecha')
-            ->orderByDesc('citas_medicas.hora')
-            ->limit(30)
-            ->get();
-
-        foreach ($previas as $previa) {
-            $rosPrevio = is_array($previa->subjetivo_ros) ? $previa->subjetivo_ros : [];
-            if (! $alergias) {
-                $alergiasPrevias = is_array($rosPrevio['alergias'] ?? null) ? $rosPrevio['alergias'] : null;
-                if ($alergiasPrevias) {
-                    $alergias = $alergiasPrevias;
-                }
-            }
-
-            if (! $antecedentes) {
-                $antecedentesPrevios = is_array($rosPrevio['antecedentes'] ?? null) ? $rosPrevio['antecedentes'] : null;
-                if ($antecedentesPrevios) {
-                    $antecedentes = $antecedentesPrevios;
-                }
-            }
-
-            if ($alergias && $antecedentes) {
-                break;
-            }
-        }
+        $context = app(ClinicalRecordService::class)->buildSoapContext($cita, $nota);
 
         return [
-            'alergias' => $alergias,
-            'antecedentes' => $antecedentes,
+            'alergias' => $context['alergias'] ?? null,
+            'antecedentes' => $context['antecedentes'] ?? null,
+            'problemas_activos' => $context['problemas_activos'] ?? collect(),
+            'medicacion_actual' => $context['medicacion_actual'] ?? collect(),
+            'alertas' => $context['alertas'] ?? collect(),
         ];
     }
 
     protected function obtenerSignosVitalesPrevios(Cita $cita, ?NotaSoap $nota): ?array
     {
-        $notaPrevia = NotaSoap::query()
-            ->select('notas_soap.signos_vitales')
-            ->join('citas_medicas', 'notas_soap.cita_id', '=', 'citas_medicas.id')
-            ->where('notas_soap.estado', NotaSoap::ESTADO_FIRMADA)
-            ->where('citas_medicas.paciente_id', $cita->paciente_id)
-            ->where('citas_medicas.doctor_id', $cita->doctor_id)
-            ->whereNotNull('notas_soap.signos_vitales')
-            ->where('citas_medicas.id', '!=', $cita->id)
-            ->orderByDesc('citas_medicas.fecha')
-            ->orderByDesc('citas_medicas.hora')
-            ->first();
-
-        $signos = is_array($notaPrevia?->signos_vitales) ? $notaPrevia->signos_vitales : null;
-
-        return ! empty($signos) ? $signos : null;
+        return app(ClinicalRecordService::class)->getPreviousVitalSigns($cita, $nota);
     }
 
     protected function buildAlergias(Request $request): ?array
@@ -307,6 +360,7 @@ class SoapController extends Controller
         foreach ($antecedentes as $key => $value) {
             if ($value === '') {
                 $antecedentes[$key] = null;
+
                 continue;
             }
             $hasAnyValue = true;
@@ -327,7 +381,7 @@ class SoapController extends Controller
 
         $detalle = trim((string) ($alergias['detalle'] ?? ''));
 
-        return $detalle !== '' ? 'Alergias: ' . $detalle : 'Alergias sin registro.';
+        return $detalle !== '' ? 'Alergias: '.$detalle : 'Alergias sin registro.';
     }
 
     protected function buildAntecedentesResumen(?array $antecedentes): ?string
@@ -351,7 +405,7 @@ class SoapController extends Controller
             if ($value === '') {
                 continue;
             }
-            $chunks[] = $label . ': ' . $value;
+            $chunks[] = $label.': '.$value;
         }
 
         return ! empty($chunks) ? implode(' | ', $chunks) : null;
@@ -370,7 +424,7 @@ class SoapController extends Controller
         ];
 
         return array_filter($signos, function ($value) {
-            return !is_null($value) && $value !== '';
+            return ! is_null($value) && $value !== '';
         });
     }
 
@@ -389,7 +443,7 @@ class SoapController extends Controller
             ->all();
 
         $nota->diagnosticos()->delete();
-        if (!empty($clean)) {
+        if (! empty($clean)) {
             $nota->diagnosticos()->createMany($clean);
         }
     }

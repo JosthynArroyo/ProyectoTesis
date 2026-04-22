@@ -1,6 +1,6 @@
 @extends('layouts.admin')
 @section('title','Usuario')
-@section('header-title','Detalle de usuario')
+@section('header-title','Detalle de usuario #'.$user->id)
 @section('header-subtitle','Información completa del perfil')
 
 @section('main')
@@ -9,17 +9,9 @@
   $statusTone = ['active' => 'success', 'inactive' => 'warning', 'blocked' => 'danger'][$user->status ?? 'active'] ?? 'success';
 @endphp
 <div class="space-y-6">
-  <section class="card p-6">
-    <div class="flex flex-wrap items-center justify-between gap-4">
-      <div>
-        <p class="text-xs uppercase tracking-widest text-slate-500">Detalle de usuario #{{ $user->id }}</p>
-        <h1 class="mt-2 text-2xl font-semibold text-slate-900">Detalle de usuario #{{ $user->id }}</h1>
-      </div>
-      <div class="flex items-center gap-2">
-        <span class="badge neutral">{{ optional($user->roles->first())->name ?? '-' }}</span>
-      </div>
-    </div>
-  </section>
+  <div class="panel-action-bar">
+    <span class="badge neutral">{{ optional($user->roles->first())->name ?? '-' }}</span>
+  </div>
 
   <section class="card p-6">
     @php
@@ -36,12 +28,12 @@
       $avatarImage = $imageUrlService->variants($user->avatar, $avatarFolder, $avatarEntity);
     @endphp
     <div class="flex flex-wrap items-center gap-4">
-      <div class="h-20 w-20 overflow-hidden rounded-3xl">
+      <div class="h-20 w-20 overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
         <img
           src="{{ $avatarImage['thumb'] }}"
           @if($avatarImage['srcset']) srcset="{{ $avatarImage['srcset'] }}" sizes="80px" @endif
           alt="Avatar"
-          class="h-full w-full object-cover"
+          class="h-full w-full {{ $avatarEntity === 'doctor' ? 'doctor-avatar-photo' : 'object-cover' }}"
           loading="lazy"
           decoding="async"
         >

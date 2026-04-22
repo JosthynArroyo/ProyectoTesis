@@ -1,4 +1,5 @@
 import { setupFaceEnrollment } from '../face-enrollment.js';
+import { setupProfileAvatarPicker } from '../profile-avatar-picker.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   setupAvatarPicker();
@@ -7,14 +8,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function setupAvatarPicker() {
   const changePhoto = document.getElementById('changePhoto');
-  const input = document.getElementById('avatarInput');
-  const preview = document.getElementById('avatarPreview');
   const avatarBox = document.getElementById('avatarBox');
-  const changeBtn = document.getElementById('changePhotoBtn');
 
-  if (!changePhoto || !input || !preview || !avatarBox) return;
-
-  const openPicker = () => input.click();
+  if (!changePhoto || !avatarBox) return;
 
   avatarBox.addEventListener('mouseenter', () => {
     if (window.innerWidth > 768) changePhoto.style.opacity = 1;
@@ -22,21 +18,10 @@ function setupAvatarPicker() {
   avatarBox.addEventListener('mouseleave', () => {
     if (window.innerWidth > 768) changePhoto.style.opacity = 0;
   });
-  changePhoto.addEventListener('click', openPicker);
-  avatarBox.addEventListener('click', openPicker);
-  if (changeBtn) changeBtn.addEventListener('click', openPicker);
 
-  avatarBox.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      openPicker();
-    }
-  });
-
-  input.addEventListener('change', (event) => {
-    const [file] = event.target.files || [];
-    if (!file) return;
-    preview.src = URL.createObjectURL(file);
+  setupProfileAvatarPicker({
+    triggerSelectors: ['#avatarBox', '#changePhotoBtn'],
+    keyboardTriggerSelectors: ['#avatarBox'],
   });
 }
 

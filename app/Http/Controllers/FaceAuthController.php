@@ -4,27 +4,36 @@ namespace App\Http\Controllers;
 
 use App\Models\FaceProfile;
 use App\Services\FaceRecognitionService;
+use App\Services\MaintenanceAccessService;
+use App\Services\SiteSettingsService;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\ServiceUnavailableHttpException;
 
 class FaceAuthController extends Controller
 {
+    private const MAINTENANCE_FACE_MESSAGE = 'El sistema está en mantenimiento. Intenta nuevamente más tarde.';
+
     public function __construct()
     {
         $this->middleware('auth')->only(['showEnrollment', 'storeEnrollment']);
         $this->middleware('guest')->only(['verifyLogin']);
     }
 
-    public function showEnrollment()
+    public function showEnrollment(Request $request)
     {
+        $this->abortIfMaintenanceActive($request);
+
         return view('auth.face-enroll');
     }
 
     public function storeEnrollment(Request $request)
     {
+        $this->abortIfMaintenanceActive($request);
+
         $validator = Validator::make($request->all(), [
             'descriptors' => 'sometimes|array|min:1',
             'descriptors.*' => 'array|min:128',
@@ -44,11 +53,11 @@ class FaceAuthController extends Controller
         $payload = $validator->validated();
         $descriptors = $payload['descriptors'] ?? [];
 
-        if (!$descriptors && isset($payload['descriptor'])) {
+        if (! $descriptors && isset($payload['descriptor'])) {
             $descriptors = [$payload['descriptor']];
         }
 
-        if (!$descriptors) {
+        if (! $descriptors) {
             if ($request->expectsJson()) {
                 return response()->json([
                     'message' => 'No se pudo completar la captura.',
@@ -71,20 +80,20 @@ class FaceAuthController extends Controller
 
         $normalized = [];
         foreach (array_slice($descriptors, 0, 6) as $descriptor) {
-            if (!is_array($descriptor)) {
+            if (! is_array($descriptor)) {
                 continue;
             }
             $normalized[] = array_map('floatval', $descriptor);
         }
 
         $average = $this->averageDescriptor($normalized);
-        if (!$average && $normalized) {
+        if (! $average && $normalized) {
             $average = $normalized[0];
         }
 
         $payloadToSave = [
             'descriptor' => $average,
-            'threshold'  => config('services.face.threshold', 0.55),
+            'threshold' => config('services.face.threshold', 0.55),
         ];
 
         if (Schema::hasColumn('face_profiles', 'descriptors')) {
@@ -113,43 +122,59 @@ class FaceAuthController extends Controller
 
     public function verifyLogin(Request $request, FaceRecognitionService $recognizer)
     {
-        $data = $request->validate([
+        $this->abortIfMaintenanceActive($request);
+
+        $validator = Validator::make($request->all(), [
             'descriptor' => 'required|array|min:128',
         ]);
 
-        $profiles = FaceProfile::with('user')->get();
+        if ($validator->fails()) {
+            throw new HttpResponseException(response()->json([
+                'message' => 'No se pudo leer un rostro válido. Intenta nuevamente.',
+                'code' => 'invalid_face_descriptor',
+                'state' => 'not_recognized',
+                'errors' => $validator->errors(),
+            ], 422));
+        }
+
+        $data = $validator->validated();
+
+        $profiles = FaceProfile::with('user')
+            ->get()
+            ->filter(fn (FaceProfile $profile) => $this->profileCanLogin($profile))
+            ->values();
         if ($profiles->isEmpty()) {
-            throw ValidationException::withMessages([
-                'descriptor' => 'No hay perfiles faciales registrados.',
-            ]);
+            throw $this->faceLoginException(
+                'face_not_registered',
+                'not_registered',
+                'No hay ningún rostro registrado para usar este método. Inicia sesión con correo y contraseña y registra tu rostro desde tu perfil.'
+            );
         }
 
         $bestMatch = null;
 
         foreach ($profiles as $profile) {
-            if (!$profile->user || !$profile->user->isActive()) {
-                continue;
-            }
-
             $distance = $recognizer->compare(array_map('floatval', $data['descriptor']), $profile);
 
-            if (!$recognizer->isMatch($distance, $profile)) {
+            if (! $recognizer->isMatch($distance, $profile)) {
                 continue;
             }
 
-            if (!$bestMatch || $distance < $bestMatch['distance']) {
+            if (! $bestMatch || $distance < $bestMatch['distance']) {
                 $bestMatch = ['profile' => $profile, 'distance' => $distance];
             }
         }
 
-        if (!$bestMatch) {
-            throw ValidationException::withMessages([
-                'descriptor' => 'No se reconoció el rostro registrado.',
-            ]);
+        if (! $bestMatch) {
+            throw $this->faceLoginException(
+                'face_not_recognized',
+                'not_recognized',
+                'No encontramos coincidencia con un rostro registrado. Intenta nuevamente o ingresa con correo y contraseña.'
+            );
         }
 
         $bestMatch['profile']->update([
-            'failed_attempts'  => 0,
+            'failed_attempts' => 0,
             'last_verified_at' => now(),
         ]);
 
@@ -158,14 +183,41 @@ class FaceAuthController extends Controller
         Auth::login($user, true);
 
         return response()->json([
+            'code' => 'face_recognized',
+            'state' => 'recognized',
+            'message' => 'Rostro reconocido.',
             'redirect' => route('home'),
-            'name'     => $user->name,
+            'name' => $user->name,
         ]);
+    }
+
+    private function profileCanLogin(FaceProfile $profile): bool
+    {
+        if (! $profile->user || ! $profile->user->isActive()) {
+            return false;
+        }
+
+        $hasDescriptor = is_array($profile->descriptor) && count($profile->descriptor) > 0;
+        $hasSamples = is_array($profile->descriptors) && count($profile->descriptors) > 0;
+
+        return $hasDescriptor || $hasSamples;
+    }
+
+    private function faceLoginException(string $code, string $state, string $message): HttpResponseException
+    {
+        return new HttpResponseException(response()->json([
+            'message' => $message,
+            'code' => $code,
+            'state' => $state,
+            'errors' => [
+                'descriptor' => [$message],
+            ],
+        ], 422));
     }
 
     private function averageDescriptor(array $samples): array
     {
-        if (!$samples) {
+        if (! $samples) {
             return [];
         }
 
@@ -178,7 +230,7 @@ class FaceAuthController extends Controller
         $count = 0;
 
         foreach ($samples as $sample) {
-            if (!is_array($sample) || count($sample) !== $length) {
+            if (! is_array($sample) || count($sample) !== $length) {
                 continue;
             }
             for ($i = 0; $i < $length; $i++) {
@@ -206,6 +258,30 @@ class FaceAuthController extends Controller
         }
 
         $separator = str_contains($base, '?') ? '&' : '?';
-        return $base . $separator . 'face=' . $result . '#perfil-face';
+
+        return $base.$separator.'face='.$result.'#perfil-face';
+    }
+
+    private function abortIfMaintenanceActive(Request $request): void
+    {
+        $settings = app(SiteSettingsService::class);
+
+        if (! $settings->getBool('maintenance.enabled', false)) {
+            return;
+        }
+
+        if (app(MaintenanceAccessService::class)->userOrIpCanBypass($request, $request->user())) {
+            return;
+        }
+
+        $message = self::MAINTENANCE_FACE_MESSAGE;
+
+        if ($request->expectsJson()) {
+            throw new HttpResponseException(response()->json([
+                'message' => $message,
+            ], 503));
+        }
+
+        throw new ServiceUnavailableHttpException(null, $message);
     }
 }

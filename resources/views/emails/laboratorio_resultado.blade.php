@@ -1,85 +1,72 @@
-<!DOCTYPE html>
-<html lang=\"es\">
-<head>
-  <meta charset=\"UTF-8\">
-  <title>Resultados de laboratorio</title>
-  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">
-</head>
 @php
-  $paciente = $paciente ?? null;
-  $nombre = $paciente?->name ?? 'Paciente';
-  $citaObj = $cita ?? null;
-  $ordenObj = $orden ?? null;
-  $fechaTxt = $citaObj?->fecha ? $citaObj->fecha->format('d/m/Y') : '';
-  $horaTxt = $citaObj?->hora ? \Carbon\Carbon::parse($citaObj->hora)->format('H:i') : '';
+    $paciente = $paciente ?? null;
+    $nombre = $paciente?->name ?? 'Paciente';
+    $citaObj = $cita ?? null;
+    $ordenObj = $orden ?? null;
+    $fechaResultado = $citaObj?->fecha
+        ?? $ordenObj?->scheduled_at
+        ?? $ordenObj?->resultado_publicado_at
+        ?? $ordenObj?->created_at;
+    $fechaTxt = $fechaResultado ? \Carbon\Carbon::parse($fechaResultado)->format('d/m/Y') : '';
+    $horaTxt = $citaObj?->hora
+        ? \Carbon\Carbon::parse($citaObj->hora)->format('H:i')
+        : ($fechaResultado ? \Carbon\Carbon::parse($fechaResultado)->format('H:i') : '');
+    $prioridad = $ordenObj?->prioridad ?? $ordenObj?->priority ?? 'Normal';
 @endphp
-<body style=\"margin:0; padding:0; background:#f8fafc; font-family:'Segoe UI', Arial, sans-serif; color:#0f172a;\">
-  <table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" width=\"100%\" style=\"background:#f8fafc; padding:24px 0;\">
-    <tr>
-      <td align=\"center\">
-        <table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" width=\"620\" style=\"width:620px; max-width:92%; background:#ffffff; border-radius:16px; border:1px solid #e2e8f0; overflow:hidden; box-shadow:0 10px 30px rgba(15,23,42,0.08);\">
-          <tr>
-            <td style=\"background:#0f766e; padding:22px 26px; text-align:center;\">
-              @php($logoSrc = isset($message) ? $message->embed(public_path('img/logo-welcomeBlanco.jpg')) : asset('img/logo-welcomeBlanco.jpg'))
-              <img src=\"{{ $logoSrc }}\" alt=\"Clínica Don Bosco\" width=\"180\" style=\"display:inline-block;\">
+
+<x-email.layout
+    eyebrow="Laboratorio clínico"
+    title="Tus resultados ya están disponibles"
+    intro="Adjuntamos el informe en PDF para que puedas revisarlo y también consultarlo desde tu panel cuando lo necesites."
+    badge="Resultado listo para descargar"
+    preheader="Tus resultados de laboratorio ya están disponibles en Clínica Don Bosco."
+    footer-note="Si tienes dudas sobre tus resultados, agenda una cita con tu profesional tratante para su interpretación."
+>
+    <p style="margin:0 0 22px; font-size:15px; line-height:1.7; color:#334155;">
+        Hola {{ $nombre }}, estos son los datos principales asociados a tu resultado de laboratorio.
+    </p>
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%; border-collapse:separate; border-spacing:0; border:1px solid #dbe4ee; border-radius:22px; overflow:hidden; background:#ffffff;">
+        <tr>
+            <td colspan="2" style="padding:18px 20px; border-bottom:1px solid #e2e8f0; background:#f8fafc; font-size:13px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#0f766e;">
+                Detalles del resultado
             </td>
-          </tr>
-          <tr>
-            <td style=\"padding:26px 26px 10px;\">
-              <div style=\"font-size:18px; font-weight:600; color:#0f172a; margin-bottom:6px;\">
-                Resultados de laboratorio disponibles
-              </div>
-              <div style=\"font-size:14px; color:#475569; line-height:1.6;\">
-                Hola {{ $nombre }}, ya puedes revisar tus resultados. Adjuntamos el PDF en este correo.
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td style=\"padding:6px 26px 22px;\">
-              <div style=\"margin-top:14px; padding:18px 16px; border:1px solid #e2e8f0; border-radius:12px; background:#f8fafc;\">
-                <div style=\"font-size:15px; font-weight:600; margin-bottom:10px;\">Detalles de la orden</div>
-                <table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" width=\"100%\" style=\"font-size:14px; color:#0f172a;\">
-                  <tr>
-                    <td style=\"padding:6px 0; width:36%; color:#64748b;\">Examen</td>
-                    <td style=\"padding:6px 0; font-weight:600;\">{{ $ordenObj?->tipo_examen ?? 'N/D' }}</td>
-                  </tr>
-                  <tr>
-                    <td style=\"padding:6px 0; color:#64748b;\">Prioridad</td>
-                    <td style=\"padding:6px 0; font-weight:600; text-transform:capitalize;\">{{ $ordenObj?->prioridad ?? 'normal' }}</td>
-                  </tr>
-                  <tr>
-                    <td style=\"padding:6px 0; color:#64748b;\">Fecha cita</td>
-                    <td style=\"padding:6px 0; font-weight:600;\">{{ $fechaTxt }} {{ $horaTxt }}</td>
-                  </tr>
-                  <tr>
-                    <td style=\"padding:6px 0; color:#64748b;\">Especialidad</td>
-                    <td style=\"padding:6px 0; font-weight:600;\">{{ $citaObj?->especialidad?->nombre ?? 'Laboratorio' }}</td>
-                  </tr>
-                </table>
-              </div>
-              @if(!empty($ordenObj?->resultado_resumen))
-                <div style=\"margin-top:16px; padding:14px 16px; border-radius:12px; background:#f8fafc; border:1px solid #e2e8f0;\">
-                  <div style=\"font-size:14px; font-weight:600; margin-bottom:6px;\">Resumen</div>
-                  <div style=\"font-size:13px; color:#475569; line-height:1.6;\">
-                    {{ $ordenObj->resultado_resumen }}
-                  </div>
-                </div>
-              @endif
-              <div style=\"margin-top:18px;\">
-                @php($ctaStyle = 'display:inline-block; background:#0f766e; color:#ffffff; padding:12px 18px; border-radius:10px; font-weight:700; text-decoration:none; font-size:14px;')
-                <a href=\"{{ route('paciente.laboratorio.index') }}\" style=\"{{ $ctaStyle }}\">Ver resultados en mi panel</a>
-                <a href=\"{{ route('paciente.crear-cita') }}\" style=\"{{ $ctaStyle }} margin-left:10px;\">Agendar cita médica</a>
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td style=\"padding:14px 26px 18px; background:#0f172a; color:#cbd5e1; font-size:12px; text-align:center;\">
-              © {{ date('Y') }} Clínica Don Bosco · Este es un correo automático, no responder.
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
+        </tr>
+        <tr>
+            <td style="width:34%; padding:14px 20px; border-bottom:1px solid #eef2f7; font-size:13px; font-weight:700; color:#64748b;">Examen</td>
+            <td style="padding:14px 20px; border-bottom:1px solid #eef2f7; font-size:14px; font-weight:600; color:#0f172a;">{{ $ordenObj?->tipo_examen ?? 'No disponible' }}</td>
+        </tr>
+        <tr>
+            <td style="padding:14px 20px; border-bottom:1px solid #eef2f7; font-size:13px; font-weight:700; color:#64748b;">Prioridad</td>
+            <td style="padding:14px 20px; border-bottom:1px solid #eef2f7; font-size:14px; font-weight:600; color:#0f172a; text-transform:capitalize;">{{ $prioridad }}</td>
+        </tr>
+        <tr>
+            <td style="padding:14px 20px; border-bottom:1px solid #eef2f7; font-size:13px; font-weight:700; color:#64748b;">Fecha de la cita</td>
+            <td style="padding:14px 20px; border-bottom:1px solid #eef2f7; font-size:14px; font-weight:600; color:#0f172a;">{{ trim($fechaTxt.' '.$horaTxt) ?: 'No disponible' }}</td>
+        </tr>
+        <tr>
+            <td style="padding:14px 20px; font-size:13px; font-weight:700; color:#64748b;">Especialidad</td>
+            <td style="padding:14px 20px; font-size:14px; font-weight:600; color:#0f172a;">{{ $citaObj?->especialidad?->nombre ?? 'Laboratorio clínico' }}</td>
+        </tr>
+    </table>
+
+    @if (!empty($ordenObj?->resultado_resumen))
+        <div style="margin-top:20px; padding:20px; border-radius:22px; background:#f8fafc; border:1px solid #dbe4ee;">
+            <div style="font-size:13px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#0f766e;">
+                Resumen reportado
+            </div>
+            <div style="margin-top:12px; font-size:14px; line-height:1.75; color:#475569;">
+                {{ $ordenObj->resultado_resumen }}
+            </div>
+        </div>
+    @endif
+
+    <x-slot:actions>
+        <a href="{{ route('paciente.laboratorio.index') }}" style="display:inline-block; padding:14px 24px; border-radius:14px; background:#0f766e; color:#ffffff; text-decoration:none; font-size:14px; font-weight:700;">
+            Ver resultados en mi panel
+        </a>
+        <a href="{{ route('paciente.crear-cita') }}" style="display:inline-block; margin-left:12px; padding:14px 24px; border-radius:14px; background:#ffffff; color:#0f766e; text-decoration:none; font-size:14px; font-weight:700; border:1px solid #99f6e4;">
+            Agendar nueva cita
+        </a>
+    </x-slot:actions>
+</x-email.layout>

@@ -10,12 +10,17 @@ use App\Models\Especialidad;
 use App\Services\LandingWelcomeManager;
 use App\Services\LandingWelcomeService;
 use App\Services\SiteSettingsService;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 
 class PersonalizacionController extends Controller
 {
+    public function index(): RedirectResponse
+    {
+        return redirect()->route('admin.personalizacion.bienvenida.edit');
+    }
+
     public function edit(LandingWelcomeService $welcome)
     {
         $especialidadesActivas = \App\Models\Especialidad::query()
@@ -67,22 +72,41 @@ class PersonalizacionController extends Controller
             $icono = is_string($icono) ? trim($icono) : $icono;
             $icono = $icono === '' ? null : $icono;
 
-            $especialidad->nombre = $payload['nombre'];
+            $nombre = isset($payload['nombre']) ? trim((string) $payload['nombre']) : '';
+
+            if ($nombre !== '') {
+                $especialidad->nombre = $nombre;
+            }
+
             $especialidad->descripcion = $payload['descripcion'] ?? null;
             $especialidad->icono = $icono;
-            $especialidad->activo = ! empty($payload['activo']);
-            $especialidad->orden = (int) ($payload['orden'] ?? 0);
+            $especialidad->activo = array_key_exists('activo', $payload)
+                ? ! empty($payload['activo'])
+                : $especialidad->activo;
+            $especialidad->orden = array_key_exists('orden', $payload) && $payload['orden'] !== null && $payload['orden'] !== ''
+                ? (int) $payload['orden']
+                : $especialidad->orden;
             $especialidad->save();
         }
 
         foreach (($data['nuevas'] ?? []) as $payload) {
+            $nombre = isset($payload['nombre']) ? trim((string) $payload['nombre']) : '';
+            $descripcion = isset($payload['descripcion']) ? trim((string) $payload['descripcion']) : '';
             $icono = $payload['icono'] ?? null;
             $icono = is_string($icono) ? trim($icono) : $icono;
             $icono = $icono === '' ? null : $icono;
 
+            if ($nombre === '' && $descripcion === '' && $icono === null) {
+                continue;
+            }
+
+            if ($nombre === '') {
+                continue;
+            }
+
             Especialidad::query()->create([
-                'nombre' => $payload['nombre'],
-                'descripcion' => $payload['descripcion'] ?? null,
+                'nombre' => $nombre,
+                'descripcion' => $descripcion !== '' ? $descripcion : null,
                 'icono' => $icono,
                 'activo' => ! empty($payload['activo']),
                 'orden' => (int) ($payload['orden'] ?? 0),
@@ -104,29 +128,29 @@ class PersonalizacionController extends Controller
         $data = $request->validated();
 
         $payload = [
-            'contact.info_badge' => $data['contact_info_badge'],
-            'contact.title' => $data['contact_title'],
-            'contact.subtitle' => $data['contact_subtitle'],
-            'contact.address_label' => $data['contact_address_label'],
-            'contact.address' => $data['contact_address'],
-            'contact.phone_label' => $data['contact_phone_label'],
-            'contact.phone' => $data['contact_phone'],
-            'contact.hours_label' => $data['contact_hours_label'],
-            'contact.hours' => $data['contact_hours'],
-            'contact.map_title' => $data['contact_map_title'],
-            'contact.map_embed' => $data['contact_map_embed'],
-            'contact.form_section_badge' => $data['contact_form_section_badge'],
-            'contact.form_title' => $data['contact_form_title'],
-            'contact.form_badge' => $data['contact_form_badge'],
-            'contact.form_submit_text' => $data['contact_form_submit_text'],
-            'contact.form_name_label' => $data['contact_form_name_label'],
-            'contact.form_email_label' => $data['contact_form_email_label'],
-            'contact.form_phone_label' => $data['contact_form_phone_label'],
-            'contact.form_subject_label' => $data['contact_form_subject_label'],
-            'contact.form_subject_placeholder' => $data['contact_form_subject_placeholder'],
-            'contact.form_message_label' => $data['contact_form_message_label'],
-            'contact.form_message_placeholder' => $data['contact_form_message_placeholder'],
-            'contact.form_message_help' => $data['contact_form_message_help'],
+            'contact.info_badge' => $data['contact_info_badge'] ?? null,
+            'contact.title' => $data['contact_title'] ?? null,
+            'contact.subtitle' => $data['contact_subtitle'] ?? null,
+            'contact.address_label' => $data['contact_address_label'] ?? null,
+            'contact.address' => $data['contact_address'] ?? null,
+            'contact.phone_label' => $data['contact_phone_label'] ?? null,
+            'contact.phone' => $data['contact_phone'] ?? null,
+            'contact.hours_label' => $data['contact_hours_label'] ?? null,
+            'contact.hours' => $data['contact_hours'] ?? null,
+            'contact.map_title' => $data['contact_map_title'] ?? null,
+            'contact.map_embed' => $data['contact_map_embed'] ?? null,
+            'contact.form_section_badge' => $data['contact_form_section_badge'] ?? null,
+            'contact.form_title' => $data['contact_form_title'] ?? null,
+            'contact.form_badge' => $data['contact_form_badge'] ?? null,
+            'contact.form_submit_text' => $data['contact_form_submit_text'] ?? null,
+            'contact.form_name_label' => $data['contact_form_name_label'] ?? null,
+            'contact.form_email_label' => $data['contact_form_email_label'] ?? null,
+            'contact.form_phone_label' => $data['contact_form_phone_label'] ?? null,
+            'contact.form_subject_label' => $data['contact_form_subject_label'] ?? null,
+            'contact.form_subject_placeholder' => $data['contact_form_subject_placeholder'] ?? null,
+            'contact.form_message_label' => $data['contact_form_message_label'] ?? null,
+            'contact.form_message_placeholder' => $data['contact_form_message_placeholder'] ?? null,
+            'contact.form_message_help' => $data['contact_form_message_help'] ?? null,
         ];
 
         $meta = [];
@@ -222,5 +246,4 @@ class PersonalizacionController extends Controller
             'contact.form_message_help',
         ];
     }
-
 }

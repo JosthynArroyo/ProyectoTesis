@@ -22,6 +22,10 @@
             <i class="ri-calendar-line text-lg"></i> Mis citas
         </a>
 
+        <a href="{{ route('doctor.pacientes.index') }}" class="flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors {{ $current === 'pacientes' ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-50' }}">
+            <i class="ri-group-line text-lg"></i> Pacientes
+        </a>
+
         <a href="{{ route('doctor.recetas.index') }}" class="flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors {{ $current === 'recetas' ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-50' }}">
             <i class="ri-file-list-3-line text-lg"></i> Historial de recetas
         </a>

@@ -19,12 +19,22 @@ function estadoClass(s){
     case 'realizada': return 'success';
     case 'confirmada': return 'info';
     case 'cancelada': return 'danger';
+    case 'no_se_presento': return 'danger';
     default: return '';
   }
 }
 
 function cap(s){ return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
 function estadoLabel(s){ return (s || '').toLowerCase() === 'no_se_presento' ? 'No se presento' : cap(s); }
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;',
+  })[char]);
+}
 
 function prioridadClass(nivel){
   switch ((nivel || '').toUpperCase()) {
@@ -98,17 +108,18 @@ async function refreshDashboard(){
         els.tbody.innerHTML = rows.map(c => {
           // Preferir campos ya formateados si existen; si no, helpers
           const fechaCorta = c.fecha_corta || fmtDate(c.fecha);
-          const horaCorta  = c.hora ? fmtTime(c.hora) : fmtTime(c.fecha);
-          const prioridad = (c.prioridad || 'BAJA').toUpperCase();
+          const horaCorta  = c.hora_corta || (c.hora ? fmtTime(c.hora) : fmtTime(c.fecha));
+          const prioridad = String(c.prioridad || 'BAJA').toUpperCase();
           const prioridadTone = prioridadClass(prioridad);
           const redFlag = c.red_flag ? `<span class="badge danger">Red flag</span>` : '';
+          const estadoTone = estadoClass(c.estado);
           return `
             <tr>
-              <td>${c.paciente || 'Paciente'}</td>
-              <td class="${estadoClass(c.estado)}">${estadoLabel(c.estado || '')}</td>
-              <td><span class="badge ${prioridadTone}">${prioridad}</span> ${redFlag}</td>
-              <td>${fechaCorta}</td>
-              <td>${horaCorta}</td>
+              <td data-label="Paciente">${escapeHtml(c.paciente || 'Paciente')}</td>
+              <td data-label="Estado"><span class="badge ${estadoTone}">${escapeHtml(estadoLabel(c.estado || ''))}</span></td>
+              <td data-label="Prioridad"><span class="badge ${prioridadTone}">${escapeHtml(prioridad)}</span> ${redFlag}</td>
+              <td data-label="Fecha">${escapeHtml(fechaCorta)}</td>
+              <td data-label="Hora">${escapeHtml(horaCorta)}</td>
             </tr>
           `;
         }).join('');

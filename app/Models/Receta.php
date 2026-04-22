@@ -11,6 +11,7 @@ class Receta extends Model
 
     protected $fillable = [
         'cita_id',
+        'clinical_record_id',
         'diagnostico',
         'medicamentos',
         'indicaciones',
@@ -29,12 +30,18 @@ class Receta extends Model
         return $this->belongsTo(Cita::class, 'cita_id');
     }
 
+    public function clinicalRecord()
+    {
+        return $this->belongsTo(ClinicalRecord::class);
+    }
+
     /**
      * Atributo calculado: se puede editar durante 1 hora desde la última modificación.
      */
     public function getCanEditAttribute(): bool
     {
         $base = $this->updated_at ?? $this->created_at ?? now();
+
         return now('America/Guayaquil')->diffInMinutes($base) < 60;
     }
 }

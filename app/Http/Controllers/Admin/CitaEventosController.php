@@ -3,26 +3,26 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\CitaEvento;
 use App\Models\User;
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use Carbon\Carbon;
 use Dompdf\Dompdf;
 use Dompdf\Options;
-use Carbon\Carbon;
+use Illuminate\Http\Request;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class CitaEventosController extends Controller
 {
     public function index(Request $request)
     {
-        $tipo     = $request->string('tipo')->toString();          // agendada|confirmada|cancelada|realizada|reprogramada
-        $estado   = $request->string('estado')->toString();        // pendiente|confirmada|cancelada|realizada
+        $tipo = $request->string('tipo')->toString();          // agendada|confirmada|cancelada|realizada|reprogramada
+        $estado = $request->string('estado')->toString();        // pendiente|confirmada|cancelada|realizada
         $doctorId = $request->integer('doctor_id') ?: null;
-        $paciente = trim((string)$request->get('paciente', ''));   // nombre paciente
-        $desde    = $request->get('desde');                        // YYYY-MM-DD
-        $hasta    = $request->get('hasta');                        // YYYY-MM-DD
-        $q        = trim((string)$request->get('q', ''));          // búsqueda libre (#cita, correo, dni)
+        $paciente = trim((string) $request->get('paciente', ''));   // nombre paciente
+        $desde = $request->get('desde');                        // YYYY-MM-DD
+        $hasta = $request->get('hasta');                        // YYYY-MM-DD
+        $q = trim((string) $request->get('q', ''));          // búsqueda libre (#cita, correo, dni)
         if ($tipo === 'all') {
             $tipo = '';
         }
@@ -30,35 +30,34 @@ class CitaEventosController extends Controller
             $estado = '';
         }
 
-
         $ev = CitaEvento::with(['cita.paciente', 'cita.doctor'])
-            ->when($tipo !== '', fn($qq) => $qq->where('tipo', $tipo))
+            ->when($tipo !== '', fn ($qq) => $qq->where('tipo', $tipo))
             ->when($estado !== '', function ($qq) use ($estado) {
                 $qq->where(function ($w) use ($estado) {
                     $w->where('a_estado', $estado)
-                      ->orWhere('de_estado', $estado);
+                        ->orWhere('de_estado', $estado);
                 });
             })
-            ->when($doctorId, fn($qq) => $qq->whereHas('cita', fn($w) => $w->where('doctor_id', $doctorId)))
-            ->when($paciente !== '', fn($qq) => $qq->whereHas('cita.paciente', fn($w) => $w->where('name', 'like', '%'.$paciente.'%')))
+            ->when($doctorId, fn ($qq) => $qq->whereHas('cita', fn ($w) => $w->where('doctor_id', $doctorId)))
+            ->when($paciente !== '', fn ($qq) => $qq->whereHas('cita.paciente', fn ($w) => $w->where('name', 'like', '%'.$paciente.'%')))
             ->when($q !== '', function ($qq) use ($q) {
                 $like = '%'.$q.'%';
                 $qq->where(function ($w) use ($like) {
                     $w->where('valor_anterior', 'like', $like)
-                      ->orWhere('valor_nuevo', 'like', $like)
-                      ->orWhere('comentario', 'like', $like)
-                      ->orWhereHas('cita', fn($c) => $c->where('id', 'like', $like))
-                      ->orWhereHas('cita.paciente', fn($c) => $c->where('email', 'like', $like)->orWhere('dni', 'like', $like))
-                      ->orWhereHas('cita.doctor', fn($c) => $c->where('name', 'like', $like));
+                        ->orWhere('valor_nuevo', 'like', $like)
+                        ->orWhere('comentario', 'like', $like)
+                        ->orWhereHas('cita', fn ($c) => $c->where('id', 'like', $like))
+                        ->orWhereHas('cita.paciente', fn ($c) => $c->where('email', 'like', $like)->orWhere('dni', 'like', $like))
+                        ->orWhereHas('cita.doctor', fn ($c) => $c->where('name', 'like', $like));
                 });
             })
-            ->when($desde, fn($qq) => $qq->whereDate('created_at', '>=', $desde))
-            ->when($hasta, fn($qq) => $qq->whereDate('created_at', '<=', $hasta))
+            ->when($desde, fn ($qq) => $qq->whereDate('created_at', '>=', $desde))
+            ->when($hasta, fn ($qq) => $qq->whereDate('created_at', '<=', $hasta))
             ->orderByDesc('created_at')
             ->paginate(25)
             ->withQueryString();
 
-        $doctores = User::whereHas('roles', fn($r) => $r->where('name', 'doctor'))
+        $doctores = User::whereHas('roles', fn ($r) => $r->where('name', 'doctor'))
             ->orderBy('name')
             ->get(['id', 'name']);
 
@@ -91,18 +90,18 @@ class CitaEventosController extends Controller
                 : ($r->created_at ? Carbon::parse($r->created_at)->format('Y-m-d H:i') : '');
 
             $deEstado = $r->de_estado ?? '';
-            $aEstado  = $r->a_estado ?? '';
+            $aEstado = $r->a_estado ?? '';
 
-            $deFecha  = $r->de_fecha ?? null;
-            $aFecha   = $r->a_fecha ?? null;
-            $deHora   = $r->de_hora ?? '';
-            $aHora    = $r->a_hora ?? '';
+            $deFecha = $r->de_fecha ?? null;
+            $aFecha = $r->a_fecha ?? null;
+            $deHora = $r->de_hora ?? '';
+            $aHora = $r->a_hora ?? '';
 
             // Formateo defensivo de fecha
             $deFechaStr = $deFecha
                 ? ($deFecha instanceof Carbon ? $deFecha->format('Y-m-d') : Carbon::parse($deFecha)->format('Y-m-d'))
                 : '';
-            $aFechaStr  = $aFecha
+            $aFechaStr = $aFecha
                 ? ($aFecha instanceof Carbon ? $aFecha->format('Y-m-d') : Carbon::parse($aFecha)->format('Y-m-d'))
                 : '';
 
@@ -122,7 +121,7 @@ class CitaEventosController extends Controller
             ];
         }
 
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->fromArray($data, null, 'A1', true);
         foreach (range('A', 'L') as $col) {
@@ -142,19 +141,30 @@ class CitaEventosController extends Controller
     public function exportPdf(Request $request)
     {
         $rows = $this->query($request)->get();
+        $eventLabels = [
+            'agendada' => 'Agendada',
+            'confirmada' => 'Confirmada',
+            'cancelada' => 'Cancelada',
+            'realizada' => 'Realizada',
+            'no_se_presento' => 'No se presento',
+            'reprogramada' => 'Reprogramada',
+            'prioridad_manual' => 'Prioridad manual',
+        ];
 
         $html = view('admin.cambios-citas.pdf', [
-            'rows'     => $rows,
-            'tipo'     => $request->get('tipo'),
-            'estado'   => $request->get('estado'),
+            'rows' => $rows,
+            'tipo' => $request->get('tipo'),
+            'estado' => $request->get('estado'),
             'doctorId' => $request->get('doctor_id'),
             'paciente' => $request->get('paciente'),
-            'desde'    => $request->get('desde'),
-            'hasta'    => $request->get('hasta'),
-            'q'        => $request->get('q'),
+            'desde' => $request->get('desde'),
+            'hasta' => $request->get('hasta'),
+            'q' => $request->get('q'),
+            'pdfCss' => $this->loadPdfCss('admin/cambios-citas-pdf.css'),
+            'eventLabels' => $eventLabels,
         ])->render();
 
-        $opt = new Options();
+        $opt = new Options;
         $opt->set('isRemoteEnabled', true);
         $opt->set('defaultFont', 'DejaVu Sans');
 
@@ -169,13 +179,13 @@ class CitaEventosController extends Controller
     /** Construcción común de filtros para index/export */
     private function query(Request $request)
     {
-        $tipo     = $request->string('tipo')->toString();
-        $estado   = $request->string('estado')->toString();
+        $tipo = $request->string('tipo')->toString();
+        $estado = $request->string('estado')->toString();
         $doctorId = $request->integer('doctor_id') ?: null;
-        $paciente = trim((string)$request->get('paciente', ''));
-        $desde    = $request->get('desde');
-        $hasta    = $request->get('hasta');
-        $q        = trim((string)$request->get('q', ''));
+        $paciente = trim((string) $request->get('paciente', ''));
+        $desde = $request->get('desde');
+        $hasta = $request->get('hasta');
+        $q = trim((string) $request->get('q', ''));
         if ($tipo === 'all') {
             $tipo = '';
         }
@@ -183,30 +193,36 @@ class CitaEventosController extends Controller
             $estado = '';
         }
 
-
         return CitaEvento::with(['cita.paciente', 'cita.doctor'])
-            ->when($tipo !== '', fn($qq) => $qq->where('tipo', $tipo))
+            ->when($tipo !== '', fn ($qq) => $qq->where('tipo', $tipo))
             ->when($estado !== '', function ($qq) use ($estado) {
                 $qq->where(function ($w) use ($estado) {
                     $w->where('a_estado', $estado)
-                      ->orWhere('de_estado', $estado);
+                        ->orWhere('de_estado', $estado);
                 });
             })
-            ->when($doctorId, fn($qq) => $qq->whereHas('cita', fn($w) => $w->where('doctor_id', $doctorId)))
-            ->when($paciente !== '', fn($qq) => $qq->whereHas('cita.paciente', fn($w) => $w->where('name', 'like', '%'.$paciente.'%')))
+            ->when($doctorId, fn ($qq) => $qq->whereHas('cita', fn ($w) => $w->where('doctor_id', $doctorId)))
+            ->when($paciente !== '', fn ($qq) => $qq->whereHas('cita.paciente', fn ($w) => $w->where('name', 'like', '%'.$paciente.'%')))
             ->when($q !== '', function ($qq) use ($q) {
                 $like = '%'.$q.'%';
                 $qq->where(function ($w) use ($like) {
                     $w->where('valor_anterior', 'like', $like)
-                      ->orWhere('valor_nuevo', 'like', $like)
-                      ->orWhere('comentario', 'like', $like)
-                      ->orWhereHas('cita', fn($c) => $c->where('id', 'like', $like))
-                      ->orWhereHas('cita.paciente', fn($c) => $c->where('email', 'like', $like)->orWhere('dni', 'like', $like))
-                      ->orWhereHas('cita.doctor', fn($c) => $c->where('name', 'like', $like));
+                        ->orWhere('valor_nuevo', 'like', $like)
+                        ->orWhere('comentario', 'like', $like)
+                        ->orWhereHas('cita', fn ($c) => $c->where('id', 'like', $like))
+                        ->orWhereHas('cita.paciente', fn ($c) => $c->where('email', 'like', $like)->orWhere('dni', 'like', $like))
+                        ->orWhereHas('cita.doctor', fn ($c) => $c->where('name', 'like', $like));
                 });
             })
-            ->when($desde, fn($qq) => $qq->whereDate('created_at', '>=', $desde))
-            ->when($hasta, fn($qq) => $qq->whereDate('created_at', '<=', $hasta))
+            ->when($desde, fn ($qq) => $qq->whereDate('created_at', '>=', $desde))
+            ->when($hasta, fn ($qq) => $qq->whereDate('created_at', '<=', $hasta))
             ->orderByDesc('created_at');
+    }
+
+    private function loadPdfCss(string $relativePath): string
+    {
+        $path = resource_path('css/'.$relativePath);
+
+        return is_file($path) ? (file_get_contents($path) ?: '') : '';
     }
 }

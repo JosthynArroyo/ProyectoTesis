@@ -4,10 +4,28 @@
 
   const doctorField = document.getElementById('doctor_id');
   const fechaField = document.getElementById('fecha');
+  const fechaTrigger = document.getElementById('doctor-lab-fecha-trigger');
   const horaField = document.getElementById('hora');
   const horaHelp = document.getElementById('horaHelp');
   const slotsTemplate = form.dataset.slotsTemplate || '';
   let preferredHour = form.dataset.oldHora || '';
+
+  function openNativePicker(input) {
+    if (!(input instanceof HTMLInputElement)) {
+      return;
+    }
+
+    input.focus({ preventScroll: true });
+
+    if (typeof input.showPicker === 'function') {
+      try {
+        input.showPicker();
+        return;
+      } catch (_error) {}
+    }
+
+    input.click();
+  }
 
   function selectedDoctorId() {
     return doctorField ? String(doctorField.value || '') : '';
@@ -88,10 +106,18 @@
     loadSlots();
   });
 
-  fechaField?.addEventListener('change', () => {
+  fechaTrigger?.addEventListener('click', (event) => {
+    event.preventDefault();
+    openNativePicker(fechaField);
+  });
+
+  const handleFechaChange = () => {
     preferredHour = '';
     loadSlots();
-  });
+  };
+
+  fechaField?.addEventListener('change', handleFechaChange);
+  fechaField?.addEventListener('enhanced-date:change', handleFechaChange);
 
   horaField?.addEventListener('change', () => {
     preferredHour = horaField.value || '';

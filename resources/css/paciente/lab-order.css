@@ -31,7 +31,7 @@ body.paciente-body--lab-order{
   gap:20px;
 }
 
-.page-hero .eyebrow{text-transform:uppercase;letter-spacing:.08em;font-weight:700;color:var(--pd-muted);margin:0;font-size:.78rem;}
+.page-hero .eyebrow{text-transform:uppercase;letter-spacing:0;font-weight:700;color:var(--pd-muted);margin:0;font-size:.78rem;}
 .page-hero h1{font-family:var(--pd-font-head);margin:0;font-size:2rem;}
 .page-hero .lede{margin:6px 0 0;color:var(--pd-muted);font-weight:600;}
 
@@ -62,7 +62,7 @@ body.paciente-body--lab-order{
   border-radius:999px;
   font-weight:800;
   font-size:.78rem;
-  letter-spacing:.04em;
+  letter-spacing:0;
   background:#e8f0ff;
   color:#1d4ed8;
   border:1px solid #c7d4ff;
@@ -112,7 +112,7 @@ label{
   font-size:.92rem;
   font-weight:800;
   color:#334155;
-  letter-spacing:.01em;
+  letter-spacing:0;
   margin:4px 0 8px 6px;
 }
 

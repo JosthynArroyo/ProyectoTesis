@@ -16,12 +16,11 @@ class LandingWelcomeManager
 {
     public function __construct(
         private readonly ImageOptimizer $imageOptimizer
-    ) {
-    }
+    ) {}
 
     public function update(LandingWelcomeRequest $request): void
     {
-        $settings = LandingWelcomeSetting::query()->first() ?? new LandingWelcomeSetting();
+        $settings = LandingWelcomeSetting::query()->first() ?? new LandingWelcomeSetting;
         $pricesHighlightImagePath = $request->input('prices_highlight_image_path');
         $pricesHighlightImageFile = $request->file('prices_highlight_image');
         if ($pricesHighlightImageFile) {
@@ -100,7 +99,7 @@ class LandingWelcomeManager
                 'label' => $item['label'] ?? null,
                 'value' => $item['value'] ?? null,
                 'note' => $item['note'] ?? null,
-                'is_active' => !empty($item['is_active']),
+                'is_active' => ! empty($item['is_active']),
                 'sort_order' => (int) ($item['sort_order'] ?? 0),
             ]);
         }
@@ -125,7 +124,7 @@ class LandingWelcomeManager
 
             LandingWelcomeSlide::query()->create([
                 'image_path' => $path,
-                'is_active' => !empty($item['is_active']),
+                'is_active' => ! empty($item['is_active']),
                 'sort_order' => (int) ($item['sort_order'] ?? 0),
             ]);
         }
@@ -145,7 +144,7 @@ class LandingWelcomeManager
                 'value' => $item['value'] ?? null,
                 'description' => $item['description'] ?? null,
                 'icon' => $item['icon'] ?? 'ri-information-line',
-                'is_active' => !empty($item['is_active']),
+                'is_active' => ! empty($item['is_active']),
                 'sort_order' => (int) ($item['sort_order'] ?? 0),
             ]);
         }
@@ -172,7 +171,7 @@ class LandingWelcomeManager
                 'name' => $item['name'] ?? '',
                 'specialty' => $item['specialty'] ?? null,
                 'photo_path' => $path,
-                'is_active' => !empty($item['is_active']),
+                'is_active' => ! empty($item['is_active']),
                 'sort_order' => (int) ($item['sort_order'] ?? 0),
             ]);
         }
@@ -191,7 +190,7 @@ class LandingWelcomeManager
             LandingWelcomePrice::query()->create([
                 'service' => $item['service'] ?? '',
                 'price' => $item['price'] ?? null,
-                'is_active' => !empty($item['is_active']),
+                'is_active' => ! empty($item['is_active']),
                 'sort_order' => (int) ($item['sort_order'] ?? 0),
             ]);
         }
@@ -201,6 +200,7 @@ class LandingWelcomeManager
     {
         if (! $request->boolean('show_services_block')) {
             LandingWelcomeFeaturedSpecialty::query()->delete();
+
             return;
         }
 

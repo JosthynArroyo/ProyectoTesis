@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\MaintenanceAccessService;
 use App\Services\SiteSettingsService;
 use Closure;
 use Illuminate\Http\Request;
@@ -17,14 +18,7 @@ class PreventRequestsDuringMaintenance
             return $next($request);
         }
 
-        if (
-            $request->routeIs('login')
-            || $request->routeIs('face.login')
-            || $request->routeIs('logout')
-            || $request->routeIs('salir')
-            || $request->routeIs('salir.get')
-            || $request->routeIs('superadmin.*')
-        ) {
+        if ($this->isMaintenanceBypassRequest($request)) {
             return $next($request);
         }
 
@@ -33,7 +27,7 @@ class PreventRequestsDuringMaintenance
             return $next($request);
         }
 
-        if ($this->isAllowlistedIp($request->ip(), $settings->get('maintenance.allow_ips', ''))) {
+        if (app(MaintenanceAccessService::class)->requestIpIsAllowlisted($request)) {
             return $next($request);
         }
 
@@ -50,13 +44,28 @@ class PreventRequestsDuringMaintenance
         ], 503);
     }
 
-    private function isAllowlistedIp(string $ip, string $allowlist): bool
+    private function isMaintenanceBypassRequest(Request $request): bool
     {
-        if (! $ip) {
-            return false;
+        if ($request->is('superadmin') || $request->is('superadmin/*')) {
+            return true;
         }
 
-        $items = array_filter(array_map('trim', explode(',', $allowlist)));
-        return in_array($ip, $items, true);
+        if ($request->isMethod('GET') && $request->is('login')) {
+            return true;
+        }
+
+        if ($request->isMethod('POST') && $request->is('login')) {
+            return true;
+        }
+
+        if ($request->isMethod('POST') && $request->is('face/login')) {
+            return true;
+        }
+
+        if (($request->isMethod('GET') || $request->isMethod('POST')) && $request->is('salir')) {
+            return true;
+        }
+
+        return false;
     }
 }

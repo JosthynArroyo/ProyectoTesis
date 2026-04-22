@@ -15,6 +15,7 @@ class Pago extends Model
     use HasFactory;
 
     public const METODO_EFECTIVO = 'efectivo';
+
     public const METODO_TRANSFERENCIA = 'transferencia';
 
     public const METODOS = [
@@ -23,9 +24,13 @@ class Pago extends Model
     ];
 
     public const ESTADO_PENDIENTE = 'pendiente';
+
     public const ESTADO_EN_VERIFICACION = 'en_verificacion';
+
     public const ESTADO_PAGADO = 'pagado';
+
     public const ESTADO_RECHAZADO = 'rechazado';
+
     public const ESTADO_ANULADO = 'anulado';
 
     public const ESTADOS = [
@@ -98,12 +103,22 @@ class Pago extends Model
 
     public function scopeConBloqueoAgendamiento(Builder $query): Builder
     {
+        $limite = now('America/Guayaquil')->subDay();
+
         return $query
             ->whereIn('estado', self::ESTADOS_BLOQUEANTES_AGENDAMIENTO)
-            ->whereHas('cita', function (Builder $citaQuery) {
+            ->whereHas('cita', function (Builder $citaQuery) use ($limite) {
                 $citaQuery
-                    ->where('activo', true)
-                    ->where('estado', '!=', Cita::ESTADO_CANCELADA);
+                    ->where('estado', Cita::ESTADO_REALIZADA)
+                    ->where(function (Builder $fechaQuery) use ($limite) {
+                        $fechaQuery
+                            ->whereDate('fecha', '<', $limite->toDateString())
+                            ->orWhere(function (Builder $sameDateQuery) use ($limite) {
+                                $sameDateQuery
+                                    ->whereDate('fecha', $limite->toDateString())
+                                    ->whereTime('hora', '<=', $limite->format('H:i:s'));
+                            });
+                    });
             });
     }
 
@@ -124,7 +139,7 @@ class Pago extends Model
 
     public function tieneOrdenCobro(): bool
     {
-        return !empty($this->folio_unico) && !empty($this->token_publico);
+        return ! empty($this->folio_unico) && ! empty($this->token_publico);
     }
 
     public function esEditablePorPaciente(): bool

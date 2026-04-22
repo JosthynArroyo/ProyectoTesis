@@ -53,4 +53,3 @@ class ChatbotIdentityFlowTest extends TestCase
             ->assertJsonPath('existe', true);
     }
 }
-

@@ -6,16 +6,16 @@
   --pc-font-body:'Inter','Roboto','Lato',system-ui,-apple-system,'Segoe UI',sans-serif;
   --pc-ink:#0f172a;
   --pc-muted:#6b7280;
-  --pc-border:#e5e7eb;
+  --pc-border:#cbd5e1;
   --pc-surface:#ffffff;
   --pc-soft:#f8fafc;
   --pc-primary:#16a34a;
   --pc-primary-2:#0f8a3f;
   --pc-danger:#dc2626;
   --pc-info:#2563eb;
-  --pc-shadow:0 16px 36px rgba(15,23,42,.10);
-  --pc-radius-lg:16px;
-  --pc-radius-xl:22px;
+  --pc-shadow:0 16px 36px rgba(15,23,42,.12);
+  --pc-radius-lg:8px;
+  --pc-radius-xl:8px;
   --pc-ring:0 0 0 4px rgba(22,163,74,.18);
 }
 
@@ -31,13 +31,13 @@ body.paciente-body--citas main{margin:0;padding:0;background:transparent;width:1
 .hero::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg, rgba(2,6,23,.05), rgba(2,6,23,0)),repeating-linear-gradient(90deg, rgba(15,23,42,.03) 0 1px, transparent 1px 10px);}
 .hero-inner{position:relative;z-index:1;background:rgba(255,255,255,.92);backdrop-filter:saturate(120%) blur(2px);border:1px solid var(--pc-border);border-radius:var(--pc-radius-xl);padding:22px;display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center;box-shadow:var(--pc-shadow)}
 .hgroup{min-width:0}
-.title{margin:0;font-weight:800;font-size:clamp(1.3rem,1.1rem + .8vw,1.9rem);color:var(--pc-ink);letter-spacing:-0.01em;font-family:var(--pc-font-head)}
+.title{margin:0;font-weight:800;font-size:clamp(1.3rem,1.1rem + .8vw,1.9rem);color:var(--pc-ink);letter-spacing:0;line-height:1.2;font-family:var(--pc-font-head)}
 .subtitle{margin:6px 0 0;color:var(--pc-muted);font-weight:600;font-size:.96rem}
 .hero-actions{display:flex;justify-content:flex-end;align-items:center;gap:10px}
 .hero-cta{white-space:nowrap}
 
 /* Buttons */
-.btn{appearance:none;border:none;cursor:pointer;display:inline-flex;align-items:center;gap:10px;text-decoration:none;font-weight:700;letter-spacing:.1px;padding:12px 16px;border-radius:14px;transition:transform .08s ease,box-shadow .2s ease,filter .2s ease;outline:none;color:var(--pc-ink);font-family:var(--pc-font-body)}
+.btn{appearance:none;border:none;cursor:pointer;display:inline-flex;align-items:center;gap:10px;text-decoration:none;font-weight:700;letter-spacing:0;padding:12px 16px;border-radius:8px;transition:transform .08s ease,box-shadow .2s ease,filter .2s ease;outline:none;color:var(--pc-ink);font-family:var(--pc-font-body)}
 .btn:active{transform:translateY(1px) scale(.996)}
 .btn:focus-visible{box-shadow:var(--pc-ring)}
 .btn-primary{color:#fff;background:linear-gradient(135deg,var(--pc-primary),var(--pc-primary-2));box-shadow:0 12px 24px rgba(22,163,74,.22)}

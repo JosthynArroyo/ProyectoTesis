@@ -33,7 +33,7 @@ class RecalculateCitaPriorities extends Command
             $redFlagAnterior = (bool) $cita->prioridad_red_flag;
             $redFlagTipoAnterior = $cita->prioridad_red_flag_tipo;
             $cambio = $cita->refreshPriority();
-            if (!$cambio) {
+            if (! $cambio) {
                 continue;
             }
 
@@ -46,11 +46,11 @@ class RecalculateCitaPriorities extends Command
 
             if ($subioNivel) {
                 CitaEvento::create([
-                    'cita_id'   => $cita->id,
-                    'user_id'   => null,
-                    'tipo'      => 'prioridad',
+                    'cita_id' => $cita->id,
+                    'user_id' => null,
+                    'tipo' => 'prioridad',
                     'de_estado' => $nivelAnterior,
-                    'a_estado'  => $nivelNuevo,
+                    'a_estado' => $nivelNuevo,
                     'valor_anterior' => $this->buildAuditValue($nivelAnterior, $fuenteAnterior, $redFlagAnterior, $redFlagTipoAnterior),
                     'valor_nuevo' => $this->buildAuditValue($nivelNuevo, $fuenteNueva, (bool) $cita->prioridad_red_flag, $cita->prioridad_red_flag_tipo),
                 ]);
@@ -67,9 +67,9 @@ class RecalculateCitaPriorities extends Command
     private function buildAuditValue(string $nivel, string $fuente, bool $redFlag, ?string $redFlagType): string
     {
         $parts = [
-            'NIVEL:' . strtoupper($nivel),
-            'FUENTE:' . strtoupper($fuente),
-            $redFlag ? 'RED_FLAG:' . ($redFlagType ?: 'SI') : 'RED_FLAG:NO',
+            'NIVEL:'.strtoupper($nivel),
+            'FUENTE:'.strtoupper($fuente),
+            $redFlag ? 'RED_FLAG:'.($redFlagType ?: 'SI') : 'RED_FLAG:NO',
         ];
 
         return implode(' | ', $parts);

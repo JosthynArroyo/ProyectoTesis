@@ -99,7 +99,7 @@ class PagoController extends Controller
         $data = $request->validated();
 
         $pago->monto = $data['monto'];
-        if (!empty($data['moneda'])) {
+        if (! empty($data['moneda'])) {
             $pago->moneda = strtoupper((string) $data['moneda']);
         }
         $pago->save();
@@ -153,7 +153,7 @@ class PagoController extends Controller
         if (empty($pago->metodo_pago)) {
             return back()->withErrors(['error' => 'Debe asignar metodo de pago antes de aprobar.']);
         }
-        if ($pago->metodo_pago === Pago::METODO_TRANSFERENCIA && !$pago->comprobante_path) {
+        if ($pago->metodo_pago === Pago::METODO_TRANSFERENCIA && ! $pago->comprobante_path) {
             return back()->withErrors(['error' => 'No se puede aprobar transferencia sin comprobante adjunto.']);
         }
 
@@ -204,12 +204,12 @@ class PagoController extends Controller
 
     public function ordenPdf(Request $request, Pago $pago, PagoService $pagoService)
     {
-        if (!$pago->tieneOrdenCobro()) {
+        if (! $pago->tieneOrdenCobro()) {
             abort(404);
         }
 
         $path = $pagoService->obtenerOGenerarOrdenPdf($pago, $request->user());
-        if (!Storage::disk('local')->exists($path)) {
+        if (! Storage::disk('local')->exists($path)) {
             abort(404);
         }
 
@@ -232,7 +232,7 @@ class PagoController extends Controller
         }
 
         $recibo = $pagoService->emitirReciboParaPago($pago, $request->user(), 'Reimpresion de recibo solicitada por administracion.');
-        if (!$recibo->pdf_path || !Storage::disk('local')->exists($recibo->pdf_path)) {
+        if (! $recibo->pdf_path || ! Storage::disk('local')->exists($recibo->pdf_path)) {
             abort(404);
         }
 
@@ -251,7 +251,7 @@ class PagoController extends Controller
     public function comprobante(Pago $pago)
     {
         $stored = $this->resolveComprobanteStorage($pago->comprobante_path);
-        if (!$stored) {
+        if (! $stored) {
             abort(404);
         }
 

@@ -14,8 +14,8 @@ class SoapEnmiendaRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'motivo' => ['required','string','max:2000'],
-            'contenido' => ['required','string','max:8000'],
+            'motivo' => ['required', 'string', 'max:2000'],
+            'contenido' => ['required', 'string', 'max:8000'],
         ];
     }
 }

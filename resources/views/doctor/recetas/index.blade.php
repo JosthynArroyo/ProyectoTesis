@@ -7,17 +7,7 @@
 @section('main')
 <section class="space-y-6">
   <div class="card p-6">
-    <div class="flex items-center gap-3">
-      <i class="ri-file-list-3-line text-slate-400"></i>
-      <div>
-        <h1 class="text-2xl font-semibold text-slate-900">Historial de Recetas</h1>
-        <p class="text-slate-600">Descarga y consulta las recetas generadas.</p>
-      </div>
-    </div>
-  </div>
-
-  <div class="card p-6">
-    <div class="table-shell">
+    <div class="table-shell table-responsive-cards">
       <table class="table">
         <thead>
           <tr>
@@ -31,11 +21,11 @@
         <tbody>
           @forelse($recetas as $receta)
             <tr>
-              <td>{{ optional($receta->cita->paciente)->name ?? '-' }}</td>
-              <td>{{ optional($receta->cita->especialidad)->nombre ?? '-' }}</td>
-              <td>{{ optional($receta->cita->fecha)->format('d/m/Y') }}</td>
-              <td>{{ \Carbon\Carbon::parse($receta->cita->hora)->format('H:i') }}</td>
-              <td>
+              <td data-label="Paciente">{{ optional($receta->cita->paciente)->name ?? '-' }}</td>
+              <td data-label="Especialidad">{{ optional($receta->cita->especialidad)->nombre ?? '-' }}</td>
+              <td data-label="Fecha de cita">{{ optional($receta->cita->fecha)->format('d/m/Y') }}</td>
+              <td data-label="Hora">{{ \Carbon\Carbon::parse($receta->cita->hora)->format('H:i') }}</td>
+              <td data-label="PDF">
                 @if($receta->pdf_path)
                   <a class="btn btn-outline" href="{{ route('doctor.recetas.download', $receta->cita->id) }}">
                     <i class="ri-download-2-line"></i> Descargar

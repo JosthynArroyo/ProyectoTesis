@@ -20,7 +20,11 @@ class PersonalizacionRequestController extends Controller
             ->orderByDesc('created_at');
 
         if ($status) {
-            $query->where('status', $status);
+            match ($status) {
+                'approved' => $query->approvedActive(),
+                'expired' => $query->approvedExpired(),
+                default => $query->where('status', $status),
+            };
         }
 
         $requests = $query->paginate(15)->appends($request->query());
@@ -85,6 +89,14 @@ class PersonalizacionRequestController extends Controller
     {
         if ($accessRequest->feature !== 'personalizacion') {
             return back()->withErrors(['Solicitud no valida.']);
+        }
+
+        if ($accessRequest->isExpired()) {
+            return back()->withErrors(['access_request' => 'El acceso aprobado ya expiro.']);
+        }
+
+        if (! $accessRequest->isActive()) {
+            return back()->withErrors(['access_request' => 'Solo se pueden revocar accesos aprobados y vigentes.']);
         }
 
         $accessRequest->update([

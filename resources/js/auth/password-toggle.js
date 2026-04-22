@@ -1,5 +1,10 @@
-document.addEventListener('DOMContentLoaded', () => {
+function initPasswordToggle() {
   document.querySelectorAll('.toggle-eye, .btn-eye').forEach((button) => {
+    if (button.dataset.passwordToggleReady === '1') {
+      return;
+    }
+    button.dataset.passwordToggleReady = '1';
+
     const targetId = button.getAttribute('data-target');
     let input = null;
 
@@ -31,4 +36,10 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   });
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initPasswordToggle, { once: true });
+} else {
+  initPasswordToggle();
+}

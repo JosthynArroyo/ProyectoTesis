@@ -16,6 +16,7 @@
   gap:1rem;
   align-items:flex-start;
   margin-bottom:14px;
+  min-width:0;
 }
 .appointments-hero h1{ margin:4px 0 6px; color:var(--clr-info-dark); }
 .appointments-hero .lede{ margin:0 0 10px; color:var(--clr-dark-variant); }
@@ -91,7 +92,7 @@
   display:inline-flex; align-items:center; gap:.35rem;
   padding:.5rem .9rem; border-radius:10px; font-weight:700;
   border:1px solid var(--clr-border); text-decoration:none; cursor:pointer;
-  font-size:.9rem; white-space:nowrap;
+  font-size:.9rem; white-space:normal;
   transition: all .18s ease;
 }
 .btn[disabled]{ opacity:.65; cursor:not-allowed; }
@@ -145,6 +146,31 @@
   min-width:140px;
 }
 
+.appointments-table .kebab-menu{
+  min-width:240px;
+}
+
+.appointments-table .kebab-menu form{
+  margin:0;
+}
+
+.appointments-table .kebab-menu .btn{
+  width:100%;
+  justify-content:flex-start;
+}
+
+.appointments-table .kebab-menu__hint{
+  display:flex;
+  align-items:flex-start;
+  gap:.45rem;
+  padding:.55rem .7rem;
+  border-radius:12px;
+  background:#f8fafc;
+  color:#64748b;
+  font-size:.75rem;
+  line-height:1.45;
+}
+
 /* Bloques internos */
 .stack{ display:grid; gap:8px; }
 .row-actions{ display:flex; gap:var(--gap); align-items:center; flex-wrap:nowrap; }
@@ -168,7 +194,7 @@
   border-radius:999px;
   font-size:.72rem;
   font-weight:800;
-  letter-spacing:.02em;
+  letter-spacing:0;
   text-transform:uppercase;
   border:1px solid transparent;
 }
@@ -199,6 +225,7 @@
   border:1px solid var(--clr-border);
   border-radius: 14px;
   margin-bottom: 12px;
+  min-width:0;
 }
 .appointments-table.mobile-cards tbody td {
   display: flex;
@@ -206,12 +233,14 @@
   gap: 4px;
   border: 0;
   padding: 0;
+  min-width:0;
+  overflow-wrap:anywhere;
 }
 .appointments-table.mobile-cards tbody td::before {
   content: attr(data-label);
   font-size: 0.78rem;
   text-transform: uppercase;
-  letter-spacing: .04em;
+  letter-spacing: 0;
   color: var(--clr-dark-variant);
   font-weight: 700;
 }
@@ -273,10 +302,11 @@
 }
 @media (max-width:768px){
   .appointments-page{ margin:44px auto 24px; padding:0 16px 28px; }
+  .appointments-hero{ flex-direction:column; align-items:stretch; }
   .appointments-toolbar{ align-items:stretch; }
   .appointments-toolbar .filters,
   .appointments-toolbar .export-actions{ width:100%; }
-  .appointments-toolbar .filters .field{ width:100%; }
+  .appointments-toolbar .filters .field{ width:100%; min-width:0; }
   .appointments-table{ display:block; }
   .appointments-table:not(.mobile-cards) thead th:nth-child(4),
   .appointments-table:not(.mobile-cards) tbody td:nth-child(4){ display:none; }
@@ -315,6 +345,7 @@
 }
 @media (max-width:640px){
   .appointments-table.mobile-cards{ width:100%; }
+  .appointments-table.mobile-cards tbody tr{ grid-template-columns:1fr; }
   .appointments-table{ display:table; }
   .appointments-table:not(.mobile-cards) thead th:nth-child(2),
   .appointments-table:not(.mobile-cards) tbody td:nth-child(2){ display:none; }

@@ -1,4 +1,5 @@
 @php($admin = $admin ?? new \App\Models\User)
+@php($isEditing = $admin->exists)
 
 <div class="space-y-6">
   <section class="card p-6">
@@ -22,15 +23,18 @@
       <div>
         <label for="password" class="form-label">Contraseña</label>
         <div class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2" data-password-wrap>
-          <input class="flex-1 bg-transparent text-sm" id="password" name="password" type="password" autocomplete="new-password" minlength="8" required>
+          <input class="flex-1 bg-transparent text-sm" id="password" name="password" type="password" autocomplete="new-password" minlength="8" @required(! $isEditing)>
           <button type="button" class="btn-eye" data-target="#password" aria-label="Mostrar u ocultar"><i class="ri-eye-line"></i></button>
         </div>
+        @if($isEditing)
+          <p class="mt-1 text-xs text-slate-500">Déjala vacía si no vas a cambiar la contraseña.</p>
+        @endif
         @error('password')<small class="text-xs text-rose-600">{{ $message }}</small>@enderror
       </div>
       <div>
         <label for="password_confirmation" class="form-label">Confirmación</label>
         <div class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2" data-password-wrap>
-          <input class="flex-1 bg-transparent text-sm" id="password_confirmation" name="password_confirmation" type="password" autocomplete="new-password" minlength="8" required>
+          <input class="flex-1 bg-transparent text-sm" id="password_confirmation" name="password_confirmation" type="password" autocomplete="new-password" minlength="8" @required(! $isEditing)>
           <button type="button" class="btn-eye" data-target="#password_confirmation" aria-label="Mostrar u ocultar"><i class="ri-eye-line"></i></button>
         </div>
         @error('password_confirmation')<small class="text-xs text-rose-600">{{ $message }}</small>@enderror
@@ -60,17 +64,19 @@
         <input class="form-input" id="direccion" name="direccion" value="{{ old('direccion', $admin->direccion) }}" required>
         @error('direccion')<small class="text-xs text-rose-600">{{ $message }}</small>@enderror
       </div>
-      <div>
-        <label for="fecha_nacimiento" class="form-label">Fecha de nacimiento</label>
-        <input class="form-input" id="fecha_nacimiento" name="fecha_nacimiento" type="date" value="{{ old('fecha_nacimiento', optional($admin->fecha_nacimiento)->format('Y-m-d')) }}" required>
-        @error('fecha_nacimiento')<small class="text-xs text-rose-600">{{ $message }}</small>@enderror
-      </div>
+      <x-ui.date-parts
+        field="fecha_nacimiento"
+        label="Fecha de nacimiento"
+        :value="optional($admin->fecha_nacimiento)->format('Y-m-d')"
+        required
+        help="Usa día, mes y año para completar la fecha más rápido."
+      />
       <div>
         <label for="sexo" class="form-label">Sexo</label>
         <select class="form-select" id="sexo" name="sexo" required>
           <option value="">Seleccione</option>
           @foreach(['Masculino','Femenino','Otro'] as $sx)
-            <option value="{{ $sx }}" @selected(old('sexo', $admin->sexo)===$sx)>{{ $sx }}</option>
+            <option value="{{ $sx }}" @selected(old('sexo', $admin->sexo) === $sx)>{{ $sx }}</option>
           @endforeach
         </select>
         @error('sexo')<small class="text-xs text-rose-600">{{ $message }}</small>@enderror

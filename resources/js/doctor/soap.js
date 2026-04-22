@@ -444,10 +444,11 @@ function initAgendarControl() {
       const data = await safeJson(res);
 
       if (res.ok && data.ok) {
-        help.textContent = 'Control agendado correctamente. Se registro la nueva cita del paciente.';
-        agendarBtn.innerHTML = original;
-        clearHorarios(horaSelect);
-        fechaInput.value = '';
+        help.textContent = data.msg || 'Control agendado correctamente. Se registro la nueva cita del paciente.';
+        if (data.redirect) {
+          window.history.replaceState(null, '', data.redirect);
+        }
+        window.location.reload();
         return;
       }
 

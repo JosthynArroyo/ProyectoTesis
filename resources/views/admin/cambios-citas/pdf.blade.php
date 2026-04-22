@@ -3,22 +3,9 @@
 <head>
   <meta charset="utf-8">
   <title>Cambios de citas</title>
-  @php($cssPath = resource_path('css/admin/cambios-citas-pdf.css'))
-  <style>{!! file_exists($cssPath) ? file_get_contents($cssPath) : '' !!}</style>
+  <style>{{ $pdfCss }}</style>
 </head>
 <body>
-  @php
-    $eventLabels = [
-      'agendada' => 'Agendada',
-      'confirmada' => 'Confirmada',
-      'cancelada' => 'Cancelada',
-      'realizada' => 'Realizada',
-      'no_se_presento' => 'No se presento',
-      'reprogramada' => 'Reprogramada',
-      'prioridad_manual' => 'Prioridad manual',
-    ];
-  @endphp
-
   <h2>Auditoria de cambios de citas</h2>
   <p>
     @if($tipo) tipo={{ $tipo }}; @endif

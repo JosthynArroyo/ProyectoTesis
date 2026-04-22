@@ -10,13 +10,16 @@ class MedicalOrder extends Model
     use HasFactory;
 
     public const STATUS_PENDIENTE = 'pendiente';
+
     public const STATUS_USADA = 'usada';
+
     public const STATUS_CANCELADA = 'cancelada';
 
     protected $table = 'medical_orders';
 
     protected $fillable = [
         'patient_id',
+        'clinical_record_id',
         'doctor_id',
         'lab_test_id',
         'doctor_notes',
@@ -26,6 +29,11 @@ class MedicalOrder extends Model
     public function patient()
     {
         return $this->belongsTo(User::class, 'patient_id');
+    }
+
+    public function clinicalRecord()
+    {
+        return $this->belongsTo(ClinicalRecord::class);
     }
 
     public function doctor()

@@ -1,7 +1,7 @@
 @extends('layouts.paciente')
-@section('title', 'Nota clínica')
-@section('header-title','Historial clínico')
-@section('header-subtitle','Detalle de la nota SOAP')
+@section('title', 'Nota clinica')
+@section('header-title','Nota clinica firmada')
+@section('header-subtitle','Detalle de una atencion medica individual')
 
 @section('main')
   <div class="space-y-6">

@@ -6,10 +6,7 @@
     <title>@yield('title', 'Panel del Doctor')</title>
     @include('layouts.partials.panel-theme-head')
     @include('layouts.partials.favicon')
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2family=Sora:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.2.0/remixicon.min.css">
+    @include('layouts.partials.fonts')
     @stack('head')
     @vite(['resources/css/app.css','resources/css/panel-theme.css','resources/js/app.js','resources/js/panel-theme.js'])
     @stack('styles')
@@ -17,9 +14,19 @@
 @php
     $hasRight = $__env->hasSection('right');
     $activeSidebar = trim($__env->yieldContent('activeSidebar'));
-    $sidebarRoutes = ['doctor.dashboard', 'doctor.citas', 'doctor.recetas.index', 'doctor.perfil.*', 'doctor.agenda', 'doctor.horario.index'];
+    $sidebarRoutes = ['doctor.dashboard', 'doctor.perfil.edit', 'doctor.citas', 'doctor.pacientes.index', 'doctor.recetas.index', 'doctor.agenda', 'doctor.horario.index'];
     $headerTitle = trim($__env->yieldContent('header-title')) ?: 'Panel médico';
     $headerSubtitle = trim($__env->yieldContent('header-subtitle')) ?: 'Gestión de consultas y agenda';
+    $panelBackDefaultUrl = match (true) {
+        request()->routeIs('doctor.horario.*') => route('doctor.horario.index'),
+        request()->routeIs('doctor.recetas.*') => route('doctor.citas'),
+        request()->routeIs('doctor.certificados.*') => route('doctor.citas'),
+        request()->routeIs('doctor.laboratorio.*') => route('doctor.citas'),
+        request()->routeIs('doctor.citas.*') => route('doctor.citas'),
+        request()->routeIs('doctor.pacientes.historial') => route('doctor.pacientes.index'),
+        default => route('doctor.dashboard'),
+    };
+    $panelBackFallbackUrl = trim($__env->yieldContent('back-url')) ?: $panelBackDefaultUrl;
 @endphp
 <body class="min-h-screen text-slate-900 dashboard-shell @yield('body-class')">
     <div class="min-h-screen lg:flex dashboard-layout">
@@ -29,26 +36,29 @@
         <div class="flex min-h-screen flex-1 flex-col">
             <x-layout.dashboard-header :title="$headerTitle" :subtitle="$headerSubtitle" role="Doctor" :profile-route="route('doctor.perfil.edit')" />
 
-            <div class="dashboard-content flex-1 px-4 pb-10 lg:px-8">
-                @if($hasRight)
-                    <div class="grid gap-6 lg:grid-cols-[1fr_320px]">
+            <div class="dashboard-content flex-1 pb-10">
+                <div class="page-shell min-w-0">
+                    @if($hasRight)
+                        <div class="grid gap-6 lg:grid-cols-[1fr_320px]">
+                            <main class="space-y-6">
+                                <x-layout.panel-back-button :fallback-url="$panelBackFallbackUrl" :sidebar-routes="$sidebarRoutes" />
+                                @yield('main')
+                            </main>
+                            <aside class="space-y-4">@yield('right')</aside>
+                        </div>
+                    @else
                         <main class="space-y-6">
-                            <x-layout.panel-back-button :fallback-url="route('doctor.dashboard')" :sidebar-routes="$sidebarRoutes" />
+                            <x-layout.panel-back-button :fallback-url="$panelBackFallbackUrl" :sidebar-routes="$sidebarRoutes" />
                             @yield('main')
                         </main>
-                        <aside class="space-y-4">@yield('right')</aside>
-                    </div>
-                @else
-                    <main class="space-y-6">
-                        <x-layout.panel-back-button :fallback-url="route('doctor.dashboard')" :sidebar-routes="$sidebarRoutes" />
-                        @yield('main')
-                    </main>
-                @endif
+                    @endif
+                </div>
             </div>
         </div>
     </div>
 
     @stack('modals')
+    @include('partials.legal-modals')
     @stack('scripts')
 </body>
 </html>

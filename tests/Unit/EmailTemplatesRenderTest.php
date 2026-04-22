@@ -1,0 +1,105 @@
+<?php
+
+namespace Tests\Unit;
+
+use App\Mail\CambioEstadoCitaMail;
+use App\Mail\ContactoRecibido;
+use App\Mail\CuentaCreadaDesdeChat;
+use App\Mail\RecetaMedicaMail;
+use App\Mail\ResultadoLaboratorioMail;
+use App\Models\Cita;
+use App\Models\Especialidad;
+use App\Models\LaboratorioOrden;
+use App\Models\User;
+use Tests\TestCase;
+
+class EmailTemplatesRenderTest extends TestCase
+{
+    public function test_renderiza_correo_de_cita_con_diseno_unificado(): void
+    {
+        $html = (new CambioEstadoCitaMail($this->makeCita(), 'paciente', 'agendada', 'paciente'))->render();
+
+        $this->assertStringContainsString('Resumen de la cita', $html);
+        $this->assertStringContainsString('Clínica Don Bosco', $html);
+    }
+
+    public function test_renderiza_correo_de_contacto_con_nuevo_patron(): void
+    {
+        $html = (new ContactoRecibido([
+            'nombre' => 'María López',
+            'email' => 'maria@example.com',
+            'telefono' => '0999999999',
+            'asunto' => 'Consulta de horarios',
+            'mensaje' => 'Necesito confirmar la disponibilidad para esta semana.',
+        ]))->render();
+
+        $this->assertStringContainsString('Nuevo mensaje recibido', $html);
+        $this->assertStringContainsString('Consulta de horarios', $html);
+    }
+
+    public function test_renderiza_correo_de_cuenta_laboratorio_y_receta(): void
+    {
+        $user = new User([
+            'name' => 'Carlos Ruiz',
+            'email' => 'carlos@example.com',
+        ]);
+
+        $cita = $this->makeCita();
+        $orden = new LaboratorioOrden([
+            'tipo_examen' => 'Biometría hemática',
+            'prioridad' => 'urgente',
+            'resultado_resumen' => 'Los parámetros evaluados se encuentran dentro del rango esperado.',
+        ]);
+        $orden->id = 24;
+        $orden->setRelation('cita', $cita);
+
+        $cuentaHtml = (new CuentaCreadaDesdeChat($user, '0912345678'))->render();
+        $laboratorioHtml = (new ResultadoLaboratorioMail($orden))->render();
+        $recetaHtml = (new RecetaMedicaMail($cita, 'recetas/24.pdf', '', 'receta_24.pdf'))->render();
+
+        $this->assertStringContainsString('Credenciales de acceso', $cuentaHtml);
+        $this->assertStringContainsString('Usuario (correo)', $cuentaHtml);
+        $this->assertStringContainsString('Contraseña inicial', $cuentaHtml);
+        $this->assertStringContainsString('Detalles del resultado', $laboratorioHtml);
+        $this->assertStringContainsString('Datos de la atención', $recetaHtml);
+    }
+
+    private function makeCita(): Cita
+    {
+        $paciente = new User([
+            'name' => 'Ana Pérez',
+            'email' => 'ana@example.com',
+        ]);
+
+        $doctor = new User([
+            'name' => 'Dr. Luis Torres',
+            'email' => 'doctor@example.com',
+        ]);
+
+        $especialidad = new Especialidad([
+            'nombre' => 'Cardiología',
+        ]);
+
+        $cita = new Cita([
+            'fecha' => '2026-03-12',
+            'hora' => '10:30:00',
+            'estado' => Cita::ESTADO_CONFIRMADA,
+            'activo' => true,
+            'motivo_consulta' => 'Chequeo general',
+            'prioridad_nivel' => Cita::PRIORIDAD_MEDIA,
+            'prioridad_fuente' => Cita::FUENTE_PRIORIDAD_MANUAL,
+            'prioridad_red_flag' => false,
+            'prioridad_es_adulto_mayor' => false,
+            'prioridad_es_embarazo' => false,
+            'prioridad_es_discapacidad' => false,
+            'prioridad_es_cronico' => false,
+        ]);
+
+        $cita->id = 42;
+        $cita->setRelation('paciente', $paciente);
+        $cita->setRelation('doctor', $doctor);
+        $cita->setRelation('especialidad', $especialidad);
+
+        return $cita;
+    }
+}

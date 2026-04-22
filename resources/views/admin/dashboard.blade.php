@@ -6,22 +6,23 @@
 
 @section('main')
   <div class="space-y-6">
-    {{-- Hero card --}}
-    <section class="card p-6">
-      <div class="page-header">
-        <div class="page-header__info">
-          <p class="text-xs uppercase tracking-widest text-slate-500">Resumen del día</p>
-          <h1 class="mt-2 text-2xl font-semibold text-slate-900">Panel de control</h1>
-          <p class="text-slate-600">Visión general de pacientes, doctores y actividad reciente.</p>
-        </div>
-        <div class="page-header__actions">
-          <div class="flex items-center gap-3 rounded-xl border border-slate-200 bg-white/90 px-3 py-2">
-            <i class="ri-calendar-line text-slate-400"></i>
-            <input type="date" aria-label="Seleccionar fecha" value="{{ now()->toDateString() }}" class="bg-transparent text-sm text-slate-600">
+    @if(($recordatoriosPendientes ?? 0) > 0)
+      <section>
+        <x-ui.alert tone="warning" title="Tienes recordatorios por enviar">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              Hay <strong>{{ $recordatoriosPendientes }}</strong> cita{{ $recordatoriosPendientes === 1 ? '' : 's' }} con recordatorio pendiente.
+              @if(($recordatoriosSinTelefono ?? 0) > 0)
+                <span class="block text-xs text-slate-600">{{ $recordatoriosSinTelefono }} requiere{{ $recordatoriosSinTelefono === 1 ? '' : 'n' }} revisión porque no tiene{{ $recordatoriosSinTelefono === 1 ? '' : 'n' }} teléfono válido.</span>
+              @endif
+            </div>
+            <a href="{{ route('admin.recordatorios.index') }}" class="btn btn-primary btn-sm">
+              <i class="ri-whatsapp-line"></i> Revisar recordatorios
+            </a>
           </div>
-        </div>
-      </div>
-    </section>
+        </x-ui.alert>
+      </section>
+    @endif
 
     {{-- Stats row 1 --}}
     <section class="stat-grid">
@@ -91,7 +92,9 @@
                 <i class="ri-filter-3-line"></i> Filtrar
               </button>
               @if(($prioridad ?? '') !== '')
-                <a href="{{ route('admin.dashboard') }}" class="btn btn-ghost btn-sm">Limpiar</a>
+                <a href="{{ route('admin.dashboard') }}" class="btn btn-ghost btn-sm">
+                  <i class="ri-refresh-line"></i> Limpiar
+                </a>
               @endif
             </form>
             <form id="exportForm" action="{{ route('admin.citas.export') }}" method="GET">
@@ -141,7 +144,9 @@
                   </td>
                   <td data-label="Horario">{{ Carbon::parse($cita->fecha)->format('Y-m-d') }} {{ Carbon::parse($cita->hora)->format('H:i') }}</td>
                   <td data-label="Acciones">
-                    <a href="{{ $redirectTo }}" class="btn btn-outline btn-sm">Ajustar prioridad</a>
+                    <a href="{{ $redirectTo }}" class="btn btn-outline btn-sm">
+                      <i class="ri-scales-3-line"></i> Ajustar prioridad
+                    </a>
                   </td>
                 </tr>
               @empty
@@ -152,8 +157,12 @@
         </div>
 
         <div class="mt-4 flex flex-wrap gap-2">
-          <button type="button" id="btnShowLess" class="btn btn-ghost btn-sm" style="display:none;">Mostrar menos</button>
-          <button type="button" id="btnShowMore" class="btn btn-ghost btn-sm">Mostrar más</button>
+          <button type="button" id="btnShowLess" class="btn btn-ghost btn-sm" style="display:none;">
+            <i class="ri-arrow-up-s-line"></i> Mostrar menos
+          </button>
+          <button type="button" id="btnShowMore" class="btn btn-ghost btn-sm">
+            <i class="ri-arrow-down-s-line"></i> Mostrar mas
+          </button>
         </div>
       </section>
 

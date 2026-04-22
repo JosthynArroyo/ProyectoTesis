@@ -2,12 +2,12 @@
 
 namespace Tests\Feature;
 
-use Tests\TestCase;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use App\Models\User;
 use App\Models\Cita;
 use App\Models\Especialidad;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use Tests\TestCase;
 
 class ExportCitasTest extends TestCase
 {
@@ -18,17 +18,17 @@ class ExportCitasTest extends TestCase
         $this->withoutMiddleware();
 
         $admin = User::factory()->create([
-            'name'  => 'Admin Test',
+            'name' => 'Admin Test',
             'email' => 'admin@test.com',
         ]);
 
         $paciente = User::factory()->create([
-            'name'  => 'Paciente Test',
+            'name' => 'Paciente Test',
             'email' => 'paciente@test.com',
         ]);
 
         $doctor = User::factory()->create([
-            'name'  => 'Doctor Test',
+            'name' => 'Doctor Test',
             'email' => 'doctor@test.com',
         ]);
 
@@ -52,17 +52,17 @@ class ExportCitasTest extends TestCase
         $user = User::factory()->create();
         $this->actingAs($user);
 
-        $paciente      = User::factory()->create();
-        $doctor        = User::factory()->create();
-        $especialidad  = Especialidad::factory()->create();
+        $paciente = User::factory()->create();
+        $doctor = User::factory()->create();
+        $especialidad = Especialidad::factory()->create();
 
         Cita::factory()->create([
-            'paciente_id'     => $paciente->id,
-            'doctor_id'       => $doctor->id,
+            'paciente_id' => $paciente->id,
+            'doctor_id' => $doctor->id,
             'especialidad_id' => $especialidad->id,
-            'fecha'           => '2024-01-15',
-            'hora'            => '10:00:00',
-            'estado'          => 'pendiente',
+            'fecha' => '2024-01-15',
+            'hora' => '10:00:00',
+            'estado' => 'pendiente',
         ]);
 
         $response = $this->get(route('admin.citas.export'));
@@ -83,13 +83,13 @@ class ExportCitasTest extends TestCase
         $admin = User::factory()->create();
         $this->actingAs($admin);
 
-        $paciente     = User::factory()->create();
-        $doctor       = User::factory()->create();
+        $paciente = User::factory()->create();
+        $doctor = User::factory()->create();
         $especialidad = Especialidad::factory()->create();
 
         Cita::factory()->count(1000)->create([
-            'paciente_id'     => $paciente->id,
-            'doctor_id'       => $doctor->id,
+            'paciente_id' => $paciente->id,
+            'doctor_id' => $doctor->id,
             'especialidad_id' => $especialidad->id,
         ]);
 
@@ -100,8 +100,8 @@ class ExportCitasTest extends TestCase
         file_put_contents($tempFile, $response->streamedContent());
 
         $spreadsheet = IOFactory::load($tempFile);
-        $sheet       = $spreadsheet->getActiveSheet();
-        $highestRow  = $sheet->getHighestDataRow();
+        $sheet = $spreadsheet->getActiveSheet();
+        $highestRow = $sheet->getHighestDataRow();
 
         // 1 fila de encabezado + 1000 citas = 1001
         $this->assertEquals(1001, $highestRow);

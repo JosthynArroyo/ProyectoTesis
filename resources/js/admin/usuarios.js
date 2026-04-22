@@ -1,3 +1,5 @@
+import '../ui/kebab-menus';
+
 document.addEventListener('DOMContentLoaded', () => {
   const chips = document.querySelectorAll('.filter-chip');
   const moreFiltersBtn = document.getElementById('btn-more-filters');
@@ -35,7 +37,6 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         input.checked = !input.checked;
         sync(chip);
-        // chip.closest('form').submit(); // si quieres aplicar al instante
       }
     });
   });

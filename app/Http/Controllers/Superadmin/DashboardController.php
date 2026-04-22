@@ -5,19 +5,27 @@ namespace App\Http\Controllers\Superadmin;
 use App\Http\Controllers\Controller;
 use App\Models\Cita;
 use App\Models\FeatureAccessRequest;
+use App\Models\Role;
 use App\Models\User;
 use App\Services\SiteSettingsService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
     public function index(SiteSettingsService $settings)
     {
         $totalUsuarios = User::count();
-        $totalPacientes = User::whereHas('roles', fn ($q) => $q->where('name', 'paciente'))->count();
-        $totalDoctores = User::whereHas('roles', fn ($q) => $q->where('name', 'doctor'))->count();
-        $totalAdmins = User::whereHas('roles', fn ($q) => $q->where('name', 'administrador'))->count();
-        $totalLabs = User::whereHas('roles', fn ($q) => $q->where('name', 'laboratorio'))->count();
+        $usuariosPorRol = Role::query()
+            ->join('role_user', 'roles.id', '=', 'role_user.role_id')
+            ->whereIn('roles.name', ['paciente', 'doctor', 'administrador', 'laboratorio'])
+            ->select('roles.name', DB::raw('COUNT(DISTINCT role_user.user_id) as total'))
+            ->groupBy('roles.name')
+            ->pluck('total', 'roles.name');
+        $totalPacientes = (int) ($usuariosPorRol['paciente'] ?? 0);
+        $totalDoctores = (int) ($usuariosPorRol['doctor'] ?? 0);
+        $totalAdmins = (int) ($usuariosPorRol['administrador'] ?? 0);
+        $totalLabs = (int) ($usuariosPorRol['laboratorio'] ?? 0);
 
         $totalCitas = Cita::count();
         $citasHoy = Cita::whereDate('created_at', now()->toDateString())->count();
@@ -26,12 +34,27 @@ class DashboardController extends Controller
         $pendientesPersonalizacion = FeatureAccessRequest::forFeature('personalizacion')->pending()->count();
         $maintenanceEnabled = $settings->getBool('maintenance.enabled', false);
 
-        $activity = collect(range(6, 0))->map(function (int $offset) {
+        $start = now()->subDays(6)->startOfDay();
+        $end = now()->endOfDay();
+        $citasPorDia = Cita::query()
+            ->whereBetween('created_at', [$start, $end])
+            ->selectRaw('DATE(created_at) as day, COUNT(*) as total')
+            ->groupBy('day')
+            ->pluck('total', 'day');
+        $usuariosPorDia = User::query()
+            ->whereBetween('created_at', [$start, $end])
+            ->selectRaw('DATE(created_at) as day, COUNT(*) as total')
+            ->groupBy('day')
+            ->pluck('total', 'day');
+
+        $activity = collect(range(6, 0))->map(function (int $offset) use ($citasPorDia, $usuariosPorDia) {
             $day = now()->subDays($offset);
+            $key = $day->toDateString();
+
             return [
                 'label' => $day->format('d/m'),
-                'citas' => Cita::whereDate('created_at', $day->toDateString())->count(),
-                'usuarios' => User::whereDate('created_at', $day->toDateString())->count(),
+                'citas' => (int) ($citasPorDia[$key] ?? 0),
+                'usuarios' => (int) ($usuariosPorDia[$key] ?? 0),
             ];
         })->values();
 
@@ -54,7 +77,7 @@ class DashboardController extends Controller
     {
         $role = strtolower(trim((string) $request->query('role', 'all')));
         $allowedRoles = ['all', 'paciente', 'doctor', 'laboratorio', 'administrador'];
-        if (!in_array($role, $allowedRoles, true)) {
+        if (! in_array($role, $allowedRoles, true)) {
             $role = 'all';
         }
 
@@ -67,9 +90,9 @@ class DashboardController extends Controller
             })
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($inner) use ($search) {
-                    $inner->where('name', 'like', '%' . $search . '%')
-                        ->orWhere('email', 'like', '%' . $search . '%')
-                        ->orWhere('dni', 'like', '%' . $search . '%');
+                    $inner->where('name', 'like', '%'.$search.'%')
+                        ->orWhere('email', 'like', '%'.$search.'%')
+                        ->orWhere('dni', 'like', '%'.$search.'%');
                 });
             })
             ->orderByDesc('created_at')

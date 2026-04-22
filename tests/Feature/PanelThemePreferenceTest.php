@@ -60,7 +60,7 @@ class PanelThemePreferenceTest extends TestCase
             ->assertDontSee('panel-theme-update-url', false);
     }
 
-    public function test_panel_layout_defaults_to_light_theme_and_renders_confirmation_modal(): void
+    public function test_panel_layout_defaults_to_light_theme_and_renders_theme_toast_actions(): void
     {
         $user = $this->createPanelUser('administrador', 'light');
 
@@ -68,8 +68,11 @@ class PanelThemePreferenceTest extends TestCase
             ->get(route('admin.dashboard'))
             ->assertOk()
             ->assertSee('meta name="panel-theme-initial" content="light"', false)
-            ->assertSee('data-theme-preference-modal', false)
-            ->assertSeeInOrder(['</header>', 'id="themePreferenceModal"'], false);
+            ->assertSee('meta name="panel-theme-session-id"', false)
+            ->assertSee('data-theme-preference-toast', false)
+            ->assertSee('data-theme-preference-temporary', false)
+            ->assertSee('data-theme-preference-persist', false)
+            ->assertSeeInOrder(['</header>', 'id="themePreferenceToast"'], false);
     }
 
     public function test_panel_layout_uses_dark_theme_when_user_preference_is_dark(): void

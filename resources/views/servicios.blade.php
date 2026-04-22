@@ -11,8 +11,8 @@
       <div class="flex flex-wrap items-center justify-between gap-6">
         <div>
           <p class="text-xs uppercase tracking-widest text-slate-500">Servicios</p>
-          <h1 class="mt-2 text-3xl font-semibold sm:text-4xl">{{ $siteSettings->get('services.title', 'Especialidades médicas para tu bienestar') }}</h1>
-          <p class="mt-2 text-slate-600">{{ $siteSettings->get('services.subtitle', 'Agenda en línea con médicos certificados y recibe seguimiento personalizado.') }}</p>
+          <h1 class="mt-2 text-3xl font-semibold sm:text-4xl">{{ $siteSettings->get('services.title', 'Especialidades y servicios disponibles') }}</h1>
+          <p class="mt-2 text-slate-600">{{ $siteSettings->get('services.subtitle', 'Explora las opciones de la clínica y agenda una cita según los horarios registrados en el sistema.') }}</p>
         </div>
         @auth
           <a href="{{ route('paciente.crear-cita') }}" class="btn btn-primary">{{ $siteSettings->get('services.cta_text', 'Agendar cita') }}</a>
@@ -22,38 +22,50 @@
       </div>
     </div>
 
-    <div class="mt-6 grid gap-4 lg:grid-cols-[1fr_auto]">
+    <form class="mt-6 grid gap-4 lg:grid-cols-[1fr_auto]" method="GET" action="{{ route('servicios.index') }}" role="search">
+      <input type="hidden" name="tipo" value="{{ $tipo ?? 'all' }}">
       <div class="flex items-center gap-3 rounded-2xl border border-slate-200/40 bg-white/80 px-4 py-3 shadow-sm shadow-slate-200/30 focus-within:border-teal-200 focus-within:ring-2 focus-within:ring-teal-100">
         <i class="ri-search-line text-slate-400" aria-hidden="true"></i>
-        <input type="search" id="svcSearch" placeholder="Buscar servicio o especialidad..." class="w-full appearance-none border-0 bg-transparent text-sm text-slate-700 placeholder:text-slate-400 outline-none ring-0 focus:outline-none focus:ring-0 focus:border-transparent">
+        <input type="search" name="q" value="{{ $q ?? '' }}" placeholder="Buscar servicio o especialidad..." class="w-full appearance-none border-0 bg-transparent text-sm text-slate-700 placeholder:text-slate-400 outline-none ring-0 focus:outline-none focus:ring-0 focus:border-transparent">
       </div>
-      <div class="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-500" role="tablist">
-        <button class="chip is-active rounded-full border border-slate-200 px-3 py-2" data-filter="all" role="tab">Todos</button>
-        <button class="chip rounded-full border border-slate-200 px-3 py-2" data-filter="general" role="tab">General</button>
-        <button class="chip rounded-full border border-slate-200 px-3 py-2" data-filter="especialidad" role="tab">Especialidades</button>
-        <button class="chip rounded-full border border-slate-200 px-3 py-2" data-filter="diagnostico" role="tab">Diagnóstico</button>
-        <button class="chip rounded-full border border-slate-200 px-3 py-2" data-filter="procedimiento" role="tab">Procedimientos</button>
+      <div class="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-500" role="tablist" aria-label="Tipo de servicio">
+        @foreach($serviceTypes as $value => $label)
+          <a
+            class="chip {{ ($tipo ?? 'all') === $value ? 'is-active' : '' }} rounded-full border border-slate-200 px-3 py-2"
+            href="{{ route('servicios.index', array_filter(['q' => $q ?? '', 'tipo' => $value === 'all' ? null : $value], fn ($item) => filled($item))) }}"
+            role="tab"
+            aria-selected="{{ ($tipo ?? 'all') === $value ? 'true' : 'false' }}"
+          >{{ $label }}</a>
+        @endforeach
       </div>
-    </div>
+    </form>
+
+    @if(($q ?? '') !== '' || ($tipo ?? 'all') !== 'all')
+      <div class="mt-3">
+        <a class="btn btn-ghost btn-sm" href="{{ route('servicios.index') }}">
+          <i class="ri-refresh-line"></i> Limpiar filtros
+        </a>
+      </div>
+    @endif
 
     @php
       $metaMap = [
-        'Dermatología' => ['tag' => 'especialidad', 'icon' => 'ri-user-heart-line', 'badge' => 'Cuidado dermatológico', 'badge2' => 'Consulta especializada'],
-        'Medicina General' => ['tag' => 'general', 'icon' => 'ri-stethoscope-line', 'badge' => 'Consulta general', 'badge2' => 'Duración 20-30 min'],
-        'Pediatría' => ['tag' => 'especialidad', 'icon' => 'ri-bear-smile-line', 'badge' => 'Atención infantil', 'badge2' => 'Controles preventivos'],
-        'Ginecología' => ['tag' => 'especialidad', 'icon' => 'ri-women-line', 'badge' => 'Salud femenina', 'badge2' => 'Controles y asesorías'],
-        'Laboratorio Clínico' => ['tag' => 'diagnostico', 'tag_label' => 'Diagnóstico', 'icon' => 'ri-test-tube-line', 'badge' => 'Previa orden', 'badge2' => 'Entrega 24-48 h'],
-        'Odontología' => ['tag' => 'procedimiento', 'icon' => 'ri-tooth-line', 'badge' => 'Odontología general', 'badge2' => 'Limpieza y resinas'],
+        'Dermatología' => ['tag' => 'especialidad', 'icon' => 'ri-user-heart-line', 'badge' => 'Cita presencial', 'badge2' => 'Según disponibilidad'],
+        'Medicina General' => ['tag' => 'general', 'icon' => 'ri-stethoscope-line', 'badge' => 'Cita presencial', 'badge2' => 'Según disponibilidad'],
+        'Pediatría' => ['tag' => 'especialidad', 'icon' => 'ri-bear-smile-line', 'badge' => 'Atención pediátrica', 'badge2' => 'Según disponibilidad'],
+        'Ginecología' => ['tag' => 'especialidad', 'icon' => 'ri-women-line', 'badge' => 'Cita presencial', 'badge2' => 'Según disponibilidad'],
+        'Laboratorio Clínico' => ['tag' => 'diagnostico', 'tag_label' => 'Diagnóstico', 'icon' => 'ri-test-tube-line', 'badge' => 'Con solicitud médica', 'badge2' => 'Resultados en el sistema'],
+        'Odontología' => ['tag' => 'procedimiento', 'icon' => 'ri-tooth-line', 'badge' => 'Cita presencial', 'badge2' => 'Según disponibilidad'],
       ];
     @endphp
 
-    <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" id="svcGrid">
-      @foreach($especialidades as $esp)
+    <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      @forelse($especialidades as $esp)
         @php
-          $meta = $metaMap[$esp->nombre] ?? ['tag' => 'especialidad', 'tag_label' => 'Especialidad', 'icon' => 'ri-stethoscope-line', 'badge' => 'Consulta', 'badge2' => 'Agendable'];
+          $meta = $metaMap[$esp->nombre] ?? ['tag' => 'especialidad', 'tag_label' => 'Especialidad', 'icon' => 'ri-stethoscope-line', 'badge' => 'Cita presencial', 'badge2' => 'Según disponibilidad'];
           $icon = $esp->icono ?? $meta['icon'];
         @endphp
-        <article class="card p-5" data-tags="{{ $meta['tag'] }}">
+        <article class="card p-5">
           <div class="flex items-start justify-between gap-4">
             <div class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-600">
               <i class="{{ $icon }}"></i>
@@ -74,17 +86,25 @@
             @endauth
           </div>
         </article>
-      @endforeach
+      @empty
+        <div class="sm:col-span-2 lg:col-span-3">
+          <x-ui.empty-state title="No hay servicios disponibles para la busqueda realizada." message="Ajusta el texto o el tipo de servicio para consultar nuevamente." />
+        </div>
+      @endforelse
     </div>
 
-    <p id="svcEmpty" class="mt-6 text-center text-sm text-slate-500" hidden>No hay servicios disponibles para la búsqueda realizada.</p>
+    @if(method_exists($especialidades, 'links'))
+      <div class="mt-6 flex justify-center">
+        {{ $especialidades->links() }}
+      </div>
+    @endif
 
     <div class="mt-10 flex flex-col items-center justify-center gap-3 text-center">
       @auth
         <a href="{{ route('paciente.crear-cita') }}" class="btn btn-primary"><i class="ri-calendar-check-line"></i> Agendar cita</a>
       @else
         <a href="{{ url('/') . '?login=1' }}" class="btn btn-primary" data-login-trigger><i class="ri-login-circle-line"></i> Ingresar para agendar</a>
-        <p class="text-sm text-slate-500">O, si lo prefieres, agenda a través de nuestro chatbot.</p>
+        <p class="text-sm text-slate-500">También puedes iniciar el agendamiento con el asistente virtual.</p>
       @endauth
     </div>
   </div>

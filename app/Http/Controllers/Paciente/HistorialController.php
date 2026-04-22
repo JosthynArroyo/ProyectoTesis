@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Paciente;
 
 use App\Http\Controllers\Controller;
+use App\Models\CertificadoMedico;
 use App\Models\NotaSoap;
 use Illuminate\Support\Facades\Auth;
 
@@ -22,8 +23,15 @@ class HistorialController extends Controller
             ->with(['cita.doctor', 'cita.especialidad'])
             ->paginate(10);
 
+        $certificados = CertificadoMedico::query()
+            ->where('paciente_id', $pacienteId)
+            ->with(['doctor', 'cita.doctor', 'cita.especialidad'])
+            ->orderByDesc('fecha_emision')
+            ->get();
+
         return view('paciente.historial', [
             'notas' => $notas,
+            'certificados' => $certificados,
         ]);
     }
 

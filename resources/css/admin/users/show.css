@@ -3,14 +3,14 @@
   --font-heading:'Space Grotesk','Montserrat','Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
   --ink:#0f172a;
   --muted:#5b6b7c;
-  --line:#d9e2ff;
+  --line:#cbd5e1;
   --card:#fff;
   --primary:#2b63f8;
   --primary-strong:#1f4de4;
-  --shadow:0 18px 36px rgba(31,77,228,.08);
-  --shadow-soft:0 12px 24px rgba(15,23,42,.06);
-  --radius-lg:20px;
-  --radius:14px;
+  --shadow:0 18px 36px rgba(15,23,42,.11);
+  --shadow-soft:0 12px 24px rgba(15,23,42,.08);
+  --radius-lg:8px;
+  --radius:8px;
 }
 
 .detail-page{
@@ -34,12 +34,13 @@
   margin:0;
   font-family:var(--font-heading);
   font-size:24px;
-  letter-spacing:-0.02em;
+  letter-spacing:0;
+  line-height:1.2;
 }
 .eyebrow{
   margin:0;
   text-transform:uppercase;
-  letter-spacing:.1em;
+  letter-spacing:0;
   font-size:12px;
   font-weight:800;
   color:var(--muted);

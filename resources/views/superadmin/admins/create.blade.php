@@ -5,15 +5,6 @@
 
 @section('main')
 <div class="space-y-6">
-  <section class="card p-6">
-    <div>
-      <p class="text-xs uppercase tracking-widest text-slate-500">Administradores</p>
-      <h1 class="mt-2 text-2xl font-semibold text-slate-900">Crear administrador</h1>
-      <p class="text-slate-600">Solo el superadmin puede crear cuentas de administrador.</p>
-    </div>
-  </section>
-
-
   <form class="form space-y-6" method="POST" action="{{ route('superadmin.admins.store') }}" novalidate>
     @csrf
     @include('superadmin.admins.form', ['admin' => null])

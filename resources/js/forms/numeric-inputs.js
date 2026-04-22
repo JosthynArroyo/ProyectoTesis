@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
+function initNumericInputs() {
   const sanitizeNumeric = (input) => {
     const max = Number.parseInt(input.getAttribute('data-digits') || input.getAttribute('maxlength') || '0', 10);
     let value = input.value.replace(/\D+/g, '');
@@ -7,6 +7,11 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   document.querySelectorAll('input[data-digits]').forEach((input) => {
+    if (input.dataset.numericReady === '1') {
+      return;
+    }
+    input.dataset.numericReady = '1';
+
     sanitizeNumeric(input);
     input.addEventListener('input', () => sanitizeNumeric(input));
     input.addEventListener('blur', () => sanitizeNumeric(input));
@@ -14,4 +19,10 @@ document.addEventListener('DOMContentLoaded', () => {
       requestAnimationFrame(() => sanitizeNumeric(input));
     });
   });
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initNumericInputs, { once: true });
+} else {
+  initNumericInputs();
+}

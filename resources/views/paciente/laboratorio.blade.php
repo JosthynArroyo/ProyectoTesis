@@ -2,25 +2,16 @@
 @section('title', 'Resultados de Laboratorio')
 @section('body-class', 'paciente-body--laboratorio')
 @section('header-title','Resultados de laboratorio')
-@section('header-subtitle','Consulta ordenes y resultados')
+@section('header-subtitle','Consulta órdenes y resultados')
 
 @php($highlightItem = session('highlight_lab_item'))
 
 @section('main')
 <div class="space-y-6">
-  <header class="card p-6">
-    <div class="page-header">
-      <div class="page-header__info">
-        <p class="text-xs uppercase tracking-widest text-slate-500">Laboratorio</p>
-        <h1 class="mt-2 text-2xl font-semibold text-slate-900">Resultados y ordenes</h1>
-        <p class="text-slate-600">Consulta el estado de tus examenes, descarga resultados y revisa preparacion antes de asistir.</p>
-      </div>
-      <div class="page-header__actions">
-        <a class="btn btn-outline btn-full-mobile" href="{{ route('paciente.crear-cita') }}">Agendar cita medica</a>
-        <a class="btn btn-primary btn-full-mobile" href="{{ route('paciente.laboratorio.solicitar') }}">Solicitar examen</a>
-      </div>
-    </div>
-  </header>
+  <div class="panel-action-bar">
+    <a class="btn btn-outline btn-full-mobile" href="{{ route('paciente.crear-cita') }}">Agendar cita medica</a>
+    <a class="btn btn-primary btn-full-mobile" href="{{ route('paciente.laboratorio.solicitar') }}">Solicitar examen</a>
+  </div>
 
   @if ($errors->any())
     <x-ui.alert tone="error">{{ $errors->first() }}</x-ui.alert>
@@ -40,8 +31,8 @@
   <section class="card p-6">
     <div class="page-header">
       <div class="page-header__info">
-        <h2>Mis examenes y resultados</h2>
-        <p>Se integran aqui tanto las ordenes tradicionales como tus auto-solicitudes.</p>
+        <h2>Mis exámenes y resultados</h2>
+        <p>Se integran aquí tanto las órdenes tradicionales como tus auto-solicitudes.</p>
       </div>
     </div>
 
@@ -73,7 +64,7 @@
                     type="button"
                     class="btn btn-outline btn-sm"
                     data-kebab="lab-actions-{{ $orden->uid }}"
-                    aria-label="Mas acciones para {{ $orden->title }}"
+                    aria-label="Más acciones para {{ $orden->title }}"
                   >
                     <i class="ri-more-2-fill"></i>
                   </button>
@@ -98,7 +89,7 @@
                 @endif
                 @if($orden->preparation)
                   <div class="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
-                    <p class="text-xs uppercase tracking-widest text-slate-500">Preparacion</p>
+                    <p class="text-xs uppercase tracking-widest text-slate-500">Preparación</p>
                     <p class="mt-2 text-sm text-slate-700">{{ $orden->preparation }}</p>
                   </div>
                 @endif
@@ -115,7 +106,7 @@
       </div>
     @else
       <div class="mt-4">
-        <x-ui.empty-state title="Aun no tienes examenes registrados." message="Cuando solicites un examen o el laboratorio publique un resultado, aparecera aqui con su estado y las acciones disponibles.">
+        <x-ui.empty-state title="Aún no tienes exámenes registrados." message="Cuando solicites un examen o el laboratorio publique un resultado, aparecerá aquí con su estado y las acciones disponibles.">
           <div class="mt-4 flex flex-wrap justify-center gap-3">
             <a class="btn btn-primary" href="{{ route('paciente.laboratorio.solicitar') }}">Solicitar examen</a>
             <a class="btn btn-outline" href="{{ route('paciente.crear-cita') }}">Agendar cita medica</a>

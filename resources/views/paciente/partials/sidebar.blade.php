@@ -1,5 +1,4 @@
 <aside class="dashboard-sidebar fixed top-0 bottom-0 left-0 z-40 h-screen -translate-x-full overflow-y-auto border-r border-slate-200/70 bg-white px-4 pb-6 pt-0 shadow-xl lg:translate-x-0 lg:shrink-0">
-    @php($bloqueoPagosPendientes = auth()->check() && auth()->user()->hasRole('paciente') ? auth()->user()->hasPendingPaymentBlocks() : false)
     <div class="top flex items-center justify-between">
         <a href="{{ route('paciente.dashboard') }}" class="sidebar-brand">
             <span class="sidebar-brand__icon"><i class="ri-user-heart-line"></i></span>
@@ -41,7 +40,7 @@
         @if($bloqueoPagosPendientes)
             <div class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-amber-800">
                 <p class="flex items-center gap-3 font-semibold"><i class="ri-lock-2-line text-lg"></i> Agendar cita</p>
-                <p class="mt-2 text-xs font-medium">Tiene pagos pendientes. Regularice su cuenta para agendar una nueva cita.</p>
+                <p class="mt-2 text-xs font-medium">Tienes órdenes de pago vencidas de citas concluidas. Regulariza tu cuenta para agendar una nueva cita.</p>
             </div>
         @else
             <a href="{{ route('paciente.crear-cita') }}" @class(['flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors', 'bg-teal-50 text-teal-700' => request()->routeIs('paciente.crear-cita', 'paciente.crear-cita.*'), 'text-slate-600 hover:bg-slate-50' => !request()->routeIs('paciente.crear-cita', 'paciente.crear-cita.*')])>

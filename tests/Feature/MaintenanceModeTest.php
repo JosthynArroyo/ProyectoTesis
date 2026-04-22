@@ -12,6 +12,8 @@ class MaintenanceModeTest extends TestCase
 {
     use RefreshDatabase;
 
+    private const GENERIC_MAINTENANCE_MESSAGE = 'El sistema está en mantenimiento. Intenta nuevamente más tarde.';
+
     public function test_maintenance_blocks_regular_users(): void
     {
         SiteSetting::create([
@@ -24,6 +26,20 @@ class MaintenanceModeTest extends TestCase
         $response = $this->get('/');
 
         $response->assertStatus(503);
+    }
+
+    public function test_maintenance_page_keeps_face_tab_visible_but_disabled(): void
+    {
+        $this->enableMaintenance();
+
+        $response = $this->get('/');
+
+        $response->assertStatus(503);
+        $response->assertSee('data-face-tab-disabled="1"', false);
+        $response->assertSee('data-login-tab="face"', false);
+        $response->assertSee('disabled', false);
+        $response->assertDontSee('id="chatbot-widget"', false);
+        $response->assertCookie(config('session.cookie'));
     }
 
     public function test_superadmin_can_bypass_maintenance(): void
@@ -42,5 +58,150 @@ class MaintenanceModeTest extends TestCase
         $response = $this->actingAs($user)->get('/');
 
         $response->assertOk();
+    }
+
+    public function test_allowlisted_remote_ip_can_bypass_maintenance(): void
+    {
+        $this->enableMaintenance('192.168.18.42');
+
+        $response = $this
+            ->withServerVariables(['REMOTE_ADDR' => '192.168.18.42'])
+            ->get('/');
+
+        $response->assertOk();
+    }
+
+    public function test_allowlisted_forwarded_ip_can_bypass_maintenance(): void
+    {
+        $this->enableMaintenance('192.168.18.42');
+
+        $response = $this
+            ->withServerVariables(['REMOTE_ADDR' => '10.0.0.10'])
+            ->withHeader('X-Forwarded-For', '192.168.18.42, 10.0.0.10')
+            ->get('/');
+
+        $response->assertOk();
+    }
+
+    public function test_allowlisted_ip_can_login_during_maintenance(): void
+    {
+        $this->enableMaintenance('192.168.18.42');
+
+        $role = Role::create(['name' => 'paciente']);
+        $user = User::factory()->create([
+            'email' => 'paciente@example.com',
+            'password' => 'password',
+            'status' => User::STATUS_ACTIVE,
+        ]);
+        $user->roles()->attach($role->id);
+
+        $response = $this
+            ->withServerVariables(['REMOTE_ADDR' => '192.168.18.42'])
+            ->post(route('login'), [
+                'email' => $user->email,
+                'password' => 'password',
+                'remember' => '0',
+            ]);
+
+        $response->assertRedirect('paciente/dashboard');
+        $this->assertAuthenticatedAs($user);
+    }
+
+    public function test_maintenance_rejects_non_superadmin_login_with_generic_message(): void
+    {
+        $this->enableMaintenance();
+
+        $role = Role::create(['name' => 'paciente']);
+        $user = User::factory()->create([
+            'email' => 'paciente@example.com',
+            'password' => 'password',
+            'status' => User::STATUS_ACTIVE,
+        ]);
+        $user->roles()->attach($role->id);
+
+        $response = $this
+            ->from(url('/').'?login=1')
+            ->post(route('login'), [
+                'email' => $user->email,
+                'password' => 'password',
+                'remember' => '0',
+            ]);
+
+        $response->assertRedirect(url('/').'?login=1');
+        $response->assertSessionHasErrors([
+            'email' => self::GENERIC_MAINTENANCE_MESSAGE,
+        ]);
+        $response->assertSessionHas('auth_error', self::GENERIC_MAINTENANCE_MESSAGE);
+        $this->assertGuest();
+    }
+
+    public function test_maintenance_allows_active_superadmin_login(): void
+    {
+        $this->enableMaintenance();
+
+        $role = Role::create(['name' => 'superadmin']);
+        $user = User::factory()->create([
+            'email' => 'superadmin@example.com',
+            'password' => 'password',
+            'status' => User::STATUS_ACTIVE,
+        ]);
+        $user->roles()->attach($role->id);
+
+        $response = $this->post(route('login'), [
+            'email' => $user->email,
+            'password' => 'password',
+            'remember' => '0',
+        ]);
+
+        $response->assertRedirect('superadmin/dashboard');
+        $this->assertAuthenticatedAs($user);
+    }
+
+    public function test_allowlisted_ip_can_reach_face_login_during_maintenance(): void
+    {
+        $this->enableMaintenance('192.168.18.42');
+
+        $response = $this
+            ->withServerVariables(['REMOTE_ADDR' => '192.168.18.42'])
+            ->postJson(route('face.login'), [
+                'descriptor' => array_fill(0, 128, 0.1),
+            ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['descriptor']);
+    }
+
+    public function test_maintenance_rejects_face_login_with_same_generic_message(): void
+    {
+        $this->enableMaintenance();
+
+        $response = $this->postJson(route('face.login'), [
+            'descriptor' => array_fill(0, 128, 0.1),
+        ]);
+
+        $response
+            ->assertStatus(503)
+            ->assertJson([
+                'message' => self::GENERIC_MAINTENANCE_MESSAGE,
+            ]);
+    }
+
+    private function enableMaintenance(?string $allowIps = null): void
+    {
+        SiteSetting::create([
+            'key' => 'maintenance.enabled',
+            'value' => '1',
+            'section' => 'maintenance',
+            'type' => 'boolean',
+        ]);
+
+        if ($allowIps !== null) {
+            SiteSetting::create([
+                'key' => 'maintenance.allow_ips',
+                'value' => $allowIps,
+                'section' => 'maintenance',
+                'type' => 'text',
+            ]);
+        }
     }
 }

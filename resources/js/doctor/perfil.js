@@ -1,4 +1,5 @@
 import { setupFaceEnrollment } from '../face-enrollment.js';
+import { setupProfileAvatarPicker } from '../profile-avatar-picker.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   setupAvatarPicker();
@@ -6,17 +7,8 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function setupAvatarPicker() {
-  const changePhoto = document.getElementById('changePhoto');
-  const input = document.getElementById('avatarInput');
-  const preview = document.getElementById('avatarPreview');
-
-  if (!changePhoto || !input || !preview) return;
-
-  changePhoto.addEventListener('click', () => input.click());
-  input.addEventListener('change', (event) => {
-    const [file] = event.target.files ?? [];
-    if (!file) return;
-    preview.src = URL.createObjectURL(file);
+  setupProfileAvatarPicker({
+    triggerSelectors: ['#changePhoto', '#avatarPreview'],
   });
 }
 

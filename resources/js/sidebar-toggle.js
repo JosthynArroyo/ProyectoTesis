@@ -1,36 +1,37 @@
-document.addEventListener('DOMContentLoaded', () => {
-  const aside = document.querySelector('aside');
-  if (!aside) return;
+function initSidebarToggle() {
+  const sidebar = document.querySelector('.dashboard-sidebar');
+  if (!sidebar || sidebar.dataset.sidebarToggleReady === '1') return;
+  sidebar.dataset.sidebarToggleReady = '1';
   const overlay = document.querySelector('[data-sidebar-overlay]');
 
-  const openers = [
+  const openers = Array.from(new Set([
     ...document.querySelectorAll('#menu_bar'),
     ...document.querySelectorAll('[data-open-sidebar]')
-  ];
-  const closeBtn = aside.querySelector('.top .close');
+  ]));
+  const closeBtn = sidebar.querySelector('.top .close');
   const openClass = 'translate-x-0';
   const closedClass = '-translate-x-full';
   const desktopMq = window.matchMedia('(min-width: 1024px)');
 
   let lastScrollY = 0;
   let prevInline = {
-    display: aside.style.display,
-    left: aside.style.left,
-    transform: aside.style.transform,
-    translate: aside.style.translate,
-    position: aside.style.position,
-    top: aside.style.top,
-    bottom: aside.style.bottom,
-    height: aside.style.height,
-    zIndex: aside.style.zIndex
+    display: sidebar.style.display,
+    left: sidebar.style.left,
+    transform: sidebar.style.transform,
+    translate: sidebar.style.translate,
+    position: sidebar.style.position,
+    top: sidebar.style.top,
+    bottom: sidebar.style.bottom,
+    height: sidebar.style.height,
+    zIndex: sidebar.style.zIndex
   };
   let isOpen = false;
   function resetOffsets() {
-    aside.style.position = prevInline.position || '';
-    aside.style.top = prevInline.top || '';
-    aside.style.bottom = prevInline.bottom || '';
-    aside.style.height = prevInline.height || '';
-    aside.style.zIndex = prevInline.zIndex || '';
+    sidebar.style.position = prevInline.position || '';
+    sidebar.style.top = prevInline.top || '';
+    sidebar.style.bottom = prevInline.bottom || '';
+    sidebar.style.height = prevInline.height || '';
+    sidebar.style.zIndex = prevInline.zIndex || '';
     if (overlay) {
       overlay.style.top = '';
       overlay.style.bottom = '';
@@ -53,41 +54,39 @@ document.addEventListener('DOMContentLoaded', () => {
   function openSidebar(e) {
     if (e) e.preventDefault();
     prevInline = {
-      display: aside.style.display,
-      left: aside.style.left,
-      transform: aside.style.transform,
-      translate: aside.style.translate,
-      position: aside.style.position,
-      top: aside.style.top,
-      bottom: aside.style.bottom,
-      height: aside.style.height,
-      zIndex: aside.style.zIndex
+      display: sidebar.style.display,
+      left: sidebar.style.left,
+      transform: sidebar.style.transform,
+      translate: sidebar.style.translate,
+      position: sidebar.style.position,
+      top: sidebar.style.top,
+      bottom: sidebar.style.bottom,
+      height: sidebar.style.height,
+      zIndex: sidebar.style.zIndex
     };
 
-    aside.classList.remove(closedClass);
-    aside.classList.add(openClass);
-    aside.style.display = 'block';
-    aside.style.left = '0';
-    aside.style.setProperty('translate', '0 0');
-    aside.style.transform = 'translateX(0)';
-    aside.setAttribute('aria-hidden', 'false');
+    sidebar.classList.remove(closedClass);
+    sidebar.classList.add(openClass);
+    sidebar.style.display = 'block';
+    sidebar.style.left = '0';
+    sidebar.style.setProperty('translate', '0 0');
+    sidebar.style.transform = 'translateX(0)';
+    sidebar.setAttribute('aria-hidden', 'false');
 
-    if (getComputedStyle(aside).position !== 'fixed') {
-      aside.style.position = 'fixed';
-      aside.style.top = '0';
-      aside.style.bottom = '0';
-      aside.style.zIndex = '9999';
+    if (getComputedStyle(sidebar).position !== 'fixed') {
+      sidebar.style.position = 'fixed';
+      sidebar.style.top = '0';
+      sidebar.style.bottom = '0';
+      sidebar.style.zIndex = '9999';
     }
 
-    if (!aside.style.zIndex) {
-      aside.style.zIndex = '9999';
+    if (!sidebar.style.zIndex) {
+      sidebar.style.zIndex = '9999';
     }
 
-    aside.style.animation = 'none';
-    // reflow
-    // eslint-disable-next-line no-unused-expressions
-    aside.offsetHeight;
-    aside.style.animation = 'menuAni .28s forwards';
+    sidebar.style.animation = 'none';
+    sidebar.offsetHeight;
+    sidebar.style.animation = 'menuAni .28s forwards';
 
     lockScroll();
     if (overlay) {
@@ -100,17 +99,17 @@ document.addEventListener('DOMContentLoaded', () => {
   function closeSidebar(e) {
     if (e) e.preventDefault();
     isOpen = false;
-    aside.style.animation = '';
-    aside.classList.add(closedClass);
-    aside.classList.remove(openClass);
-    aside.style.setProperty('translate', prevInline.translate || '');
-    aside.style.transform = 'translateX(-110%)';
+    sidebar.style.animation = '';
+    sidebar.classList.add(closedClass);
+    sidebar.classList.remove(openClass);
+    sidebar.style.setProperty('translate', prevInline.translate || '');
+    sidebar.style.transform = 'translateX(-110%)';
     setTimeout(() => {
-      aside.style.display = prevInline.display || '';
-      aside.style.left = prevInline.left || '';
-      aside.style.transform = prevInline.transform || '';
-      aside.style.translate = prevInline.translate || '';
-      aside.setAttribute('aria-hidden', 'true');
+      sidebar.style.display = prevInline.display || '';
+      sidebar.style.left = prevInline.left || '';
+      sidebar.style.transform = prevInline.transform || '';
+      sidebar.style.translate = prevInline.translate || '';
+      sidebar.setAttribute('aria-hidden', 'true');
       if (overlay) {
         overlay.classList.add('hidden');
         overlay.classList.remove('block');
@@ -121,7 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function toggleSidebar(e) {
-    if (isOpen || aside.getAttribute('aria-hidden') === 'false') {
+    if (isOpen || sidebar.getAttribute('aria-hidden') === 'false') {
       closeSidebar(e);
     } else {
       openSidebar(e);
@@ -139,15 +138,15 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   if (!desktopMq.matches) {
-    aside.setAttribute('aria-hidden', 'true');
+    sidebar.setAttribute('aria-hidden', 'true');
   }
 
   window.addEventListener('resize', () => {
     if (desktopMq.matches) {
-      aside.style.display = '';
-      aside.style.transform = '';
-      aside.style.animation = '';
-      aside.removeAttribute('aria-hidden');
+      sidebar.style.display = '';
+      sidebar.style.transform = '';
+      sidebar.style.animation = '';
+      sidebar.removeAttribute('aria-hidden');
       isOpen = false;
       if (overlay) {
         overlay.classList.add('hidden');
@@ -157,4 +156,10 @@ document.addEventListener('DOMContentLoaded', () => {
       unlockScroll();
     }
   });
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initSidebarToggle, { once: true });
+} else {
+  initSidebarToggle();
+}

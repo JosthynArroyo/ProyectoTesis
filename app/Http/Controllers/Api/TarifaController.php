@@ -18,27 +18,27 @@ class TarifaController extends Controller
             ->onlyActive()
             ->first();
 
-        if (!$doctor || !($doctor->hasRole('doctor') || $doctor->hasRole('laboratorio'))) {
+        if (! $doctor || ! ($doctor->hasRole('doctor') || $doctor->hasRole('laboratorio'))) {
             return response()->json([
-                'ok'      => false,
+                'ok' => false,
                 'message' => 'Usuario no encontrado o inactivo.',
             ], 404);
         }
 
-        $precio  = $doctor->precio_consulta; // puede ser null si no configurado aún
-        $moneda  = $doctor->moneda ?? 'USD';
-        $definido = !is_null($precio);
+        $precio = $doctor->precio_consulta; // puede ser null si no configurado aún
+        $moneda = $doctor->moneda ?? 'USD';
+        $definido = ! is_null($precio);
 
         return response()->json([
-            'ok'             => true,
-            'doctor_id'      => $doctor->id,
-            'doctor_nombre'  => $doctor->name,
-            'precio'         => $definido ? (float) $precio : null,
-            'moneda'         => $moneda,
-            'definido'       => $definido,
-            'precio_format'  => $definido ? ('$' . number_format((float)$precio, 2) . ' ' . $moneda) : null,
-            'label'          => $definido
-                ? ('Tarifa: $' . number_format((float)$precio, 2) . ' ' . $moneda)
+            'ok' => true,
+            'doctor_id' => $doctor->id,
+            'doctor_nombre' => $doctor->name,
+            'precio' => $definido ? (float) $precio : null,
+            'moneda' => $moneda,
+            'definido' => $definido,
+            'precio_format' => $definido ? ('$'.number_format((float) $precio, 2).' '.$moneda) : null,
+            'label' => $definido
+                ? ('Tarifa: $'.number_format((float) $precio, 2).' '.$moneda)
                 : 'Tarifa no configurada',
         ], 200);
     }

@@ -17,7 +17,9 @@ class NotificarPrioridadCitaJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $citaId;
+
     public string $nivelAnterior;
+
     public string $nivelNuevo;
 
     public function __construct(Cita $cita, string $nivelAnterior, string $nivelNuevo)
@@ -30,7 +32,7 @@ class NotificarPrioridadCitaJob implements ShouldQueue
     public function handle(): void
     {
         $cita = Cita::with(['paciente', 'doctor', 'especialidad'])->find($this->citaId);
-        if (!$cita) {
+        if (! $cita) {
             return;
         }
 

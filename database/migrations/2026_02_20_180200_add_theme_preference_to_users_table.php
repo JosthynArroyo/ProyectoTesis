@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            if (!Schema::hasColumn('users', 'theme_preference')) {
+            if (! Schema::hasColumn('users', 'theme_preference')) {
                 $table->string('theme_preference', 10)
                     ->default('light')
                     ->after('avatar');

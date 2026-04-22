@@ -13,6 +13,7 @@ class BookingOverrideLog extends Model
     protected $table = 'booking_override_logs';
 
     public $timestamps = true;
+
     public const UPDATED_AT = null;
 
     protected $fillable = [

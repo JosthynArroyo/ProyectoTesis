@@ -24,61 +24,61 @@
     <div class="mt-4 grid gap-4 md:grid-cols-2">
       <div>
         <label class="form-label">Badge</label>
-        <input class="form-input" name="contact_info_badge" value="{{ old('contact_info_badge', $settings['contact.info_badge'] ?? '') }}" required>
+        <input class="form-input" name="contact_info_badge" value="{{ old('contact_info_badge', $settings['contact.info_badge'] ?? '') }}">
         @error('contact_info_badge')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
       <div>
         <label class="form-label">Título</label>
-        <input class="form-input" name="contact_title" value="{{ old('contact_title', $settings['contact.title'] ?? '') }}" required>
+        <input class="form-input" name="contact_title" value="{{ old('contact_title', $settings['contact.title'] ?? '') }}">
         @error('contact_title')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
       <div class="md:col-span-2">
         <label class="form-label">Subtítulo</label>
-        <textarea class="form-textarea" name="contact_subtitle" rows="2" required>{{ old('contact_subtitle', $settings['contact.subtitle'] ?? '') }}</textarea>
+        <textarea class="form-textarea" name="contact_subtitle" rows="2">{{ old('contact_subtitle', $settings['contact.subtitle'] ?? '') }}</textarea>
         @error('contact_subtitle')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
 
       <div>
         <label class="form-label">Etiqueta dirección</label>
-        <input class="form-input" name="contact_address_label" value="{{ old('contact_address_label', $settings['contact.address_label'] ?? '') }}" required>
+        <input class="form-input" name="contact_address_label" value="{{ old('contact_address_label', $settings['contact.address_label'] ?? '') }}">
         @error('contact_address_label')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
       <div>
         <label class="form-label">Dirección</label>
-        <input class="form-input" name="contact_address" value="{{ old('contact_address', $settings['contact.address'] ?? '') }}" required>
+        <input class="form-input" name="contact_address" value="{{ old('contact_address', $settings['contact.address'] ?? '') }}">
         @error('contact_address')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
 
       <div>
         <label class="form-label">Etiqueta teléfono</label>
-        <input class="form-input" name="contact_phone_label" value="{{ old('contact_phone_label', $settings['contact.phone_label'] ?? '') }}" required>
+        <input class="form-input" name="contact_phone_label" value="{{ old('contact_phone_label', $settings['contact.phone_label'] ?? '') }}">
         @error('contact_phone_label')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
       <div>
         <label class="form-label">Teléfono visible</label>
-        <input class="form-input" name="contact_phone" value="{{ old('contact_phone', $settings['contact.phone'] ?? '') }}" required>
+        <input class="form-input" name="contact_phone" value="{{ old('contact_phone', $settings['contact.phone'] ?? '') }}">
         @error('contact_phone')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
 
       <div>
         <label class="form-label">Etiqueta horario</label>
-        <input class="form-input" name="contact_hours_label" value="{{ old('contact_hours_label', $settings['contact.hours_label'] ?? '') }}" required>
+        <input class="form-input" name="contact_hours_label" value="{{ old('contact_hours_label', $settings['contact.hours_label'] ?? '') }}">
         @error('contact_hours_label')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
       <div>
         <label class="form-label">Horario</label>
-        <input class="form-input" name="contact_hours" value="{{ old('contact_hours', $settings['contact.hours'] ?? '') }}" required>
+        <input class="form-input" name="contact_hours" value="{{ old('contact_hours', $settings['contact.hours'] ?? '') }}">
         @error('contact_hours')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
 
       <div>
         <label class="form-label">Título del mapa (accesibilidad)</label>
-        <input class="form-input" name="contact_map_title" value="{{ old('contact_map_title', $settings['contact.map_title'] ?? '') }}" required>
+        <input class="form-input" name="contact_map_title" value="{{ old('contact_map_title', $settings['contact.map_title'] ?? '') }}">
         @error('contact_map_title')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
       <div class="md:col-span-2">
         <label class="form-label">URL embed de Google Maps</label>
-        <input class="form-input" name="contact_map_embed" value="{{ old('contact_map_embed', $settings['contact.map_embed'] ?? '') }}" required>
+        <input class="form-input" name="contact_map_embed" value="{{ old('contact_map_embed', $settings['contact.map_embed'] ?? '') }}">
         <p class="mt-1 text-xs text-slate-500">Ejemplo: <code>https://www.google.com/maps/embed?pb=...</code></p>
         @error('contact_map_embed')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
@@ -110,65 +110,66 @@
     <div class="mt-4 grid gap-4 md:grid-cols-2">
       <div>
         <label class="form-label">Badge del bloque</label>
-        <input class="form-input" name="contact_form_section_badge" value="{{ old('contact_form_section_badge', $settings['contact.form_section_badge'] ?? '') }}" required>
+        <input class="form-input" name="contact_form_section_badge" value="{{ old('contact_form_section_badge', $settings['contact.form_section_badge'] ?? '') }}">
         @error('contact_form_section_badge')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
       <div>
         <label class="form-label">Título del formulario</label>
-        <input class="form-input" name="contact_form_title" value="{{ old('contact_form_title', $settings['contact.form_title'] ?? '') }}" required>
+        <input class="form-input" name="contact_form_title" value="{{ old('contact_form_title', $settings['contact.form_title'] ?? '') }}">
         @error('contact_form_title')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
       <div>
         <label class="form-label">Badge lateral</label>
-        <input class="form-input" name="contact_form_badge" value="{{ old('contact_form_badge', $settings['contact.form_badge'] ?? '') }}" required>
+        <input class="form-input" name="contact_form_badge" value="{{ old('contact_form_badge', $settings['contact.form_badge'] ?? '') }}">
         @error('contact_form_badge')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
       <div>
         <label class="form-label">Texto botón enviar</label>
-        <input class="form-input" name="contact_form_submit_text" value="{{ old('contact_form_submit_text', $settings['contact.form_submit_text'] ?? '') }}" required>
+        <input class="form-input" name="contact_form_submit_text" value="{{ old('contact_form_submit_text', $settings['contact.form_submit_text'] ?? '') }}">
         @error('contact_form_submit_text')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
 
       <div>
         <label class="form-label">Label nombre</label>
-        <input class="form-input" name="contact_form_name_label" value="{{ old('contact_form_name_label', $settings['contact.form_name_label'] ?? '') }}" required>
+        <input class="form-input" name="contact_form_name_label" value="{{ old('contact_form_name_label', $settings['contact.form_name_label'] ?? '') }}">
         @error('contact_form_name_label')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
       <div>
         <label class="form-label">Label correo</label>
-        <input class="form-input" name="contact_form_email_label" value="{{ old('contact_form_email_label', $settings['contact.form_email_label'] ?? '') }}" required>
+        <input class="form-input" name="contact_form_email_label" value="{{ old('contact_form_email_label', $settings['contact.form_email_label'] ?? '') }}">
         @error('contact_form_email_label')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
       <div>
         <label class="form-label">Label teléfono</label>
-        <input class="form-input" name="contact_form_phone_label" value="{{ old('contact_form_phone_label', $settings['contact.form_phone_label'] ?? '') }}" required>
+        <input class="form-input" name="contact_form_phone_label" value="{{ old('contact_form_phone_label', $settings['contact.form_phone_label'] ?? '') }}">
         @error('contact_form_phone_label')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
       <div>
         <label class="form-label">Label asunto</label>
-        <input class="form-input" name="contact_form_subject_label" value="{{ old('contact_form_subject_label', $settings['contact.form_subject_label'] ?? '') }}" required>
+        <input class="form-input" name="contact_form_subject_label" value="{{ old('contact_form_subject_label', $settings['contact.form_subject_label'] ?? '') }}">
         @error('contact_form_subject_label')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
       <div class="md:col-span-2">
         <label class="form-label">Placeholder asunto</label>
-        <input class="form-input" name="contact_form_subject_placeholder" value="{{ old('contact_form_subject_placeholder', $settings['contact.form_subject_placeholder'] ?? '') }}" required>
+        <input class="form-input" name="contact_form_subject_placeholder" value="{{ old('contact_form_subject_placeholder', $settings['contact.form_subject_placeholder'] ?? '') }}">
         @error('contact_form_subject_placeholder')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
       <div>
         <label class="form-label">Label mensaje</label>
-        <input class="form-input" name="contact_form_message_label" value="{{ old('contact_form_message_label', $settings['contact.form_message_label'] ?? '') }}" required>
+        <input class="form-input" name="contact_form_message_label" value="{{ old('contact_form_message_label', $settings['contact.form_message_label'] ?? '') }}">
         @error('contact_form_message_label')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
       <div>
         <label class="form-label">Ayuda de mensaje</label>
-        <input class="form-input" name="contact_form_message_help" value="{{ old('contact_form_message_help', $settings['contact.form_message_help'] ?? '') }}" required>
+        <input class="form-input" name="contact_form_message_help" value="{{ old('contact_form_message_help', $settings['contact.form_message_help'] ?? '') }}">
         @error('contact_form_message_help')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
       <div class="md:col-span-2">
         <label class="form-label">Placeholder mensaje</label>
-        <textarea class="form-textarea" name="contact_form_message_placeholder" rows="2" required>{{ old('contact_form_message_placeholder', $settings['contact.form_message_placeholder'] ?? '') }}</textarea>
+        <textarea class="form-textarea" name="contact_form_message_placeholder" rows="2">{{ old('contact_form_message_placeholder', $settings['contact.form_message_placeholder'] ?? '') }}</textarea>
         @error('contact_form_message_placeholder')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
     </div>
   </section>
 </div>
+

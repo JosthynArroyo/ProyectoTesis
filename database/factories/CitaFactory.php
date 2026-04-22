@@ -2,8 +2,8 @@
 
 namespace Database\Factories;
 
-use Illuminate\Database\Eloquent\Factories\Factory;
 use App\Models\Especialidad;
+use Illuminate\Database\Eloquent\Factories\Factory;
 
 class CitaFactory extends Factory
 {

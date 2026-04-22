@@ -1,7 +1,7 @@
 @extends('layouts.admin')
-@section('title','Usuarios | Administracion')
+@section('title','Usuarios | Administración')
 @section('header-title','Usuarios')
-@section('header-subtitle','Gestion y control de usuarios')
+@section('header-subtitle','Gestión y control de usuarios')
 
 @section('main')
 @php
@@ -12,25 +12,16 @@
 @endphp
 
 <div class="space-y-6">
-  <div class="card p-6">
-    <div class="page-header">
-      <div class="page-header__info">
-        <p class="text-xs uppercase tracking-widest text-slate-500">Usuarios</p>
-        <h1 class="mt-2 text-2xl font-semibold text-slate-900">Gestion de usuarios</h1>
-        <p class="text-slate-600">Administra datos, roles y estados. Exporta filtros actuales a Excel o PDF.</p>
-      </div>
-      <div class="page-header__actions">
-        <a class="btn btn-outline btn-sm btn-full-mobile" href="{{ route('admin.usuarios.export.excel', request()->query()) }}">
-          <i class="ri-file-excel-2-line"></i> Excel
-        </a>
-        <a class="btn btn-outline btn-sm btn-full-mobile" href="{{ route('admin.usuarios.export.pdf', request()->query()) }}">
-          <i class="ri-file-pdf-line"></i> PDF
-        </a>
-        <a class="btn btn-primary btn-full-mobile" href="{{ route('admin.usuarios.create', array_filter(['preset_role'=>request('role')])) }}">
-          <i class="ri-user-add-line"></i> Crear usuario
-        </a>
-      </div>
-    </div>
+  <div class="panel-action-bar">
+    <a class="btn btn-outline btn-sm btn-full-mobile" href="{{ route('admin.usuarios.export.excel', request()->query()) }}">
+      <i class="ri-file-excel-2-line"></i> Excel
+    </a>
+    <a class="btn btn-outline btn-sm btn-full-mobile" href="{{ route('admin.usuarios.export.pdf', request()->query()) }}">
+      <i class="ri-file-pdf-line"></i> PDF
+    </a>
+    <a class="btn btn-primary btn-full-mobile" href="{{ route('admin.usuarios.create', array_filter(['preset_role'=>request('role')])) }}">
+      <i class="ri-user-add-line"></i> Crear usuario
+    </a>
   </div>
 
   <section class="stat-grid">
@@ -49,12 +40,12 @@
     <div class="flex flex-wrap gap-4">
       <div class="inline-control-shell flex-1">
         <i class="ri-search-line text-slate-400"></i>
-        <input type="search" name="buscar" value="{{ old('buscar', $buscar) }}" placeholder="Buscar por nombre, correo, cedula, telefono" required>
+        <input type="search" name="buscar" value="{{ old('buscar', $buscar) }}" placeholder="Buscar por nombre, correo, cédula o teléfono">
       </div>
       @error('buscar')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
 
       @php $roleSel = request('role'); @endphp
-      <select class="form-select" name="role" onchange="this.form.submit()" required>
+      <select class="form-select" name="role" onchange="this.form.submit()">
         <option value="all" @selected($roleSel === '' || $roleSel === 'all')>Todos los roles</option>
         <option value="doctor" @selected($roleSel === 'doctor')>Doctores</option>
         <option value="paciente" @selected($roleSel === 'paciente')>Pacientes</option>
@@ -66,7 +57,7 @@
         <button type="button" class="btn btn-outline btn-sm" id="btn-more-filters" aria-expanded="{{ $filtersOpen ? 'true' : 'false' }}">
           <i class="ri-equalizer-line"></i> Filtros avanzados
         </button>
-        <select class="form-select" name="per_page" onchange="this.form.submit()" required>
+        <select class="form-select" name="per_page" onchange="this.form.submit()">
           @foreach([12,24,48,96] as $pp)
             <option value="{{ $pp }}" @selected(($perPage ?? 12) == $pp)>{{ $pp }}/pag</option>
           @endforeach
@@ -98,7 +89,7 @@
   @endif
 
   <div class="card p-0">
-    <div class="table-shell users table-responsive-cards">
+    <div class="table-shell table-shell--overflow-visible users table-responsive-cards">
       <table class="table users" role="region" aria-label="Listado de usuarios">
         <thead>
           <tr>
@@ -113,32 +104,26 @@
         <tbody>
         @forelse($users as $u)
           @php
-            $roleIdActual = optional($u->roles->first())->id;
-            $esAdmin = $u->roles->contains(fn($rr) => in_array($rr->name, ['administrador','superadmin'], true));
+            $roleNombre = optional($u->roles->first())->name;
+            $roleLabel = $roleNombre ? \Illuminate\Support\Str::headline($roleNombre) : 'Sin rol';
+            $roleTone = match ($roleNombre) {
+                'paciente' => 'success',
+                'doctor' => 'info',
+                'laboratorio' => 'warning',
+                'administrador', 'superadmin' => 'danger',
+                default => 'info',
+            };
+            $esAdmin = in_array($roleNombre, ['administrador', 'superadmin'], true);
+            $isClinicalProfessional = in_array($roleNombre, ['doctor', 'laboratorio'], true);
             $espNombres = ($u->especialidades ?? collect())->pluck('nombre')->all();
             $estado = $u->status ?? 'active';
             $isSusp = $u->suspended_until && now()->lt($u->suspended_until);
-            $rowError = (string) old('user_id') === (string) $u->id;
           @endphp
 
-          <form id="update-{{ $u->id }}" action="{{ route('admin.usuarios.update', $u) }}" method="POST">
-            @csrf
-            @method('PUT')
-            <input type="hidden" name="user_id" value="{{ $u->id }}">
-            <input type="hidden" name="telefono" value="{{ old('telefono', $u->telefono) }}">
-            <input type="hidden" name="dni" value="{{ old('dni', $u->dni) }}">
-            <input type="hidden" name="direccion" value="{{ old('direccion', $u->direccion) }}">
-            <input type="hidden" name="fecha_nacimiento" value="{{ old('fecha_nacimiento', optional($u->fecha_nacimiento)->format('Y-m-d')) }}">
-            <input type="hidden" name="sexo" value="{{ old('sexo', $u->sexo) }}">
-            <input type="hidden" name="precio_consulta" value="{{ old('precio_consulta', $u->precio_consulta) }}">
-            <input type="hidden" name="especialidad_id" value="{{ old('especialidad_id', $u->especialidades->first()->id ?? '') }}">
-            <input type="hidden" name="adulto_mayor" value="{{ old('adulto_mayor', $u->patientFlag?->adulto_mayor ? 1 : 0) }}">
-            <input type="hidden" name="embarazo" value="{{ old('embarazo', $u->patientFlag?->embarazo ? 1 : 0) }}">
-            <input type="hidden" name="discapacidad" value="{{ old('discapacidad', $u->patientFlag?->discapacidad ? 1 : 0) }}">
-            <input type="hidden" name="cronico" value="{{ old('cronico', $u->patientFlag?->cronico ? 1 : 0) }}">
-          </form>
-          @unless($esAdmin)
+          @unless($esAdmin || $isClinicalProfessional)
             <form id="delete-{{ $u->id }}" action="{{ route('admin.usuarios.destroy', $u) }}" method="POST">@csrf @method('DELETE')</form>
+          @endunless
+          @unless($esAdmin)
             <form id="block-{{ $u->id }}" action="{{ route('admin.usuarios.block', $u) }}" method="POST">
               @csrf
               @method('PATCH')
@@ -152,20 +137,17 @@
             <form id="deactivate-{{ $u->id }}" action="{{ route('admin.usuarios.deactivate', $u) }}" method="POST">
               @csrf
               @method('PATCH')
-              <input type="hidden" name="reason" value="Inactivacion manual">
+              <input type="hidden" name="reason" value="Inactivación manual">
             </form>
           @endunless
 
-          <tr data-user-row class="{{ $rowError ? 'is-open' : '' }}">
+          <tr data-user-row>
             @if(in_array('usuario',$cols))
               <td data-label="Usuario">
                 <div class="flex items-start gap-3">
                   <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-sm font-semibold text-slate-600">{{ \Illuminate\Support\Str::substr($u->name,0,1) }}</div>
                   <div class="min-w-0 flex-1">
-                    <input class="form-input" form="update-{{ $u->id }}" type="text" name="name" value="{{ $rowError ? old('name', $u->name) : $u->name }}" required>
-                    @if($rowError)
-                      @error('name')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
-                    @endif
+                    <p class="truncate text-sm font-semibold text-slate-900">{{ $u->name }}</p>
                     <div class="mt-2 flex flex-wrap items-center gap-3">
                       <p class="text-xs text-slate-500">ID #{{ $u->id }}</p>
                       <button
@@ -174,7 +156,7 @@
                         data-row-toggle
                         data-closed-label="Ver detalles"
                         data-open-label="Ocultar detalles"
-                        aria-expanded="{{ $rowError ? 'true' : 'false' }}"
+                        aria-expanded="false"
                       >
                         <i class="ri-arrow-down-s-line"></i> Ver detalles
                       </button>
@@ -187,10 +169,7 @@
             @if(in_array('contacto',$cols))
               <td data-label="Contacto" class="user-detail-cell">
                 <div class="space-y-1">
-                  <input class="form-input" form="update-{{ $u->id }}" type="email" name="email" value="{{ $rowError ? old('email', $u->email) : $u->email }}" required>
-                  @if($rowError)
-                    @error('email')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
-                  @endif
+                  <p class="break-all text-sm text-slate-700">{{ $u->email }}</p>
                   @if(!empty($u->telefono))
                     <span class="text-xs text-slate-500">Tel: {{ $u->telefono }}</span>
                   @endif
@@ -200,19 +179,7 @@
 
             @if(in_array('rol',$cols))
               <td data-label="Rol" class="user-detail-cell">
-                @if($esAdmin)
-                  <span class="badge info" title="No editable para administradores">Administrador</span>
-                  <input type="hidden" form="update-{{ $u->id }}" name="role_id" value="{{ $roleIdActual }}">
-                @else
-                  <select class="form-select" form="update-{{ $u->id }}" name="role_id" required>
-                    @foreach($roles as $role)
-                      <option value="{{ $role->id }}" @selected($roleIdActual === $role->id)>{{ ucfirst($role->name) }}</option>
-                    @endforeach
-                  </select>
-                  @if($rowError)
-                    @error('role_id')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
-                  @endif
-                @endif
+                <span class="badge {{ $roleTone }}">{{ $roleLabel }}</span>
               </td>
             @endif
 
@@ -222,14 +189,14 @@
                   @if($estado === 'blocked')
                     <span class="badge danger">Bloqueado</span>
                   @elseif($estado === 'inactive')
-                    <span class="badge danger">Inactivo</span>
+                    <span class="badge warning">Inactivo</span>
                   @elseif($isSusp)
                     <span class="badge warning">Suspendido</span>
                   @else
                     <span class="badge success">Activo</span>
                   @endif
                   @unless($esAdmin)
-                    <span class="text-xs text-slate-500">Ultimo acceso: {{ optional($u->last_login_at)->diffForHumans() ?? 'N/D' }}</span>
+                    <span class="text-xs text-slate-500">Último acceso: {{ optional($u->last_login_at)->diffForHumans() ?? 'N/D' }}</span>
                   @endunless
                 </div>
               </td>
@@ -248,11 +215,8 @@
             @if(in_array('acciones',$cols))
               <td data-label="Acciones">
                 <div class="table-actions">
-                  <button form="update-{{ $u->id }}" type="submit" class="btn btn-outline btn-sm" title="Guardar cambios" aria-label="Guardar cambios de {{ $u->name }}">
-                    <i class="ri-save-line"></i> Guardar
-                  </button>
                   <div class="relative">
-                    <button type="button" class="btn btn-outline btn-sm" data-kebab="user-actions-{{ $u->id }}" aria-label="Mas acciones para {{ $u->name }}">
+                    <button type="button" class="btn btn-outline btn-sm" data-kebab="user-actions-{{ $u->id }}" data-kebab-placement="top" aria-label="Más acciones para {{ $u->name }}">
                       <i class="ri-more-2-fill"></i>
                     </button>
                     <div id="user-actions-{{ $u->id }}" class="kebab-menu" role="menu">
@@ -291,11 +255,11 @@
                             type="button"
                             class="btn btn-ghost btn-sm justify-start"
                             data-confirm-form="deactivate-{{ $u->id }}"
-                            data-confirm-title="Inactivar usuario"
-                            data-confirm-message="La cuenta de {{ $u->name }} quedara inactiva."
-                            data-confirm-button="Inactivar"
+                            data-confirm-title="{{ $isClinicalProfessional ? 'Desactivar profesional' : 'Desactivar usuario' }}"
+                            data-confirm-message="{{ $isClinicalProfessional ? 'La cuenta quedara inactiva, pero sus citas, historiales, recetas y especialidades se conservaran.' : 'La cuenta de '.$u->name.' quedara inactiva.' }}"
+                            data-confirm-button="Desactivar"
                           >
-                            <i class="ri-user-unfollow-line"></i> Inactivar
+                            <i class="ri-user-unfollow-line"></i> Desactivar
                           </button>
                         @endif
                         @if($estado !== 'active' || $isSusp)
@@ -310,16 +274,18 @@
                             <i class="ri-user-follow-line"></i> Reactivar
                           </button>
                         @endif
-                        <button
-                          type="button"
-                          class="btn btn-ghost btn-sm justify-start text-rose-600"
-                          data-confirm-form="delete-{{ $u->id }}"
-                          data-confirm-title="Eliminar usuario"
-                          data-confirm-message="Se eliminara la cuenta de {{ $u->name }}."
-                          data-confirm-button="Eliminar"
-                        >
-                          <i class="ri-delete-bin-line"></i> Eliminar
-                        </button>
+                        @unless($isClinicalProfessional)
+                          <button
+                            type="button"
+                            class="btn btn-ghost btn-sm justify-start text-rose-600"
+                            data-confirm-form="delete-{{ $u->id }}"
+                            data-confirm-title="Eliminar usuario"
+                            data-confirm-message="Se eliminara la cuenta de {{ $u->name }}."
+                            data-confirm-button="Eliminar"
+                          >
+                            <i class="ri-delete-bin-line"></i> Eliminar
+                          </button>
+                        @endunless
                       @endunless
                     </div>
                   </div>
@@ -330,7 +296,7 @@
         @empty
           <tr>
             <td colspan="{{ max(count($cols), 1) }}">
-              <x-ui.empty-state title="No hay usuarios para mostrar." message="Ajusta la busqueda, cambia el rol o crea un nuevo usuario desde esta misma pantalla." />
+              <x-ui.empty-state title="No hay usuarios para mostrar." message="Ajusta la búsqueda, cambia el rol o crea un nuevo usuario desde esta misma pantalla." />
             </td>
           </tr>
         @endforelse
@@ -341,7 +307,7 @@
     <div class="flex flex-wrap items-center justify-between gap-4 px-6 py-4 text-sm text-slate-500">
       <div>
         @if ($users->hasPages())
-          Pagina {{ $users->currentPage() }} de {{ $users->lastPage() }}
+          Página {{ $users->currentPage() }} de {{ $users->lastPage() }}
         @else
           Mostrando {{ $users->count() }} registros
         @endif
@@ -357,8 +323,8 @@
     <div class="card modal-sheet p-6">
       <div class="flex items-center justify-between gap-3 border-b border-slate-100 pb-4">
         <div>
-          <p class="text-xs uppercase tracking-widest text-slate-500">Confirmacion</p>
-          <h3 class="mt-2 text-lg font-semibold text-slate-900" data-confirm-title>Confirmar accion</h3>
+          <p class="text-xs uppercase tracking-widest text-slate-500">Confirmación</p>
+          <h3 class="mt-2 text-lg font-semibold text-slate-900" data-confirm-title>Confirmar acción</h3>
         </div>
         <button type="button" class="btn btn-ghost px-2" data-sheet-close aria-label="Cerrar">
           <i class="ri-close-line"></i>
@@ -379,7 +345,7 @@
     <div class="card modal-sheet p-6">
       <div class="flex items-center justify-between gap-3 border-b border-slate-100 pb-4">
         <div>
-          <p class="text-xs uppercase tracking-widest text-slate-500">Suspension</p>
+          <p class="text-xs uppercase tracking-widest text-slate-500">Suspensión</p>
           <h3 class="mt-2 text-lg font-semibold text-slate-900" data-suspend-title>Suspender usuario</h3>
           <p class="text-sm text-slate-500">Cuenta: <span data-suspend-name>{{ $suspendTarget?->name ?? 'Usuario' }}</span></p>
         </div>
@@ -405,12 +371,12 @@
 
         <div>
           <label class="form-label" for="sheet-user-reason">Motivo</label>
-          <input id="sheet-user-reason" class="form-input" type="text" name="reason" value="{{ old('reason') }}" placeholder="Motivo de suspension">
+          <input id="sheet-user-reason" class="form-input" type="text" name="reason" value="{{ old('reason') }}" placeholder="Motivo de suspensión">
         </div>
 
         <div class="flex flex-wrap justify-end gap-3">
           <button type="button" class="btn btn-outline" data-sheet-close>Cancelar</button>
-          <button class="btn btn-primary" type="submit">Guardar suspension</button>
+          <button class="btn btn-primary" type="submit">Guardar suspensión</button>
         </div>
       </form>
     </div>

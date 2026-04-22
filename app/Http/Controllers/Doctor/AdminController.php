@@ -3,16 +3,19 @@
 namespace App\Http\Controllers\Doctor;
 
 use App\Http\Controllers\Controller;
+use App\Models\Cita;
+use App\Models\Horario;
+use App\Models\User;
+use App\Services\CitaNoShowService;
+use App\Services\ProfileAvatarService;
+use App\Support\DateField;
+use App\Support\ValidationRules;
+use App\Support\WeeklyCalendarData;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use App\Models\Cita;
-use Carbon\Carbon;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
-use App\Support\ValidationRules;
-use App\Services\CitaNoShowService;
-use App\Services\ImageOptimizer;
-use App\Events\CitaAtendida;
 
 class AdminController extends Controller
 {
@@ -20,20 +23,57 @@ class AdminController extends Controller
     {
         app(CitaNoShowService::class)->marcarVencidas();
         $user = Auth::user();
+
+        return view('doctor.dashboard', [
+            'user' => $user,
+            ...$this->dashboardSnapshot($user),
+        ]);
+    }
+
+    public function dashboardData(Request $request)
+    {
+        app(CitaNoShowService::class)->marcarVencidas();
+        $snapshot = $this->dashboardSnapshot($request->user());
+
+        return response()->json([
+            'kpis' => [
+                'hoy' => $snapshot['citasHoy'],
+                'realizadas' => $snapshot['citasRealizadas'],
+                'pendientes' => $snapshot['citasPendientes'],
+                'confirmadas_2h' => $snapshot['citasConfirmadas2h'],
+                'realizadas_2h' => $snapshot['citasRealizadas2h'],
+                'canceladas_2h' => $snapshot['citasCanceladas2h'],
+                'pacientes' => $snapshot['totalPacientes'],
+            ],
+            'citas' => $snapshot['citas']->map(fn ($c) => [
+                'paciente' => $c->paciente?->name ?? 'Paciente',
+                'estado' => $c->estado,
+                'fecha' => $c->fecha,
+                'fecha_corta' => optional($c->fecha)->format('d/m/Y'),
+                'hora' => $c->hora,
+                'hora_corta' => substr((string) $c->hora, 0, 5),
+                'prioridad' => $c->prioridad_nivel,
+                'red_flag' => (bool) $c->prioridad_red_flag,
+            ]),
+        ]);
+    }
+
+    private function dashboardSnapshot(User $user): array
+    {
         $tz = 'America/Guayaquil';
         $hoy = Carbon::now($tz)->toDateString();
-        $desde2h = Carbon::now($z = $tz)->subHours(2);
+        $desde2h = Carbon::now($tz)->subHours(2);
 
         $base = Cita::query()->where('doctor_id', $user->id);
 
-        $citasHoy        = (clone $base)->whereDate('fecha', $hoy)->count();
-        $citasRealizadas = (clone $base)->whereDate('fecha', $hoy)->where('estado','realizada')->count();
-        $citasPendientes = (clone $base)->whereDate('fecha', $hoy)->where('estado','pendiente')->count();
+        $citasHoy = (clone $base)->whereDate('fecha', $hoy)->count();
+        $citasRealizadas = (clone $base)->whereDate('fecha', $hoy)->where('estado', 'realizada')->count();
+        $citasPendientes = (clone $base)->whereDate('fecha', $hoy)->where('estado', 'pendiente')->count();
 
-        $citasConfirmadas2h = (clone $base)->where('estado','confirmada')->where('updated_at','>=',$desde2h)->count();
-        $citasRealizadas2h  = (clone $base)->where('estado','realizada')->where('updated_at','>=',$desde2h)->count();
-        $citasCanceladas2h  = (clone $base)->where('estado','cancelada')->where('updated_at','>=',$desde2h)->count();
-        $totalPacientes     = (clone $base)->distinct('paciente_id')->count('paciente_id');
+        $citasConfirmadas2h = (clone $base)->where('estado', 'confirmada')->where('updated_at', '>=', $desde2h)->count();
+        $citasRealizadas2h = (clone $base)->where('estado', 'realizada')->where('updated_at', '>=', $desde2h)->count();
+        $citasCanceladas2h = (clone $base)->where('estado', 'cancelada')->where('updated_at', '>=', $desde2h)->count();
+        $totalPacientes = (clone $base)->distinct('paciente_id')->count('paciente_id');
 
         $citas = (clone $base)
             ->with(['paciente:id,name'])
@@ -41,10 +81,9 @@ class AdminController extends Controller
             ->orderByRaw(Cita::prioridadOrderSql())
             ->orderBy('hora')
             ->limit(10)
-            ->get(['id','paciente_id','estado','fecha','hora','prioridad_nivel','prioridad_red_flag']);
+            ->get(['id', 'paciente_id', 'estado', 'fecha', 'hora', 'prioridad_nivel', 'prioridad_red_flag']);
 
-        return view('doctor.dashboard', compact(
-            'user',
+        return compact(
             'citas',
             'citasHoy',
             'citasRealizadas',
@@ -53,158 +92,36 @@ class AdminController extends Controller
             'citasRealizadas2h',
             'citasCanceladas2h',
             'totalPacientes'
-        ));
-    }
-
-    public function dashboardData(Request $request)
-    {
-        app(CitaNoShowService::class)->marcarVencidas();
-        $user = $request->user();
-        $tz = 'America/Guayaquil';
-        $hoy = Carbon::now($tz)->toDateString();
-        $desde2h = Carbon::now($tz)->subHours(2);
-
-        $base = Cita::query()->where('doctor_id', $user->id);
-
-        $citasHoy        = (clone $base)->whereDate('fecha', $hoy)->count();
-        $citasRealizadas = (clone $base)->whereDate('fecha', $hoy)->where('estado','realizada')->count();
-        $citasPendientes = (clone $base)->whereDate('fecha', $hoy)->where('estado','pendiente')->count();
-
-        $citasConfirmadas2h = (clone $base)->where('estado','confirmada')->where('updated_at','>=',$desde2h)->count();
-        $citasRealizadas2h  = (clone $base)->where('estado','realizada')->where('updated_at','>=',$desde2h)->count();
-        $citasCanceladas2h  = (clone $base)->where('estado','cancelada')->where('updated_at','>=',$desde2h)->count();
-        $totalPacientes     = (clone $base)->distinct('paciente_id')->count('paciente_id');
-
-        $citas = (clone $base)
-            ->with(['paciente:id,name'])
-            ->whereDate('fecha', $hoy)
-            ->orderByRaw(Cita::prioridadOrderSql())
-            ->orderBy('hora')
-            ->limit(10)
-            ->get(['id','paciente_id','estado','fecha','hora','prioridad_nivel','prioridad_red_flag']);
-
-        return response()->json([
-            'kpis' => [
-                'hoy'            => $citasHoy,
-                'realizadas'     => $citasRealizadas,
-                'pendientes'     => $citasPendientes,
-                'confirmadas_2h' => $citasConfirmadas2h,
-                'realizadas_2h'  => $citasRealizadas2h,
-                'canceladas_2h'  => $citasCanceladas2h,
-                'pacientes'      => $totalPacientes,
-            ],
-            'citas' => $citas->map(fn($c)=>[
-                'paciente' => $c->paciente?->name ?? 'Paciente',
-                'estado'   => $c->estado,
-                'fecha'    => $c->fecha,
-                'hora'     => $c->hora,
-                'prioridad' => $c->prioridad_nivel,
-                'red_flag' => (bool) $c->prioridad_red_flag,
-            ]),
-        ]);
-    }
-
-    public function citasIndex(Request $request)
-    {
-        $doctorId = Auth::id();
-
-        app(CitaNoShowService::class)->marcarVencidas();
-        $citas = Cita::with(['paciente:id,name', 'especialidad:id,nombre'])
-            ->where('doctor_id', $doctorId)
-            ->orderBy('fecha')
-            ->orderBy('hora')
-            ->get();
-
-        return view('doctor.citas', compact('citas'));
-    }
-
-    private function findOwnedCitaOrFail(int $id): Cita
-    {
-        return Cita::where('id', $id)
-            ->where('doctor_id', Auth::id())
-            ->firstOrFail();
-    }
-
-    public function aceptar(int $id)
-    {
-        $cita = $this->findOwnedCitaOrFail($id);
-
-        if (app(CitaNoShowService::class)->marcarSiVencio($cita)) {
-            return back()->with('error', 'La cita ya vencio y se marco como no se presento.');
-        }
-
-        if ($cita->estado !== 'pendiente') {
-            return back()->with('error', 'Solo se pueden aceptar citas en estado pendiente.');
-        }
-
-        $cita->estado = 'confirmada';
-        $cita->save();
-
-        return back()->with('success', 'Cita aceptada correctamente.');
-    }
-
-    public function rechazar(int $id)
-    {
-        $cita = $this->findOwnedCitaOrFail($id);
-
-        if (app(CitaNoShowService::class)->marcarSiVencio($cita)) {
-            return back()->with('error', 'La cita ya vencio y se marco como no se presento.');
-        }
-
-        if ($cita->estado !== 'pendiente') {
-            return back()->with('error', 'Solo se pueden rechazar citas en estado pendiente.');
-        }
-
-        $cita->estado = 'cancelada';
-        $cita->save();
-
-        return back()->with('success', 'Cita rechazada.');
-    }
-
-    public function realizada(int $id)
-    {
-        $cita = $this->findOwnedCitaOrFail($id);
-
-        if (app(CitaNoShowService::class)->marcarSiVencio($cita)) {
-            return back()->with('error', 'La cita ya vencio y se marco como no se presento.');
-        }
-
-        if (!in_array($cita->estado, ['pendiente','confirmada'])) {
-            return back()->with('error', 'Solo se pueden marcar como realizadas las citas pendientes o confirmadas.');
-        }
-
-        $cita->estado = 'realizada';
-        $cita->save();
-        event(new CitaAtendida($cita));
-
-        return back()->with('success', 'Cita marcada como realizada.');
+        );
     }
 
     public function editarPerfil()
     {
         $user = Auth::user();
+
         return view('doctor.perfil', compact('user'));
     }
 
-    public function actualizarPerfil(Request $request, ImageOptimizer $imageOptimizer)
+    public function actualizarPerfil(Request $request, ProfileAvatarService $profileAvatars)
     {
         $user = Auth::user();
+        DateField::mergeIntoRequest($request, 'fecha_nacimiento');
 
         $request->validate([
-            'name'              => ['required','string','max:255'],
-            'email'             => ValidationRules::emailUnique('users', $user->id),
-            'telefono'          => ValidationRules::telefono(),
-            'dni'               => ValidationRules::cedulaUnique('users', $user->id),
-            'direccion'         => ['required','string','max:255'],
-            'fecha_nacimiento'  => ['required','date','before:today'],
-            'sexo'              => ['required','in:Masculino,Femenino,Otro'],
-            'avatar'            => ['nullable','image','mimes:jpg,jpeg,png,webp,svg','max:2048'],
-            'precio_consulta'   => ['required','numeric','min:0','max:99999999.99'],
-            'moneda'            => ['required','in:USD'],
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ValidationRules::emailUnique('users', $user->id),
+            'telefono' => ValidationRules::telefono(),
+            'dni' => ValidationRules::cedulaUnique('users', $user->id),
+            'direccion' => ['required', 'string', 'max:255'],
+            'fecha_nacimiento' => ValidationRules::birthDate(),
+            'sexo' => ['required', 'in:Masculino,Femenino,Otro'],
+            'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,svg', 'max:2048'],
+            'precio_consulta' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
+            'moneda' => ['required', 'in:USD'],
 
             // cambio de contraseña (opcional)
-            'current_password'  => ['nullable','string'],
-            'password'          => array_merge(
+            'current_password' => ['nullable', 'string'],
+            'password' => array_merge(
                 ValidationRules::passwordOptional(),
                 ['different:current_password']
             ),
@@ -214,29 +131,26 @@ class AdminController extends Controller
 
         // avatar
         if ($request->hasFile('avatar')) {
-            if ($user->avatar) {
-                $imageOptimizer->deleteByStoredPath($user->avatar, 'doctors');
-            }
-            $user->avatar = $imageOptimizer->optimizeAndStore($request->file('avatar'), 'doctors');
+            $user->avatar = $profileAvatars->replace($user, $request->file('avatar'), 'doctors');
         }
 
         // datos perfil
         $user->fill([
-            'name'             => $request->name,
-            'email'            => $request->email,
-            'telefono'         => $request->telefono,
-            'dni'              => $request->dni,
-            'direccion'        => $request->direccion,
+            'name' => $request->name,
+            'email' => $request->email,
+            'telefono' => $request->telefono,
+            'dni' => $request->dni,
+            'direccion' => $request->direccion,
             'fecha_nacimiento' => $request->fecha_nacimiento,
-            'sexo'             => $request->sexo,
-            'precio_consulta'  => $request->precio_consulta,
-            'moneda'           => 'USD',
+            'sexo' => $request->sexo,
+            'precio_consulta' => $request->precio_consulta,
+            'moneda' => 'USD',
         ]);
 
         // cambio de contraseña si viene nueva
         $passwordChanged = false;
         if ($request->filled('password')) {
-            if (!$request->filled('current_password') || !Hash::check($request->input('current_password'), $user->password)) {
+            if (! $request->filled('current_password') || ! Hash::check($request->input('current_password'), $user->password)) {
                 return back()
                     ->withErrors(['current_password' => 'La contraseña actual no es correcta.'])
                     ->withInput();
@@ -265,9 +179,89 @@ class AdminController extends Controller
         return redirect()->route('doctor.perfil.edit')->with('success', 'Perfil actualizado.');
     }
 
-    public function agenda()
+    public function agenda(Request $request)
     {
-        // Solo retorna la vista de agenda semanal del doctor; los datos se cargan vía JS.
-        return view('doctor.agenda');
+        $doctorId = Auth::id();
+        $weekStart = WeeklyCalendarData::resolveWeekStart($request->query('week'));
+        $weekEnd = $weekStart->copy()->endOfWeek(Carbon::SUNDAY);
+
+        $horarios = Horario::query()
+            ->where('doctor_id', $doctorId)
+            ->whereDate('fecha', '>=', $weekStart->toDateString())
+            ->whereDate('fecha', '<=', $weekEnd->toDateString())
+            ->orderBy('fecha')
+            ->orderBy('hora_inicio')
+            ->get();
+
+        $citas = Cita::query()
+            ->with(['paciente:id,name', 'especialidad:id,nombre'])
+            ->where('doctor_id', $doctorId)
+            ->whereDate('fecha', '>=', $weekStart->toDateString())
+            ->whereDate('fecha', '<=', $weekEnd->toDateString())
+            ->orderByRaw(Cita::prioridadOrderSql())
+            ->orderBy('fecha')
+            ->orderBy('hora')
+            ->get();
+
+        $calendarEntries = $horarios->map(function (Horario $horario) {
+            return [
+                'layer' => 'background',
+                'date' => $horario->fecha,
+                'start' => $horario->hora_inicio,
+                'end' => $horario->hora_fin,
+                'title' => 'Bloque disponible',
+                'subtitle' => 'Atención activa',
+                'eyebrow' => substr((string) $horario->hora_inicio, 0, 5).' - '.substr((string) $horario->hora_fin, 0, 5),
+                'tone' => 'slate',
+            ];
+        })->values();
+
+        $calendarEntries = $calendarEntries->concat(
+            $citas->map(function (Cita $cita) use ($horarios) {
+                $end = WeeklyCalendarData::inferEndTime(
+                    $cita->fecha->toDateString(),
+                    (string) $cita->hora,
+                    $horarios
+                );
+
+                $statusLabel = match ($cita->estado) {
+                    Cita::ESTADO_PENDIENTE => 'Pendiente',
+                    Cita::ESTADO_CONFIRMADA => 'Confirmada',
+                    Cita::ESTADO_REALIZADA => 'Realizada',
+                    Cita::ESTADO_CANCELADA => 'Cancelada',
+                    Cita::ESTADO_NO_SE_PRESENTO => 'No se presentó',
+                    default => ucfirst((string) $cita->estado),
+                };
+
+                $tone = match ($cita->estado) {
+                    Cita::ESTADO_PENDIENTE => 'amber',
+                    Cita::ESTADO_CONFIRMADA => 'blue',
+                    Cita::ESTADO_REALIZADA => 'emerald',
+                    default => 'rose',
+                };
+
+                $prioritySuffix = $cita->prioridad_nivel ? ' · '.$cita->prioridad_nivel : '';
+
+                return [
+                    'layer' => 'foreground',
+                    'date' => $cita->fecha,
+                    'start' => $cita->hora,
+                    'end' => $end,
+                    'title' => $cita->paciente?->name ?? 'Paciente',
+                    'subtitle' => $cita->especialidad?->nombre ?? 'Consulta',
+                    'eyebrow' => $statusLabel.$prioritySuffix,
+                    'meta' => $cita->prioridad_red_flag ? 'Red flag activa' : null,
+                    'tone' => $tone,
+                    'url' => route('doctor.citas'),
+                ];
+            })
+        );
+
+        $calendar = WeeklyCalendarData::build($weekStart, $calendarEntries, [
+            'default_start_minutes' => 7 * 60,
+            'default_end_minutes' => 20 * 60,
+        ]);
+
+        return view('doctor.agenda', compact('calendar', 'weekStart', 'weekEnd'));
     }
 }

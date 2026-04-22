@@ -12,12 +12,16 @@ class LaboratorioOrden extends Model
     protected $table = 'laboratorio_ordenes';
 
     public const ESTADO_ORDEN_CREADA = 'orden_creada';
+
     public const ESTADO_CITA_PROGRAMADA = 'cita_programada';
+
     public const ESTADO_MUESTRA_TOMADA = 'muestra_tomada';
+
     public const ESTADO_RESULTADO_DISPONIBLE = 'resultado_disponible';
 
     protected $fillable = [
         'cita_id',
+        'clinical_record_id',
         'solicitante_id',
         'origen',
         'prioridad',
@@ -39,6 +43,11 @@ class LaboratorioOrden extends Model
     public function cita()
     {
         return $this->belongsTo(Cita::class, 'cita_id');
+    }
+
+    public function clinicalRecord()
+    {
+        return $this->belongsTo(ClinicalRecord::class);
     }
 
     public function solicitante()

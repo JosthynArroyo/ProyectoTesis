@@ -5,10 +5,10 @@ namespace App\Services;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use InvalidArgumentException;
 use Intervention\Image\Drivers\Gd\Driver as GdDriver;
 use Intervention\Image\Drivers\Imagick\Driver as ImagickDriver;
 use Intervention\Image\ImageManager;
+use InvalidArgumentException;
 use Throwable;
 
 class ImageOptimizer
@@ -26,7 +26,8 @@ class ImageOptimizer
         UploadedFile $file,
         string $folder,
         array $sizes = [],
-        ?string $baseName = null
+        ?string $baseName = null,
+        bool $generateAvif = true
     ): string {
         $folder = $this->sanitizeFolder($folder);
         $baseName = $this->normalizeBaseName(
@@ -53,7 +54,8 @@ class ImageOptimizer
             absolutePath: (string) $file->getRealPath(),
             folder: $folder,
             baseName: $baseName,
-            sizes: $sizes
+            sizes: $sizes,
+            generateAvif: $generateAvif
         );
     }
 
@@ -73,6 +75,7 @@ class ImageOptimizer
         }
 
         $absolutePath = Storage::disk($this->disk())->path($path);
+
         return $this->optimizeAbsolutePath(
             absolutePath: $absolutePath,
             folder: $folder,
@@ -209,7 +212,8 @@ class ImageOptimizer
         string $absolutePath,
         string $folder,
         string $baseName,
-        array $sizes = []
+        array $sizes = [],
+        bool $generateAvif = true
     ): string {
         $definitions = $this->resolveSizes($sizes);
         $image = $this->manager->read($absolutePath)->orient();
@@ -221,7 +225,7 @@ class ImageOptimizer
             $webpPath = $this->buildVariantPath($folder, (string) $sizeName, $baseName, 'webp');
             Storage::disk($this->disk())->put($webpPath, (string) $variant->toWebp($this->webpQuality()));
 
-            if ($this->shouldGenerateAvif()) {
+            if ($generateAvif && $this->shouldGenerateAvif()) {
                 try {
                     $avifPath = $this->buildVariantPath($folder, (string) $sizeName, $baseName, 'avif');
                     Storage::disk($this->disk())->put($avifPath, (string) $variant->toAvif($this->avifQuality()));
@@ -353,10 +357,10 @@ class ImageOptimizer
     private function buildManager(): ImageManager
     {
         if (extension_loaded('imagick')) {
-            return new ImageManager(new ImagickDriver());
+            return new ImageManager(new ImagickDriver);
         }
 
-        return new ImageManager(new GdDriver());
+        return new ImageManager(new GdDriver);
     }
 
     private function disk(): string

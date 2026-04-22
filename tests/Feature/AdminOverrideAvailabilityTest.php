@@ -18,7 +18,7 @@ class AdminOverrideAvailabilityTest extends TestCase
         $this->createUserWithRole('paciente', 'Paciente QA');
 
         $medicina = Especialidad::factory()->create(['nombre' => 'Medicina General']);
-        $laboratorio = Especialidad::factory()->create(['nombre' => 'Laboratorio Clinico']);
+        $laboratorio = Especialidad::factory()->create(['nombre' => 'Laboratorio Clínico']);
 
         $doctor = $this->createUserWithRole('doctor', 'Doctor Medicina');
         $doctor->especialidades()->attach($medicina->id);
@@ -42,7 +42,7 @@ class AdminOverrideAvailabilityTest extends TestCase
     public function test_doctores_endpoint_returns_only_doctors_for_medical_specialty(): void
     {
         $medicina = Especialidad::factory()->create(['nombre' => 'Medicina General']);
-        $laboratorio = Especialidad::factory()->create(['nombre' => 'Laboratorio Clinico']);
+        $laboratorio = Especialidad::factory()->create(['nombre' => 'Laboratorio Clínico']);
 
         $doctor = $this->createUserWithRole('doctor', 'Doctor Filtrado');
         $doctor->especialidades()->attach($medicina->id);
@@ -64,7 +64,7 @@ class AdminOverrideAvailabilityTest extends TestCase
 
     public function test_doctores_endpoint_returns_only_laboratory_users_for_laboratory_specialty(): void
     {
-        $laboratorio = Especialidad::factory()->create(['nombre' => 'Laboratorio Clinico']);
+        $laboratorio = Especialidad::factory()->create(['nombre' => 'Laboratorio Clínico']);
 
         $doctor = $this->createUserWithRole('doctor', 'Doctor No Lab');
         $doctor->especialidades()->attach($laboratorio->id);

@@ -2,16 +2,16 @@
 
 namespace App\Jobs;
 
+use App\Mail\CambioEstadoCitaMail;
 use App\Models\Cita;
+use App\Services\WhatsAppService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
-use App\Mail\CambioEstadoCitaMail;
-use App\Services\WhatsAppService;
+use Illuminate\Support\Facades\Mail;
 
 class NotificarCambioEstadoCitaJob implements ShouldQueue
 {
@@ -34,9 +34,9 @@ class NotificarCambioEstadoCitaJob implements ShouldQueue
 
     /**
      * Crear un nuevo job de notificación.
-     * @param \App\Models\Cita $cita
-     * @param string $evento  'reagendada'|'cancelada'|'aceptada'
-     * @param string $quien   'paciente'|'doctor'|'sistema'
+     *
+     * @param  string  $evento  'reagendada'|'cancelada'|'aceptada'
+     * @param  string  $quien  'paciente'|'doctor'|'sistema'
      */
     public function __construct(Cita $cita, string $evento, string $quien = 'sistema')
     {
@@ -47,14 +47,15 @@ class NotificarCambioEstadoCitaJob implements ShouldQueue
 
     public function handle(): void
     {
-        $cita = Cita::with(['paciente','doctor','especialidad'])->findOrFail($this->cita->id);
+        $cita = Cita::with(['paciente', 'doctor', 'especialidad'])->findOrFail($this->cita->id);
 
         // Definir destinatarios (siempre ambas partes)
         $paraPaciente = $cita->paciente->email;
-        $paraDoctor   = $cita->doctor->email;
+        $paraDoctor = $cita->doctor->email;
 
-        if (!$paraPaciente && !$paraDoctor) {
+        if (! $paraPaciente && ! $paraDoctor) {
             Log::warning("NotificarCambioEstadoCitaJob: Cita {$cita->id} sin correos de paciente/doctor.");
+
             return;
         }
 

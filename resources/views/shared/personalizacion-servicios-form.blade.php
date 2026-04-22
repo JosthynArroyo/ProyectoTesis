@@ -22,7 +22,7 @@
           <div class="grid gap-4 md:grid-cols-2">
             <div>
               <label class="form-label">Nombre</label>
-              <input class="form-input" name="{{ $prefix }}[nombre]" value="{{ old($oldPrefix.'.nombre', $esp->nombre) }}" required>
+              <input class="form-input" name="{{ $prefix }}[nombre]" value="{{ old($oldPrefix.'.nombre', $esp->nombre) }}">
               @error($oldPrefix.'.nombre')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
             </div>
             <div>
@@ -30,7 +30,7 @@
               @php($currentIcon = old($oldPrefix.'.icono', $esp->icono))
               @php($currentOption = collect($iconOptions)->firstWhere('id', $currentIcon))
               <div class="space-y-2" data-icon-picker>
-                <input type="hidden" name="{{ $prefix }}[icono]" value="{{ $currentIcon }}" data-icon-value required>
+                <input type="hidden" name="{{ $prefix }}[icono]" value="{{ $currentIcon }}" data-icon-value>
                 <input class="form-input" type="text" placeholder="Buscar icono: corazón, piel, niños, diente..." autocomplete="off" data-icon-search>
                 <div class="flex flex-wrap items-center gap-3">
                   <div class="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-2xl text-slate-700" data-icon-preview>
@@ -77,13 +77,13 @@
             </div>
             <div class="md:col-span-2">
               <label class="form-label">Descripción</label>
-              <textarea class="form-textarea" name="{{ $prefix }}[descripcion]" rows="2" required>{{ old($oldPrefix.'.descripcion', $esp->descripcion) }}</textarea>
+              <textarea class="form-textarea" name="{{ $prefix }}[descripcion]" rows="2">{{ old($oldPrefix.'.descripcion', $esp->descripcion) }}</textarea>
               @error($oldPrefix.'.descripcion')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
             </div>
             <div class="grid gap-3 sm:grid-cols-2">
               <div>
                 <label class="form-label">Orden</label>
-                <input class="form-input" type="number" min="0" name="{{ $prefix }}[orden]" value="{{ old($oldPrefix.'.orden', $esp->orden ?? 0) }}" required>
+                <input class="form-input" type="number" min="0" name="{{ $prefix }}[orden]" value="{{ old($oldPrefix.'.orden', $esp->orden ?? 0) }}">
                 @error($oldPrefix.'.orden')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
               </div>
               <div class="flex flex-col gap-2">
@@ -105,12 +105,12 @@
         <div class="grid gap-4 md:grid-cols-2">
           <div>
             <label class="form-label">Nombre</label>
-            <input class="form-input" name="nuevas[__INDEX__][nombre]" required>
+            <input class="form-input" name="nuevas[__INDEX__][nombre]">
           </div>
           <div>
             <label class="form-label">Icono (Remixicon)</label>
             <div class="space-y-2" data-icon-picker>
-              <input type="hidden" name="nuevas[__INDEX__][icono]" value="" data-icon-value required>
+              <input type="hidden" name="nuevas[__INDEX__][icono]" value="" data-icon-value>
               <input class="form-input" type="text" placeholder="Buscar icono: corazón, piel, niños, diente..." autocomplete="off" data-icon-search>
               <div class="flex flex-wrap items-center gap-3">
                 <div class="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-2xl text-slate-700" data-icon-preview>
@@ -148,12 +148,12 @@
           </div>
           <div class="md:col-span-2">
               <label class="form-label">Descripción</label>
-            <textarea class="form-textarea" name="nuevas[__INDEX__][descripcion]" rows="2" required></textarea>
+            <textarea class="form-textarea" name="nuevas[__INDEX__][descripcion]" rows="2"></textarea>
           </div>
           <div class="grid gap-3 sm:grid-cols-2">
             <div>
               <label class="form-label">Orden</label>
-              <input class="form-input" type="number" min="0" name="nuevas[__INDEX__][orden]" value="0" required>
+              <input class="form-input" type="number" min="0" name="nuevas[__INDEX__][orden]" value="0">
             </div>
             <div class="flex flex-col gap-2">
               <label class="inline-flex items-center gap-2 text-sm text-slate-600">
@@ -169,3 +169,4 @@
     </template>
   </section>
 </div>
+

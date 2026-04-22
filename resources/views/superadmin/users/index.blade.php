@@ -5,16 +5,6 @@
 
 @section('main')
 <div class="space-y-6">
-  <section class="card p-6">
-    <div class="flex flex-wrap items-center justify-between gap-4">
-      <div>
-        <p class="text-xs uppercase tracking-widest text-slate-500">Superadmin</p>
-        <h1 class="mt-2 text-2xl font-semibold text-slate-900">Usuarios</h1>
-        <p class="text-slate-600">Filtra por rol y busca por nombre, correo o cédula.</p>
-      </div>
-    </div>
-  </section>
-
   <form class="card p-5" method="GET" action="{{ route('superadmin.users.index') }}">
     <div class="flex flex-wrap gap-3">
       <div class="inline-control-shell flex-1">
@@ -47,16 +37,20 @@
         <tbody>
           @forelse($users as $user)
             @php($roleName = optional($user->roles->first())->name ?? 'sin_rol')
+            @php($status = $user->status ?? 'active')
+            @php($statusLabel = ['active' => 'Activo', 'inactive' => 'Inactivo', 'blocked' => 'Bloqueado'][$status] ?? ucfirst($status))
             <tr>
               <td data-label="Usuario">{{ $user->name }}</td>
               <td data-label="Correo">{{ $user->email }}</td>
               <td data-label="Cédula">{{ $user->dni ?: 'N/D' }}</td>
               <td data-label="Rol">{{ ucfirst($roleName) }}</td>
               <td data-label="Estado">
-                @if(($user->status ?? 'active') === 'active')
-                  <span class="badge success">Activo</span>
+                @if($status === 'active')
+                  <span class="badge success">{{ $statusLabel }}</span>
+                @elseif($status === 'inactive')
+                  <span class="badge warning">{{ $statusLabel }}</span>
                 @else
-                  <span class="badge danger">{{ ucfirst($user->status) }}</span>
+                  <span class="badge danger">{{ $statusLabel }}</span>
                 @endif
               </td>
             </tr>

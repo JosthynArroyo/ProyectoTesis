@@ -2,91 +2,98 @@
 
 namespace App\Services;
 
+use App\Models\Especialidad;
+use App\Models\LandingWelcomeDoctor;
+use App\Models\LandingWelcomeFeaturedSpecialty;
+use App\Models\LandingWelcomeInfoCard;
+use App\Models\LandingWelcomePrice;
 use App\Models\LandingWelcomeSetting;
 use App\Models\LandingWelcomeSlide;
 use App\Models\LandingWelcomeStat;
-use App\Models\LandingWelcomeInfoCard;
-use App\Models\LandingWelcomeDoctor;
-use App\Models\LandingWelcomePrice;
-use App\Models\LandingWelcomeFeaturedSpecialty;
-use App\Models\Especialidad;
 use App\Support\ImageUrl;
 use Illuminate\Support\Facades\Schema;
 
 class LandingWelcomeService
 {
     private ?LandingWelcomeSetting $settings = null;
+
     private ?array $settingsArray = null;
+
     private ?array $statsCache = null;
+
     private ?array $slidesCache = null;
+
     private ?array $infoCardsCache = null;
+
     private ?array $doctorsCache = null;
+
     private ?array $pricesCache = null;
+
     private ?array $featuredIdsCache = null;
 
     private array $defaults = [
         'header_logo' => 'img/logo-welcomeBlanco.jpg',
         'header_name' => 'Clínica Don Bosco',
         'header_show_socials' => true,
-        'hero_badge' => 'Salud integral y tecnología humana',
-        'hero_title' => 'Tu clínica digital para una atención más cercana y rápida.',
-        'hero_subtitle' => 'Agenda consultas, revisa resultados y recibe recordatorios inteligentes desde cualquier dispositivo. Todo en un mismo lugar.',
-        'hero_followup_title' => 'Seguimiento personalizado',
-        'hero_followup_subtitle' => 'Recibe recordatorios y notificaciones sobre tus citas, resultados y seguimiento médico.',
+        'hero_badge' => 'Bienvenido a Clínica Don Bosco',
+        'hero_title' => 'Gestiona tus citas médicas desde un solo lugar.',
+        'hero_subtitle' => 'Agenda una cita, revisa resultados de laboratorio y consulta documentos médicos registrados en tu cuenta.',
+        'hero_followup_title' => 'Seguimiento de tus citas',
+        'hero_followup_subtitle' => 'Recibe avisos sobre tus próximas citas y revisa el estado de tus atenciones cuando estén registradas.',
         'hero_primary_text' => 'Agendar cita',
         'hero_show_primary' => true,
         'hero_secondary_text' => 'Explorar servicios',
         'hero_show_secondary' => true,
-        'intro_badge' => 'Bienvenida',
-        'intro_title' => 'Gestiona tus citas médicas en un entorno seguro.',
-        'intro_subtitle' => 'Accede a consultas con médicos especializados desde cualquier lugar. Organiza tus visitas en pocos pasos y mantente informado.',
-        'intro_feature_1_title' => 'Agenda inteligente',
-        'intro_feature_1_text' => 'Confirmaciones automáticas, recordatorios y reprogramación sencilla.',
-        'intro_feature_2_title' => 'Historial centralizado',
-        'intro_feature_2_text' => 'Tus recetas, resultados y citas siempre disponibles.',
-        'intro_feature_3_title' => 'Seguridad y privacidad',
-        'intro_feature_3_text' => 'Control de acceso por rol y datos protegidos.',
-        'intro_feature_4_title' => 'Atención humana',
-        'intro_feature_4_text' => 'Personal médico listo para responder tus dudas.',
+        'intro_badge' => 'Qué hace el sistema',
+        'intro_title' => 'Qué puedes hacer en la plataforma.',
+        'intro_subtitle' => 'La página reúne las opciones principales para pacientes: agendar, revisar citas, consultar documentos médicos y mantenerse informado.',
+        'intro_feature_1_title' => 'Agendar citas',
+        'intro_feature_1_text' => 'Selecciona especialidad, profesional, fecha y hora según la disponibilidad registrada.',
+        'intro_feature_2_title' => 'Revisar tu información',
+        'intro_feature_2_text' => 'Consulta citas, recetas, resultados y documentos médicos asociados a tus atenciones.',
+        'intro_feature_3_title' => 'Datos protegidos',
+        'intro_feature_3_text' => 'Tu cuenta usa acceso seguro para proteger la información médica y administrativa.',
+        'intro_feature_4_title' => 'Avisos de seguimiento',
+        'intro_feature_4_text' => 'Recibe recordatorios y notificaciones relacionadas con tus citas y resultados.',
         'services_badge' => 'Servicios',
-        'services_title' => 'Especialidades destacadas',
-        'services_subtitle' => 'Atención médica integral con profesionales certificados.',
+        'services_title' => 'Especialidades disponibles',
+        'services_subtitle' => 'Explora las especialidades de la clínica y agenda una cita según los horarios registrados.',
         'services_button_text' => 'Ver todos',
         'prices_badge' => 'Tarifario',
-        'prices_title' => 'Precios transparentes',
-        'prices_subtitle' => 'Consulta los valores aproximados y pregunta por promociones actuales.',
+        'prices_title' => 'Valores de referencia',
+        'prices_subtitle' => 'Revisa los valores registrados para orientar tu agendamiento. La clínica puede confirmar el monto final antes de la atención.',
         'prices_button_text' => 'Agendar cita',
-        'prices_highlight_title' => 'Equipo profesional',
-        'prices_highlight_subtitle' => 'Especialistas enfocados en un trato cercano y humano.',
+        'prices_highlight_title' => 'Atención en clínica',
+        'prices_highlight_subtitle' => 'El sistema organiza la cita y la información necesaria para tu atención presencial.',
         'prices_highlight_image' => 'img/doctor2.jpg',
-        'prices_visit_title' => 'Agenda tu visita en minutos',
-        'prices_visit_subtitle' => 'Nuestro sistema te guía paso a paso para seleccionar especialista, fecha y hora.',
+        'prices_visit_title' => 'Agenda paso a paso',
+        'prices_visit_subtitle' => 'Selecciona especialidad, profesional, fecha y hora disponible antes de confirmar tu cita.',
         'doctors_badge' => 'Equipo',
-        'doctors_title' => 'Nuestros doctores',
-        'doctors_subtitle' => 'Profesionales comprometidos con tu bienestar.',
-        'doctors_pill' => 'Atención personalizada',
+        'doctors_title' => 'Profesionales disponibles',
+        'doctors_subtitle' => 'Conoce el equipo registrado para las especialidades de la clínica.',
+        'doctors_pill' => 'Atención presencial agendada',
         'show_services_block' => true,
     ];
 
     private array $defaultStats = [
         [
-            'label' => 'Pacientes activos',
-            'value' => '+6.2k',
-            'note' => 'Atención continua',
+            'label' => null,
+            'value' => 'Citas médicas',
+            'note' => 'Agenda según disponibilidad',
             'is_active' => true,
             'sort_order' => 1,
         ],
         [
-            'label' => 'Especialistas',
-            'value' => '32',
-            'note' => 'Equipo dedicado',
+            'label' => null,
+            'value' => 'Documentos médicos',
+            'note' => 'Resultados, recetas y comprobantes',
             'is_active' => true,
             'sort_order' => 2,
         ],
         [
-            'label' => 'Respuesta',
-            'value' => '15 min',
-            'note' => 'Promedio en línea',
+            'label' => null,
+            'value' => 'Recordatorios',
+            'note' => 'Avisos sobre tus próximas citas',
             'is_active' => true,
             'sort_order' => 3,
         ],
@@ -115,33 +122,33 @@ class LandingWelcomeService
 
     private array $defaultInfoCards = [
         [
-            'title' => 'Atención 24/7',
+            'title' => 'Agendamiento de citas',
             'value' => null,
-            'description' => 'Soporte y seguimiento continuo.',
+            'description' => 'Solicita una cita desde tu cuenta.',
             'icon' => 'ri-time-line',
             'is_active' => true,
             'sort_order' => 1,
         ],
         [
-            'title' => 'Especialistas certificados',
+            'title' => 'Especialidades disponibles',
             'value' => null,
-            'description' => 'Médicos con experiencia comprobada.',
+            'description' => 'Elige el servicio médico que necesitas.',
             'icon' => 'ri-stethoscope-line',
             'is_active' => true,
             'sort_order' => 2,
         ],
         [
-            'title' => 'Datos protegidos',
+            'title' => 'Información protegida',
             'value' => null,
-            'description' => 'Seguridad y privacidad priorizadas.',
+            'description' => 'Acceso seguro para tus datos médicos.',
             'icon' => 'ri-shield-check-line',
             'is_active' => true,
             'sort_order' => 3,
         ],
         [
-            'title' => 'Recordatorios automáticos',
+            'title' => 'Recordatorios de citas',
             'value' => null,
-            'description' => 'Alertas claras para tus citas.',
+            'description' => 'Avisos para ayudarte a llegar a tiempo.',
             'icon' => 'ri-notification-4-line',
             'is_active' => true,
             'sort_order' => 4,
@@ -174,28 +181,40 @@ class LandingWelcomeService
 
     private array $defaultPrices = [
         [
-            'service' => 'Medicina General',
-            'price' => '$25',
+            'service' => 'Dermatología',
+            'price' => 'Consultar',
             'is_active' => true,
             'sort_order' => 1,
         ],
         [
-            'service' => 'Cardiología',
-            'price' => '$40',
+            'service' => 'Ginecología',
+            'price' => 'Consultar',
             'is_active' => true,
             'sort_order' => 2,
         ],
         [
-            'service' => 'Pediatría',
-            'price' => '$35',
+            'service' => 'Laboratorio Clínico',
+            'price' => '$10',
             'is_active' => true,
             'sort_order' => 3,
         ],
         [
-            'service' => 'Dermatología',
-            'price' => '$30',
+            'service' => 'Medicina General',
+            'price' => '$20',
             'is_active' => true,
             'sort_order' => 4,
+        ],
+        [
+            'service' => 'Odontología',
+            'price' => 'Consultar',
+            'is_active' => true,
+            'sort_order' => 5,
+        ],
+        [
+            'service' => 'Pediatría',
+            'price' => 'Consultar',
+            'is_active' => true,
+            'sort_order' => 6,
         ],
     ];
 
@@ -207,15 +226,17 @@ class LandingWelcomeService
             if ($default !== null) {
                 return $default;
             }
+
             return $this->defaults[$key] ?? null;
         }
 
-        return $value;
+        return $this->normalizeSettingCopy($key, $value);
     }
 
     public function getBool(string $key, bool $default = false): bool
     {
         $value = $this->get($key, $default ? '1' : '0');
+
         return filter_var($value, FILTER_VALIDATE_BOOLEAN);
     }
 
@@ -243,6 +264,7 @@ class LandingWelcomeService
 
         if (! Schema::hasTable('landing_welcome_stats')) {
             $this->statsCache = $this->defaultStats;
+
             return $onlyActive
                 ? array_values(array_filter($this->statsCache, fn ($stat) => $stat['is_active']))
                 : $this->statsCache;
@@ -262,7 +284,9 @@ class LandingWelcomeService
             ])
             ->all();
 
-        $this->statsCache = empty($stats) ? $this->defaultStats : $stats;
+        $this->statsCache = empty($stats)
+            ? $this->defaultStats
+            : array_map(fn (array $stat) => $this->normalizeStatCopy($stat), $stats);
 
         return $onlyActive
             ? array_values(array_filter($this->statsCache, fn ($stat) => $stat['is_active']))
@@ -277,6 +301,7 @@ class LandingWelcomeService
 
         if (! Schema::hasTable('landing_welcome_slides')) {
             $this->slidesCache = $this->defaultSlides;
+
             return $this->slidesCache;
         }
 
@@ -308,6 +333,7 @@ class LandingWelcomeService
 
         if (! Schema::hasTable('landing_welcome_info_cards')) {
             $this->infoCardsCache = $this->defaultInfoCards;
+
             return $onlyActive
                 ? array_values(array_filter($this->infoCardsCache, fn ($card) => $card['is_active']))
                 : $this->infoCardsCache;
@@ -328,7 +354,9 @@ class LandingWelcomeService
             ])
             ->all();
 
-        $this->infoCardsCache = empty($cards) ? $this->defaultInfoCards : $cards;
+        $this->infoCardsCache = empty($cards)
+            ? $this->defaultInfoCards
+            : array_map(fn (array $card) => $this->normalizeInfoCardCopy($card), $cards);
 
         return $onlyActive
             ? array_values(array_filter($this->infoCardsCache, fn ($card) => $card['is_active']))
@@ -345,6 +373,7 @@ class LandingWelcomeService
 
         if (! Schema::hasTable('landing_welcome_doctors')) {
             $this->doctorsCache = $this->defaultDoctors;
+
             return $onlyActive
                 ? array_values(array_filter($this->doctorsCache, fn ($doctor) => $doctor['is_active']))
                 : $this->doctorsCache;
@@ -381,6 +410,7 @@ class LandingWelcomeService
 
         if (! Schema::hasTable('landing_welcome_prices')) {
             $this->pricesCache = $this->defaultPrices;
+
             return $onlyActive
                 ? array_values(array_filter($this->pricesCache, fn ($row) => $row['is_active']))
                 : $this->pricesCache;
@@ -414,6 +444,7 @@ class LandingWelcomeService
 
         if (! Schema::hasTable('landing_welcome_featured_specialties')) {
             $this->featuredIdsCache = [];
+
             return $this->featuredIdsCache;
         }
 
@@ -485,6 +516,98 @@ class LandingWelcomeService
         return app(ImageUrl::class)->url($path, entity: 'banner', size: 'large');
     }
 
+    private function normalizeSettingCopy(string $key, mixed $value): mixed
+    {
+        if (! is_string($value)) {
+            return $value;
+        }
+
+        $replacements = [
+            'Salud integral y tecnología humana' => $this->defaults['hero_badge'],
+            'Tu clínica digital para una atención más cercana y rápida.' => $this->defaults['hero_title'],
+            'Agenda consultas, revisa resultados y recibe recordatorios inteligentes desde cualquier dispositivo. Todo en un mismo lugar.' => $this->defaults['hero_subtitle'],
+            'Seguimiento personalizado' => $this->defaults['hero_followup_title'],
+            'Recibe recordatorios y notificaciones sobre tus citas, resultados y seguimiento médico.' => $this->defaults['hero_followup_subtitle'],
+            'Gestiona tus citas médicas en un entorno seguro.' => $this->defaults['intro_title'],
+            'Accede a consultas con médicos especializados desde cualquier lugar. Organiza tus visitas en pocos pasos y mantente informado.' => $this->defaults['intro_subtitle'],
+            'Agenda inteligente' => $key === 'intro_feature_1_title' ? $this->defaults['intro_feature_1_title'] : 'Citas médicas',
+            'Confirmaciones automáticas, recordatorios y reprogramación sencilla.' => $this->defaults['intro_feature_1_text'],
+            'Historial centralizado' => $this->defaults['intro_feature_2_title'],
+            'Tus recetas, resultados y citas siempre disponibles.' => $this->defaults['intro_feature_2_text'],
+            'Seguridad y privacidad' => $this->defaults['intro_feature_3_title'],
+            'Control de acceso por rol y datos protegidos.' => $this->defaults['intro_feature_3_text'],
+            'Atención humana' => $this->defaults['intro_feature_4_title'],
+            'Personal médico listo para responder tus dudas.' => $this->defaults['intro_feature_4_text'],
+            'Especialidades destacadas' => $this->defaults['services_title'],
+            'Atención médica integral con profesionales certificados.' => $this->defaults['services_subtitle'],
+            'Precios transparentes' => $this->defaults['prices_title'],
+            'Consulta los valores aproximados y pregunta por promociones actuales.' => $this->defaults['prices_subtitle'],
+            'Equipo profesional' => $this->defaults['prices_highlight_title'],
+            'Especialistas enfocados en un trato cercano y humano.' => $this->defaults['prices_highlight_subtitle'],
+            'Agenda tu visita en minutos' => $this->defaults['prices_visit_title'],
+            'Nuestro sistema te guía paso a paso para seleccionar especialista, fecha y hora.' => $this->defaults['prices_visit_subtitle'],
+            'Nuestros doctores' => $this->defaults['doctors_title'],
+            'Profesionales comprometidos con tu bienestar.' => $this->defaults['doctors_subtitle'],
+            'Atención personalizada' => $this->defaults['doctors_pill'],
+        ];
+
+        return $replacements[$value] ?? $value;
+    }
+
+    private function normalizeStatCopy(array $stat): array
+    {
+        $label = $stat['label'] ?? null;
+        $value = $stat['value'] ?? null;
+        $note = $stat['note'] ?? null;
+
+        $knownTemplateStats = [
+            [0, 'Agenda inteligente', 'Reserva citas en pocos pasos'],
+            [1, 'Gestión integral', 'Control de pacientes y doctores'],
+            [2, '15 min', 'Promedio en línea'],
+            [0, '+6.2k', 'Atención continua'],
+            [1, '32', 'Equipo dedicado'],
+        ];
+
+        foreach ($knownTemplateStats as [$targetIndex, $templateValue, $templateNote]) {
+            if ($value === $templateValue || $note === $templateNote) {
+                $replacement = $this->defaultStats[$targetIndex];
+                $stat['label'] = $replacement['label'];
+                $stat['value'] = $replacement['value'];
+                $stat['note'] = $replacement['note'];
+
+                return $stat;
+            }
+        }
+
+        if ($label === 'Respuesta') {
+            $stat['label'] = null;
+        }
+
+        return $stat;
+    }
+
+    private function normalizeInfoCardCopy(array $card): array
+    {
+        $replacements = [
+            'Atención 24/7' => 'Agendamiento de citas',
+            'Soporte y seguimiento continuo.' => 'Solicita una cita desde tu cuenta.',
+            'Especialistas certificados' => 'Especialidades disponibles',
+            'Médicos con experiencia comprobada.' => 'Elige el servicio médico que necesitas.',
+            'Datos protegidos' => 'Información protegida',
+            'Seguridad y privacidad priorizadas.' => 'Acceso seguro para tus datos médicos.',
+            'Recordatorios automáticos' => 'Recordatorios de citas',
+            'Alertas claras para tus citas.' => 'Avisos para ayudarte a llegar a tiempo.',
+        ];
+
+        foreach (['title', 'value', 'description'] as $field) {
+            if (isset($card[$field]) && is_string($card[$field])) {
+                $card[$field] = $replacements[$card[$field]] ?? $card[$field];
+            }
+        }
+
+        return $card;
+    }
+
     private function settings(): ?LandingWelcomeSetting
     {
         if ($this->settings !== null) {
@@ -496,6 +619,7 @@ class LandingWelcomeService
         }
 
         $this->settings = LandingWelcomeSetting::query()->first();
+
         return $this->settings;
     }
 }

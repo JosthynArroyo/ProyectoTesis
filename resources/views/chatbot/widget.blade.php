@@ -22,7 +22,7 @@
     <div class="flex items-center justify-between border-b border-slate-100 px-4 py-3">
       <div>
         <p class="text-sm font-semibold text-slate-800">Asistente clínico</p>
-        <p class="text-xs text-slate-500">Disponible 24/7</p>
+        <p class="text-xs text-slate-500">Para iniciar agendamientos</p>
       </div>
       <span class="badge success">En línea</span>
     </div>

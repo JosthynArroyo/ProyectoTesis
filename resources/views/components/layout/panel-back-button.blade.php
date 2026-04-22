@@ -2,11 +2,12 @@
     'fallbackUrl' => '/',
     'sidebarRoutes' => [],
     'label' => 'Volver',
+    'force' => false,
 ])
 
 @php
     $currentRouteName = request()->route()?->getName();
-    $shouldRender = $currentRouteName && !request()->routeIs(...$sidebarRoutes);
+    $shouldRender = $force || ($currentRouteName && !request()->routeIs(...$sidebarRoutes));
 @endphp
 
 @if($shouldRender)
@@ -17,5 +18,6 @@
             </span>
             <span class="panel-back-button__label">{{ $label }}</span>
         </button>
+        <div class="panel-back-anchor__extras" data-panel-back-extras></div>
     </div>
 @endif

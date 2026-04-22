@@ -18,9 +18,12 @@ html.dashboard-root.panel-theme-dark {
     --ink: #e2e8f0;
     --muted: #94a3b8;
     --soft: #64748b;
-    --border: #334155;
+    --border: #475569;
+    --border-strong: #64748b;
     --panel: rgba(15, 23, 42, 0.92);
     --panel-strong: #0f172a;
+    --card-shadow: 0 16px 32px rgba(2, 6, 23, 0.5);
+    --card-shadow-hover: 0 24px 48px rgba(2, 6, 23, 0.62);
     --accent-soft: rgba(20, 184, 166, 0.18);
     --clr-dark: #e2e8f0;
     --clr-dark-variant: #94a3b8;
@@ -91,8 +94,24 @@ html.dashboard-root.panel-theme-dark .dashboard-sidebar summary:hover {
 html.dashboard-root.panel-theme-dark .card,
 html.dashboard-root.panel-theme-dark .glass-panel {
     background: #0f172a;
-    border-color: #334155;
+    border-color: #475569;
     box-shadow: 0 16px 30px rgba(2, 6, 23, 0.46);
+}
+
+html.dashboard-root.panel-theme-dark .card:hover,
+html.dashboard-root.panel-theme-dark .glass-panel:hover {
+    border-color: #64748b;
+}
+
+html.dashboard-root.panel-theme-dark .professional-photo-frame,
+html.dashboard-root.panel-theme-dark .doctor-photo-frame {
+    border-bottom-color: #475569;
+    background: linear-gradient(180deg, #111827 0%, #1e293b 100%);
+}
+
+html.dashboard-root.panel-theme-dark .professional-avatar-photo,
+html.dashboard-root.panel-theme-dark .doctor-avatar-photo {
+    background: #111827;
 }
 
 html.dashboard-root.panel-theme-dark .page-header__info h1,
@@ -112,12 +131,16 @@ html.dashboard-root.panel-theme-dark .section-divider {
 
 html.dashboard-root.panel-theme-dark .table-shell {
     background: #0f172a;
-    border-color: #334155;
+    border-color: #475569;
 }
 
 html.dashboard-root.panel-theme-dark .table thead {
     background: #111827;
     color: #94a3b8;
+}
+
+html.dashboard-root.panel-theme-dark .table th {
+    border-bottom-color: #334155;
 }
 
 html.dashboard-root.panel-theme-dark .table td {
@@ -128,8 +151,12 @@ html.dashboard-root.panel-theme-dark .table tbody tr {
     border-color: #1e293b;
 }
 
+html.dashboard-root.panel-theme-dark .table tbody tr:nth-child(even) {
+    background: rgba(15, 23, 42, 0.82);
+}
+
 html.dashboard-root.panel-theme-dark .table tbody tr:hover {
-    background: rgba(51, 65, 85, 0.36);
+    background: rgba(30, 41, 59, 0.82);
 }
 
 html.dashboard-root.panel-theme-dark .table-responsive-cards .table tbody tr {
@@ -151,6 +178,10 @@ html.dashboard-root.panel-theme-dark .table-responsive-cards .table td::before {
 
 html.dashboard-root.panel-theme-dark .form-label {
     color: #cbd5e1;
+}
+
+html.dashboard-root.panel-theme-dark .date-parts__help {
+    color: #94a3b8;
 }
 
 html.dashboard-root.panel-theme-dark .form-input,
@@ -204,34 +235,48 @@ html.dashboard-root.panel-theme-dark textarea:focus {
 
 html.dashboard-root.panel-theme-dark .btn-secondary {
     background: #1e293b;
+    border-color: #334155;
     color: #e2e8f0;
 }
 
 html.dashboard-root.panel-theme-dark .btn-secondary:hover {
     background: #334155;
+    border-color: #475569;
+    color: #f8fafc;
 }
 
 html.dashboard-root.panel-theme-dark .btn-outline {
     border-color: #334155;
+    background: rgba(15, 23, 42, 0.94);
     color: #e2e8f0;
 }
 
 html.dashboard-root.panel-theme-dark .btn-outline:hover {
     border-color: #475569;
     background: #1e293b;
+    color: #f8fafc;
+}
+
+html.dashboard-root.panel-theme-dark .btn-primary {
+    border-color: rgba(45, 212, 191, 0.4);
+    box-shadow: 0 12px 24px rgba(20, 184, 166, 0.16);
 }
 
 html.dashboard-root.panel-theme-dark .btn-ghost {
+    background: rgba(15, 23, 42, 0.9);
+    border-color: #334155;
     color: #cbd5e1;
 }
 
 html.dashboard-root.panel-theme-dark .btn-ghost:hover {
-    background: rgba(51, 65, 85, 0.5);
+    background: #1e293b;
+    border-color: #475569;
+    color: #f8fafc;
 }
 
 html.dashboard-root.panel-theme-dark .panel-back-button {
     border-color: #334155;
-    background: linear-gradient(180deg, #0f172a 0%, #111827 100%);
+    background: #111827;
     color: #e2e8f0;
     box-shadow: 0 14px 28px rgba(2, 6, 23, 0.5);
 }
@@ -243,8 +288,12 @@ html.dashboard-root.panel-theme-dark .panel-back-button:hover {
 }
 
 html.dashboard-root.panel-theme-dark .panel-back-button__icon {
-    background: linear-gradient(135deg, rgba(94, 234, 212, 0.16) 0%, rgba(56, 189, 248, 0.14) 100%);
+    background: rgba(94, 234, 212, 0.16);
     color: #5eead4;
+}
+
+html.dashboard-root.panel-theme-dark .panel-action-bar--in-back .panel-action-bar__meta {
+    color: #cbd5e1;
 }
 
 html.dashboard-root.panel-theme-dark .pill,
@@ -252,6 +301,65 @@ html.dashboard-root.panel-theme-dark .chip {
     background: #1e293b;
     border-color: #334155;
     color: #cbd5e1;
+}
+
+html.dashboard-root.panel-theme-dark .chip:hover {
+    background: #334155;
+    border-color: #475569;
+    color: #f8fafc;
+}
+
+html.dashboard-root.panel-theme-dark .context-pill {
+    background: linear-gradient(180deg, #0f172a 0%, #111827 100%);
+    border-color: #334155;
+    color: #e2e8f0;
+    box-shadow: 0 14px 28px rgba(2, 6, 23, 0.32);
+}
+
+html.dashboard-root.panel-theme-dark .context-pill__icon {
+    background: linear-gradient(135deg, rgba(94, 234, 212, 0.16) 0%, rgba(56, 189, 248, 0.14) 100%);
+    color: #5eead4;
+}
+
+html.dashboard-root.panel-theme-dark .context-pill__label {
+    color: #94a3b8;
+}
+
+html.dashboard-root.panel-theme-dark .context-pill__text {
+    color: #f8fafc;
+}
+
+html.dashboard-root.panel-theme-dark .panel-form-section {
+    background: linear-gradient(180deg, rgba(15, 23, 42, 0.96) 0%, rgba(17, 24, 39, 0.98) 100%);
+    border-color: #334155;
+}
+
+html.dashboard-root.panel-theme-dark .panel-form-section--warning {
+    background: linear-gradient(180deg, rgba(120, 53, 15, 0.18) 0%, rgba(15, 23, 42, 0.98) 100%);
+    border-color: rgba(245, 158, 11, 0.35);
+}
+
+html.dashboard-root.panel-theme-dark .panel-form-section__title {
+    color: #f8fafc;
+}
+
+html.dashboard-root.panel-theme-dark .panel-form-section__icon {
+    background: linear-gradient(135deg, rgba(94, 234, 212, 0.16) 0%, rgba(56, 189, 248, 0.14) 100%);
+    color: #5eead4;
+}
+
+html.dashboard-root.panel-theme-dark .panel-form-section__hint {
+    color: #94a3b8;
+}
+
+html.dashboard-root.panel-theme-dark .panel-accordion__chevron {
+    background: #1e293b;
+    color: #cbd5e1;
+}
+
+html.dashboard-root.panel-theme-dark .panel-accordion[open] .panel-accordion__chevron {
+    background: rgba(94, 234, 212, 0.16);
+    color: #5eead4;
 }
 
 html.dashboard-root.panel-theme-dark .empty-state {
@@ -342,6 +450,17 @@ html.dashboard-root.panel-theme-dark .theme-toggler {
     color: #cbd5e1;
 }
 
+html.dashboard-root.panel-theme-dark .theme-toggler:hover,
+html.dashboard-root.panel-theme-dark .header-action-button:hover,
+html.dashboard-root.panel-theme-dark .header-user-button:hover,
+html.dashboard-root.panel-theme-dark .field-action-button:hover,
+html.dashboard-root.panel-theme-dark .panel-subaction-button:hover,
+html.dashboard-root.panel-theme-dark .btn-eye:hover {
+    background: #1e293b;
+    border-color: #475569;
+    color: #f8fafc;
+}
+
 html.dashboard-root.panel-theme-dark .theme-toggler [data-theme-icon="light"] {
     color: #f59e0b;
 }
@@ -354,6 +473,17 @@ html.dashboard-root.panel-theme-dark .theme-toggler [data-theme-icon].is-active 
     background: #1e293b;
     color: #5eead4;
     box-shadow: inset 0 0 0 1px rgba(94, 234, 212, 0.25);
+}
+
+html.dashboard-root.panel-theme-dark .header-action-button,
+html.dashboard-root.panel-theme-dark .header-user-button,
+html.dashboard-root.panel-theme-dark .field-action-button,
+html.dashboard-root.panel-theme-dark .panel-subaction-button,
+html.dashboard-root.panel-theme-dark .btn-eye {
+    background: #0f172a;
+    border-color: #334155;
+    color: #cbd5e1;
+    box-shadow: 0 1px 2px rgba(2, 6, 23, 0.5);
 }
 
 html.dashboard-root.panel-theme-dark .theme-preference-card__icon {
@@ -386,6 +516,14 @@ html.dashboard-root.panel-theme-dark .bg-white\/80,
 html.dashboard-root.panel-theme-dark .bg-white\/90,
 html.dashboard-root.panel-theme-dark .bg-slate-50 {
     background-color: #0f172a !important;
+}
+
+html.dashboard-root.panel-theme-dark .bg-white\/95 {
+    background-color: rgba(15, 23, 42, 0.94) !important;
+}
+
+html.dashboard-root.panel-theme-dark .bg-slate-50\/80 {
+    background-color: rgba(30, 41, 59, 0.82) !important;
 }
 
 html.dashboard-root.panel-theme-dark .bg-slate-100 {

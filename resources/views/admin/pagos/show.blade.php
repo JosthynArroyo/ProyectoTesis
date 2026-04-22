@@ -1,19 +1,13 @@
 @extends('layouts.admin')
 @section('title', 'Detalle de cobro')
-@section('header-title', 'Detalle de cobro')
-@section('header-subtitle', 'Validacion, orden y recibo')
+@section('header-title', 'Cobro de cita #'.$pago->cita_id)
+@section('header-subtitle', 'Pago #'.$pago->id.' | Validacion, orden y recibo')
 
 @section('main')
 <div class="space-y-6">
-  <section class="card p-6">
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <div>
-        <p class="text-xs uppercase tracking-widest text-slate-500">Pago #{{ $pago->id }}</p>
-        <h1 class="mt-2 text-2xl font-semibold text-slate-900">Cobro de cita #{{ $pago->cita_id }}</h1>
-      </div>
-      <a href="{{ route('admin.pagos.index') }}" class="btn btn-outline">Volver</a>
-    </div>
-  </section>
+  <div class="panel-action-bar">
+    <a href="{{ route('admin.pagos.index') }}" class="btn btn-outline">Volver</a>
+  </div>
 
   @if(session('success'))
     <x-ui.alert tone="success">{{ session('success') }}</x-ui.alert>
@@ -25,7 +19,7 @@
   <div class="grid gap-6 lg:grid-cols-2">
     <section class="card p-6 space-y-4">
       <h2 class="text-lg font-semibold text-slate-900">Datos del cobro</h2>
-      <div class="space-y-2 text-sm text-slate-700">
+      <div class="space-y-2 break-words text-sm text-slate-700">
         <p><strong>Folio orden:</strong> {{ $pago->folio_unico ?: 'SIN FOLIO' }}</p>
         <p><strong>Token público:</strong> {{ $pago->token_publico ?: 'N/D' }}</p>
         <p><strong>Paciente:</strong> {{ $pago->paciente?->name }} ({{ $pago->paciente?->dni }})</p>
@@ -114,7 +108,7 @@
         <p class="text-sm text-slate-700"><strong>Emisor:</strong> {{ $pago->receipt->emisor?->name ?: 'N/D' }}</p>
         <a href="{{ route('admin.pagos.recibo.pdf', $pago) }}" class="btn btn-outline" target="_blank" rel="noopener">Abrir recibo PDF</a>
       @else
-        <p class="text-sm text-slate-500">Aun no se ha emitido recibo.</p>
+        <p class="text-sm text-slate-500">Aún no se ha emitido recibo.</p>
       @endif
     </section>
   </div>
@@ -149,7 +143,7 @@
 
   <section class="card p-6">
     <h2 class="text-lg font-semibold text-slate-900">Historial de estado de cobro</h2>
-    <div class="mt-4 table-shell">
+    <div class="mt-4 table-shell table-responsive-cards">
       <table class="table">
         <thead>
           <tr>
@@ -164,12 +158,12 @@
         <tbody>
           @forelse($pago->statusLogs as $log)
             <tr>
-              <td>{{ $log->created_at?->format('Y-m-d H:i') }}</td>
-              <td>{{ strtoupper((string)($log->estado_anterior ?: '-')) }}</td>
-              <td>{{ strtoupper((string)$log->estado_nuevo) }}</td>
-              <td>{{ $log->actor?->name ?: 'Sistema' }}</td>
-              <td>{{ $log->actor_rol ?: 'sistema' }}</td>
-              <td>{{ $log->motivo ?: '-' }}</td>
+              <td data-label="Fecha">{{ $log->created_at?->format('Y-m-d H:i') }}</td>
+              <td data-label="De">{{ strtoupper((string)($log->estado_anterior ?: '-')) }}</td>
+              <td data-label="A">{{ strtoupper((string)$log->estado_nuevo) }}</td>
+              <td data-label="Actor">{{ $log->actor?->name ?: 'Sistema' }}</td>
+              <td data-label="Rol">{{ $log->actor_rol ?: 'sistema' }}</td>
+              <td data-label="Motivo">{{ $log->motivo ?: '-' }}</td>
             </tr>
           @empty
             <tr><td colspan="6">Sin historial registrado.</td></tr>
@@ -181,7 +175,7 @@
 
   <section class="card p-6">
     <h2 class="text-lg font-semibold text-slate-900">Historial de recibo</h2>
-    <div class="mt-4 table-shell">
+    <div class="mt-4 table-shell table-responsive-cards">
       <table class="table">
         <thead>
           <tr>
@@ -196,12 +190,12 @@
         <tbody>
           @forelse(($pago->receipt?->logs ?? collect()) as $log)
             <tr>
-              <td>{{ $log->created_at?->format('Y-m-d H:i') }}</td>
-              <td>{{ strtoupper((string)($log->estado_anterior ?: '-')) }}</td>
-              <td>{{ strtoupper((string)$log->estado_nuevo) }}</td>
-              <td>{{ $log->actor?->name ?: 'Sistema' }}</td>
-              <td>{{ $log->actor_rol ?: 'sistema' }}</td>
-              <td>{{ $log->motivo ?: '-' }}</td>
+              <td data-label="Fecha">{{ $log->created_at?->format('Y-m-d H:i') }}</td>
+              <td data-label="De">{{ strtoupper((string)($log->estado_anterior ?: '-')) }}</td>
+              <td data-label="A">{{ strtoupper((string)$log->estado_nuevo) }}</td>
+              <td data-label="Actor">{{ $log->actor?->name ?: 'Sistema' }}</td>
+              <td data-label="Rol">{{ $log->actor_rol ?: 'sistema' }}</td>
+              <td data-label="Motivo">{{ $log->motivo ?: '-' }}</td>
             </tr>
           @empty
             <tr><td colspan="6">Sin historial de recibo.</td></tr>

@@ -292,6 +292,10 @@
   -webkit-overflow-scrolling:touch;
   z-index:20;
 }
+.kebab-menu[data-placement="top"]{
+  top:auto;
+  bottom:44px;
+}
 .kebab-menu[data-open="1"]{display:flex;}
 .kebab-menu form{margin:0;}
 .kebab-menu button{width:100%;justify-content:flex-start;}

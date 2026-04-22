@@ -12,13 +12,13 @@ return new class extends Migration
     {
         if (Schema::hasTable('pagos')) {
             Schema::table('pagos', function (Blueprint $table): void {
-                if (!Schema::hasColumn('pagos', 'folio_unico')) {
+                if (! Schema::hasColumn('pagos', 'folio_unico')) {
                     $table->string('folio_unico', 60)->nullable()->after('cita_id');
                 }
-                if (!Schema::hasColumn('pagos', 'token_publico')) {
+                if (! Schema::hasColumn('pagos', 'token_publico')) {
                     $table->string('token_publico', 120)->nullable()->after('folio_unico');
                 }
-                if (!Schema::hasColumn('pagos', 'orden_pdf_path')) {
+                if (! Schema::hasColumn('pagos', 'orden_pdf_path')) {
                     $table->string('orden_pdf_path')->nullable()->after('comprobante_path');
                 }
             });
@@ -29,7 +29,7 @@ return new class extends Migration
             });
         }
 
-        if (!Schema::hasTable('payment_receipts')) {
+        if (! Schema::hasTable('payment_receipts')) {
             Schema::create('payment_receipts', function (Blueprint $table): void {
                 $table->id();
                 $table->foreignId('pago_id')->unique()->constrained('pagos')->cascadeOnDelete();
@@ -48,7 +48,7 @@ return new class extends Migration
             });
         }
 
-        if (!Schema::hasTable('payment_receipt_logs')) {
+        if (! Schema::hasTable('payment_receipt_logs')) {
             Schema::create('payment_receipt_logs', function (Blueprint $table): void {
                 $table->id();
                 $table->foreignId('payment_receipt_id')->constrained('payment_receipts')->cascadeOnDelete();
@@ -63,7 +63,7 @@ return new class extends Migration
             });
         }
 
-        if (!Schema::hasTable('pagos')) {
+        if (! Schema::hasTable('pagos')) {
             return;
         }
 
@@ -79,13 +79,13 @@ return new class extends Migration
 
         foreach ($pagosParaOrden as $row) {
             $folio = $row->folio_unico;
-            if (!$folio) {
+            if (! $folio) {
                 $fecha = $row->fecha ? date('Ymd', strtotime((string) $row->fecha)) : date('Ymd');
                 $folio = sprintf('OC-%s-%06d', $fecha, (int) $row->id);
             }
 
             $token = $row->token_publico;
-            if (!$token) {
+            if (! $token) {
                 do {
                     $token = Str::lower(Str::random(48));
                 } while (
@@ -104,7 +104,7 @@ return new class extends Migration
                 ]);
         }
 
-        if (!Schema::hasTable('payment_receipts')) {
+        if (! Schema::hasTable('payment_receipts')) {
             return;
         }
 
@@ -159,7 +159,7 @@ return new class extends Migration
         Schema::dropIfExists('payment_receipt_logs');
         Schema::dropIfExists('payment_receipts');
 
-        if (!Schema::hasTable('pagos')) {
+        if (! Schema::hasTable('pagos')) {
             return;
         }
 
@@ -184,10 +184,9 @@ return new class extends Migration
                 $toDrop[] = 'orden_pdf_path';
             }
 
-            if (!empty($toDrop)) {
+            if (! empty($toDrop)) {
                 $table->dropColumn($toDrop);
             }
         });
     }
 };
-

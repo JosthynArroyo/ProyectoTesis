@@ -3,8 +3,7 @@
 <head>
   <meta charset="utf-8">
   <title>Receta médica</title>
-  @php($cssPath = resource_path('css/doctor/receta-pdf.css'))
-  <style>{!! file_exists($cssPath) ? file_get_contents($cssPath) : '' !!}</style>
+  <style>{{ $pdfCss }}</style>
 </head>
 <body>
   <div class="page">

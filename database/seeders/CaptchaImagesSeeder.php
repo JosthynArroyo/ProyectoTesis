@@ -21,8 +21,9 @@ class CaptchaImagesSeeder extends Seeder
             'zebra',
         ]);
 
-        if (!is_array($classes) || $classes === []) {
+        if (! is_array($classes) || $classes === []) {
             $this->command?->warn('No hay clases configuradas para CAPTCHA.');
+
             return;
         }
 
@@ -30,7 +31,7 @@ class CaptchaImagesSeeder extends Seeder
         $now = now();
 
         foreach ($classes as $classKey) {
-            if (!is_string($classKey) || $classKey === '') {
+            if (! is_string($classKey) || $classKey === '') {
                 continue;
             }
 
@@ -41,7 +42,7 @@ class CaptchaImagesSeeder extends Seeder
 
             foreach (File::files($targetDir) as $file) {
                 $ext = strtolower($file->getExtension());
-                if (!in_array($ext, ['jpg', 'jpeg', 'png', 'webp'], true)) {
+                if (! in_array($ext, ['jpg', 'jpeg', 'png', 'webp'], true)) {
                     continue;
                 }
 
@@ -57,6 +58,7 @@ class CaptchaImagesSeeder extends Seeder
 
         if ($rows === []) {
             $this->command?->warn('No se encontraron imagenes en public/captcha_animals.');
+
             return;
         }
 
@@ -66,7 +68,7 @@ class CaptchaImagesSeeder extends Seeder
             ['class_key', 'dataset_split', 'updated_at']
         );
 
-        $this->command?->info('CAPTCHA: ' . count($rows) . ' imagenes registradas.');
+        $this->command?->info('CAPTCHA: '.count($rows).' imagenes registradas.');
     }
 
     private function copyFromDatasetIfEmpty(string $classKey, string $targetDir): void
@@ -79,18 +81,18 @@ class CaptchaImagesSeeder extends Seeder
         }
 
         $sourceDir = base_path("ai/dataset/val/{$classKey}");
-        if (!File::isDirectory($sourceDir)) {
+        if (! File::isDirectory($sourceDir)) {
             return;
         }
 
         foreach (File::files($sourceDir) as $file) {
             $ext = strtolower($file->getExtension());
-            if (!in_array($ext, ['jpg', 'jpeg', 'png', 'webp'], true)) {
+            if (! in_array($ext, ['jpg', 'jpeg', 'png', 'webp'], true)) {
                 continue;
             }
 
-            $destination = $targetDir . DIRECTORY_SEPARATOR . $file->getFilename();
-            if (!File::exists($destination)) {
+            $destination = $targetDir.DIRECTORY_SEPARATOR.$file->getFilename();
+            if (! File::exists($destination)) {
                 File::copy($file->getPathname(), $destination);
             }
         }

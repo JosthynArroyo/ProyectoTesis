@@ -33,32 +33,32 @@
       <div class="mt-4 grid gap-4 md:grid-cols-2">
         <div class="md:col-span-2">
           <label class="form-label">Badge superior</label>
-          <input class="form-input" name="hero_badge" value="{{ old('hero_badge', $settings['hero_badge'] ?? '') }}" required>
+          <input class="form-input" name="hero_badge" value="{{ old('hero_badge', $settings['hero_badge'] ?? '') }}">
           @error('hero_badge')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
         </div>
         <div class="md:col-span-2">
           <label class="form-label">Título principal</label>
-          <input class="form-input" name="hero_title" value="{{ old('hero_title', $settings['hero_title'] ?? '') }}" required>
+          <input class="form-input" name="hero_title" value="{{ old('hero_title', $settings['hero_title'] ?? '') }}">
           @error('hero_title')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
         </div>
         <div class="md:col-span-2">
           <label class="form-label">Subtítulo / descripción</label>
-          <textarea class="form-textarea" name="hero_subtitle" rows="2" required>{{ old('hero_subtitle', $settings['hero_subtitle'] ?? '') }}</textarea>
+          <textarea class="form-textarea" name="hero_subtitle" rows="2">{{ old('hero_subtitle', $settings['hero_subtitle'] ?? '') }}</textarea>
           @error('hero_subtitle')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
         </div>
         <div>
           <label class="form-label">Tarjeta lateral: título</label>
-          <input class="form-input" name="hero_followup_title" value="{{ old('hero_followup_title', $settings['hero_followup_title'] ?? '') }}" required>
+          <input class="form-input" name="hero_followup_title" value="{{ old('hero_followup_title', $settings['hero_followup_title'] ?? '') }}">
           @error('hero_followup_title')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
         </div>
         <div>
           <label class="form-label">Tarjeta lateral: descripción</label>
-          <textarea class="form-textarea" name="hero_followup_subtitle" rows="2" required>{{ old('hero_followup_subtitle', $settings['hero_followup_subtitle'] ?? '') }}</textarea>
+          <textarea class="form-textarea" name="hero_followup_subtitle" rows="2">{{ old('hero_followup_subtitle', $settings['hero_followup_subtitle'] ?? '') }}</textarea>
           @error('hero_followup_subtitle')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
         </div>
         <div>
           <label class="form-label">Texto botón primario</label>
-          <input class="form-input" name="hero_primary_text" value="{{ old('hero_primary_text', $settings['hero_primary_text'] ?? '') }}" required>
+          <input class="form-input" name="hero_primary_text" value="{{ old('hero_primary_text', $settings['hero_primary_text'] ?? '') }}">
           @error('hero_primary_text')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
           <label class="mt-2 inline-flex items-center gap-2 text-sm text-slate-600">
             <input type="hidden" name="hero_show_primary" value="0">
@@ -69,7 +69,7 @@
         </div>
         <div>
           <label class="form-label">Texto botón secundario</label>
-          <input class="form-input" name="hero_secondary_text" value="{{ old('hero_secondary_text', $settings['hero_secondary_text'] ?? '') }}" required>
+          <input class="form-input" name="hero_secondary_text" value="{{ old('hero_secondary_text', $settings['hero_secondary_text'] ?? '') }}">
           @error('hero_secondary_text')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
           <label class="mt-2 inline-flex items-center gap-2 text-sm text-slate-600">
             <input type="hidden" name="hero_show_secondary" value="0">
@@ -90,17 +90,17 @@
       <div class="mt-4 grid gap-4 md:grid-cols-2">
         <div>
           <label class="form-label">Etiqueta superior</label>
-          <input class="form-input" name="intro_badge" value="{{ old('intro_badge', $settings['intro_badge'] ?? '') }}" required>
+          <input class="form-input" name="intro_badge" value="{{ old('intro_badge', $settings['intro_badge'] ?? '') }}">
           @error('intro_badge')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
         </div>
         <div>
           <label class="form-label">Título principal</label>
-          <input class="form-input" name="intro_title" value="{{ old('intro_title', $settings['intro_title'] ?? '') }}" required>
+          <input class="form-input" name="intro_title" value="{{ old('intro_title', $settings['intro_title'] ?? '') }}">
           @error('intro_title')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
         </div>
         <div class="md:col-span-2">
           <label class="form-label">Descripcion principal</label>
-          <textarea class="form-textarea" name="intro_subtitle" rows="2" required>{{ old('intro_subtitle', $settings['intro_subtitle'] ?? '') }}</textarea>
+          <textarea class="form-textarea" name="intro_subtitle" rows="2">{{ old('intro_subtitle', $settings['intro_subtitle'] ?? '') }}</textarea>
           @error('intro_subtitle')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
         </div>
       </div>
@@ -108,45 +108,45 @@
       <div class="mt-4 grid gap-4 md:grid-cols-2">
         <div>
           <label class="form-label">Tarjeta 1: título</label>
-          <input class="form-input" name="intro_feature_1_title" value="{{ old('intro_feature_1_title', $settings['intro_feature_1_title'] ?? '') }}" required>
+          <input class="form-input" name="intro_feature_1_title" value="{{ old('intro_feature_1_title', $settings['intro_feature_1_title'] ?? '') }}">
           @error('intro_feature_1_title')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
         </div>
         <div>
           <label class="form-label">Tarjeta 1: descripción</label>
-          <textarea class="form-textarea" name="intro_feature_1_text" rows="2" required>{{ old('intro_feature_1_text', $settings['intro_feature_1_text'] ?? '') }}</textarea>
+          <textarea class="form-textarea" name="intro_feature_1_text" rows="2">{{ old('intro_feature_1_text', $settings['intro_feature_1_text'] ?? '') }}</textarea>
           @error('intro_feature_1_text')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
         </div>
 
         <div>
           <label class="form-label">Tarjeta 2: título</label>
-          <input class="form-input" name="intro_feature_2_title" value="{{ old('intro_feature_2_title', $settings['intro_feature_2_title'] ?? '') }}" required>
+          <input class="form-input" name="intro_feature_2_title" value="{{ old('intro_feature_2_title', $settings['intro_feature_2_title'] ?? '') }}">
           @error('intro_feature_2_title')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
         </div>
         <div>
           <label class="form-label">Tarjeta 2: descripción</label>
-          <textarea class="form-textarea" name="intro_feature_2_text" rows="2" required>{{ old('intro_feature_2_text', $settings['intro_feature_2_text'] ?? '') }}</textarea>
+          <textarea class="form-textarea" name="intro_feature_2_text" rows="2">{{ old('intro_feature_2_text', $settings['intro_feature_2_text'] ?? '') }}</textarea>
           @error('intro_feature_2_text')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
         </div>
 
         <div>
           <label class="form-label">Tarjeta 3: título</label>
-          <input class="form-input" name="intro_feature_3_title" value="{{ old('intro_feature_3_title', $settings['intro_feature_3_title'] ?? '') }}" required>
+          <input class="form-input" name="intro_feature_3_title" value="{{ old('intro_feature_3_title', $settings['intro_feature_3_title'] ?? '') }}">
           @error('intro_feature_3_title')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
         </div>
         <div>
           <label class="form-label">Tarjeta 3: descripción</label>
-          <textarea class="form-textarea" name="intro_feature_3_text" rows="2" required>{{ old('intro_feature_3_text', $settings['intro_feature_3_text'] ?? '') }}</textarea>
+          <textarea class="form-textarea" name="intro_feature_3_text" rows="2">{{ old('intro_feature_3_text', $settings['intro_feature_3_text'] ?? '') }}</textarea>
           @error('intro_feature_3_text')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
         </div>
 
         <div>
           <label class="form-label">Tarjeta 4: título</label>
-          <input class="form-input" name="intro_feature_4_title" value="{{ old('intro_feature_4_title', $settings['intro_feature_4_title'] ?? '') }}" required>
+          <input class="form-input" name="intro_feature_4_title" value="{{ old('intro_feature_4_title', $settings['intro_feature_4_title'] ?? '') }}">
           @error('intro_feature_4_title')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
         </div>
         <div>
           <label class="form-label">Tarjeta 4: descripción</label>
-          <textarea class="form-textarea" name="intro_feature_4_text" rows="2" required>{{ old('intro_feature_4_text', $settings['intro_feature_4_text'] ?? '') }}</textarea>
+          <textarea class="form-textarea" name="intro_feature_4_text" rows="2">{{ old('intro_feature_4_text', $settings['intro_feature_4_text'] ?? '') }}</textarea>
           @error('intro_feature_4_text')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
         </div>
       </div>
@@ -171,7 +171,7 @@
             <div class="grid gap-4 md:grid-cols-2">
               <div>
                 <label class="form-label">Imagen</label>
-                <input class="form-input" type="file" name="slides[{{ $index }}][image]" accept="image/*" data-image-input @if(!$slidePath) required @endif>
+                <input class="form-input" type="file" name="slides[{{ $index }}][image]" accept="image/*" data-image-input>
                 <input type="hidden" name="slides[{{ $index }}][image_path]" value="{{ $slidePath }}">
                 @error('slides.'.$index.'.image')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
                 @error('slides.'.$index.'.image_path')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
@@ -200,7 +200,7 @@
                   </label>
                   <div>
                     <label class="form-label">Orden</label>
-                    <input class="form-input" type="number" min="0" name="slides[{{ $index }}][sort_order]" value="{{ $slide['sort_order'] ?? 0 }}" required>
+                    <input class="form-input" type="number" min="0" name="slides[{{ $index }}][sort_order]" value="{{ $slide['sort_order'] ?? 0 }}">
                     @error('slides.'.$index.'.sort_order')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
                   </div>
                 </div>
@@ -217,7 +217,7 @@
           <div class="grid gap-4 md:grid-cols-2">
             <div>
               <label class="form-label">Imagen</label>
-              <input class="form-input" type="file" name="slides[__INDEX__][image]" accept="image/*" data-image-input required>
+              <input class="form-input" type="file" name="slides[__INDEX__][image]" accept="image/*" data-image-input>
               <input type="hidden" name="slides[__INDEX__][image_path]" value="">
             </div>
             <div class="flex items-center gap-3">
@@ -232,7 +232,7 @@
                 </label>
                 <div>
                   <label class="form-label">Orden</label>
-                  <input class="form-input" type="number" min="0" name="slides[__INDEX__][sort_order]" value="0" required>
+                  <input class="form-input" type="number" min="0" name="slides[__INDEX__][sort_order]" value="0">
                 </div>
               </div>
             </div>
@@ -252,28 +252,28 @@
       <div class="mt-4 grid gap-4" data-card-list>
         @foreach($cardsInput as $index => $card)
           <div class="card border border-slate-200 p-4" data-card-row data-row-key="card-{{ $index }}">
-            <input type="hidden" name="cards[{{ $index }}][icon]" value="{{ $card['icon'] ?? 'ri-information-line' }}" required>
+            <input type="hidden" name="cards[{{ $index }}][icon]" value="{{ $card['icon'] ?? 'ri-information-line' }}">
             @error('cards.'.$index.'.icon')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
             <div class="grid gap-4 md:grid-cols-2">
               <div>
                 <label class="form-label">Título</label>
-                <input class="form-input" name="cards[{{ $index }}][title]" value="{{ $card['title'] ?? '' }}" required>
+                <input class="form-input" name="cards[{{ $index }}][title]" value="{{ $card['title'] ?? '' }}">
                 @error('cards.'.$index.'.title')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
               </div>
               <div>
                 <label class="form-label">Valor / numero</label>
-                <input class="form-input" name="cards[{{ $index }}][value]" value="{{ $card['value'] ?? '' }}" required>
+                <input class="form-input" name="cards[{{ $index }}][value]" value="{{ $card['value'] ?? '' }}">
                 @error('cards.'.$index.'.value')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
               </div>
               <div class="md:col-span-2">
                 <label class="form-label">Descripcion</label>
-                <textarea class="form-textarea" name="cards[{{ $index }}][description]" rows="2" required>{{ $card['description'] ?? '' }}</textarea>
+                <textarea class="form-textarea" name="cards[{{ $index }}][description]" rows="2">{{ $card['description'] ?? '' }}</textarea>
                 @error('cards.'.$index.'.description')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
               </div>
               <div class="grid gap-3 sm:grid-cols-2">
                 <div>
                   <label class="form-label">Orden</label>
-                  <input class="form-input" type="number" min="0" name="cards[{{ $index }}][sort_order]" value="{{ $card['sort_order'] ?? 0 }}" required>
+                  <input class="form-input" type="number" min="0" name="cards[{{ $index }}][sort_order]" value="{{ $card['sort_order'] ?? 0 }}">
                   @error('cards.'.$index.'.sort_order')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
                 </div>
                 <div class="flex flex-col gap-2">
@@ -309,23 +309,23 @@
             <div class="grid gap-4 md:grid-cols-2">
               <div>
                 <label class="form-label">Etiqueta</label>
-                <input class="form-input" name="stats[{{ $index }}][label]" value="{{ $stat['label'] ?? '' }}" required>
+                <input class="form-input" name="stats[{{ $index }}][label]" value="{{ $stat['label'] ?? '' }}">
                 @error('stats.'.$index.'.label')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
               </div>
               <div>
                 <label class="form-label">Valor</label>
-                <input class="form-input" name="stats[{{ $index }}][value]" value="{{ $stat['value'] ?? '' }}" required>
+                <input class="form-input" name="stats[{{ $index }}][value]" value="{{ $stat['value'] ?? '' }}">
                 @error('stats.'.$index.'.value')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
               </div>
               <div class="md:col-span-2">
                 <label class="form-label">Nota</label>
-                <input class="form-input" name="stats[{{ $index }}][note]" value="{{ $stat['note'] ?? '' }}" required>
+                <input class="form-input" name="stats[{{ $index }}][note]" value="{{ $stat['note'] ?? '' }}">
                 @error('stats.'.$index.'.note')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
               </div>
               <div class="grid gap-3 sm:grid-cols-2">
                 <div>
                   <label class="form-label">Orden</label>
-                  <input class="form-input" type="number" min="0" name="stats[{{ $index }}][sort_order]" value="{{ $stat['sort_order'] ?? 0 }}" required>
+                  <input class="form-input" type="number" min="0" name="stats[{{ $index }}][sort_order]" value="{{ $stat['sort_order'] ?? 0 }}">
                   @error('stats.'.$index.'.sort_order')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
                 </div>
                 <div class="flex flex-col gap-2">
@@ -348,20 +348,20 @@
           <div class="grid gap-4 md:grid-cols-2">
             <div>
               <label class="form-label">Etiqueta</label>
-              <input class="form-input" name="stats[__INDEX__][label]" required>
+              <input class="form-input" name="stats[__INDEX__][label]">
             </div>
             <div>
               <label class="form-label">Valor</label>
-              <input class="form-input" name="stats[__INDEX__][value]" required>
+              <input class="form-input" name="stats[__INDEX__][value]">
             </div>
             <div class="md:col-span-2">
               <label class="form-label">Nota</label>
-              <input class="form-input" name="stats[__INDEX__][note]" required>
+              <input class="form-input" name="stats[__INDEX__][note]">
             </div>
             <div class="grid gap-3 sm:grid-cols-2">
               <div>
                 <label class="form-label">Orden</label>
-                <input class="form-input" type="number" min="0" name="stats[__INDEX__][sort_order]" value="0" required>
+                <input class="form-input" type="number" min="0" name="stats[__INDEX__][sort_order]" value="0">
               </div>
               <div class="flex flex-col gap-2">
                 <label class="inline-flex items-center gap-2 text-sm text-slate-600">
@@ -392,22 +392,22 @@
       <div class="mt-4 grid gap-4 md:grid-cols-2">
         <div>
           <label class="form-label">Etiqueta superior</label>
-          <input class="form-input" name="doctors_badge" value="{{ old('doctors_badge', $settings['doctors_badge'] ?? '') }}" required>
+          <input class="form-input" name="doctors_badge" value="{{ old('doctors_badge', $settings['doctors_badge'] ?? '') }}">
           @error('doctors_badge')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
         </div>
         <div>
           <label class="form-label">Título del bloque</label>
-          <input class="form-input" name="doctors_title" value="{{ old('doctors_title', $settings['doctors_title'] ?? '') }}" required>
+          <input class="form-input" name="doctors_title" value="{{ old('doctors_title', $settings['doctors_title'] ?? '') }}">
           @error('doctors_title')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
         </div>
         <div class="md:col-span-2">
           <label class="form-label">Descripcion</label>
-          <textarea class="form-textarea" name="doctors_subtitle" rows="2" required>{{ old('doctors_subtitle', $settings['doctors_subtitle'] ?? '') }}</textarea>
+          <textarea class="form-textarea" name="doctors_subtitle" rows="2">{{ old('doctors_subtitle', $settings['doctors_subtitle'] ?? '') }}</textarea>
           @error('doctors_subtitle')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
         </div>
         <div class="md:col-span-2">
           <label class="form-label">Texto de etiqueta lateral</label>
-          <input class="form-input" name="doctors_pill" value="{{ old('doctors_pill', $settings['doctors_pill'] ?? '') }}" required>
+          <input class="form-input" name="doctors_pill" value="{{ old('doctors_pill', $settings['doctors_pill'] ?? '') }}">
           @error('doctors_pill')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
         </div>
       </div>
@@ -419,17 +419,17 @@
             <div class="grid gap-4 md:grid-cols-2">
               <div>
                 <label class="form-label">Nombre</label>
-                <input class="form-input" name="doctors[{{ $index }}][name]" value="{{ $doctor['name'] ?? '' }}" required>
+                <input class="form-input" name="doctors[{{ $index }}][name]" value="{{ $doctor['name'] ?? '' }}">
                 @error('doctors.'.$index.'.name')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
               </div>
               <div>
                 <label class="form-label">Especialidad</label>
-                <input class="form-input" name="doctors[{{ $index }}][specialty]" value="{{ $doctor['specialty'] ?? '' }}" required>
+                <input class="form-input" name="doctors[{{ $index }}][specialty]" value="{{ $doctor['specialty'] ?? '' }}">
                 @error('doctors.'.$index.'.specialty')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
               </div>
               <div>
                 <label class="form-label">Foto</label>
-                <input class="form-input" type="file" name="doctors[{{ $index }}][photo]" accept="image/*" data-image-input {{ $doctorPhoto ? '' : 'required' }}>
+                <input class="form-input" type="file" name="doctors[{{ $index }}][photo]" accept="image/*" data-image-input>
                 <input type="hidden" name="doctors[{{ $index }}][photo_path]" value="{{ $doctorPhoto }}">
                 @error('doctors.'.$index.'.photo')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
                 @error('doctors.'.$index.'.photo_path')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
@@ -458,7 +458,7 @@
                   </label>
                   <div>
                     <label class="form-label">Orden</label>
-                    <input class="form-input" type="number" min="0" name="doctors[{{ $index }}][sort_order]" value="{{ $doctor['sort_order'] ?? 0 }}" required>
+                    <input class="form-input" type="number" min="0" name="doctors[{{ $index }}][sort_order]" value="{{ $doctor['sort_order'] ?? 0 }}">
                     @error('doctors.'.$index.'.sort_order')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
                   </div>
                 </div>
@@ -475,15 +475,15 @@
           <div class="grid gap-4 md:grid-cols-2">
             <div>
               <label class="form-label">Nombre</label>
-              <input class="form-input" name="doctors[__INDEX__][name]" required>
+              <input class="form-input" name="doctors[__INDEX__][name]">
             </div>
             <div>
               <label class="form-label">Especialidad</label>
-              <input class="form-input" name="doctors[__INDEX__][specialty]" required>
+              <input class="form-input" name="doctors[__INDEX__][specialty]">
             </div>
             <div>
               <label class="form-label">Foto</label>
-              <input class="form-input" type="file" name="doctors[__INDEX__][photo]" accept="image/*" data-image-input required>
+              <input class="form-input" type="file" name="doctors[__INDEX__][photo]" accept="image/*" data-image-input>
               <input type="hidden" name="doctors[__INDEX__][photo_path]" value="">
             </div>
             <div class="flex items-center gap-3">
@@ -498,7 +498,7 @@
                 </label>
                 <div>
                   <label class="form-label">Orden</label>
-                  <input class="form-input" type="number" min="0" name="doctors[__INDEX__][sort_order]" value="0" required>
+                  <input class="form-input" type="number" min="0" name="doctors[__INDEX__][sort_order]" value="0">
                 </div>
               </div>
             </div>
@@ -523,22 +523,22 @@
       <div class="mt-4 grid gap-4 md:grid-cols-2">
         <div>
           <label class="form-label">Etiqueta superior</label>
-          <input class="form-input" name="prices_badge" value="{{ old('prices_badge', $settings['prices_badge'] ?? '') }}" required>
+          <input class="form-input" name="prices_badge" value="{{ old('prices_badge', $settings['prices_badge'] ?? '') }}">
           @error('prices_badge')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
         </div>
         <div>
           <label class="form-label">Título del bloque</label>
-          <input class="form-input" name="prices_title" value="{{ old('prices_title', $settings['prices_title'] ?? '') }}" required>
+          <input class="form-input" name="prices_title" value="{{ old('prices_title', $settings['prices_title'] ?? '') }}">
           @error('prices_title')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
         </div>
         <div class="md:col-span-2">
           <label class="form-label">Texto descriptivo</label>
-          <textarea class="form-textarea" name="prices_subtitle" rows="2" required>{{ old('prices_subtitle', $settings['prices_subtitle'] ?? '') }}</textarea>
+          <textarea class="form-textarea" name="prices_subtitle" rows="2">{{ old('prices_subtitle', $settings['prices_subtitle'] ?? '') }}</textarea>
           @error('prices_subtitle')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
         </div>
         <div class="md:col-span-2">
           <label class="form-label">Texto botón principal</label>
-          <input class="form-input" name="prices_button_text" value="{{ old('prices_button_text', $settings['prices_button_text'] ?? '') }}" required>
+          <input class="form-input" name="prices_button_text" value="{{ old('prices_button_text', $settings['prices_button_text'] ?? '') }}">
           @error('prices_button_text')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
         </div>
       </div>
@@ -546,12 +546,12 @@
       <div class="mt-4 grid gap-4 md:grid-cols-2">
         <div>
           <label class="form-label">Tarjeta lateral: título</label>
-          <input class="form-input" name="prices_highlight_title" value="{{ old('prices_highlight_title', $settings['prices_highlight_title'] ?? '') }}" required>
+          <input class="form-input" name="prices_highlight_title" value="{{ old('prices_highlight_title', $settings['prices_highlight_title'] ?? '') }}">
           @error('prices_highlight_title')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
         </div>
         <div>
           <label class="form-label">Tarjeta lateral: descripción</label>
-          <textarea class="form-textarea" name="prices_highlight_subtitle" rows="2" required>{{ old('prices_highlight_subtitle', $settings['prices_highlight_subtitle'] ?? '') }}</textarea>
+          <textarea class="form-textarea" name="prices_highlight_subtitle" rows="2">{{ old('prices_highlight_subtitle', $settings['prices_highlight_subtitle'] ?? '') }}</textarea>
           @error('prices_highlight_subtitle')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
         </div>
         <div>
@@ -580,12 +580,12 @@
         </div>
         <div>
           <label class="form-label">Tarjeta inferior: título</label>
-          <input class="form-input" name="prices_visit_title" value="{{ old('prices_visit_title', $settings['prices_visit_title'] ?? '') }}" required>
+          <input class="form-input" name="prices_visit_title" value="{{ old('prices_visit_title', $settings['prices_visit_title'] ?? '') }}">
           @error('prices_visit_title')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
         </div>
         <div>
           <label class="form-label">Tarjeta inferior: descripción</label>
-          <textarea class="form-textarea" name="prices_visit_subtitle" rows="2" required>{{ old('prices_visit_subtitle', $settings['prices_visit_subtitle'] ?? '') }}</textarea>
+          <textarea class="form-textarea" name="prices_visit_subtitle" rows="2">{{ old('prices_visit_subtitle', $settings['prices_visit_subtitle'] ?? '') }}</textarea>
           @error('prices_visit_subtitle')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
         </div>
       </div>
@@ -596,18 +596,18 @@
             <div class="grid gap-4 md:grid-cols-2">
               <div>
                 <label class="form-label">Servicio</label>
-                <input class="form-input" name="prices[{{ $index }}][service]" value="{{ $price['service'] ?? '' }}" required>
+                <input class="form-input" name="prices[{{ $index }}][service]" value="{{ $price['service'] ?? '' }}">
                 @error('prices.'.$index.'.service')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
               </div>
               <div>
                 <label class="form-label">Precio</label>
-                <input class="form-input" name="prices[{{ $index }}][price]" value="{{ $price['price'] ?? '' }}" required>
+                <input class="form-input" name="prices[{{ $index }}][price]" value="{{ $price['price'] ?? '' }}">
                 @error('prices.'.$index.'.price')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
               </div>
               <div class="grid gap-3 sm:grid-cols-2 md:col-span-2">
                 <div>
                   <label class="form-label">Orden</label>
-                  <input class="form-input" type="number" min="0" name="prices[{{ $index }}][sort_order]" value="{{ $price['sort_order'] ?? 0 }}" required>
+                  <input class="form-input" type="number" min="0" name="prices[{{ $index }}][sort_order]" value="{{ $price['sort_order'] ?? 0 }}">
                   @error('prices.'.$index.'.sort_order')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
                 </div>
                 <div class="flex flex-col gap-2">
@@ -630,16 +630,16 @@
           <div class="grid gap-4 md:grid-cols-2">
             <div>
               <label class="form-label">Servicio</label>
-              <input class="form-input" name="prices[__INDEX__][service]" required>
+              <input class="form-input" name="prices[__INDEX__][service]">
             </div>
             <div>
               <label class="form-label">Precio</label>
-              <input class="form-input" name="prices[__INDEX__][price]" required>
+              <input class="form-input" name="prices[__INDEX__][price]">
             </div>
             <div class="grid gap-3 sm:grid-cols-2 md:col-span-2">
               <div>
                 <label class="form-label">Orden</label>
-                <input class="form-input" type="number" min="0" name="prices[__INDEX__][sort_order]" value="0" required>
+                <input class="form-input" type="number" min="0" name="prices[__INDEX__][sort_order]" value="0">
               </div>
               <div class="flex flex-col gap-2">
                 <label class="inline-flex items-center gap-2 text-sm text-slate-600">
@@ -672,22 +672,22 @@
       <div class="mt-4 grid gap-4 md:grid-cols-2">
         <div>
           <label class="form-label">Etiqueta superior</label>
-          <input class="form-input" name="services_badge" value="{{ old('services_badge', $settings['services_badge'] ?? '') }}" required>
+          <input class="form-input" name="services_badge" value="{{ old('services_badge', $settings['services_badge'] ?? '') }}">
           @error('services_badge')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
         </div>
         <div>
           <label class="form-label">Título del bloque</label>
-          <input class="form-input" name="services_title" value="{{ old('services_title', $settings['services_title'] ?? '') }}" required>
+          <input class="form-input" name="services_title" value="{{ old('services_title', $settings['services_title'] ?? '') }}">
           @error('services_title')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
         </div>
         <div class="md:col-span-2">
           <label class="form-label">Descripcion</label>
-          <textarea class="form-textarea" name="services_subtitle" rows="2" required>{{ old('services_subtitle', $settings['services_subtitle'] ?? '') }}</textarea>
+          <textarea class="form-textarea" name="services_subtitle" rows="2">{{ old('services_subtitle', $settings['services_subtitle'] ?? '') }}</textarea>
           @error('services_subtitle')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
         </div>
         <div class="md:col-span-2">
           <label class="form-label">Texto botón Ver todos</label>
-          <input class="form-input" name="services_button_text" value="{{ old('services_button_text', $settings['services_button_text'] ?? '') }}" required>
+          <input class="form-input" name="services_button_text" value="{{ old('services_button_text', $settings['services_button_text'] ?? '') }}">
           @error('services_button_text')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
         </div>
       </div>
@@ -773,3 +773,4 @@
   'icono' => $esp->icono,
 ])->values(), JSON_UNESCAPED_UNICODE) !!}
 </script>
+

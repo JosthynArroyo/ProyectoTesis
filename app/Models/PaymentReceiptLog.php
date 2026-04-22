@@ -13,6 +13,7 @@ class PaymentReceiptLog extends Model
     protected $table = 'payment_receipt_logs';
 
     public $timestamps = true;
+
     public const UPDATED_AT = null;
 
     protected $fillable = [
@@ -39,4 +40,3 @@ class PaymentReceiptLog extends Model
         return $this->belongsTo(User::class, 'actor_id');
     }
 }
-

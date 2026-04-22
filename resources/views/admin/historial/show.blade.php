@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 @section('title', 'Nota clínica')
-@section('header-title','Historial clínico')
-@section('header-subtitle','Detalle de la nota SOAP')
+@section('header-title','Nota clínica firmada')
+@section('header-subtitle','Detalle de una atención médica individual')
 
 @section('main')
   <div class="space-y-6">
@@ -10,8 +10,8 @@
     <section class="card p-6">
       <x-ui.form-actions>
         <x-slot:left>
-          <a href="{{ route('admin.historial.index') }}" class="btn btn-ghost">
-            <i class="ri-arrow-left-line"></i> Volver
+          <a href="{{ $backUrl ?? route('admin.historial.index') }}" class="btn btn-ghost">
+            <i class="ri-arrow-left-line"></i> {{ $backLabel ?? 'Volver' }}
           </a>
         </x-slot>
       </x-ui.form-actions>

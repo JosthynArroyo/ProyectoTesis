@@ -22,7 +22,7 @@ def load_model_and_classes() -> tuple[tf.keras.Model, list[str]]:
     if not CLASSES_PATH.exists():
         raise RuntimeError(f"Classes file not found: {CLASSES_PATH}")
 
-    model = tf.keras.models.load_model(MODEL_PATH)
+    model = tf.keras.models.load_model(MODEL_PATH, compile=False)
     with CLASSES_PATH.open("r", encoding="utf-8") as fp:
         classes = json.load(fp)
 
@@ -34,6 +34,11 @@ def load_model_and_classes() -> tuple[tf.keras.Model, list[str]]:
 
 app = FastAPI(title="Vision CAPTCHA API")
 model, classes = load_model_and_classes()
+
+
+@app.get("/health")
+async def health() -> dict[str, str]:
+    return {"status": "ok"}
 
 
 @app.post("/classify")

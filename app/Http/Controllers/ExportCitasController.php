@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\Cita;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -13,7 +12,7 @@ class ExportCitasController extends Controller
     public function exportarCitas(): StreamedResponse
     {
 
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
 
         // Encabezados
@@ -39,7 +38,7 @@ class ExportCitasController extends Controller
             });
 
         // Nombre
-        $fileName = 'citas_' . now()->format('Ymd_His') . '.xlsx';
+        $fileName = 'citas_'.now()->format('Ymd_His').'.xlsx';
 
         // Stream directo al navegador
         return response()->streamDownload(function () use ($spreadsheet) {

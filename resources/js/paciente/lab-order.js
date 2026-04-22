@@ -17,7 +17,7 @@
   function setBadge(origin) {
     if (!originBadge) return;
     if (origin === 'MEDICAL_ORDER') {
-      originBadge.textContent = 'Con orden medica';
+      originBadge.textContent = 'Con orden médica';
       originBadge.classList.remove('is-routine');
     } else {
       originBadge.textContent = 'Rutina';
@@ -58,14 +58,14 @@
   function updatePrep() {
     if (!examSelect || !prepText) return;
     const option = examSelect.selectedOptions && examSelect.selectedOptions[0];
-    const fallback = examSelect.dataset.prepEmpty || 'Selecciona un examen para ver la preparacion.';
-    const missing = examSelect.dataset.prepMissing || 'Este examen no tiene preparacion registrada. Contacte a la clinica.';
+    const fallback = examSelect.dataset.prepEmpty || 'Selecciona un examen para ver la preparación.';
+    const missing = examSelect.dataset.prepMissing || 'Este examen no tiene preparación registrada. Contacte a la clínica.';
     const prep = option.dataset.prep || '';
     if (!option || !option.value) {
       prepText.textContent = fallback;
       return;
     }
-    prepText.textContent = prep.trim().length  prep : missing;
+    prepText.textContent = prep.trim().length ? prep : missing;
   }
 
   function updateExamIndications() {
@@ -78,7 +78,7 @@
       examIndications.textContent = fallback;
       return;
     }
-    examIndications.textContent = indicaciones.trim().length  indicaciones : missing;
+    examIndications.textContent = indicaciones.trim().length ? indicaciones : missing;
   }
 
   function updateExamDetails() {
@@ -112,7 +112,7 @@
     if (doctorNotes) {
       const notes = option.dataset.notes;
       doctorNotes.textContent = notes && notes.trim().length
-         notes
+        ? notes
         : 'Sin indicaciones adicionales.';
     }
     updateExamDetails();

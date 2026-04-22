@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('horarios', function (Blueprint $table) {
-            if (!Schema::hasColumn('horarios', 'intervalo_minutos')) {
+            if (! Schema::hasColumn('horarios', 'intervalo_minutos')) {
                 $table->unsignedSmallInteger('intervalo_minutos')->default(30)->after('hora_fin');
             }
         });

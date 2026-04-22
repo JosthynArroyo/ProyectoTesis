@@ -3,23 +3,28 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\Rule;
-use Illuminate\Support\Facades\Hash;
 use App\Models\Cita;
-use App\Models\User;
-use App\Models\Role;
 use App\Models\Especialidad;
+use App\Models\Role;
+use App\Models\User;
+use App\Services\CitaNoShowService;
+use App\Services\CitaRecordatorioService;
+use App\Services\ImageOptimizer;
+use App\Services\ProfileAvatarService;
+use App\Support\DateField;
+use App\Support\ImageUrl;
 use App\Support\ValidationRules;
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Dompdf\Dompdf;
 use Dompdf\Options;
-use Illuminate\Support\Str;
-use App\Services\CitaNoShowService;
-use App\Services\ImageOptimizer;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class AdminController extends Controller
 {
@@ -27,31 +32,57 @@ class AdminController extends Controller
     public function dashboard(Request $request)
     {
         app(CitaNoShowService::class)->marcarVencidas();
+        $recordatorios = app(CitaRecordatorioService::class);
+        $recordatorioStats = $recordatorios->pendingDueStats();
         $user = Auth::user();
         $prioridad = strtoupper(trim((string) $request->get('prioridad', '')));
-        if ($prioridad === 'ALL' || !in_array($prioridad, Cita::PRIORIDAD_NIVELES, true)) {
+        if ($prioridad === 'ALL' || ! in_array($prioridad, Cita::PRIORIDAD_NIVELES, true)) {
             $prioridad = '';
         }
 
-        $citas = Cita::with(['paciente', 'doctor'])
+        $citas = Cita::query()
+            ->with(['paciente:id,name', 'doctor:id,name'])
             ->when($prioridad !== '', fn ($query) => $query->where('prioridad_nivel', $prioridad))
             ->orderByRaw(Cita::prioridadOrderSql())
             ->orderBy('fecha', 'asc')
             ->orderBy('hora', 'asc')
             ->limit(50)
-            ->get();
+            ->get([
+                'id',
+                'paciente_id',
+                'doctor_id',
+                'estado',
+                'fecha',
+                'hora',
+                'prioridad_nivel',
+                'prioridad_red_flag',
+            ]);
 
-        $totalCitas           = Cita::count();
-        $totalCitasPendientes = Cita::where('estado', 'pendiente')->count();
-        $totalCitasRealizadas = Cita::where('estado', 'realizada')->count();
-        $totalCitasCanceladas = Cita::where('estado', 'cancelada')->count();
-        $totalCitasPendientesAlta = Cita::where('estado', 'pendiente')
+        $citasPorEstado = Cita::query()
+            ->select('estado', DB::raw('COUNT(*) as total'))
+            ->groupBy('estado')
+            ->pluck('total', 'estado');
+
+        $totalCitas = (int) $citasPorEstado->sum();
+        $totalCitasPendientes = (int) ($citasPorEstado[Cita::ESTADO_PENDIENTE] ?? 0);
+        $totalCitasRealizadas = (int) ($citasPorEstado[Cita::ESTADO_REALIZADA] ?? 0);
+        $totalCitasCanceladas = (int) ($citasPorEstado[Cita::ESTADO_CANCELADA] ?? 0);
+        $totalCitasPendientesAlta = Cita::where('estado', Cita::ESTADO_PENDIENTE)
             ->where('activo', true)
             ->where('prioridad_nivel', Cita::PRIORIDAD_ALTA)
             ->count();
-        $totalPacientes       = User::whereHas('roles', fn($q) => $q->where('name', 'paciente'))->count();
-        $totalDoctores        = User::whereHas('roles', fn($q) => $q->where('name', 'doctor'))->count();
-        $usuariosActivosHoy   = User::whereDate('last_login_at', now()->toDateString())->count();
+
+        $usuariosPorRol = Role::query()
+            ->join('role_user', 'roles.id', '=', 'role_user.role_id')
+            ->whereIn('roles.name', ['paciente', 'doctor'])
+            ->select('roles.name', DB::raw('COUNT(DISTINCT role_user.user_id) as total'))
+            ->groupBy('roles.name')
+            ->pluck('total', 'roles.name');
+        $totalPacientes = (int) ($usuariosPorRol['paciente'] ?? 0);
+        $totalDoctores = (int) ($usuariosPorRol['doctor'] ?? 0);
+        $usuariosActivosHoy = User::whereDate('last_login_at', now()->toDateString())->count();
+        $recordatoriosPendientes = $recordatorioStats['pendientes'];
+        $recordatoriosSinTelefono = $recordatorioStats['sin_telefono'];
 
         return view('admin.dashboard', compact(
             'user',
@@ -64,21 +95,24 @@ class AdminController extends Controller
             'totalPacientes',
             'totalDoctores',
             'usuariosActivosHoy',
+            'recordatoriosPendientes',
+            'recordatoriosSinTelefono',
             'prioridad'
         ));
     }
 
     public function resumenGlobal(Request $request)
     {
-        if (!$request->ajax()) {
+        if (! $request->ajax()) {
             return redirect()->route('admin.dashboard');
         }
 
         app(CitaNoShowService::class)->marcarVencidas();
+
         return response()->json([
-            'agendadas'   => Cita::count(),
+            'agendadas' => Cita::count(),
             'completadas' => Cita::where('estado', 'realizada')->count(),
-            'canceladas'  => Cita::where('estado', 'cancelada')->count(),
+            'canceladas' => Cita::where('estado', 'cancelada')->count(),
         ]);
     }
 
@@ -86,24 +120,26 @@ class AdminController extends Controller
     public function editarPerfil()
     {
         $user = Auth::user();
+
         return view('admin.perfil', compact('user'));
     }
 
-    public function actualizarPerfil(Request $request, ImageOptimizer $imageOptimizer)
+    public function actualizarPerfil(Request $request, ProfileAvatarService $profileAvatars)
     {
         $user = Auth::user();
+        DateField::mergeIntoRequest($request, 'fecha_nacimiento');
 
         $rules = [
-            'name'              => ['required','string','max:255'],
-            'email'             => ValidationRules::emailUnique('users', $user->id),
-            'telefono'          => ValidationRules::telefono(),
-            'dni'               => ValidationRules::cedulaUnique('users', $user->id),
-            'direccion'         => ['required','string','max:255'],
-            'fecha_nacimiento'  => ['required','date','before:today'],
-            'sexo'              => ['required','in:Masculino,Femenino,Otro'],
-            'avatar'            => ['nullable','image','mimes:jpg,jpeg,png,webp,svg','max:2048'],
-            'current_password'  => ['nullable','string'],
-            'password'          => array_merge(
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ValidationRules::emailUnique('users', $user->id),
+            'telefono' => ValidationRules::telefono(),
+            'dni' => ValidationRules::cedulaUnique('users', $user->id),
+            'direccion' => ['required', 'string', 'max:255'],
+            'fecha_nacimiento' => ValidationRules::birthDate(),
+            'sexo' => ['required', 'in:Masculino,Femenino,Otro'],
+            'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,svg', 'max:2048'],
+            'current_password' => ['nullable', 'string'],
+            'password' => array_merge(
                 ValidationRules::passwordOptional(),
                 ['different:current_password']
             ),
@@ -117,10 +153,7 @@ class AdminController extends Controller
 
         if ($request->hasFile('avatar')) {
             $imageFolder = $this->resolveAvatarFolder($user);
-            if ($user->avatar) {
-                $imageOptimizer->deleteByStoredPath($user->avatar, $imageFolder);
-            }
-            $data['avatar'] = $imageOptimizer->optimizeAndStore($request->file('avatar'), $imageFolder);
+            $data['avatar'] = $profileAvatars->replace($user, $request->file('avatar'), $imageFolder);
         }
 
         $user->name = $data['name'];
@@ -130,11 +163,13 @@ class AdminController extends Controller
         $user->direccion = $data['direccion'] ?? null;
         $user->fecha_nacimiento = $data['fecha_nacimiento'] ?? null;
         $user->sexo = $data['sexo'] ?? null;
-        if (isset($data['avatar'])) $user->avatar = $data['avatar'];
+        if (isset($data['avatar'])) {
+            $user->avatar = $data['avatar'];
+        }
 
         $passwordChanged = false;
         if ($request->filled('password')) {
-            if (!$request->filled('current_password') || !Hash::check($request->input('current_password'), $user->password)) {
+            if (! $request->filled('current_password') || ! Hash::check($request->input('current_password'), $user->password)) {
                 return back()->withErrors(['current_password' => 'La contraseña actual no es correcta.'])->withInput();
             }
             $user->password = Hash::make($request->input('password'));
@@ -146,31 +181,33 @@ class AdminController extends Controller
         if ($passwordChanged) {
             $user->setRememberToken(Str::random(60));
             $user->save();
-            \Auth::logoutOtherDevices($request->input('password'));
+            Auth::logoutOtherDevices($request->input('password'));
             $request->session()->invalidate();
             $request->session()->regenerateToken();
-            \Auth::login($user);
+            Auth::login($user);
             $request->session()->regenerate();
         }
 
-        return redirect()->route('admin.perfil.edit')->with('success','Perfil actualizado correctamente.');
+        return redirect()->route('admin.perfil.edit')->with('success', 'Perfil actualizado correctamente.');
     }
 
     // ===== Usuarios (listado + filtros) =====
     public function usuarios(Request $request)
     {
-        $buscar  = trim((string) $request->get('buscar', ''));
+        $buscar = trim((string) $request->get('buscar', ''));
         $perPage = (int) ($request->get('per_page', 12));
-        $role    = $request->string('role')->lower()->value();
+        $role = $request->string('role')->lower()->value();
         if ($role === 'all') {
             $role = '';
         }
 
-        $allColumns = ['usuario','contacto','rol','estado','especialidades','acciones'];
+        $allColumns = ['usuario', 'contacto', 'rol', 'estado', 'especialidades', 'acciones'];
         $cols = $request->has('cols')
             ? array_values(array_intersect($allColumns, (array) $request->get('cols')))
             : ($request->session()->get('usuarios.cols') ?: $allColumns);
-        if (empty($cols)) $cols = $allColumns;
+        if (empty($cols)) {
+            $cols = $allColumns;
+        }
         $request->session()->put('usuarios.cols', $cols);
 
         $usersQ = User::with(['roles', 'especialidades', 'patientFlag'])
@@ -221,35 +258,37 @@ class AdminController extends Controller
     {
         $roles = Role::whereNotIn('name', ['administrador', 'superadmin'])->orderBy('name')->get();
         $especialidades = Especialidad::orderBy('nombre')->get();
-        return view('admin.users.create', compact('roles','especialidades'));
+
+        return view('admin.users.create', compact('roles', 'especialidades'));
     }
 
     public function usuariosStore(Request $request)
     {
-        $roles = Role::pluck('name','id');
+        DateField::mergeIntoRequest($request, 'fecha_nacimiento');
+        $roles = Role::pluck('name', 'id');
         $roleName = $roles[(int) $request->input('role_id')] ?? null;
 
         $baseRules = [
-            'name'     => ['required','string','max:255'],
-            'email'    => ValidationRules::emailUnique(),
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ValidationRules::emailUnique(),
             'password' => ValidationRules::passwordRequired(),
             'telefono' => ValidationRules::telefono(),
-            'dni'      => ValidationRules::cedulaUnique(),
-            'direccion'=> ['required','string','max:255'],
-            'fecha_nacimiento' => ['required','date','before:today'],
-            'sexo'     => ['required','in:Masculino,Femenino,Otro'],
-            'role_id'  => ['required','exists:roles,id'],
+            'dni' => ValidationRules::cedulaUnique(),
+            'direccion' => ['required', 'string', 'max:255'],
+            'fecha_nacimiento' => ValidationRules::birthDate(),
+            'sexo' => ['required', 'in:Masculino,Femenino,Otro'],
+            'role_id' => ['required', 'exists:roles,id'],
             'especialidad_id' => ['nullable', Rule::requiredIf($roleName === 'doctor'), 'integer', 'exists:especialidades,id'],
-            'precio_consulta' => ['nullable', Rule::requiredIf(in_array($roleName, ['doctor','laboratorio'], true)), 'numeric', 'min:0', 'max:99999999.99'],
-            'adulto_mayor' => ['required','boolean'],
-            'embarazo' => ['required','boolean'],
-            'discapacidad' => ['required','boolean'],
-            'cronico' => ['required','boolean'],
+            'precio_consulta' => ['nullable', Rule::requiredIf(in_array($roleName, ['doctor', 'laboratorio'], true)), 'numeric', 'min:0', 'max:99999999.99'],
+            'adulto_mayor' => ['required', 'boolean'],
+            'embarazo' => ['required', 'boolean'],
+            'discapacidad' => ['required', 'boolean'],
+            'cronico' => ['required', 'boolean'],
         ];
 
         $data = $request->validate($baseRules);
 
-        $roleName = $roles[(int)$data['role_id']] ?? null;
+        $roleName = $roles[(int) $data['role_id']] ?? null;
         if ($this->isPrivilegedRole($roleName)) {
             return back()->withErrors(['role_id' => 'No puedes asignar roles Administrador o Superadmin.'])->withInput();
         }
@@ -259,36 +298,35 @@ class AdminController extends Controller
 
         if ($isDoctor) {
             $request->validate([
-                'especialidad_id' => ['required','integer','exists:especialidades,id'],
+                'especialidad_id' => ['required', 'integer', 'exists:especialidades,id'],
             ], [
                 'especialidad_id.required' => 'La especialidad es obligatoria para este rol.',
             ]);
         } elseif ($isLaboratorio) {
-            $labId = Especialidad::where('nombre', 'Laboratorio Clinico')->value('id');
-            if (!$labId) {
+            $labId = Especialidad::laboratorioClinicoId();
+            if (! $labId) {
                 return back()->withErrors(['especialidad_id' => 'No existe la especialidad Laboratorio Clínico.'])->withInput();
             }
         }
 
-        $u = new User();
-        $u->name             = $data['name'];
-        $u->email            = $data['email'];
-        $u->password         = Hash::make($data['password']);
-        $u->active           = true;
-        $u->telefono         = $data['telefono'] ?? null;
-        $u->dni              = $data['dni'];
-        $u->direccion        = $data['direccion'] ?? null;
+        $u = new User;
+        $u->name = $data['name'];
+        $u->email = $data['email'];
+        $u->password = Hash::make($data['password']);
+        $u->telefono = $data['telefono'] ?? null;
+        $u->dni = $data['dni'];
+        $u->direccion = $data['direccion'] ?? null;
         $u->fecha_nacimiento = $data['fecha_nacimiento'] ?? null;
-        $u->sexo             = $data['sexo'] ?? null;
-        $u->precio_consulta  = ($isDoctor || $isLaboratorio) ? ($data['precio_consulta'] ?? null) : null;
-        $u->moneda           = 'USD';
-        $u->status           = 'active';
+        $u->sexo = $data['sexo'] ?? null;
+        $u->precio_consulta = ($isDoctor || $isLaboratorio) ? ($data['precio_consulta'] ?? null) : null;
+        $u->moneda = 'USD';
+        $u->status = User::STATUS_ACTIVE;
         $u->save();
 
-        $u->roles()->sync([(int)$data['role_id']]);
+        $u->roles()->sync([(int) $data['role_id']]);
 
         if ($isDoctor || $isLaboratorio) {
-            $espId = $isLaboratorio ? (int)$labId : (int)$request->input('especialidad_id');
+            $espId = $isLaboratorio ? (int) $labId : (int) $request->input('especialidad_id');
             $u->especialidades()->sync([$espId]);
         }
 
@@ -299,7 +337,7 @@ class AdminController extends Controller
             );
         }
 
-        return redirect()->route('admin.usuarios.index')->with('success','Usuario creado correctamente.');
+        return redirect()->route('admin.usuarios.index')->with('success', 'Usuario creado correctamente.');
     }
 
     public function usuariosShow(User $user)
@@ -308,7 +346,8 @@ class AdminController extends Controller
             return redirect()->route('admin.usuarios.index')
                 ->withErrors(['No puedes administrar cuentas Administrador o Superadmin.']);
         }
-        $user->load(['roles','especialidades']);
+        $user->load(['roles', 'especialidades']);
+
         return view('admin.users.show', compact('user'));
     }
 
@@ -318,10 +357,11 @@ class AdminController extends Controller
             return redirect()->route('admin.usuarios.index')
                 ->withErrors(['No puedes administrar cuentas Administrador o Superadmin.']);
         }
-        $user->load(['roles','especialidades']);
+        $user->load(['roles', 'especialidades']);
         $roles = Role::whereNotIn('name', ['administrador', 'superadmin'])->orderBy('name')->get();
         $especialidades = Especialidad::orderBy('nombre')->get();
-        return view('admin.users.edit', compact('user','roles','especialidades'));
+
+        return view('admin.users.edit', compact('user', 'roles', 'especialidades'));
     }
 
     public function usuariosUpdate(Request $request, User $user)
@@ -330,37 +370,38 @@ class AdminController extends Controller
             return redirect()->route('admin.usuarios.index')
                 ->withErrors(['No puedes administrar cuentas Administrador o Superadmin.']);
         }
+        DateField::mergeIntoRequest($request, 'fecha_nacimiento');
         $request->merge(['email' => strtolower($request->input('email'))]);
-        $roles = Role::pluck('name','id');
+        $roles = Role::pluck('name', 'id');
         $roleNameRequest = $roles[(int) $request->input('role_id')] ?? null;
 
         $rules = [
-            'name'             => ['required','string','max:255'],
-            'email'            => ValidationRules::emailUnique('users', $user->id),
-            'telefono'         => ValidationRules::telefono(),
-            'dni'              => ValidationRules::cedulaUnique('users', $user->id),
-            'direccion'        => ['required','string','max:255'],
-            'fecha_nacimiento' => ['required','date','before:today'],
-            'sexo'             => ['required','in:Masculino,Femenino,Otro'],
-            'role_id'          => ['required','exists:roles,id'],
-            'especialidad_id'  => ['nullable', Rule::requiredIf($roleNameRequest === 'doctor'), 'integer', 'exists:especialidades,id'],
-            'precio_consulta'  => ['nullable', Rule::requiredIf(in_array($roleNameRequest, ['doctor','laboratorio'], true)), 'numeric', 'min:0', 'max:99999999.99'],
-            'adulto_mayor' => ['required','boolean'],
-            'embarazo' => ['required','boolean'],
-            'discapacidad' => ['required','boolean'],
-            'cronico' => ['required','boolean'],
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ValidationRules::emailUnique('users', $user->id),
+            'telefono' => ValidationRules::telefono(),
+            'dni' => ValidationRules::cedulaUnique('users', $user->id),
+            'direccion' => ['required', 'string', 'max:255'],
+            'fecha_nacimiento' => ValidationRules::birthDate(),
+            'sexo' => ['required', 'in:Masculino,Femenino,Otro'],
+            'role_id' => ['required', 'exists:roles,id'],
+            'especialidad_id' => ['nullable', Rule::requiredIf($roleNameRequest === 'doctor'), 'integer', 'exists:especialidades,id'],
+            'precio_consulta' => ['nullable', Rule::requiredIf(in_array($roleNameRequest, ['doctor', 'laboratorio'], true)), 'numeric', 'min:0', 'max:99999999.99'],
+            'adulto_mayor' => ['required', 'boolean'],
+            'embarazo' => ['required', 'boolean'],
+            'discapacidad' => ['required', 'boolean'],
+            'cronico' => ['required', 'boolean'],
         ];
         $data = $request->validate($rules);
 
-        $user->name             = $data['name'];
-        $user->email            = $data['email'];
-        $user->telefono         = $data['telefono'] ?? null;
-        $user->dni              = $data['dni'] ?? null;
-        $user->direccion        = $data['direccion'] ?? null;
+        $user->name = $data['name'];
+        $user->email = $data['email'];
+        $user->telefono = $data['telefono'] ?? null;
+        $user->dni = $data['dni'] ?? null;
+        $user->direccion = $data['direccion'] ?? null;
         $user->fecha_nacimiento = $data['fecha_nacimiento'] ?? null;
-        $user->sexo             = $data['sexo'] ?? null;
+        $user->sexo = $data['sexo'] ?? null;
 
-        $roleId   = (int)$data['role_id'];
+        $roleId = (int) $data['role_id'];
         $roleName = optional(Role::find($roleId))->name;
         if ($this->isPrivilegedRole($roleName)) {
             return back()->withErrors(['role_id' => 'No puedes asignar roles Administrador o Superadmin.'])->withInput();
@@ -373,8 +414,8 @@ class AdminController extends Controller
             return back()->withErrors(['especialidad_id' => 'La especialidad es obligatoria para este rol.'])->withInput();
         }
         if ($isLaboratorio) {
-            $labId = Especialidad::where('nombre', 'Laboratorio Clinico')->value('id');
-            if (!$labId) {
+            $labId = Especialidad::laboratorioClinicoId();
+            if (! $labId) {
                 return back()->withErrors(['especialidad_id' => 'No existe la especialidad Laboratorio Clínico.'])->withInput();
             }
         }
@@ -382,15 +423,15 @@ class AdminController extends Controller
         if ($isDoctor) {
             $user->precio_consulta = $data['precio_consulta'] ?? $user->precio_consulta;
             $user->moneda = $user->moneda ?: 'USD';
-            if (!empty($data['especialidad_id'])) {
-                $user->especialidades()->sync([(int)$data['especialidad_id']]);
+            if (! empty($data['especialidad_id'])) {
+                $user->especialidades()->sync([(int) $data['especialidad_id']]);
             } else {
                 $user->especialidades()->sync([]);
             }
         } elseif ($isLaboratorio) {
             $user->precio_consulta = $data['precio_consulta'] ?? $user->precio_consulta;
             $user->moneda = $user->moneda ?: 'USD';
-            $user->especialidades()->sync([(int)$labId]);
+            $user->especialidades()->sync([(int) $labId]);
         } else {
             $user->precio_consulta = null;
             $user->especialidades()->sync([]);
@@ -445,6 +486,11 @@ class AdminController extends Controller
         return $user->hasRole('administrador') || $user->hasRole('superadmin');
     }
 
+    private function isClinicalProfessionalAccount(User $user): bool
+    {
+        return $user->hasRole('doctor') || $user->hasRole('laboratorio');
+    }
+
     public function usuariosDestroy(User $user)
     {
         if (Auth::id() === $user->id) {
@@ -452,6 +498,16 @@ class AdminController extends Controller
         }
         if ($this->isPrivilegedAccount($user)) {
             return back()->withErrors(['No puedes eliminar cuentas con rol Administrador o Superadmin.']);
+        }
+
+        if ($this->isClinicalProfessionalAccount($user)) {
+            $user->update([
+                'status' => User::STATUS_INACTIVE,
+                'suspended_until' => null,
+                'deactivation_reason' => 'Intento de eliminacion administrativa convertido en desactivacion logica.',
+            ]);
+
+            return back()->with('success', 'El profesional fue desactivado. No se elimino ningun dato historico ni relacion existente.');
         }
 
         $user->roles()->detach();
@@ -464,6 +520,7 @@ class AdminController extends Controller
     public function crearDoctor()
     {
         $especialidades = Especialidad::orderBy('nombre')->get();
+
         return view('admin.doctor-create', compact('especialidades'));
     }
 
@@ -474,35 +531,36 @@ class AdminController extends Controller
 
     public function guardarDoctor(Request $request, ImageOptimizer $imageOptimizer)
     {
+        DateField::mergeIntoRequest($request, 'fecha_nacimiento');
         $rules = [
-            'name'             => ['required', 'string', 'max:255'],
-            'email'            => ValidationRules::emailUnique(),
-            'password'         => ValidationRules::passwordRequired(),
-            'telefono'         => ValidationRules::telefono(),
-            'dni'              => ValidationRules::cedulaUnique(),
-            'direccion'        => ['required', 'string', 'max:255'],
-            'fecha_nacimiento' => ['required', 'date', 'before:today'],
-            'sexo'             => ['required', 'in:Masculino,Femenino,Otro'],
-            'avatar'           => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,svg', 'max:2048'],
-            'especialidad_id'  => ['required', 'integer', 'exists:especialidades,id'],
-            'precio_consulta'  => ['required', 'numeric', 'min:0', 'max:99999999.99'],
-            'moneda'           => ['required', 'in:USD'],
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ValidationRules::emailUnique(),
+            'password' => ValidationRules::passwordRequired(),
+            'telefono' => ValidationRules::telefono(),
+            'dni' => ValidationRules::cedulaUnique(),
+            'direccion' => ['required', 'string', 'max:255'],
+            'fecha_nacimiento' => ValidationRules::birthDate(),
+            'sexo' => ['required', 'in:Masculino,Femenino,Otro'],
+            'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,svg', 'max:2048'],
+            'especialidad_id' => ['required', 'integer', 'exists:especialidades,id'],
+            'precio_consulta' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
+            'moneda' => ['required', 'in:USD'],
         ];
 
         $validated = $request->validate($rules);
 
-        $user = new User();
-        $user->name             = $validated['name'];
-        $user->email            = $validated['email'];
-        $user->password         = Hash::make($validated['password']);
-        $user->active           = true;
-        $user->telefono         = $validated['telefono'] ?? null;
-        $user->dni              = $validated['dni'] ?? null;
-        $user->direccion        = $validated['direccion'] ?? null;
+        $user = new User;
+        $user->name = $validated['name'];
+        $user->email = $validated['email'];
+        $user->password = Hash::make($validated['password']);
+        $user->telefono = $validated['telefono'] ?? null;
+        $user->dni = $validated['dni'] ?? null;
+        $user->direccion = $validated['direccion'] ?? null;
         $user->fecha_nacimiento = $validated['fecha_nacimiento'] ?? null;
-        $user->sexo             = $validated['sexo'] ?? null;
-        $user->precio_consulta  = $validated['precio_consulta'] ?? null;
-        $user->moneda           = 'USD';
+        $user->sexo = $validated['sexo'] ?? null;
+        $user->precio_consulta = $validated['precio_consulta'] ?? null;
+        $user->moneda = 'USD';
+        $user->status = User::STATUS_ACTIVE;
 
         if ($request->hasFile('avatar')) {
             $user->avatar = $imageOptimizer->optimizeAndStore($request->file('avatar'), 'doctors');
@@ -517,17 +575,52 @@ class AdminController extends Controller
         return redirect()->route('admin.usuarios.index')->with('success', 'Doctor creado correctamente.');
     }
 
-    public function doctoresPorEspecialidad(Especialidad $especialidad)
+    public function doctoresPorEspecialidad(Especialidad $especialidad, ImageUrl $imageUrl)
     {
-        $rol = mb_strtolower($especialidad->nombre) === 'laboratorio clinico'
+        $rol = $especialidad->isLaboratorioClinico()
             ? 'laboratorio'
             : 'doctor';
 
         $doctores = $especialidad->doctores()
-            ->whereHas('roles', fn($q) => $q->where('name', $rol))
+            ->with('especialidades:id,nombre')
+            ->whereHas('roles', fn ($q) => $q->where('name', $rol))
             ->onlyActive()
             ->orderBy('name')
-            ->get(['users.id', 'users.name']);
+            ->get([
+                'users.id',
+                'users.name',
+                'users.telefono',
+                'users.direccion',
+                'users.avatar',
+                'users.precio_consulta',
+                'users.moneda',
+                'users.sexo',
+            ])
+            ->map(function (User $doctor) use ($imageUrl) {
+                $avatar = $imageUrl->variants($doctor->avatar, 'doctors', 'doctor');
+                $moneda = $doctor->moneda ?: 'USD';
+                $precio = $doctor->precio_consulta;
+
+                return [
+                    'id' => $doctor->id,
+                    'name' => $doctor->name,
+                    'telefono' => $doctor->telefono,
+                    'direccion' => $doctor->direccion,
+                    'sexo' => $doctor->sexo,
+                    'avatar_url' => $avatar['medium'] ?? $avatar['src'],
+                    'avatar_thumb' => $avatar['thumb'] ?? $avatar['src'],
+                    'avatar_srcset' => $avatar['srcset'],
+                    'especialidades' => $doctor->especialidades
+                        ->pluck('nombre')
+                        ->values(),
+                    'precio_consulta' => is_null($precio) ? null : (float) $precio,
+                    'moneda' => $moneda,
+                    'precio_format' => is_null($precio)
+                        ? null
+                        : '$'.number_format((float) $precio, 2).' '.$moneda,
+                ];
+            })
+            ->values();
 
         return response()->json($doctores);
     }
@@ -539,30 +632,30 @@ class AdminController extends Controller
 
     public function storePaciente(Request $request)
     {
+        DateField::mergeIntoRequest($request, 'fecha_nacimiento');
         $rules = [
-            'name'             => ['required', 'string', 'max:255'],
-            'email'            => ValidationRules::emailUnique(),
-            'password'         => ValidationRules::passwordRequired(),
-            'telefono'         => ValidationRules::telefono(),
-            'dni'              => ValidationRules::cedulaUnique(),
-            'direccion'        => ['required', 'string', 'max:255'],
-            'fecha_nacimiento' => ['required', 'date', 'before:today'],
-            'sexo'             => ['required', 'in:Masculino,Femenino,Otro'],
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ValidationRules::emailUnique(),
+            'password' => ValidationRules::passwordRequired(),
+            'telefono' => ValidationRules::telefono(),
+            'dni' => ValidationRules::cedulaUnique(),
+            'direccion' => ['required', 'string', 'max:255'],
+            'fecha_nacimiento' => ValidationRules::birthDate(),
+            'sexo' => ['required', 'in:Masculino,Femenino,Otro'],
         ];
 
         $data = $request->validate($rules);
 
-        $user = new User();
-        $user->name             = $data['name'];
-        $user->email            = $data['email'];
-        $user->password         = Hash::make($data['password']);
-        $user->active           = true;
-        $user->telefono         = $data['telefono'] ?? null;
-        $user->dni              = $data['dni'];
-        $user->direccion        = $data['direccion'] ?? null;
+        $user = new User;
+        $user->name = $data['name'];
+        $user->email = $data['email'];
+        $user->password = Hash::make($data['password']);
+        $user->telefono = $data['telefono'] ?? null;
+        $user->dni = $data['dni'];
+        $user->direccion = $data['direccion'] ?? null;
         $user->fecha_nacimiento = $data['fecha_nacimiento'] ?? null;
-        $user->sexo             = $data['sexo'] ?? null;
-        $user->status           = 'active';
+        $user->sexo = $data['sexo'] ?? null;
+        $user->status = User::STATUS_ACTIVE;
         $user->save();
 
         $role = Role::where('name', 'paciente')->firstOrFail();
@@ -574,21 +667,21 @@ class AdminController extends Controller
     // ===== Exportes (respetan buscar + role) =====
     public function usuariosExportExcel(Request $request)
     {
-        $buscar = trim((string)$request->get('buscar',''));
-        $role   = $request->string('role')->lower()->value();
+        $buscar = trim((string) $request->get('buscar', ''));
+        $role = $request->string('role')->lower()->value();
         if (in_array($role, ['administrador', 'superadmin'], true)) {
             return back()->withErrors(['No puedes exportar cuentas Administrador o Superadmin.']);
         }
 
-        $users = User::with(['roles','especialidades'])
-            ->orderBy('id','desc')
+        $users = User::with(['roles', 'especialidades'])
+            ->orderBy('id', 'desc')
             ->search($buscar)
             ->role($role)
             ->whereDoesntHave('roles', fn ($q) => $q->whereIn('name', ['administrador', 'superadmin']))
             ->get();
 
         $sheetData = [];
-        $sheetData[] = ['ID','Nombre','Email','Teléfono','Cédula','Rol','Estado','Suspendido Hasta','Último acceso','Creado','Especialidades'];
+        $sheetData[] = ['ID', 'Nombre', 'Email', 'Teléfono', 'Cédula', 'Rol', 'Estado', 'Suspendido Hasta', 'Último acceso', 'Creado', 'Especialidades'];
 
         foreach ($users as $u) {
             $rol = optional($u->roles->first())->name;
@@ -600,7 +693,7 @@ class AdminController extends Controller
                 $u->telefono,
                 $u->dni,
                 $rol,
-                $u->status ? 'active' : 'inactive',
+                $u->status ?: User::STATUS_ACTIVE,
                 optional($u->suspended_until)->format('Y-m-d H:i'),
                 optional($u->last_login_at)->format('Y-m-d H:i'),
                 optional($u->created_at)->format('Y-m-d H:i'),
@@ -608,10 +701,10 @@ class AdminController extends Controller
             ];
         }
 
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->fromArray($sheetData, null, 'A1', true);
-        foreach (range('A','L') as $col) {
+        foreach (range('A', 'L') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
         $sheet->setTitle('Usuarios');
@@ -619,7 +712,7 @@ class AdminController extends Controller
         $writer = new Xlsx($spreadsheet);
         $filename = 'usuarios'.($role ? '-'.$role : '').'_'.now()->format('Ymd_His').'.xlsx';
 
-        return response()->streamDownload(function() use ($writer) {
+        return response()->streamDownload(function () use ($writer) {
             $writer->save('php://output');
         }, $filename, [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -628,35 +721,51 @@ class AdminController extends Controller
 
     public function usuariosExportPdf(Request $request)
     {
-        $buscar = trim((string)$request->get('buscar',''));
-        $role   = $request->string('role')->lower()->value();
+        $buscar = trim((string) $request->get('buscar', ''));
+        $role = $request->string('role')->lower()->value();
         if (in_array($role, ['administrador', 'superadmin'], true)) {
             return back()->withErrors(['No puedes exportar cuentas Administrador o Superadmin.']);
         }
 
-        $users = User::with(['roles','especialidades'])
-            ->orderBy('id','desc')
+        $users = User::with(['roles', 'especialidades'])
+            ->orderBy('id', 'desc')
             ->search($buscar)
             ->role($role)
             ->whereDoesntHave('roles', fn ($q) => $q->whereIn('name', ['administrador', 'superadmin']))
             ->get();
 
-        $html = view('admin.users.usuarios-pdf', compact('users','role'))->render();
+        $html = view('admin.users.usuarios-pdf', [
+            'users' => $users,
+            'role' => $role,
+            'pdfCss' => $this->loadPdfCss('admin/usuarios-pdf.css'),
+            'statusLabels' => [
+                User::STATUS_ACTIVE => 'Activo',
+                User::STATUS_INACTIVE => 'Inactivo',
+                User::STATUS_BLOCKED => 'Bloqueado',
+            ],
+        ])->render();
 
-        $options = new Options();
+        $options = new Options;
         $options->set('isRemoteEnabled', true);
         $options->set('defaultFont', 'DejaVu Sans');
 
         $dompdf = new Dompdf($options);
         $dompdf->loadHtml($html, 'UTF-8');
-        $dompdf->setPaper('A4','portrait');
+        $dompdf->setPaper('A4', 'portrait');
         $dompdf->render();
 
         $filename = 'usuarios'.($role ? '-'.$role : '').'_'.now()->format('Ymd_His').'.pdf';
 
         return response($dompdf->output(), 200, [
-            'Content-Type'        => 'application/pdf',
+            'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'attachment; filename="'.$filename.'"',
         ]);
+    }
+
+    private function loadPdfCss(string $relativePath): string
+    {
+        $path = resource_path('css/'.$relativePath);
+
+        return is_file($path) ? (file_get_contents($path) ?: '') : '';
     }
 }

@@ -1,20 +1,10 @@
-﻿@extends('layouts.admin')
-@section('title','Personalizacion')
-@section('header-title','Personalizacion')
-@section('header-subtitle','Contacto (sitio pÃºblico)')
+@extends('layouts.admin')
+@section('title','Personalización')
+@section('header-title','Personalización')
+@section('header-subtitle','Contacto (sitio público)')
 
 @section('main')
 <div class="space-y-6">
-  <section class="card p-6">
-    <div class="flex flex-wrap items-center justify-between gap-4">
-      <div>
-        <p class="text-xs uppercase tracking-widest text-slate-500">Personalizacion</p>
-        <h1 class="mt-2 text-2xl font-semibold text-slate-900">Editar secciÃ³n de contacto</h1>
-        <p class="text-slate-600">Configura todos los textos visibles y el mapa del formulario pÃºblico.</p>
-      </div>
-    </div>
-  </section>
-
   @include('shared.personalizacion-tabs', ['scope' => 'admin'])
 
   @if (session('success'))

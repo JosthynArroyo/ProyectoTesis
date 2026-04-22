@@ -1,5 +1,7 @@
 <?php
+
 namespace Tests\Unit;
+
 use App\Jobs\EnviarConfirmacionCitaJob;
 use App\Mail\CambioEstadoCitaMail;
 use App\Models\Cita;
@@ -8,6 +10,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
+
 class EnviarConfirmacionCitaJobUnitTest extends TestCase
 {
     use RefreshDatabase;

@@ -1,4 +1,5 @@
 *.log
+*.py[cod]
 .DS_Store
 .env
 .env.backup
@@ -27,3 +28,6 @@ Thumbs.db
 venv/
 **/.venv/
 **/venv/
+__pycache__/
+**/__pycache__/
+/tmp/*.sqlite

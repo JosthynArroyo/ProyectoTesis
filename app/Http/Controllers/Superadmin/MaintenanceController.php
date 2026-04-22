@@ -3,12 +3,13 @@
 namespace App\Http\Controllers\Superadmin;
 
 use App\Http\Controllers\Controller;
+use App\Services\MaintenanceAccessService;
 use App\Services\SiteSettingsService;
 use Illuminate\Http\Request;
 
 class MaintenanceController extends Controller
 {
-    public function edit(SiteSettingsService $settings)
+    public function edit(Request $request, SiteSettingsService $settings, MaintenanceAccessService $maintenanceAccess)
     {
         $values = $settings->getMany([
             'maintenance.enabled',
@@ -19,6 +20,7 @@ class MaintenanceController extends Controller
 
         return view('superadmin.maintenance', [
             'settings' => $values,
+            'detectedIps' => $maintenanceAccess->requestIps($request),
         ]);
     }
 

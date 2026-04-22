@@ -6,14 +6,12 @@
 
 @section('main')
 <div class="rx-wrap space-y-6">
-  <div class="card p-6">
-    <h1 class="text-2xl font-semibold text-slate-900">Generar Receta</h1>
-    <div class="mt-2 text-sm text-slate-600">
+  <div class="panel-action-bar panel-action-bar--between">
+    <div class="panel-action-bar__meta">
       <strong>Paciente:</strong> {{ optional($cita->paciente)->name ?? '-' }} |
       <strong>Fecha cita:</strong> {{ \Carbon\Carbon::parse($cita->fecha)->format('d/m/Y') }} {{ \Carbon\Carbon::parse($cita->hora)->format('H:i') }}
     </div>
   </div>
-
 
   <form method="POST" action="{{ route('doctor.recetas.store') }}" class="card p-6 space-y-4">
     @csrf
@@ -21,8 +19,9 @@
 
     <div class="grid gap-4">
       <div>
-        <label for="diagnostico" class="form-label">DiagnÃ³stico / Motivo</label>
-        <textarea id="diagnostico" name="diagnostico" required class="form-textarea">{{ old('diagnostico') }}</textarea>
+        <label for="diagnostico" class="form-label">Diagnóstico</label>
+        <textarea id="diagnostico" name="diagnostico" required class="form-textarea">{{ old('diagnostico', $diagnosticoSugerido ?? '') }}</textarea>
+        <p class="mt-2 text-xs text-slate-500">Tomado de los diagnosticos de la nota clinica firmada.</p>
         @error('diagnostico')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
 

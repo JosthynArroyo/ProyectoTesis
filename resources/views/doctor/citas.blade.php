@@ -15,20 +15,11 @@
          data-plan-url="{{ route('doctor.citas.proxima.planificada',['cita'=>'__ID__']) }}"
          data-slots-url="{{ route('api.doctor.slots',['doctor'=>'__D__','fecha'=>'__F__']) }}"
          data-login-url="{{ url('/') . '?login=1' }}">
-  <header class="card p-6">
-    <div class="page-header">
-      <div class="page-header__info">
-        <p class="text-xs uppercase tracking-widest text-slate-500">Panel médico</p>
-        <h1 class="mt-2 text-2xl font-semibold text-slate-900">Mis citas</h1>
-        <p class="text-slate-600">Revisa y gestiona tus citas con acciones rápidas.</p>
-      </div>
-      <div class="page-header__actions">
-        <button id="btn-refresh" class="btn btn-outline btn-sm" type="button">
-          <i class="ri-refresh-line"></i> Actualizar
-        </button>
-      </div>
-    </div>
-  </header>
+  <div class="panel-action-bar">
+    <button id="btn-refresh" class="btn btn-outline btn-sm" type="button">
+      <i class="ri-refresh-line"></i> Actualizar
+    </button>
+  </div>
 
   <div class="card p-6">
     <div class="flex items-center gap-2">
@@ -40,7 +31,7 @@
       <form class="flex flex-wrap items-end gap-3" method="GET" action="{{ route('doctor.citas') }}">
         <div>
           <label for="estado" class="form-label">Estado</label>
-          <select id="estado" name="estado" class="form-select" required>
+          <select id="estado" name="estado" class="form-select">
             <option value="all" @selected($estadoFiltro==='' || $estadoFiltro==='all')>Todas</option>
             <option value="pendiente" {{ $estadoFiltro === 'pendiente' ? 'selected' : '' }}>Pendientes</option>
             <option value="confirmada" {{ $estadoFiltro === 'confirmada' ? 'selected' : '' }}>Confirmadas</option>
@@ -52,7 +43,7 @@
         </div>
         <div>
           <label for="prioridad" class="form-label">Prioridad</label>
-          <select id="prioridad" name="prioridad" class="form-select" required>
+          <select id="prioridad" name="prioridad" class="form-select">
             <option value="all" @selected($prioridadFiltro==='' || $prioridadFiltro==='all')>Todas</option>
             <option value="ALTA" @selected($prioridadFiltro === 'ALTA')>ALTA</option>
             <option value="MEDIA" @selected($prioridadFiltro === 'MEDIA')>MEDIA</option>
@@ -64,7 +55,9 @@
           <i class="ri-filter-3-line"></i> Filtrar
         </button>
         @if($estadoFiltro !== '' || $prioridadFiltro !== '')
-          <a class="btn btn-ghost btn-sm" href="{{ route('doctor.citas') }}">Limpiar</a>
+          <a class="btn btn-ghost btn-sm" href="{{ route('doctor.citas') }}">
+            <i class="ri-refresh-line"></i> Limpiar
+          </a>
         @endif
       </form>
       <div class="flex flex-wrap gap-2">
@@ -77,7 +70,7 @@
       </div>
     </div>
 
-    <div class="mt-4 table-shell table-responsive-cards">
+    <div class="mt-4 table-shell table-shell--overflow-visible table-responsive-cards">
       <table class="table appointments-table" id="tabla-citas">
         <thead>
           <tr>
@@ -111,6 +104,7 @@
                 default => 'neutral',
               };
               $prioridadUrl = route('doctor.citas.prioridad.edit', $cita).'?redirect_to='.urlencode(request()->fullUrl());
+              $accionesMenuId = 'cita-actions-'.$cita->id;
             @endphp
             <tr class="{{ $estado === 'pendiente' && $priorityLevel === 'ALTA' ? 'priority-row priority-row--alta' : '' }}">
               <td data-label="#" class="col-idx">{{ $loop->iteration }}</td>
@@ -131,121 +125,131 @@
               </td>
 
               <td class="cell-actions" data-label="Acciones">
-                <button type="button" class="action-toggle mobile-only" aria-expanded="false" aria-label="Mostrar acciones de esta cita">
-                  <i class="ri-more-2-line"></i>
-                </button>
-                <div class="actions-scroll table-actions">
-                  <div class="row-actions flex flex-wrap gap-2">
-                    <a href="{{ $prioridadUrl }}" class="btn btn-outline">
-                      <i class="ri-flag-2-line"></i> Ajustar prioridad
-                    </a>
-                  </div>
-
-                  @if($estado === 'pendiente')
-                    <div class="row-actions flex flex-wrap gap-2">
-                      <form action="{{ route('doctor.citas.aceptar',$cita->id) }}" method="POST">@csrf
-                        <button class="btn btn-outline" type="submit">
-                          <i class="ri-check-line"></i> Aceptar
-                        </button>
-                      </form>
-                      <form action="{{ route('doctor.citas.rechazar',$cita->id) }}" method="POST" onsubmit="return confirm('Rechazar cita');">@csrf
-                        <button class="btn btn-outline" type="submit">
-                          <i class="ri-close-line"></i> Rechazar
-                        </button>
-                      </form>
-                      <a href="{{ route('paciente.editar-cita',$cita->id) }}" class="btn btn-primary">
-                        <i class="ri-calendar-line"></i> Reagendar
+                <div class="table-actions">
+                  <div class="relative">
+                    <button
+                      type="button"
+                      class="btn btn-outline btn-sm"
+                      data-kebab="{{ $accionesMenuId }}"
+                      aria-label="Más acciones para la cita {{ $cita->id }}"
+                    >
+                      <i class="ri-more-2-fill"></i>
+                    </button>
+                    <div id="{{ $accionesMenuId }}" class="kebab-menu" role="menu">
+                      <a class="btn btn-ghost btn-sm justify-start" href="{{ $prioridadUrl }}" role="menuitem">
+                        <i class="ri-flag-2-line"></i> Ajustar prioridad
                       </a>
-                    </div>
-                  @endif
 
-                  @if($estado === 'confirmada')
-                    <div class="row-actions">
-                      <div class="flex flex-wrap gap-2">
-                        <a href="{{ route('doctor.citas.soap',$cita->id) }}" class="btn btn-outline">
-                          <i class="ri-stethoscope-line"></i> Nota clínica (SOAP)
+                      @if($estado === 'pendiente')
+                        <form action="{{ route('doctor.citas.aceptar',$cita->id) }}" method="POST" role="none">
+                          @csrf
+                          <button class="btn btn-ghost btn-sm justify-start" type="submit" role="menuitem">
+                            <i class="ri-check-line"></i> Aceptar cita
+                          </button>
+                        </form>
+                        <form action="{{ route('doctor.citas.rechazar',$cita->id) }}" method="POST" onsubmit="return confirm('Rechazar cita');" role="none">
+                          @csrf
+                          <button class="btn btn-ghost btn-sm justify-start" type="submit" role="menuitem">
+                            <i class="ri-close-line"></i> Rechazar cita
+                          </button>
+                        </form>
+                        <a class="btn btn-ghost btn-sm justify-start" href="{{ route('paciente.editar-cita',$cita->id) }}" role="menuitem">
+                          <i class="ri-calendar-line"></i> Reagendar
                         </a>
-                        <a href="{{ route('doctor.pacientes.historial', $cita->paciente_id) }}" class="btn btn-outline">
-                          <i class="ri-file-list-2-line"></i> Historial paciente
+                      @endif
+
+                      @if($estado === 'confirmada')
+                        <a class="btn btn-ghost btn-sm justify-start" href="{{ route('doctor.citas.soap',$cita->id) }}" role="menuitem">
+                          <i class="ri-stethoscope-line"></i> Registrar nota clinica
+                        </a>
+                        <a class="btn btn-ghost btn-sm justify-start" href="{{ route('doctor.pacientes.historial', $cita->paciente_id) }}" role="menuitem">
+                          <i class="ri-file-list-2-line"></i> Ver expediente del paciente
                         </a>
                         @if($soapEstado === 'signed')
-                          <form action="{{ route('doctor.citas.realizar',$cita->id) }}" method="POST">@csrf
-                            <button class="btn btn-primary" type="submit">
+                          <form action="{{ route('doctor.citas.realizar',$cita->id) }}" method="POST" role="none">
+                            @csrf
+                            <button class="btn btn-ghost btn-sm justify-start" type="submit" role="menuitem">
                               <i class="ri-checkbox-circle-line"></i> Marcar como realizada
                             </button>
                           </form>
                         @else
-                          <span class="text-xs text-slate-500 self-center">
-                            <i class="ri-alert-line"></i> SOAP pendiente de firma
+                          <span class="kebab-menu__hint">
+                            <i class="ri-alert-line"></i> Nota clinica pendiente de firma
                           </span>
                         @endif
-                      </div>
-                    </div>
-                  @endif
+                      @endif
 
-                  @if($estado === 'realizada')
-                    @php
-                      $px = $cita->proxima_cita ?? null;
-                      $hayProxima = $px
-                                    && ($px->activo ?? false)
-                                    && !in_array($px->estado, ['cancelada', 'realizada', 'no_se_presento'], true)
-                                    && \Carbon\Carbon::parse($px->fecha)->gte(\Carbon\Carbon::now('America/Guayaquil')->startOfDay());
-                    @endphp
+                      @if($estado === 'realizada')
+                        @php
+                          $px = $cita->proxima_cita ?? null;
+                          $hayProxima = $px
+                                        && ($px->activo ?? false)
+                                        && !in_array($px->estado, ['cancelada', 'realizada', 'no_se_presento'], true)
+                                        && \Carbon\Carbon::parse($px->fecha)->gte(\Carbon\Carbon::now('America/Guayaquil')->startOfDay());
+                        @endphp
 
-                    <div class="stack space-y-2">
-                      <div class="row-actions">
-                        <a href="{{ route('doctor.citas.soap',$cita->id) }}" class="btn btn-outline">
-                          <i class="ri-stethoscope-line"></i> Ver nota clínica
+                        <a class="btn btn-ghost btn-sm justify-start" href="{{ route('doctor.citas.soap',$cita->id) }}" role="menuitem">
+                          <i class="ri-stethoscope-line"></i> Ver nota clinica
                         </a>
-                        <a href="{{ route('doctor.pacientes.historial', $cita->paciente_id) }}" class="btn btn-outline">
-                          <i class="ri-file-list-2-line"></i> Historial paciente
+                        <a class="btn btn-ghost btn-sm justify-start" href="{{ route('doctor.pacientes.historial', $cita->paciente_id) }}" role="menuitem">
+                          <i class="ri-file-list-2-line"></i> Ver expediente del paciente
                         </a>
-                      </div>
-                      @if($hayProxima)
-                        <div class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2 text-sm text-slate-600">
-                          <i class="ri-calendar-event-line"></i>
-                          <span>
-                            Próxima cita: {{ \Carbon\Carbon::parse($px->fecha)->format('d/m/Y') }}
+
+                        @if($hayProxima)
+                          <span class="kebab-menu__hint">
+                            <i class="ri-calendar-event-line"></i>
+                            Proxima cita: {{ \Carbon\Carbon::parse($px->fecha)->format('d/m/Y') }}
                             {{ \Carbon\Carbon::parse($px->hora)->format('H:i') }}
                             ({{ ucfirst($px->estado) }})
                           </span>
-                        </div>
-                      @else
-                        <div class="row-actions">
-                          <button type="button"
-                                  class="btn btn-outline"
-                                  data-accion="planificador"
-                                  data-cita="{{ $cita->id }}"
-                                  data-doctor="{{ $cita->doctor_id }}">
-                            <i class="ri-calendar-check-line"></i> Agendar próxima cita
+                        @else
+                          <button
+                            type="button"
+                            class="btn btn-ghost btn-sm justify-start"
+                            data-accion="planificador"
+                            data-cita="{{ $cita->id }}"
+                            data-doctor="{{ $cita->doctor_id }}"
+                            role="menuitem"
+                          >
+                            <i class="ri-calendar-check-line"></i> Agendar proxima cita
                           </button>
-                        </div>
-                      @endif
+                        @endif
 
-                      <div class="row-actions">
                         @if($cita->receta)
                           @if($cita->receta->can_edit)
-                            <a href="{{ route('doctor.recetas.edit',$cita->id) }}" class="btn btn-outline">
+                            <a class="btn btn-ghost btn-sm justify-start" href="{{ route('doctor.recetas.edit',$cita->id) }}" role="menuitem">
                               <i class="ri-edit-line"></i> Editar receta
                             </a>
                           @else
-                            <span class="text-xs text-slate-500"><i class="ri-lock-line"></i> Edición expirada</span>
+                            <span class="kebab-menu__hint">
+                              <i class="ri-lock-line"></i> Edicion de receta expirada
+                            </span>
                           @endif
                         @else
-                          <a href="{{ route('doctor.recetas.create',$cita->id) }}" class="btn btn-outline">
+                          <a class="btn btn-ghost btn-sm justify-start" href="{{ route('doctor.recetas.create',$cita->id) }}" role="menuitem">
                             <i class="ri-medicine-bottle-line"></i> Generar receta
                           </a>
                         @endif
-                      </div>
 
-                      <div class="row-actions">
-                        <a href="{{ route('doctor.laboratorio.create', ['paciente_id' => $cita->paciente_id]) }}" class="btn btn-outline">
+                        @if($cita->certificadoMedico)
+                          <a class="btn btn-ghost btn-sm justify-start" href="{{ route('doctor.certificados.show', $cita->certificadoMedico) }}" role="menuitem">
+                            <i class="ri-file-shield-2-line"></i> Ver certificado medico
+                          </a>
+                          <a class="btn btn-ghost btn-sm justify-start" href="{{ route('doctor.certificados.download', $cita->certificadoMedico) }}" role="menuitem">
+                            <i class="ri-download-2-line"></i> Descargar certificado
+                          </a>
+                        @else
+                          <a class="btn btn-ghost btn-sm justify-start" href="{{ route('doctor.certificados.create', $cita) }}" role="menuitem">
+                            <i class="ri-file-shield-2-line"></i> Emitir certificado medico
+                          </a>
+                        @endif
+
+                        <a class="btn btn-ghost btn-sm justify-start" href="{{ route('doctor.laboratorio.create', ['paciente_id' => $cita->paciente_id]) }}" role="menuitem">
                           <i class="ri-flask-line"></i> Orden laboratorio
                         </a>
-                      </div>
+                      @endif
                     </div>
-                  @endif
-
+                  </div>
                 </div>
               </td>
             </tr>
@@ -253,6 +257,12 @@
         </tbody>
       </table>
     </div>
+
+    @if(method_exists($citas, 'hasPages') && $citas->hasPages())
+      <div class="mt-4">
+        {{ $citas->links() }}
+      </div>
+    @endif
   </div>
 </section>
 

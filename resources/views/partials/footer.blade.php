@@ -2,7 +2,7 @@
   $footerText = $siteSettings->get('branding.footer_text', 'Clínica Don Bosco (c) {year} - Todos los derechos reservados.');
   $footerText = str_replace('{year}', date('Y'), $footerText);
   $contactPhone = $siteSettings->get('contact.phone', '0998742410');
-  $contactAddress = $siteSettings->get('contact.address', 'Quito, Av. Colon y 6 de Diciembre');
+  $contactAddress = $siteSettings->get('contact.address', 'Quito, Av. Colón y 6 de Diciembre');
 @endphp
 
 <footer id="footer" class="mt-auto border-t border-slate-200 bg-white/90 py-8">
@@ -32,10 +32,20 @@
     <div class="space-y-2">
       <p class="text-sm font-semibold text-slate-900">Legales</p>
       <div class="grid gap-1 text-sm text-slate-500">
-        @if(\Illuminate\Support\Facades\Route::has('contacto.form'))
-          <a class="hover:text-slate-800" href="{{ route('contacto.form') }}#politica-privacidad">Política de privacidad</a>
-          <a class="hover:text-slate-800" href="{{ route('contacto.form') }}#terminos">Términos de servicio</a>
-        @endif
+        <button type="button"
+                class="cursor-pointer text-left hover:text-slate-800"
+                data-legal-open="privacy-policy-modal"
+                aria-controls="privacy-policy-modal"
+                aria-haspopup="dialog">
+          Políticas de privacidad
+        </button>
+        <button type="button"
+                class="cursor-pointer text-left hover:text-slate-800"
+                data-legal-open="terms-service-modal"
+                aria-controls="terms-service-modal"
+                aria-haspopup="dialog">
+          Términos de servicio
+        </button>
       </div>
     </div>
 

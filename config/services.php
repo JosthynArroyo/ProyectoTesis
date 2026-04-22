@@ -34,13 +34,13 @@ return [
     'whatsapp' => [
         'enabled' => env('WHATSAPP_ENABLED', true),
         'default_country' => env('WHATSAPP_DEFAULT_COUNTRY', 'EC'),
-        'reminder_hours' => env('WHATSAPP_REMINDER_HOURS', 6),
+        'reminder_previous_day_hour' => env('WHATSAPP_REMINDER_PREVIOUS_DAY_HOUR', 12),
         'reminder_window_minutes' => env('WHATSAPP_REMINDER_WINDOW_MINUTES', 10),
     ],
 
     'face' => [
         // Umbral ajustado para reducir falsos negativos en cambios moderados (ej. corte de cabello).
-        'threshold'    => env('FACE_MATCH_THRESHOLD', 0.60),
+        'threshold' => env('FACE_MATCH_THRESHOLD', 0.60),
         'max_failures' => env('FACE_MAX_FAILURES', 5),
     ],
 

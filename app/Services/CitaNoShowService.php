@@ -15,7 +15,9 @@ class CitaNoShowService
         $fecha = $threshold->toDateString();
         $hora = $threshold->format('H:i:s');
 
-        $citas = Cita::query()
+        $citas = collect();
+
+        Cita::query()
             ->whereIn('estado', [Cita::ESTADO_PENDIENTE, Cita::ESTADO_CONFIRMADA])
             ->where('activo', true)
             ->where(function ($q) use ($fecha, $hora) {
@@ -25,32 +27,37 @@ class CitaNoShowService
                             ->whereTime('hora', '<=', $hora);
                     });
             })
-            ->get();
+            ->select(['id', 'estado', 'activo', 'fecha', 'hora'])
+            ->orderBy('id')
+            ->chunkById(100, function (Collection $vencidas) use ($citas): void {
+                foreach ($vencidas as $cita) {
+                    $cita->estado = Cita::ESTADO_NO_SE_PRESENTO;
+                    $cita->activo = false;
+                    $cita->save();
+                    app(CitaComprobanteService::class)->sincronizarComprobante($cita);
 
-        foreach ($citas as $cita) {
-            $cita->estado = Cita::ESTADO_NO_SE_PRESENTO;
-            $cita->activo = false;
-            $cita->save();
-
-            NotificarCambioEstadoCitaJob::dispatch($cita, 'no_se_presento', 'sistema');
-        }
+                    NotificarCambioEstadoCitaJob::dispatch($cita, 'no_se_presento', 'sistema');
+                    $citas->push($cita);
+                }
+            });
 
         return $citas;
     }
 
     public function marcarSiVencio(Cita $cita, string $tz = 'America/Guayaquil', int $duracionMin = 30): bool
     {
-        if (!in_array($cita->estado, [Cita::ESTADO_PENDIENTE, Cita::ESTADO_CONFIRMADA], true)) {
+        if (! in_array($cita->estado, [Cita::ESTADO_PENDIENTE, Cita::ESTADO_CONFIRMADA], true)) {
             return false;
         }
 
-        if (!$cita->estaVencida($tz, $duracionMin)) {
+        if (! $cita->estaVencida($tz, $duracionMin)) {
             return false;
         }
 
         $cita->estado = Cita::ESTADO_NO_SE_PRESENTO;
         $cita->activo = false;
         $cita->save();
+        app(CitaComprobanteService::class)->sincronizarComprobante($cita);
 
         NotificarCambioEstadoCitaJob::dispatch($cita, 'no_se_presento', 'sistema');
 

@@ -3,20 +3,20 @@
 namespace App\Http\Controllers\Paciente;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\Cita;
-use App\Models\Pago;
 use App\Models\LaboratorioOrden;
 use App\Models\LabOrder;
+use App\Models\Pago;
+use App\Services\CitaNoShowService;
+use App\Services\ProfileAvatarService;
+use App\Services\PagoService;
+use App\Support\DateField;
+use App\Support\ValidationRules;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
-use App\Services\CitaNoShowService;
-use App\Services\PagoService;
-use App\Services\ImageOptimizer;
-use App\Support\ValidationRules;
-
 
 class AdminController extends Controller
 {
@@ -25,70 +25,108 @@ class AdminController extends Controller
         app(CitaNoShowService::class)->marcarVencidas();
         $user = Auth::user();
 
-        $citas = Cita::where('paciente_id', $user->id)
+        $citasPorEstado = Cita::query()
+            ->where('paciente_id', $user->id)
+            ->selectRaw('estado, COUNT(*) as total')
+            ->groupBy('estado')
+            ->pluck('total', 'estado');
+
+        $totalCitas = (int) $citasPorEstado->sum();
+        $totalCitasPendientes = (int) ($citasPorEstado[Cita::ESTADO_PENDIENTE] ?? 0);
+        $totalCitasRealizadas = (int) ($citasPorEstado[Cita::ESTADO_REALIZADA] ?? 0);
+        $totalCitasCanceladas = (int) ($citasPorEstado[Cita::ESTADO_CANCELADA] ?? 0);
+
+        $citas = Cita::query()
+            ->with(['doctor:id,name', 'especialidad:id,nombre'])
+            ->where('paciente_id', $user->id)
             ->orderBy('fecha', 'asc')
-            ->get();
+            ->orderBy('hora', 'asc')
+            ->limit(4)
+            ->get(['id', 'doctor_id', 'especialidad_id', 'fecha', 'hora', 'estado']);
 
-        $totalCitas = $citas->count();
-        $totalCitasPendientes = $citas->where('estado', 'pendiente')->count();
-        $totalCitasRealizadas = $citas->where('estado', 'realizada')->count();
-        $totalCitasCanceladas = $citas->where('estado', 'cancelada')->count();
-
-        $pagosBase = Pago::query()->where('paciente_id', $user->id);
-        $totalPagos = (clone $pagosBase)->count();
-        $pagosPendientes = (clone $pagosBase)
-            ->whereIn('estado', [Pago::ESTADO_PENDIENTE, Pago::ESTADO_EN_VERIFICACION])
-            ->count();
-        $pagosPagados = (clone $pagosBase)
-            ->where('estado', Pago::ESTADO_PAGADO)
-            ->count();
+        $pagosPorEstado = Pago::query()
+            ->where('paciente_id', $user->id)
+            ->selectRaw('estado, COUNT(*) as total')
+            ->groupBy('estado')
+            ->pluck('total', 'estado');
+        $totalPagos = (int) $pagosPorEstado->sum();
+        $pagosPendientes = (int) (($pagosPorEstado[Pago::ESTADO_PENDIENTE] ?? 0) + ($pagosPorEstado[Pago::ESTADO_EN_VERIFICACION] ?? 0));
+        $pagosPagados = (int) ($pagosPorEstado[Pago::ESTADO_PAGADO] ?? 0);
         $bloqueoPagosPendientes = app(PagoService::class)->pacienteTieneBloqueo($user->id);
 
-        $citasAgendadas2h = $citas->where('created_at', '>=', now()->subHours(2))->count();
-        $citasCompletadas2h = $citas->where('estado', 'realizada')->where('updated_at', '>=', now()->subHours(2))->count();
-        $citasCanceladas2h = $citas->where('estado', 'cancelada')->where('updated_at', '>=', now()->subHours(2))->count();
+        $desde2h = now()->subHours(2);
+        $citasAgendadas2h = Cita::query()
+            ->where('paciente_id', $user->id)
+            ->where('created_at', '>=', $desde2h)
+            ->count();
+        $citasCompletadas2h = Cita::query()
+            ->where('paciente_id', $user->id)
+            ->where('estado', Cita::ESTADO_REALIZADA)
+            ->where('updated_at', '>=', $desde2h)
+            ->count();
+        $citasCanceladas2h = Cita::query()
+            ->where('paciente_id', $user->id)
+            ->where('estado', Cita::ESTADO_CANCELADA)
+            ->where('updated_at', '>=', $desde2h)
+            ->count();
 
-        $labResultados = LaboratorioOrden::with(['cita.especialidad'])
+        $labResultados = LaboratorioOrden::with(['cita:id,paciente_id,fecha,hora'])
             ->whereHas('cita', function ($q) use ($user) {
                 $q->where('paciente_id', $user->id);
             })
             ->where('estado', LaboratorioOrden::ESTADO_RESULTADO_DISPONIBLE)
             ->orderByDesc('resultado_publicado_at')
             ->limit(4)
-            ->get();
+            ->get(['id', 'cita_id', 'tipo_examen', 'estado', 'resultado_path', 'resultado_publicado_at']);
 
-        $labOrdenes = LaboratorioOrden::with(['cita'])
+        $labOrdenPacienteBase = fn () => LaboratorioOrden::query()
             ->whereHas('cita', function ($q) use ($user) {
                 $q->where('paciente_id', $user->id);
-            })
-            ->orderByDesc('id')
-            ->get();
+            });
 
-        $labOrdenProgramada = $labOrdenes
-            ->filter(fn($orden) => in_array($orden->estado, [
+        $labOrdenProgramada = $labOrdenPacienteBase()
+            ->select('laboratorio_ordenes.*')
+            ->join('citas_medicas', 'laboratorio_ordenes.cita_id', '=', 'citas_medicas.id')
+            ->with(['cita:id,paciente_id,fecha,hora'])
+            ->whereIn('laboratorio_ordenes.estado', [
                 LaboratorioOrden::ESTADO_ORDEN_CREADA,
                 LaboratorioOrden::ESTADO_CITA_PROGRAMADA,
-            ], true))
-            ->filter(fn($orden) => $orden->cita && $orden->cita->fecha)
-            ->sortBy(function ($orden) {
-                $hora = $orden->cita->hora ?? '00:00';
-                return Carbon::parse($orden->cita->fecha->format('Y-m-d').' '.$hora);
-            })
+            ])
+            ->whereNotNull('citas_medicas.fecha')
+            ->orderBy('citas_medicas.fecha')
+            ->orderBy('citas_medicas.hora')
             ->first();
 
-        $labOrdenEnCurso = $labOrdenes->firstWhere('estado', LaboratorioOrden::ESTADO_MUESTRA_TOMADA);
+        $labOrdenEnCurso = $labOrdenPacienteBase()
+            ->with(['cita:id,paciente_id,fecha,hora'])
+            ->where('estado', LaboratorioOrden::ESTADO_MUESTRA_TOMADA)
+            ->orderByDesc('id')
+            ->first();
 
-        $labResultadoDestacado = $labOrdenes
+        $labResultadoDestacado = $labOrdenPacienteBase()
+            ->with(['cita:id,paciente_id,fecha,hora'])
             ->where('estado', LaboratorioOrden::ESTADO_RESULTADO_DISPONIBLE)
-            ->sortByDesc(function ($orden) {
-                return $orden->resultado_publicado_at ?? $orden->updated_at ?? $orden->id;
-            })
+            ->orderByDesc('resultado_publicado_at')
+            ->orderByDesc('updated_at')
+            ->orderByDesc('id')
+            ->first();
+
+        $labOrdenReciente = $labOrdenPacienteBase()
+            ->with(['cita:id,paciente_id,fecha,hora'])
+            ->orderByDesc('id')
             ->first();
 
         $labOrdenPrincipal = $labOrdenProgramada
             ?? $labOrdenEnCurso
             ?? $labResultadoDestacado
-            ?? $labOrdenes->first();
+            ?? $labOrdenReciente;
+
+        $labOrdenes = collect([
+            $labOrdenProgramada,
+            $labOrdenEnCurso,
+            $labResultadoDestacado,
+            $labOrdenReciente,
+        ])->filter()->unique('id')->values();
 
         $labVentanaAtencion = null;
         if ($labOrdenProgramada && $labOrdenProgramada->cita && $labOrdenProgramada->cita->hora) {
@@ -119,11 +157,14 @@ class AdminController extends Controller
             $labEsperaEstimada = $esperaQuery->count();
         }
 
-        $labOrders = LabOrder::with(['items.test'])
+        $labOrders = LabOrder::with([
+            'items:id,lab_order_id,lab_test_id',
+            'items.test:id,nombre',
+        ])
             ->where('patient_id', $user->id)
             ->orderByDesc('created_at')
             ->limit(3)
-            ->get();
+            ->get(['id', 'patient_id', 'source', 'status', 'created_at']);
 
         return view('paciente.dashboard', compact(
             'user',
@@ -153,24 +194,26 @@ class AdminController extends Controller
     public function editarPerfil()
     {
         $user = Auth::user();
+
         return view('paciente.perfil', compact('user'));
     }
 
-    public function actualizarPerfil(Request $request, ImageOptimizer $imageOptimizer)
+    public function actualizarPerfil(Request $request, ProfileAvatarService $profileAvatars)
     {
         $user = Auth::user();
+        DateField::mergeIntoRequest($request, 'fecha_nacimiento');
 
         $request->validate([
-            'name'              => ['required','string','max:255'],
-            'email'             => ValidationRules::emailUnique('users', $user->id),
-            'telefono'          => ValidationRules::telefono(),
-            'dni'               => ValidationRules::cedulaUnique('users', $user->id),
-            'direccion'         => ['required','string','max:255'],
-            'fecha_nacimiento'  => ['required','date','before:today'],
-            'sexo'              => ['required','in:Masculino,Femenino,Otro'],
-            'avatar'            => ['nullable','image','mimes:jpg,jpeg,png,webp,svg','max:2048'],
-            'current_password'  => ['nullable','string'],
-            'password'          => array_merge(
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ValidationRules::emailUnique('users', $user->id),
+            'telefono' => ValidationRules::telefono(),
+            'dni' => ValidationRules::cedulaUnique('users', $user->id),
+            'direccion' => ['required', 'string', 'max:255'],
+            'fecha_nacimiento' => ValidationRules::birthDate(),
+            'sexo' => ['required', 'in:Masculino,Femenino,Otro'],
+            'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,svg', 'max:2048'],
+            'current_password' => ['nullable', 'string'],
+            'password' => array_merge(
                 ValidationRules::passwordOptional(),
                 ['different:current_password']
             ),
@@ -179,25 +222,22 @@ class AdminController extends Controller
         ]);
 
         if ($request->hasFile('avatar')) {
-            if ($user->avatar) {
-                $imageOptimizer->deleteByStoredPath($user->avatar, 'patients');
-            }
-            $user->avatar = $imageOptimizer->optimizeAndStore($request->file('avatar'), 'patients');
+            $user->avatar = $profileAvatars->replace($user, $request->file('avatar'), 'patients');
         }
 
         $user->fill([
-            'name'             => $request->name,
-            'email'            => $request->email,
-            'telefono'         => $request->telefono,
-            'dni'              => $request->dni,
-            'direccion'        => $request->direccion,
+            'name' => $request->name,
+            'email' => $request->email,
+            'telefono' => $request->telefono,
+            'dni' => $request->dni,
+            'direccion' => $request->direccion,
             'fecha_nacimiento' => $request->fecha_nacimiento,
-            'sexo'             => $request->sexo,
+            'sexo' => $request->sexo,
         ]);
 
         $passwordChanged = false;
         if ($request->filled('password')) {
-            if (!$request->filled('current_password') || !Hash::check($request->input('current_password'), $user->password)) {
+            if (! $request->filled('current_password') || ! Hash::check($request->input('current_password'), $user->password)) {
                 return back()->withErrors(['current_password' => 'La contraseña actual no es correcta.'])->withInput();
             }
             $user->password = Hash::make($request->input('password'));
@@ -209,10 +249,10 @@ class AdminController extends Controller
         if ($passwordChanged) {
             $user->setRememberToken(Str::random(60));
             $user->save();
-            \Auth::logoutOtherDevices($request->input('password'));
+            Auth::logoutOtherDevices($request->input('password'));
             $request->session()->invalidate();
             $request->session()->regenerateToken();
-            \Auth::login($user);
+            Auth::login($user);
             $request->session()->regenerate();
         }
 

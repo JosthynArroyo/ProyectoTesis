@@ -1,6 +1,7 @@
-document.addEventListener('DOMContentLoaded', () => {
+function initWelcomeLoginModal() {
   const modal = document.getElementById('loginModal');
-  if (!modal) return;
+  if (!modal || modal.dataset.loginModalReady === '1') return;
+  modal.dataset.loginModalReady = '1';
 
   const closeBtn = document.getElementById('closeLoginModal');
   const backdrop = modal.querySelector('.modal-backdrop');
@@ -67,4 +68,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Soporte para abrir desde otros scripts.
   window.addEventListener('open-login-modal', openModal);
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initWelcomeLoginModal, { once: true });
+} else {
+  initWelcomeLoginModal();
+}

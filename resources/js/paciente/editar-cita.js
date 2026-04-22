@@ -1,110 +1,145 @@
-﻿(function(){
+(function () {
   const form = document.querySelector('form[data-slots-url]');
   if (!form) return;
 
   const fechaInp = document.getElementById('fecha');
-  const horaSel  = document.getElementById('hora');
+  const horaSel = document.getElementById('hora');
   const horaHelp = document.getElementById('horaHelp');
   const slotsTpl = form.dataset.slotsUrl || '';
-  const oldHora  = form.dataset.oldHora || '';
+  const oldHora = form.dataset.oldHora || '';
+  let slotsRequestId = 0;
+  let slotsAbortController = null;
 
-  function hhmmToMinutes(value){
+  function hhmmToMinutes(value) {
     if (value == null) return null;
     if (typeof value === 'number') return Number.isFinite(value) ? value : null;
-    const str = String(value).trim();
-    if (/^\d{3,4}$/.test(str)) {
-      const h = Number(str.slice(0, -2));
-      const m = Number(str.slice(-2));
-      if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
-      return h * 60 + m;
+
+    const normalized = String(value).trim();
+    if (/^\d{3,4}$/.test(normalized)) {
+      const hours = Number(normalized.slice(0, -2));
+      const mins = Number(normalized.slice(-2));
+      if (!Number.isFinite(hours) || !Number.isFinite(mins)) return null;
+      return (hours * 60) + mins;
     }
-    const parts = str.split(':');
+
+    const parts = normalized.split(':');
     if (parts.length !== 2) return null;
-    const h = Number(parts[0]);
-    const m = Number(parts[1]);
-    if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
-    return h * 60 + m;
+
+    const hours = Number(parts[0]);
+    const mins = Number(parts[1]);
+    if (!Number.isFinite(hours) || !Number.isFinite(mins)) return null;
+    return (hours * 60) + mins;
   }
 
-  function minutesToHHMM(mins){
-    const m = Number(mins);
-    if (!Number.isFinite(m)) return null;
-    const h = Math.floor(m/60);
-    const mm = String(m%60).padStart(2,'0');
-    return String(h).padStart(2,'0') + ':' + mm;
+  function minutesToHHMM(minutes) {
+    const total = Number(minutes);
+    if (!Number.isFinite(total)) return null;
+
+    const hours = Math.floor(total / 60);
+    const mins = String(total % 60).padStart(2, '0');
+    return `${String(hours).padStart(2, '0')}:${mins}`;
   }
 
-  function urlFor(dateStr){
+  function urlFor(dateStr) {
     if (!slotsTpl || !dateStr) return '';
     return slotsTpl.replace('__FECHA__', encodeURIComponent(dateStr));
   }
 
-  function clearSlots(msg){
+  function clearSlots(message) {
     if (!horaSel) return;
-    horaSel.innerHTML = `<option value="">${msg || 'Seleccione una hora'}</option>`;
+    horaSel.innerHTML = `<option value="">${message || 'Seleccione una hora'}</option>`;
     horaSel.disabled = true;
   }
 
-  async function loadSlots(){
+  function abortPendingSlotsRequest() {
+    if (!slotsAbortController) return;
+    slotsAbortController.abort();
+    slotsAbortController = null;
+  }
+
+  async function loadSlots() {
     const fecha = fechaInp.value;
-    if (!fecha){ clearSlots('Seleccione una fecha'); return; }
-    horaHelp && (horaHelp.textContent = 'Buscando horarios disponibles…');
-    clearSlots('Cargando…');
+    if (!fecha) {
+      abortPendingSlotsRequest();
+      clearSlots('Seleccione una fecha');
+      return;
+    }
 
-    try{
-      const url = urlFor(fecha);
-      const res = await fetch(url, { headers:{'Accept':'application/json'} });
-      if (!res.ok) throw new Error('HTTP '+res.status);
-      const data = await res.json();
-      const raw = Array.isArray(data.slots) ? data.slots : Array.isArray(data) ? data : [];
-      const libres = raw
-        .map((s) => {
-          if (s == null) return null;
-          if (typeof s === 'string') return { hora:s, estado:'libre' };
-          if (typeof s === 'object') return { hora: s.hora || s.time || s.value, estado: s.estado || 'libre' };
-          return null;
-        })
-        .filter(Boolean)
-        .filter((s) => (s.estado || '').toLowerCase() === 'libre');
+    const requestId = ++slotsRequestId;
+    abortPendingSlotsRequest();
+    slotsAbortController = new AbortController();
 
-      const hoy = new Date();
-      const esHoy = fecha === hoy.toISOString().slice(0,10);
-      const minHoy = hoy.getHours()*60 + hoy.getMinutes() + 60; // +1h
+    horaHelp && (horaHelp.textContent = 'Buscando horarios disponibles...');
+    clearSlots('Cargando...');
 
-      const opciones = libres
-        .map((s) => s.hora)
-        .filter(Boolean)
-        .map((h) => {
-          const mins = hhmmToMinutes(h);
-          if (esHoy && mins !== null && mins < minHoy) return null;
-          return (mins !== null ? minutesToHHMM(mins) : h) || String(h);
-        })
-        .filter(Boolean);
+    try {
+      const response = await fetch(urlFor(fecha), {
+        headers: { Accept: 'application/json' },
+        signal: slotsAbortController.signal,
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-      if (opciones.length === 0){
-        clearSlots('No hay horarios disponibles');
-        horaHelp && (horaHelp.textContent = 'No hay horarios con al menos 1h de anticipación.');
+      const data = await response.json();
+      if (requestId !== slotsRequestId) {
         return;
       }
 
-      let opts = '<option value="">Seleccione una hora</option>';
-      opciones.forEach((h) => {
-        const sel = String(oldHora) === String(h) ? ' selected' : '';
-        opts += `<option value="${h}"${sel}>${h}</option>`;
+      const raw = Array.isArray(data.slots) ? data.slots : Array.isArray(data) ? data : [];
+      const available = raw
+        .map((slot) => {
+          if (slot == null) return null;
+          if (typeof slot === 'string') return { hora: slot, estado: 'libre' };
+          if (typeof slot === 'object') return { hora: slot.hora || slot.time || slot.value, estado: slot.estado || 'libre' };
+          return null;
+        })
+        .filter(Boolean)
+        .filter((slot) => String(slot.estado || '').toLowerCase() === 'libre');
+
+      const options = available
+        .map((slot) => slot.hora)
+        .filter(Boolean)
+        .map((hora) => {
+          const minutes = hhmmToMinutes(hora);
+          return (minutes !== null ? minutesToHHMM(minutes) : hora) || String(hora);
+        })
+        .filter(Boolean);
+
+      if (options.length === 0) {
+        clearSlots('No hay horarios disponibles');
+        horaHelp && (horaHelp.textContent = 'No hay horarios disponibles para esta fecha.');
+        return;
+      }
+
+      let html = '<option value="">Seleccione una hora</option>';
+      options.forEach((hora) => {
+        const selected = String(oldHora) === String(hora) ? ' selected' : '';
+        html += `<option value="${hora}"${selected}>${hora}</option>`;
       });
-      horaSel.innerHTML = opts;
+
+      horaSel.innerHTML = html;
       horaSel.disabled = false;
       horaHelp && (horaHelp.textContent = 'Formato 24h. Se muestran solo horarios disponibles.');
-    }catch(err){
+    } catch (error) {
+      if (error?.name === 'AbortError' || requestId !== slotsRequestId) {
+        return;
+      }
+
       clearSlots('Error al cargar horarios');
       horaHelp && (horaHelp.textContent = 'No pudimos cargar los horarios disponibles.');
+    } finally {
+      if (requestId === slotsRequestId) {
+        slotsAbortController = null;
+      }
     }
   }
 
-  fechaInp.addEventListener('change', () => {
+  const handleFechaChange = () => {
     horaSel.value = '';
     loadSlots();
-  });
+  };
+
+  fechaInp.addEventListener('change', handleFechaChange);
+  fechaInp.addEventListener('enhanced-date:change', handleFechaChange);
 
   if (fechaInp.value) loadSlots();
 })();

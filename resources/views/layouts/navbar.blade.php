@@ -6,10 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>@yield('title', $siteSettings->get('branding.name','Clínica Don Bosco'))</title>
   @include('layouts.partials.favicon')
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.2.0/remixicon.min.css">
+  @include('layouts.partials.fonts')
   @php
     $brandName = $siteSettings->get('branding.name','Clínica Don Bosco');
     $brandLogo = $siteSettings->get('branding.logo','img/logo-welcomeBlanco.jpg');
@@ -40,8 +37,8 @@
 
 <header class="fixed inset-x-0 top-0 z-50 border-b border-slate-200/70 bg-white" id="cnav-header">
   <nav class="page-shell" aria-label="Barra de navegación principal">
-    <div class="flex items-center justify-between gap-4 py-4">
-      <a href="{{ url('/') }}" class="flex items-center gap-3" aria-label="Inicio">
+      <div class="flex min-w-0 items-center justify-between gap-3 py-4 sm:gap-4">
+       <a href="{{ url('/') }}" class="flex min-w-0 items-center gap-3" aria-label="Inicio">
         @php
           $logoImage = $imageUrl->variants($headerLogo, entity: 'banner');
         @endphp
@@ -53,13 +50,10 @@
           loading="eager"
           decoding="async"
         >
-        <span class="hidden text-sm font-semibold uppercase tracking-wide text-slate-500 sm:inline">{{ $headerName }}</span>
+        <span class="hidden min-w-0 truncate text-sm font-semibold uppercase tracking-wide text-slate-500 sm:inline">{{ $headerName }}</span>
       </a>
 
-      {{-- ═══ Mobile-optimized menu overlay ═══ --}}
       <div id="cnav-menu" class="cnav__menu fixed inset-0 z-50 hidden flex-col bg-white text-slate-700 lg:static lg:flex lg:flex-row lg:items-center lg:gap-4 lg:bg-transparent lg:p-0">
-
-        {{-- Mobile header bar --}}
         <div class="flex items-center justify-between border-b border-slate-200 px-5 py-4 lg:hidden">
           <span class="text-base font-semibold text-slate-700">Menú</span>
           <button class="flex h-11 w-11 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 active:bg-slate-200" id="cnav-close" aria-label="Cerrar menú">
@@ -67,7 +61,6 @@
           </button>
         </div>
 
-        {{-- Navigation links (large touch targets on mobile) --}}
         <ul class="flex flex-col gap-1 px-4 py-4 text-base font-semibold lg:flex-row lg:items-center lg:gap-4 lg:px-0 lg:py-0 lg:text-sm" role="menubar">
           <li role="none">
             <a role="menuitem" href="{{ url('/') }}" class="flex min-h-[48px] items-center gap-3 rounded-xl px-4 py-3 transition-colors lg:min-h-0 lg:rounded-full lg:px-4 lg:py-2 {{ request()->is('/') ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-50 active:bg-slate-100' }}">
@@ -150,7 +143,8 @@
 
 @guest
 @php($errorsBag = $errors ?? null)
-<div id="loginModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="loginTitle" aria-hidden="true">
+@php($maintenanceEnabled = $siteSettings->getBool('maintenance.enabled', false))
+<div id="loginModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="loginTitle" aria-hidden="true" data-face-tab-disabled="{{ $maintenanceEnabled ? '1' : '0' }}">
   <div class="modal-backdrop" data-close-login></div>
   <div class="modal-dialog" role="document" tabindex="-1">
     <div class="card mx-auto w-full max-w-xl">
@@ -173,17 +167,23 @@
 
         <div class="mt-4 flex gap-2" role="tablist">
           <button type="button" class="btn btn-outline px-4 py-2 text-xs is-active" data-login-tab="password">Correo y contraseña</button>
-          <button type="button" class="btn btn-outline px-4 py-2 text-xs" data-login-tab="face">Reconocimiento facial</button>
+          <button type="button"
+                  class="btn btn-outline px-4 py-2 text-xs {{ $maintenanceEnabled ? 'cursor-not-allowed opacity-60' : '' }}"
+                  data-login-tab="face"
+                  @disabled($maintenanceEnabled)
+                  aria-disabled="{{ $maintenanceEnabled ? 'true' : 'false' }}">
+            Reconocimiento facial
+          </button>
         </div>
 
         <div class="mt-4">
           <div class="login-panel is-active" data-login-panel="password">
-            <form method="POST" action="{{ route('login') }}" id="loginForm" class="space-y-4">
+            <form method="POST" action="{{ route('login') }}" id="loginForm" class="space-y-4" data-remember-login-form>
               @csrf
               <input type="hidden" name="remember" value="0">
               <div>
                 <label class="form-label">Correo</label>
-                <input type="email" name="email" autocomplete="email" required value="{{ old('email') }}" placeholder="correo@ejemplo.com" inputmode="email" class="form-input">
+                <input type="email" name="email" autocomplete="email" required value="{{ old('email') }}" placeholder="correo@ejemplo.com" inputmode="email" class="form-input" data-remember-login-email>
               </div>
               <div>
                 <label class="form-label">Contraseña</label>
@@ -195,7 +195,10 @@
                 </div>
               </div>
               <div class="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500">
-                <label class="inline-flex items-center gap-2"><input type="checkbox" name="remember" value="1" class="h-4 w-4 rounded border-slate-300"> Recuérdame</label>
+                <label class="inline-flex cursor-pointer items-center gap-2">
+                  <input type="checkbox" name="remember" value="1" class="h-4 w-4 rounded border-slate-300" data-remember-login-checkbox @checked(old('remember'))>
+                  Recuérdame
+                </label>
                 @if (R::has('password.request'))
                   <a href="{{ route('password.request') }}" class="text-teal-600 hover:underline">Olvidaste tu contraseña</a>
                 @endif
@@ -208,21 +211,41 @@
             <form id="faceLoginForm"
                   data-endpoint="{{ route('face.login') }}"
                   data-csrf="{{ csrf_token() }}"
-                  data-models-url="{{ asset('models') }}" class="space-y-4">
-              <div class="overflow-hidden rounded-2xl border border-slate-200 bg-slate-900">
-                <video id="faceLoginVideo" autoplay muted playsinline class="h-48 w-full object-cover"></video>
+                  data-models-url="{{ asset('models') }}"
+                  data-face-state="initial"
+                  class="space-y-4">
+              <div class="relative overflow-hidden rounded-lg border border-slate-200 bg-slate-950">
+                <video id="faceLoginVideo" autoplay muted playsinline class="h-56 w-full object-cover"></video>
+                <div class="absolute inset-x-3 bottom-3 rounded-lg bg-slate-950/75 px-3 py-2 text-xs font-semibold text-white shadow-sm backdrop-blur">
+                  <span data-face-overlay>Cámara lista para activar.</span>
+                </div>
               </div>
-              <p class="text-sm text-slate-500">Mira directo a la camara y espera el escaneo.</p>
-              <button type="submit" class="btn btn-primary w-full" id="faceLoginSubmit">Reconocer rostro</button>
-              <p class="text-sm text-slate-500" data-face-status></p>
-              <p class="text-xs text-slate-500">
-                No tienes rostro registrado Entra con tu contraseña y visita
-                <a href="{{ route('paciente.perfil.edit') }}#perfil-face" class="text-teal-600 hover:underline">Registrar reconocimiento facial</a>.
-              </p>
+
+              <div class="rounded-lg border border-slate-200 bg-slate-50 p-4" data-face-status role="status" aria-live="polite">
+                <div class="flex items-start gap-3">
+                  <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-teal-50 text-teal-700" data-face-state-icon>
+                    <i class="ri-scan-2-line text-lg" aria-hidden="true"></i>
+                  </span>
+                  <div class="min-w-0">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Reconocimiento facial</p>
+                    <p class="text-sm font-semibold text-slate-900" data-face-state-title>Listo para escanear</p>
+                  </div>
+                </div>
+                <p class="mt-3 text-sm text-slate-600" data-face-state-message>
+                  Mantén tu rostro dentro del recuadro y presiona el botón para iniciar.
+                </p>
+                <p class="mt-2 text-xs text-slate-500" data-face-state-hint>
+                  Este acceso solo funciona si ya registraste tu rostro desde tu perfil.
+                </p>
+              </div>
+
+              <div class="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+                <button type="submit" class="btn btn-primary w-full" id="faceLoginSubmit">Escanear rostro</button>
+                <button type="button" class="btn btn-outline w-full sm:w-auto" data-face-password-tab>Usar contraseña</button>
+              </div>
             </form>
           </div>
         </div>
-
       </div>
     </div>
   </div>
@@ -232,9 +255,12 @@
 <main class="min-h-screen pt-[4.5rem]">@yield('main')</main>
 
 @guest
-  @include('chatbot.widget')
+  @unless($siteSettings->getBool('maintenance.enabled', false))
+    @include('chatbot.widget')
+  @endunless
 @endguest
 
+@include('partials.legal-modals')
 @stack('scripts')
 </body>
 </html>

@@ -5,18 +5,11 @@
 
 @section('main')
 <div class="space-y-6">
-  <section class="card p-6">
-    <div class="page-header">
-      <div class="page-header__info">
-        <p class="text-xs uppercase tracking-widest text-slate-500">Administración</p>
-        <h1 class="mt-2 text-2xl font-semibold text-slate-900">Gestión de cobros</h1>
-        <p class="text-slate-600">Filtre por estado, fecha, folio o datos del paciente para revisar órdenes de cobro.</p>
-      </div>
-      <div class="page-header__actions">
-        <a href="{{ route('admin.citas.override.create') }}" class="btn btn-outline">Agendar con override</a>
-      </div>
-    </div>
-  </section>
+  <div class="panel-action-bar">
+    <a href="{{ route('admin.citas.override.create') }}" class="btn btn-outline">
+      <i class="ri-shield-check-line"></i> Agendar con excepcion
+    </a>
+  </div>
 
   @if(session('success'))
     <x-ui.alert tone="success">{{ session('success') }}</x-ui.alert>
@@ -26,7 +19,14 @@
   @endif
 
   <section class="card p-6">
-    <form method="GET" action="{{ url()->current() }}" class="grid gap-3 md:grid-cols-5">
+    <div class="page-header">
+      <div class="page-header__info">
+        <h2>Filtros de cobro</h2>
+        <p>Busca por folio, paciente o rango de fechas sin recorrer pasos innecesarios.</p>
+      </div>
+    </div>
+
+    <form method="GET" action="{{ url()->current() }}" class="mt-4 grid gap-3 md:grid-cols-5">
       <div class="md:col-span-2">
         <label class="form-label" for="q">Paciente / cédula / correo / folio</label>
         <input id="q" type="search" name="q" value="{{ $buscar }}" class="form-input" placeholder="Buscar por paciente o folio">
@@ -55,8 +55,12 @@
       </div>
 
       <div class="md:col-span-5 flex items-center gap-2">
-        <button type="submit" class="btn btn-primary btn-sm">Filtrar</button>
-        <a href="{{ route('admin.pagos.index') }}" class="btn btn-ghost btn-sm">Limpiar</a>
+        <button type="submit" class="btn btn-primary btn-sm">
+          <i class="ri-filter-3-line"></i> Filtrar
+        </button>
+        <a href="{{ route('admin.pagos.index') }}" class="btn btn-ghost btn-sm">
+          <i class="ri-refresh-line"></i> Limpiar
+        </a>
       </div>
     </form>
   </section>
@@ -109,7 +113,9 @@
               <td data-label="Folio">
                 <div class="text-xs font-semibold text-slate-900">{{ $pago->folio_unico ?: 'SIN FOLIO' }}</div>
                 @if($pago->token_publico)
-                  <a href="{{ route('pagos.token.show', $pago->token_publico) }}" class="text-xs text-sky-700 hover:underline">Abrir por token</a>
+                  <a href="{{ route('pagos.token.show', $pago->token_publico) }}" class="inline-flex items-center gap-1 text-xs text-sky-700 hover:underline">
+                    <i class="ri-external-link-line"></i> Abrir por token
+                  </a>
                 @endif
               </td>
               <td data-label="Paciente">
@@ -119,14 +125,16 @@
               <td data-label="Cita">
                 #{{ $pago->cita_id }}<br>
                 <span class="text-xs text-slate-500">
-                  {{ optional($pago->cita?->fecha)->format('Y-m-d') }} {{ $pago->cita?->hora ? substr((string)$pago->cita->hora, 0, 5) : '' }}
+                  {{ optional($pago->cita?->fecha)->format('d/m/Y') }} {{ $pago->cita?->hora ? substr((string)$pago->cita->hora, 0, 5) : '' }}
                 </span>
               </td>
-              <td data-label="Monto">{{ number_format((float)$pago->monto, 2) }} {{ $pago->moneda }}</td>
+              <td data-label="Monto">{{ $pago->moneda }} {{ number_format((float)$pago->monto, 2) }}</td>
               <td data-label="Método">{{ $metodo }}</td>
               <td data-label="Estado"><span class="badge {{ $estadoTone }}">{{ $estadoLabel }}</span></td>
               <td data-label="Acciones">
-                <a href="{{ route('admin.pagos.show', $pago) }}" class="btn btn-outline btn-sm">Ver detalle</a>
+                <a href="{{ route('admin.pagos.show', $pago) }}" class="btn btn-outline btn-sm">
+                  <i class="ri-eye-line"></i> Ver detalle
+                </a>
               </td>
             </tr>
           @empty

@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -16,14 +17,43 @@ class UserFactory extends Factory
     public function definition(): array
     {
         return [
-            'name'              => $this->faker->name(),
-            'email'             => $this->faker->unique()->safeEmail(),
+            'name' => $this->faker->name(),
+            'email' => $this->faker->unique()->safeEmail(),
             'email_verified_at' => now(),
-            'password'          => static::$password ??= Hash::make('password'),
-            'remember_token'    => Str::random(10),
-            // NUEVO (opcional en seeds):
-            'precio_consulta'   => null, // o $this->faker->optional()->randomFloat(2, 10, 50)
-            'moneda'            => 'USD',
+            'password' => static::$password ??= Hash::make('password'),
+            'active' => true,
+            'status' => User::STATUS_ACTIVE,
+            'suspended_until' => null,
+            'remember_token' => Str::random(10),
+            'precio_consulta' => null,
+            'moneda' => 'USD',
         ];
+    }
+
+    public function inactive(): static
+    {
+        return $this->state(fn () => [
+            'status' => User::STATUS_INACTIVE,
+            'active' => false,
+            'suspended_until' => null,
+        ]);
+    }
+
+    public function blocked(): static
+    {
+        return $this->state(fn () => [
+            'status' => User::STATUS_BLOCKED,
+            'active' => false,
+            'suspended_until' => null,
+        ]);
+    }
+
+    public function suspended(): static
+    {
+        return $this->state(fn () => [
+            'status' => User::STATUS_ACTIVE,
+            'active' => true,
+            'suspended_until' => now()->addDay(),
+        ]);
     }
 }

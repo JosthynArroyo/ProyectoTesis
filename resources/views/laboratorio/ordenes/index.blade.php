@@ -7,28 +7,24 @@
 @section('main')
 <section class="space-y-6">
   <header class="card p-6">
-    <div class="flex flex-wrap items-center justify-between gap-4">
-      <div>
-        <p class="text-xs uppercase tracking-widest text-slate-500">Panel laboratorio</p>
-        <h1 class="mt-2 text-2xl font-semibold text-slate-900">Citas y resultados</h1>
-        <p class="text-slate-600">Gestiona citas, muestras y resultados del laboratorio.</p>
-      </div>
-      <span class="badge info"><i class="ri-flask-line"></i> Ã“rdenes activas</span>
-    </div>
-    <form class="mt-4 flex flex-wrap items-end gap-3" method="GET" action="{{ route('laboratorio.ordenes.index') }}">
+    <form class="flex flex-wrap items-end gap-3" method="GET" action="{{ route('laboratorio.ordenes.index') }}">
       <div>
         <label class="form-label" for="estado">Filtrar por estado</label>
         <select id="estado" name="estado" class="form-select">
           <option value="all" @selected(($estado ?? 'all') === 'all')>Todos</option>
-          <option value="orden_creada" @selected(($estado ?? '') === 'orden_creada')>Pendiente</option>
-          <option value="cita_programada" @selected(($estado ?? '') === 'cita_programada')>Cita programada</option>
-          <option value="muestra_tomada" @selected(($estado ?? '') === 'muestra_tomada')>Muestra tomada</option>
+          <option value="orden_creada" @selected(($estado ?? '') === 'orden_creada')>Solo legacy pendiente</option>
+          <option value="cita_programada" @selected(($estado ?? '') === 'cita_programada')>Pendiente de toma</option>
+          <option value="muestra_tomada" @selected(($estado ?? '') === 'muestra_tomada')>Muestra tomada / analisis</option>
           <option value="resultado_disponible" @selected(($estado ?? '') === 'resultado_disponible')>Resultado listo</option>
         </select>
       </div>
-      <button class="btn btn-outline btn-sm" type="submit">Aplicar</button>
+      <button class="btn btn-outline btn-sm" type="submit">
+        <i class="ri-filter-3-line"></i> Aplicar
+      </button>
       @if(($estado ?? 'all') !== 'all')
-        <a class="btn btn-ghost btn-sm" href="{{ route('laboratorio.ordenes.index') }}">Limpiar</a>
+        <a class="btn btn-ghost btn-sm" href="{{ route('laboratorio.ordenes.index') }}">
+          <i class="ri-refresh-line"></i> Limpiar
+        </a>
       @endif
     </form>
   </header>
@@ -37,59 +33,60 @@
     <x-ui.alert tone="success">{{ session('success') }}</x-ui.alert>
   @endif
 
+  @if ($errors->any())
+    <x-ui.alert tone="error">{{ $errors->first() }}</x-ui.alert>
+  @endif
+
   <div class="grid gap-6">
     @forelse($ordenes as $orden)
-      @php
-        $estadoOrden = $orden->estado;
-        $badge = match($estadoOrden) {
-          'orden_creada' => 'warning',
-          'cita_programada' => 'info',
-          'muestra_tomada' => 'neutral',
-          'resultado_disponible' => 'success',
-          default => 'neutral',
-        };
-      @endphp
-      <article class="card p-6" id="orden-{{ $orden->id }}">
+      <article class="card p-6" id="{{ $orden->uid }}">
         <div class="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 class="text-lg font-semibold text-slate-900">{{ $orden->tipo_examen }}</h2>
-            <p class="text-sm text-slate-500">Paciente: {{ optional($orden->cita->paciente)->name ?? 'Paciente' }}</p>
+            <div class="flex flex-wrap items-center gap-2">
+              <h2 class="text-lg font-semibold text-slate-900">{{ $orden->title }}</h2>
+              <x-ui.badge :tone="$orden->badge_tone">{{ $orden->status_label }}</x-ui.badge>
+            </div>
+            <p class="mt-1 text-sm text-slate-500">Paciente: {{ $orden->patient_name }}</p>
+            <p class="text-xs uppercase tracking-widest text-slate-400">{{ $orden->source_label }}</p>
           </div>
-          <x-ui.badge :tone="$badge">{{ str_replace('_',' ', $estadoOrden) }}</x-ui.badge>
         </div>
 
         <div class="mt-4 grid gap-3 text-sm text-slate-600 sm:grid-cols-2">
           <div>
             <span class="text-slate-500">Fecha:</span>
-            {{ optional($orden->cita->fecha)->format('Y/m/d') }}
-            {{ $orden->cita->hora ? \Carbon\Carbon::parse($orden->cita->hora)->format('H:i') : '' }}
+            {{ $orden->date_label }}
           </div>
           <div>
             <span class="text-slate-500">Prioridad:</span>
-            {{ ucfirst($orden->prioridad) }}
+            {{ $orden->priority_label }}
           </div>
         </div>
 
-        @if($orden->preparacion)
+        @if($orden->preparation)
           <div class="mt-3 rounded-xl border border-amber-100 bg-amber-50/80 px-3 py-2 text-sm text-amber-800">
-            <strong>PreparaciÃ³n:</strong> {{ $orden->preparacion }}
+            <strong>Preparacion:</strong> {{ $orden->preparation }}
           </div>
         @endif
-        @if($orden->indicaciones)
+        @if($orden->notes)
           <div class="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
-            <strong>Indicaciones:</strong> {{ $orden->indicaciones }}
+            <strong>Indicaciones:</strong> {{ $orden->notes }}
+          </div>
+        @endif
+        @if($orden->result_summary)
+          <div class="mt-3 rounded-xl border border-emerald-100 bg-emerald-50/80 px-3 py-2 text-sm text-emerald-800">
+            <strong>Resumen:</strong> {{ $orden->result_summary }}
           </div>
         @endif
 
         <div class="mt-5 flex flex-wrap gap-3">
-          @if($orden->resultado_path)
-            <a class="btn btn-outline" href="{{ route('laboratorio.ordenes.download', $orden->id) }}">
+          @if($orden->download_url)
+            <a class="btn btn-outline" href="{{ $orden->download_url }}">
               <i class="ri-download-line"></i> Descargar resultado
             </a>
           @endif
 
-          @if($estadoOrden !== 'resultado_disponible')
-            <form method="POST" action="{{ route('laboratorio.ordenes.muestra', $orden->id) }}">
+          @if($orden->can_mark_sample)
+            <form method="POST" action="{{ $orden->mark_sample_url }}">
               @csrf
               <button class="btn btn-outline" type="submit">
                 <i class="ri-test-tube-line"></i> Marcar muestra tomada
@@ -98,21 +95,19 @@
           @endif
         </div>
 
-        @if($estadoOrden !== 'resultado_disponible')
-          <form class="mt-5 grid gap-4 md:grid-cols-2" method="POST" action="{{ route('laboratorio.ordenes.resultado', $orden->id) }}" enctype="multipart/form-data">
+        @if($orden->can_upload_result)
+          <form class="mt-5 grid gap-4 md:grid-cols-2" method="POST" action="{{ $orden->upload_result_url }}" enctype="multipart/form-data">
             @csrf
             <div>
-              <label for="resultado_pdf_{{ $orden->id }}" class="form-label">Resultado PDF</label>
+              <label for="resultado_pdf_{{ $orden->uid }}" class="form-label">Resultado PDF</label>
               <label class="mt-1 block rounded-xl border-2 border-dashed border-slate-300 bg-slate-50/70 px-3 py-4 text-center text-sm text-slate-500 hover:border-teal-300 hover:text-slate-700" data-dropzone>
                 <span data-dropzone-text>Arrastra el PDF aqui o haz clic para seleccionar.</span>
-                <input id="resultado_pdf_{{ $orden->id }}" type="file" name="resultado_pdf" accept="application/pdf" required class="sr-only" data-dropzone-input>
+                <input id="resultado_pdf_{{ $orden->uid }}" type="file" name="resultado_pdf" accept="application/pdf" required class="sr-only" data-dropzone-input>
               </label>
-              @error('resultado_pdf')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
             </div>
             <div>
-              <label for="resultado_resumen_{{ $orden->id }}" class="form-label">Resumen</label>
-              <textarea id="resultado_resumen_{{ $orden->id }}" name="resultado_resumen" rows="3" required class="form-textarea"></textarea>
-              @error('resultado_resumen')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
+              <label for="resultado_resumen_{{ $orden->uid }}" class="form-label">Resumen</label>
+              <textarea id="resultado_resumen_{{ $orden->uid }}" name="resultado_resumen" rows="3" required class="form-textarea"></textarea>
             </div>
             <div class="md:col-span-2">
               <button class="btn btn-primary" type="submit">
@@ -124,8 +119,8 @@
       </article>
     @empty
       <x-ui.empty-state
-        title="No hay Ã³rdenes registradas"
-        message="Cuando tengas Ã³rdenes asignadas aparecerÃ¡n aquÃ­."
+        title="No hay ordenes registradas"
+        message="Cuando tengas ordenes asignadas o solicitudes directas disponibles apareceran aqui."
       />
     @endforelse
   </div>
@@ -137,4 +132,3 @@
   @vite('resources/js/laboratorio/ordenes.js')
 @endpush
 @endsection
-

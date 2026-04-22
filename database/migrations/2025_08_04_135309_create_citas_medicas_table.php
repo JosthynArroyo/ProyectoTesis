@@ -2,13 +2,16 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 class CreateCitasMedicasTable extends Migration
 {
     public function up()
     {
-        Schema::create('citas_medicas', function (Blueprint $table) {
+        $createEspecialidadForeign = DB::getDriverName() === 'sqlite' || Schema::hasTable('especialidades');
+
+        Schema::create('citas_medicas', function (Blueprint $table) use ($createEspecialidadForeign) {
             $table->id();
             $table->unsignedBigInteger('paciente_id');
             $table->unsignedBigInteger('doctor_id');
@@ -20,7 +23,9 @@ class CreateCitasMedicasTable extends Migration
 
             $table->foreign('paciente_id')->references('id')->on('users')->onDelete('cascade');
             $table->foreign('doctor_id')->references('id')->on('users')->onDelete('cascade');
-            $table->foreign('especialidad_id')->references('id')->on('especialidades')->onDelete('cascade');
+            if ($createEspecialidadForeign) {
+                $table->foreign('especialidad_id')->references('id')->on('especialidades')->onDelete('cascade');
+            }
         });
     }
 

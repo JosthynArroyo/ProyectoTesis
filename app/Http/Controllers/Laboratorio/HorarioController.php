@@ -3,7 +3,11 @@
 namespace App\Http\Controllers\Laboratorio;
 
 use App\Http\Controllers\Controller;
+use App\Models\Cita;
 use App\Models\Horario;
+use App\Models\LabOrder;
+use App\Models\LaboratorioOrden;
+use App\Support\WeeklyCalendarData;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -14,24 +18,145 @@ class HorarioController extends Controller
     public function index(Request $r)
     {
         $labId = Auth::id();
-        $desde = $r->query('desde', Carbon::now()->startOfWeek()->toDateString());
-        $hasta = $r->query('hasta', Carbon::now()->endOfWeek()->toDateString());
+        $weekStart = WeeklyCalendarData::resolveWeekStart($r->query('week', $r->query('desde')));
+        $weekEnd = $weekStart->copy()->endOfWeek(Carbon::SUNDAY);
+        $desde = $r->query('desde', $weekStart->toDateString());
+        $hasta = $r->query('hasta', $weekEnd->toDateString());
 
         $items = Horario::where('doctor_id', $labId)
-            ->when($desde, fn($q)=>$q->whereDate('fecha','>=',$desde))
-            ->when($hasta, fn($q)=>$q->whereDate('fecha','<=',$hasta))
-            ->orderBy('fecha')->get();
+            ->when($desde, fn ($q) => $q->whereDate('fecha', '>=', $desde))
+            ->when($hasta, fn ($q) => $q->whereDate('fecha', '<=', $hasta))
+            ->orderBy('fecha')
+            ->orderBy('hora_inicio')
+            ->get();
 
-        return view('laboratorio.horario.index', compact('items','desde','hasta'));
+        $weekHorarios = Horario::where('doctor_id', $labId)
+            ->whereDate('fecha', '>=', $weekStart->toDateString())
+            ->whereDate('fecha', '<=', $weekEnd->toDateString())
+            ->orderBy('fecha')
+            ->orderBy('hora_inicio')
+            ->get();
+
+        $legacyAppointments = Cita::with(['paciente:id,name', 'laboratorioOrden'])
+            ->where('doctor_id', $labId)
+            ->whereDate('fecha', '>=', $weekStart->toDateString())
+            ->whereDate('fecha', '<=', $weekEnd->toDateString())
+            ->orderBy('fecha')
+            ->orderBy('hora')
+            ->get();
+
+        $selfServiceAppointments = LabOrder::with(['patient:id,name', 'items.test:id,nombre'])
+            ->whereNotNull('scheduled_at')
+            ->where(function ($query) use ($labId) {
+                $query->whereNull('laboratorio_id')
+                    ->orWhere('laboratorio_id', $labId);
+            })
+            ->whereDate('scheduled_at', '>=', $weekStart->toDateString())
+            ->whereDate('scheduled_at', '<=', $weekEnd->toDateString())
+            ->orderBy('scheduled_at')
+            ->get();
+
+        $calendarEntries = $weekHorarios->map(function (Horario $horario) {
+            return [
+                'layer' => 'background',
+                'date' => $horario->fecha,
+                'start' => $horario->hora_inicio,
+                'end' => $horario->hora_fin,
+                'title' => 'Recepción activa',
+                'subtitle' => 'Bloque de atención',
+                'eyebrow' => substr((string) $horario->hora_inicio, 0, 5).' - '.substr((string) $horario->hora_fin, 0, 5),
+                'tone' => 'slate',
+            ];
+        })->values();
+
+        $calendarEntries = $calendarEntries->concat(
+            $legacyAppointments->map(function (Cita $cita) use ($weekHorarios) {
+                $orden = $cita->laboratorioOrden;
+                $status = $orden?->estado ?? LaboratorioOrden::ESTADO_CITA_PROGRAMADA;
+                $statusLabel = match ($status) {
+                    LaboratorioOrden::ESTADO_ORDEN_CREADA => 'Orden creada',
+                    LaboratorioOrden::ESTADO_CITA_PROGRAMADA => 'Cita programada',
+                    LaboratorioOrden::ESTADO_MUESTRA_TOMADA => 'Muestra tomada',
+                    LaboratorioOrden::ESTADO_RESULTADO_DISPONIBLE => 'Resultado disponible',
+                    default => 'En proceso',
+                };
+
+                $tone = match ($status) {
+                    LaboratorioOrden::ESTADO_ORDEN_CREADA, LaboratorioOrden::ESTADO_CITA_PROGRAMADA => 'blue',
+                    LaboratorioOrden::ESTADO_MUESTRA_TOMADA => 'amber',
+                    LaboratorioOrden::ESTADO_RESULTADO_DISPONIBLE => 'emerald',
+                    default => 'slate',
+                };
+
+                return [
+                    'layer' => 'foreground',
+                    'date' => $cita->fecha,
+                    'start' => $cita->hora,
+                    'end' => WeeklyCalendarData::inferEndTime(
+                        $cita->fecha->toDateString(),
+                        (string) $cita->hora,
+                        $weekHorarios
+                    ),
+                    'title' => $cita->paciente?->name ?? 'Paciente',
+                    'subtitle' => $orden?->tipo_examen ?? 'Examen de laboratorio',
+                    'eyebrow' => $statusLabel,
+                    'meta' => 'Orden clínica',
+                    'tone' => $tone,
+                ];
+            })
+        )->concat(
+            $selfServiceAppointments->map(function (LabOrder $order) {
+                $scheduledAt = $order->scheduled_at?->copy();
+                if (! $scheduledAt) {
+                    return null;
+                }
+
+                $tone = match ($order->status) {
+                    LabOrder::STATUS_PENDIENTE_TOMA => 'blue',
+                    LabOrder::STATUS_MUESTRA_TOMADA, LabOrder::STATUS_EN_ANALISIS => 'amber',
+                    LabOrder::STATUS_RESULTADO_LISTO => 'emerald',
+                    default => 'rose',
+                };
+
+                $label = match ($order->status) {
+                    LabOrder::STATUS_PENDIENTE_TOMA => 'Pendiente de toma',
+                    LabOrder::STATUS_MUESTRA_TOMADA => 'Muestra tomada',
+                    LabOrder::STATUS_EN_ANALISIS => 'En análisis',
+                    LabOrder::STATUS_RESULTADO_LISTO => 'Resultado listo',
+                    LabOrder::STATUS_CANCELADO => 'Cancelado',
+                    LabOrder::STATUS_NO_SE_PRESENTO => 'No se presentó',
+                    default => 'En proceso',
+                };
+
+                return [
+                    'layer' => 'foreground',
+                    'date' => $scheduledAt->toDateString(),
+                    'start' => $scheduledAt->format('H:i'),
+                    'end' => $scheduledAt->copy()->addMinutes(30)->format('H:i'),
+                    'title' => $order->patient?->name ?? 'Paciente',
+                    'subtitle' => $order->tipo_examen ?? 'Examen de laboratorio',
+                    'eyebrow' => $label,
+                    'meta' => 'Auto-solicitud',
+                    'tone' => $tone,
+                ];
+            })->filter()
+        );
+
+        $calendar = WeeklyCalendarData::build($weekStart, $calendarEntries, [
+            'default_start_minutes' => 7 * 60,
+            'default_end_minutes' => 19 * 60,
+        ]);
+
+        return view('laboratorio.horario.index', compact('items', 'calendar', 'weekStart', 'weekEnd', 'desde', 'hasta'));
     }
 
     public function store(Request $r)
     {
         $data = $r->validate([
-            'fecha' => ['required','date'],
-            'hora_inicio' => ['required','date_format:H:i'],
-            'hora_fin' => ['required','date_format:H:i','after:hora_inicio'],
-            'intervalo_minutos' => ['required','integer','in:10,15,20,30,45,60'],
+            'fecha' => ['required', 'date'],
+            'hora_inicio' => ['required', 'date_format:H:i'],
+            'hora_fin' => ['required', 'date_format:H:i', 'after:hora_inicio'],
+            'intervalo_minutos' => ['required', 'integer', 'in:10,15,20,30,45,60'],
         ]);
 
         Horario::create([
@@ -42,13 +167,14 @@ class HorarioController extends Controller
             'intervalo_minutos' => $data['intervalo_minutos'],
         ]);
 
-        return back()->with('success','Horario creado.');
+        return back()->with('success', 'Horario creado.');
     }
 
     public function edit(Horario $horario)
     {
         abort_unless($horario->doctor_id === Auth::id(), 403);
-        return view('laboratorio.horario.edit', ['h'=>$horario]);
+
+        return view('laboratorio.horario.edit', ['h' => $horario]);
     }
 
     public function update(Request $r, Horario $horario)
@@ -56,48 +182,52 @@ class HorarioController extends Controller
         abort_unless($horario->doctor_id === Auth::id(), 403);
 
         $data = $r->validate([
-            'fecha' => ['required','date'],
-            'hora_inicio' => ['required','date_format:H:i'],
-            'hora_fin' => ['required','date_format:H:i','after:hora_inicio'],
-            'intervalo_minutos' => ['required','integer','in:10,15,20,30,45,60'],
+            'fecha' => ['required', 'date'],
+            'hora_inicio' => ['required', 'date_format:H:i'],
+            'hora_fin' => ['required', 'date_format:H:i', 'after:hora_inicio'],
+            'intervalo_minutos' => ['required', 'integer', 'in:10,15,20,30,45,60'],
         ]);
 
         $horario->update($data);
-        return redirect()->route('laboratorio.horario.index')->with('success','Horario actualizado.');
+
+        return redirect()->route('laboratorio.horario.index')->with('success', 'Horario actualizado.');
     }
 
     public function destroy(Horario $horario)
     {
         abort_unless($horario->doctor_id === Auth::id(), 403);
         $horario->delete();
-        return back()->with('success','Horario eliminado.');
+
+        return back()->with('success', 'Horario eliminado.');
     }
 
     public function generarRango(Request $r)
     {
         $data = $r->validate([
-            'desde' => ['required','date'],
-            'hasta' => ['required','date','after_or_equal:desde'],
-            'dias'  => ['required','array','min:1'],
-            'dias.*'=> ['integer','between:1,7'],
-            'hora_inicio' => ['required','date_format:H:i'],
-            'hora_fin'    => ['required','date_format:H:i','after:hora_inicio'],
-            'intervalo_minutos' => ['required','integer','in:10,15,20,30,45,60'],
-            'sobrescribir' => ['required','boolean'],
+            'desde' => ['required', 'date'],
+            'hasta' => ['required', 'date', 'after_or_equal:desde'],
+            'dias' => ['required', 'array', 'min:1'],
+            'dias.*' => ['integer', 'between:1,7'],
+            'hora_inicio' => ['required', 'date_format:H:i'],
+            'hora_fin' => ['required', 'date_format:H:i', 'after:hora_inicio'],
+            'intervalo_minutos' => ['required', 'integer', 'in:10,15,20,30,45,60'],
+            'sobrescribir' => ['required', 'boolean'],
         ]);
 
         $labId = Auth::id();
         $ini = Carbon::parse($data['desde']);
         $fin = Carbon::parse($data['hasta']);
-        $dias = collect($data['dias'])->map(fn($d)=>(int)$d)->all();
+        $dias = collect($data['dias'])->map(fn ($d) => (int) $d)->all();
         $n = 0;
 
-        DB::transaction(function() use ($labId,$ini,$fin,$dias,$data,&$n){
-            for($d=$ini->copy(); $d->lte($fin); $d->addDay()){
-                if(!in_array((int)$d->isoWeekday(), $dias, true)) continue;
+        DB::transaction(function () use ($labId, $ini, $fin, $dias, $data, &$n) {
+            for ($d = $ini->copy(); $d->lte($fin); $d->addDay()) {
+                if (! in_array((int) $d->isoWeekday(), $dias, true)) {
+                    continue;
+                }
 
-                if(!empty($data['sobrescribir'])){
-                    Horario::where('doctor_id',$labId)->whereDate('fecha',$d->toDateString())->delete();
+                if (! empty($data['sobrescribir'])) {
+                    Horario::where('doctor_id', $labId)->whereDate('fecha', $d->toDateString())->delete();
                 }
 
                 Horario::firstOrCreate([
@@ -105,7 +235,7 @@ class HorarioController extends Controller
                     'fecha' => $d->toDateString(),
                     'hora_inicio' => $data['hora_inicio'],
                     'hora_fin' => $data['hora_fin'],
-                ],[
+                ], [
                     'intervalo_minutos' => $data['intervalo_minutos'],
                 ]);
                 $n++;

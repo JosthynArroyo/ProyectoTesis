@@ -6,45 +6,36 @@
 @section('header-subtitle','Gestiona tus citas en un solo lugar')
 
 @php
-  $bloqueoPagosPendientes = $bloqueoPagosPendientes ?? (auth()->check() ? auth()->user()->hasPendingPaymentBlocks() : false);
+  $bloqueoPagosPendientes = $bloqueoPagosPendientes ?? false;
   $highlightCita = session('highlight_cita');
 @endphp
 
 @section('main')
 <div class="space-y-6">
-  <header class="card p-6">
-    <div class="page-header">
-      <div class="page-header__info">
-        <p class="text-xs uppercase tracking-widest text-slate-500">Panel del paciente</p>
-        <h1 id="citas-heading" class="mt-2 text-2xl font-semibold text-slate-900">Mis citas médicas</h1>
-        <p class="text-slate-600">Gestiona, busca y filtra tus citas con una vista clara.</p>
-      </div>
-      <div class="page-header__actions">
-        @if($bloqueoPagosPendientes)
-          <button type="button" class="btn btn-primary btn-full-mobile cursor-not-allowed opacity-60" disabled aria-disabled="true" title="Tiene pagos pendientes. Regularice su cuenta para agendar una nueva cita.">
-            <i class="ri-lock-2-line"></i>
-            <span class="cta-text">Agendar cita</span>
-          </button>
-        @else
-          <a href="{{ route('paciente.crear-cita') }}" class="btn btn-primary btn-full-mobile" aria-label="Agendar nueva cita">
-            <i class="ri-add-line"></i>
-            <span class="cta-text">Agendar cita</span>
-          </a>
-        @endif
-      </div>
-    </div>
-  </header>
+  <div class="panel-action-bar">
+    @if($bloqueoPagosPendientes)
+      <button type="button" class="btn btn-primary btn-full-mobile cursor-not-allowed opacity-60" disabled aria-disabled="true" title="Tienes órdenes de pago vencidas de citas concluidas. Regulariza tu cuenta para agendar una nueva cita.">
+        <i class="ri-lock-2-line"></i>
+        <span class="cta-text">Agendar cita</span>
+      </button>
+    @else
+      <a href="{{ route('paciente.crear-cita') }}" class="btn btn-primary btn-full-mobile" aria-label="Agendar nueva cita">
+        <i class="ri-add-line"></i>
+        <span class="cta-text">Agendar cita</span>
+      </a>
+    @endif
+  </div>
 
   <section class="card p-6" aria-label="Barra de búsqueda y filtros">
     <form class="flex flex-wrap items-end gap-3" method="GET" action="{{ url()->current() }}">
       <div class="flex flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2" role="search">
         <i class="ri-search-line text-slate-400"></i>
-        <input type="text" name="q" value="{{ request('q') }}" placeholder="Buscar por doctor o especialidad..." aria-label="Buscar citas" class="w-full bg-transparent text-sm text-slate-700" required/>
+        <input type="text" name="q" value="{{ request('q') }}" placeholder="Buscar por doctor o especialidad..." aria-label="Buscar citas" class="w-full bg-transparent text-sm text-slate-700"/>
       </div>
       @error('q')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
       @php $est = request('estado'); @endphp
       <div>
-        <select name="estado" aria-label="Filtrar por estado" class="form-select" required>
+        <select name="estado" aria-label="Filtrar por estado" class="form-select">
           <option value="all" @selected($est==='' || $est==='all')>Todos los estados</option>
           <option value="pendiente"  {{ $est==='pendiente' ? 'selected' : '' }}>En revisión</option>
           <option value="confirmada" {{ $est==='confirmada' ? 'selected' : '' }}>Confirmada</option>
@@ -81,7 +72,7 @@
 
   @if($bloqueoPagosPendientes)
     <x-ui.alert tone="warning">
-      Tiene pagos pendientes. Regularice su cuenta para agendar una nueva cita.
+      Tienes órdenes de pago vencidas de citas concluidas. Regulariza tu cuenta para agendar una nueva cita.
       <a href="{{ route('paciente.pagos.index') }}" class="font-semibold underline">Ir a Mis pagos</a>
     </x-ui.alert>
   @endif
@@ -95,7 +86,7 @@
           <p>Agenda tu primera cita para verla aquí con su estado y acciones.</p>
           @if($bloqueoPagosPendientes)
             <button type="button" class="btn btn-primary cursor-not-allowed opacity-60" disabled aria-disabled="true">Agendar cita</button>
-            <p class="text-xs text-amber-700">Tiene pagos pendientes. Regularice su cuenta para agendar una nueva cita.</p>
+            <p class="text-xs text-amber-700">Tienes órdenes de pago vencidas de citas concluidas. Regulariza tu cuenta para agendar una nueva cita.</p>
           @else
             <a href="{{ route('paciente.crear-cita') }}" class="btn btn-primary">
               <i class="ri-add-line"></i>
@@ -138,6 +129,42 @@
           <div class="mt-4 flex flex-wrap gap-4 text-sm text-slate-600">
             <span><strong>Fecha:</strong> {{ \Carbon\Carbon::parse($cita->fecha)->format('Y/m/d') }}</span>
             <span><strong>Hora:</strong> {{ \Carbon\Carbon::parse($cita->hora)->format('H:i') }}</span>
+          </div>
+
+          <div class="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p class="text-xs uppercase tracking-widest text-slate-500">Comprobante de cita</p>
+                <p class="text-sm font-semibold text-slate-900">{{ $cita->folio_cita ?: 'Se emitirá al descargar' }}</p>
+                <p class="text-xs text-slate-500">Sirve para validar en recepción que la cita te pertenece.</p>
+              </div>
+              <span class="badge {{ $cita->comprobanteEstaVigente() ? 'success' : 'danger' }}">
+                {{ $cita->comprobanteEstaVigente() ? 'Vigente' : 'Sin vigencia' }}
+              </span>
+            </div>
+
+            @if($cita->token_validacion)
+              <p class="mt-2 text-xs text-slate-500">Código: {{ $cita->token_validacion }}</p>
+            @endif
+
+            <div class="mt-3 flex flex-wrap gap-2">
+              <a class="btn btn-outline btn-sm" href="{{ route('paciente.citas.comprobante.pdf', $cita) }}" target="_blank" rel="noopener">
+                <i class="ri-file-download-line"></i>
+                Descargar comprobante
+              </a>
+              @if($cita->token_validacion)
+                <a class="btn btn-outline btn-sm" href="{{ route('citas.comprobante.show', $cita->token_validacion) }}">
+                  <i class="ri-qr-code-line"></i>
+                  Validar comprobante
+                </a>
+              @endif
+            </div>
+
+            @if(!$cita->comprobanteEstaVigente())
+              <p class="mt-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">
+                Este comprobante ya no está vigente porque la cita está {{ strtolower($cita->estadoComprobante()) }}.
+              </p>
+            @endif
           </div>
 
           @if(!in_array($cita->estado, ['cancelada','realizada','no_se_presento']))

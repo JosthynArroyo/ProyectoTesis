@@ -7,14 +7,6 @@
 @section('main')
 @php $preset = in_array(request('role'), ['administrador','superadmin'], true) ? null : request('role'); @endphp
 <div class="space-y-6">
-  <section class="card p-6">
-    <div>
-      <p class="text-xs uppercase tracking-widest text-slate-500">Usuarios</p>
-      <h1 class="mt-2 text-2xl font-semibold text-slate-900">Nuevo usuario</h1>
-      <p class="text-slate-600">Formulario guiado en secciones: cuenta, datos personales y rol.</p>
-    </div>
-  </section>
-
   @if (session('success'))
     <x-ui.alert tone="success">{{ session('success') }}</x-ui.alert>
   @endif

@@ -3,8 +3,7 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  @php($cssPath = resource_path('css/admin/usuarios-pdf.css'))
-  <style>{!! file_exists($cssPath) ? file_get_contents($cssPath) : '' !!}</style>
+  <style>{{ $pdfCss }}</style>
 </head>
 <body>
 <h3>Reporte de usuarios</h3>
@@ -47,8 +46,7 @@
       <td>{{ $u->telefono }}</td>
       <td>{{ $u->dni }}</td>
       <td>{{ optional($u->roles->first())->name }}</td>
-      @php($statusLabel = ['active' => 'Activo', 'inactive' => 'Inactivo', 'blocked' => 'Bloqueado'][$u->status ?? 'active'] ?? 'Activo')
-      <td>{{ $statusLabel }}</td>
+      <td>{{ $statusLabels[$u->status ?? 'active'] ?? 'Activo' }}</td>
       <td>{{ optional($u->suspended_until)->format('Y-m-d H:i') }}</td>
       <td>{{ optional($u->created_at)->format('Y-m-d H:i') }}</td>
       <td>{{ optional($u->especialidades)->pluck('nombre')->implode(', ') }}</td>

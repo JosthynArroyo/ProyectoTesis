@@ -47,13 +47,12 @@ class PagoController extends Controller
         Pago $pago,
         PagoService $pagoService,
         ImageOptimizer $imageOptimizer
-    )
-    {
+    ) {
         if ((int) $pago->paciente_id !== (int) Auth::id()) {
             abort(403);
         }
 
-        if (!$pago->esEditablePorPaciente()) {
+        if (! $pago->esEditablePorPaciente()) {
             $message = $pago->estado === Pago::ESTADO_EN_VERIFICACION
                 ? 'El pago está en verificación. Debe esperar revisión administrativa antes de cambiar el método.'
                 : 'Este pago no permite modificaciones en su estado actual.';
@@ -62,7 +61,7 @@ class PagoController extends Controller
                 'error' => $message,
             ]);
         }
-        if (!$pago->tieneOrdenCobro()) {
+        if (! $pago->tieneOrdenCobro()) {
             return back()->withErrors([
                 'error' => 'La orden de cobro aún no está habilitada para esta cita.',
             ]);
@@ -101,7 +100,7 @@ class PagoController extends Controller
             ? Pago::ESTADO_EN_VERIFICACION
             : Pago::ESTADO_PENDIENTE;
 
-        if ($nuevoEstado === Pago::ESTADO_EN_VERIFICACION && !$comprobantePath) {
+        if ($nuevoEstado === Pago::ESTADO_EN_VERIFICACION && ! $comprobantePath) {
             return back()->withErrors([
                 'comprobante' => 'Debe adjuntar un comprobante para enviar transferencia a verificación.',
             ])->withInput();
@@ -136,7 +135,7 @@ class PagoController extends Controller
         }
 
         $stored = $this->resolveComprobanteStorage($pago->comprobante_path);
-        if (!$stored) {
+        if (! $stored) {
             abort(404);
         }
 
@@ -157,12 +156,13 @@ class PagoController extends Controller
     private function deleteComprobante(?string $path, ImageOptimizer $imageOptimizer): void
     {
         $stored = $this->resolveComprobanteStorage($path);
-        if (!$stored) {
+        if (! $stored) {
             return;
         }
 
         if ($stored['disk'] === 'local') {
             Storage::disk('local')->delete($stored['path']);
+
             return;
         }
 
@@ -210,12 +210,12 @@ class PagoController extends Controller
         if ((int) $pago->paciente_id !== (int) Auth::id()) {
             abort(403);
         }
-        if (!$pago->tieneOrdenCobro()) {
+        if (! $pago->tieneOrdenCobro()) {
             abort(404);
         }
 
         $path = $pagoService->obtenerOGenerarOrdenPdf($pago, $request->user());
-        if (!Storage::disk('local')->exists($path)) {
+        if (! Storage::disk('local')->exists($path)) {
             abort(404);
         }
 
@@ -238,7 +238,7 @@ class PagoController extends Controller
         }
 
         $recibo = $pago->receipt;
-        if (!$recibo || !$recibo->pdf_path || !Storage::disk('local')->exists($recibo->pdf_path)) {
+        if (! $recibo || ! $recibo->pdf_path || ! Storage::disk('local')->exists($recibo->pdf_path)) {
             abort(404);
         }
 

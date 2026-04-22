@@ -24,4 +24,3 @@ class PanelThemeController extends Controller
         ]);
     }
 }
-

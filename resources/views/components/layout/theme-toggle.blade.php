@@ -26,49 +26,47 @@
 @once
     @push('modals')
         <div
-            id="themePreferenceModal"
-            class="modal theme-preference-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="themePreferenceTitle"
-            aria-hidden="true"
-            data-theme-preference-modal
+            id="themePreferenceToast"
+            class="toast theme-preference-toast"
+            role="region"
+            aria-label="Preferencia de tema"
+            aria-live="polite"
+            aria-atomic="true"
+            hidden
+            data-theme-preference-toast
         >
-            <div class="modal-backdrop" data-theme-preference-dismiss></div>
-            <div class="modal-dialog theme-preference-modal__dialog" role="document" tabindex="-1">
-                <div class="card theme-preference-card mx-auto w-full max-w-md">
-                    <div class="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
-                        <div class="flex items-start gap-3">
-                            <span class="theme-preference-card__icon">
-                                <i class="ri-moon-clear-line"></i>
-                            </span>
-                            <div>
-                                <h3 id="themePreferenceTitle" class="text-lg font-semibold text-slate-900">Guardar modo oscuro como predeterminado</h3>
-                                <p class="mt-1 text-sm text-slate-500">Si lo confirmas, este usuario entrar&aacute; siempre al panel en modo oscuro.</p>
-                            </div>
-                        </div>
-                        <button
-                            type="button"
-                            class="btn btn-ghost px-2"
-                            aria-label="Cerrar confirmacion de tema"
-                            data-theme-preference-dismiss
-                        >
-                            <i class="ri-close-line text-lg"></i>
-                        </button>
+            <div class="toast-h border-b border-slate-100">
+                <div class="flex min-w-0 items-start gap-3">
+                    <span class="theme-preference-card__icon theme-preference-toast__icon">
+                        <i class="ri-contrast-2-line" data-theme-preference-icon></i>
+                    </span>
+                    <div class="theme-preference-toast__summary min-w-0">
+                        <h3 id="themePreferenceTitle" class="text-sm font-semibold text-slate-900" data-theme-preference-title>Preferencia de tema</h3>
+                        <p class="mt-1 text-xs text-slate-500" data-theme-preference-description>
+                            Puedes seguir navegando mientras decides si quieres dejar este cambio solo por ahora o guardarlo.
+                        </p>
                     </div>
-                    <div class="space-y-4 px-6 py-5">
-                        <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                            Si prefieres mantener el modo claro como base, puedes seguir us&aacute;ndolo y cambiarlo luego cuando quieras.
-                        </div>
-                        <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-                            <button type="button" class="btn btn-outline" data-theme-preference-light>
-                                Mantener claro
-                            </button>
-                            <button type="button" class="btn btn-primary" data-theme-preference-save-dark>
-                                S&iacute;, usar oscuro
-                            </button>
-                        </div>
-                    </div>
+                </div>
+                <button
+                    type="button"
+                    class="btn btn-ghost px-2"
+                    aria-label="Cerrar notificacion de tema"
+                    data-theme-preference-dismiss
+                >
+                    <i class="ri-close-line text-lg"></i>
+                </button>
+            </div>
+            <div class="toast-b">
+                <p class="text-xs text-slate-500" data-theme-preference-note>
+                    Si no eliges guardar, este cambio se mantendr&aacute; solo durante la sesi&oacute;n actual.
+                </p>
+                <div class="theme-preference-toast__actions">
+                    <button type="button" class="btn btn-outline px-3 py-2 text-xs" data-theme-preference-temporary>
+                        Solo esta sesi&oacute;n
+                    </button>
+                    <button type="button" class="btn btn-primary px-3 py-2 text-xs" data-theme-preference-persist>
+                        Guardar como predeterminado
+                    </button>
                 </div>
             </div>
         </div>

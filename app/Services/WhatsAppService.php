@@ -3,17 +3,31 @@
 namespace App\Services;
 
 use App\Models\Cita;
+use App\Models\Especialidad;
 use App\Models\User;
 use App\Models\WhatsappMessage;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use Twilio\Rest\Client;
 use Throwable;
+use Twilio\Rest\Client;
 
 class WhatsAppService
 {
-    public function sendCitaAceptada(Cita $cita, User $recipient, string $rol): WhatsappMessage
+    public function sendCitaAgendada(Cita $cita, User $recipient, string $rol): ?WhatsappMessage
+    {
+        $mensaje = $this->buildAgendadaMessage($cita, $recipient, $rol);
+
+        return $this->sendCitaMessage(
+            $cita,
+            $recipient,
+            $rol,
+            'agendada',
+            $mensaje
+        );
+    }
+
+    public function sendCitaAceptada(Cita $cita, User $recipient, string $rol): ?WhatsappMessage
     {
         $mensaje = $this->buildAceptadaMessage($cita, $recipient, $rol);
 
@@ -26,7 +40,7 @@ class WhatsAppService
         );
     }
 
-    public function sendRecordatorio6h(Cita $cita, User $recipient, string $rol, Carbon $inicio): WhatsappMessage
+    public function sendRecordatorio6h(Cita $cita, User $recipient, string $rol, Carbon $inicio): ?WhatsappMessage
     {
         $mensaje = $this->buildRecordatorioMessage($cita, $recipient, $rol, $inicio);
 
@@ -47,9 +61,10 @@ class WhatsAppService
         string $evento,
         string $mensaje,
         array $meta = []
-    ): WhatsappMessage {
-        if (!config('services.whatsapp.enabled', true)) {
+    ): ?WhatsappMessage {
+        if (! config('services.whatsapp.enabled', true)) {
             Log::info("WhatsApp: envio desactivado (evento={$evento}, cita={$cita->id}).");
+
             return null;
         }
 
@@ -91,14 +106,16 @@ class WhatsAppService
                 return $existing;
             }
             Log::error("WhatsApp: error guardando log (evento={$evento}, cita={$cita->id}). {$e->getMessage()}");
+
             return $existing;
         }
 
-        if (!$telefono) {
+        if (! $telefono) {
             $record->estado = 'fallido';
             $record->error = 'telefono_invalido';
             $record->save();
             Log::warning("WhatsApp: telefono invalido para user_id={$recipient->id} (cita={$cita->id}).");
+
             return $record;
         }
 
@@ -109,6 +126,7 @@ class WhatsAppService
             $record->error = 'twilio_config_incomplete';
             $record->save();
             Log::error("WhatsApp: configuracion Twilio incompleta (evento={$evento}, cita={$cita->id}).");
+
             return $record;
         }
 
@@ -138,6 +156,30 @@ class WhatsAppService
         }
 
         return $record;
+    }
+
+    private function buildAgendadaMessage(Cita $cita, User $recipient, string $rol): string
+    {
+        [$labelProfesional, $profesional, $especialidad, $fechaTxt, $horaTxt] = $this->citaResumen($cita);
+        $nombre = $recipient->name ?? ($rol === 'doctor' ? 'Doctor/a' : 'Paciente');
+        $url = $this->panelUrl($rol);
+
+        $lineas = [];
+        $lineas[] = 'Hola '.$nombre.',';
+        if ($rol === 'doctor') {
+            $lineas[] = 'Se registro una nueva cita en tu agenda.';
+            $lineas[] = 'Paciente: '.(optional($cita->paciente)->name ?? 'Paciente');
+        } else {
+            $lineas[] = 'Tu cita fue registrada correctamente.';
+            $lineas[] = $labelProfesional.': '.$profesional;
+            $lineas[] = 'Estado actual: pendiente de confirmacion.';
+        }
+        $lineas[] = 'Especialidad: '.$especialidad;
+        $lineas[] = 'Fecha: '.$fechaTxt;
+        $lineas[] = 'Hora: '.$horaTxt;
+        $lineas[] = 'Revisa tu panel: '.$url;
+
+        return implode("\n", array_filter($lineas));
     }
 
     private function buildAceptadaMessage(Cita $cita, User $recipient, string $rol): string
@@ -170,14 +212,14 @@ class WhatsAppService
         $url = $this->panelUrl($rol);
         $fechaTxt = $inicio->format('d/m/Y');
         $horaTxt = $inicio->format('H:i');
-        $horas = (int) config('services.whatsapp.reminder_hours', 6);
 
         $lineas = [];
         $lineas[] = 'Hola '.$nombre.',';
-        $lineas[] = 'Recordatorio: tu cita es en aproximadamente '.$horas.' horas.';
         if ($rol === 'doctor') {
+            $lineas[] = 'Recordatorio de agenda para la cita programada:';
             $lineas[] = 'Paciente: '.(optional($cita->paciente)->name ?? 'Paciente');
         } else {
+            $lineas[] = 'Le recordamos su cita médica programada:';
             $lineas[] = $labelProfesional.': '.$profesional;
         }
         $lineas[] = 'Especialidad: '.$especialidad;
@@ -191,7 +233,7 @@ class WhatsAppService
     private function citaResumen(Cita $cita): array
     {
         $especialidad = $cita->especialidad?->nombre ?? 'Especialidad';
-        $isLab = strtolower((string) ($cita->especialidad?->nombre ?? '')) === 'laboratorio clinico';
+        $isLab = Especialidad::normalizeNombre($cita->especialidad?->nombre) === Especialidad::normalizedLaboratorioClinico();
         $labelProfesional = $isLab ? 'Laboratorio' : 'Doctor';
         $profesional = $cita->doctor?->name ?? $labelProfesional;
 
@@ -208,7 +250,7 @@ class WhatsAppService
             : route('paciente.citas');
     }
 
-    private function normalizePhone(string $raw): string
+    public function normalizePhone(string $raw): ?string
     {
         $raw = trim($raw);
         if ($raw === '') {
@@ -246,6 +288,7 @@ class WhatsAppService
     private function isValidE164(string $digits): bool
     {
         $len = strlen($digits);
+
         return $len >= 10 && $len <= 15;
     }
 
@@ -258,6 +301,7 @@ class WhatsAppService
         if (str_starts_with($number, 'whatsapp:')) {
             return $number;
         }
+
         return 'whatsapp:'.$number;
     }
 }

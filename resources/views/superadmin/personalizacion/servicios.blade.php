@@ -1,20 +1,10 @@
 @extends('layouts.superadmin')
-@section('title','PersonalizaciÃ³n')
-@section('header-title','PersonalizaciÃ³n')
+@section('title','Personalización')
+@section('header-title','Personalización')
 @section('header-subtitle','Servicios (landing)')
 
 @section('main')
 <div class="space-y-6">
-  <section class="card p-6">
-    <div class="flex flex-wrap items-center justify-between gap-4">
-      <div>
-        <p class="text-xs uppercase tracking-widest text-slate-500">PersonalizaciÃ³n</p>
-        <h1 class="mt-2 text-2xl font-semibold text-slate-900">Configurar servicios</h1>
-        <p class="text-slate-600">Gestiona las especialidades destacadas de la pÃ¡gina de inicio.</p>
-      </div>
-    </div>
-  </section>
-
   @include('shared.personalizacion-tabs', ['scope' => 'superadmin'])
 
   @if (session('success'))

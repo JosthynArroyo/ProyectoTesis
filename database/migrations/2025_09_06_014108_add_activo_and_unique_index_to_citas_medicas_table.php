@@ -2,15 +2,15 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
     public function up(): void
     {
         Schema::table('citas_medicas', function (Blueprint $table) {
-            if (!Schema::hasColumn('citas_medicas', 'activo')) {
+            if (! Schema::hasColumn('citas_medicas', 'activo')) {
                 $table->boolean('activo')->default(1)->after('estado');
             }
         });
@@ -18,7 +18,7 @@ return new class extends Migration
         DB::table('citas_medicas')->where('estado', 'cancelada')->update(['activo' => 0]);
 
         $rows = DB::table('citas_medicas')
-            ->select('id','doctor_id','fecha','hora','activo','created_at')
+            ->select('id', 'doctor_id', 'fecha', 'hora', 'activo', 'created_at')
             ->where('activo', 1)
             ->orderBy('doctor_id')->orderBy('fecha')->orderBy('hora')->orderBy('created_at')
             ->get();
@@ -33,7 +33,7 @@ return new class extends Migration
                 $seen[$key] = $r->id;
             }
         }
-        if (!empty($toDeactivate)) {
+        if (! empty($toDeactivate)) {
             DB::table('citas_medicas')->whereIn('id', $toDeactivate)->update(['activo' => 0]);
         }
 
@@ -45,12 +45,12 @@ return new class extends Migration
             DB::statement('CREATE UNIQUE INDEX IF NOT EXISTS citas_unq_doctor_fecha_hora_activo ON citas_medicas(doctor_id, fecha, hora) WHERE activo = true');
         } else {
             Schema::table('citas_medicas', function (Blueprint $table) {
-                if (!Schema::hasColumn('citas_medicas', 'hora_unique')) {
+                if (! Schema::hasColumn('citas_medicas', 'hora_unique')) {
                     $table->string('hora_unique', 8)->nullable()->storedAs('CASE WHEN activo = 1 THEN hora ELSE NULL END');
                 }
             });
             Schema::table('citas_medicas', function (Blueprint $table) {
-                $table->unique(['doctor_id','fecha','hora_unique'], 'citas_unq_doctor_fecha_hora_activo');
+                $table->unique(['doctor_id', 'fecha', 'hora_unique'], 'citas_unq_doctor_fecha_hora_activo');
             });
         }
     }

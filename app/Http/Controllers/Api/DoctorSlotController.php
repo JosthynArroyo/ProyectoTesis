@@ -4,64 +4,21 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Models\Cita;
-use App\Models\Horario;
-use Carbon\Carbon;
+use App\Services\ProfessionalScheduleService;
 
 class DoctorSlotController extends Controller
 {
-    public function __invoke(User $doctor, string $fecha)
+    public function __invoke(User $doctor, string $fecha, ProfessionalScheduleService $scheduleService)
     {
-        $tz = config('app.timezone', 'America/Guayaquil');
-        $ahora = Carbon::now($tz);
-        $limiteHora = $ahora->copy()->addHour();
-        $date = Carbon::parse($fecha, $tz)->toDateString();
-        $esHoy = $date === $ahora->toDateString();
-
-        // Horarios del dia
-        $horarios = Horario::where('doctor_id', $doctor->id)
-            ->whereDate('fecha', $date)
-            ->orderBy('hora_inicio')
-            ->get();
-
-        if ($horarios->isEmpty()) {
-            return response()->json(['slots' => []]);
+        if (! $doctor->isActive() || ! ($doctor->hasRole('doctor') || $doctor->hasRole('laboratorio'))) {
+            return response()->json([
+                'slots' => [],
+                'message' => 'Profesional no disponible.',
+            ], 404);
         }
 
-        // Citas ocupadas del día
-        $ocupadas = Cita::where('doctor_id', $doctor->id)
-            ->whereDate('fecha', $date)
-            ->where('activo', true)
-            ->whereIn('estado', [Cita::ESTADO_PENDIENTE, Cita::ESTADO_CONFIRMADA])
-            ->pluck('hora')
-            ->map(fn ($t) => substr($t, 0, 5))   // "HH:MM"
-            ->toArray();
-
-        $ocupadasSet = array_flip($ocupadas);
-
-        // Construir TODAS las franjas con estado libre/ocupado
-        $slots = [];
-        foreach ($horarios as $horario) {
-            $step = (int) ($horario->intervalo_minutos ?: 30);
-            $inicio = Carbon::parse("{$date} {$horario->hora_inicio}", $tz);
-            $fin    = Carbon::parse("{$date} {$horario->hora_fin}", $tz);
-
-            for ($t = $inicio->copy(); $t->lt($fin); $t->addMinutes($step)) {
-                if ($esHoy && $t->lt($limiteHora)) {
-                    continue; // No mostrar bloques dentro de la prxima hora en la zona horaria de Ecuador
-                }
-
-                $hhmm = $t->format('H:i');
-                if (!isset($slots[$hhmm])) {
-                    $slots[$hhmm] = [
-                        'hora'   => $hhmm,
-                        'estado' => isset($ocupadasSet[$hhmm]) ? 'ocupado' : 'libre',
-                    ];
-                }
-            }
-        }
-
-        ksort($slots);
-        return response()->json(['slots' => array_values($slots)]);
+        return response()->json([
+            'slots' => $scheduleService->buildSlotsForDate($doctor->id, $fecha, config('app.timezone', 'America/Guayaquil')),
+        ]);
     }
 }

@@ -46,4 +46,3 @@ class UpdatePagoMetodoRequest extends FormRequest
         ];
     }
 }
-

@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
 use App\Models\Role;
+use App\Models\User;
 use App\Support\ValidationRules;
-use Illuminate\Http\Request;
 use Illuminate\Foundation\Auth\RegistersUsers;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 
@@ -25,8 +25,8 @@ class RegisterController extends Controller
         return Validator::make(
             $data,
             [
-                'name'     => ['required', 'string', 'max:255'],
-                'email'    => ValidationRules::emailUnique(),
+                'name' => ['required', 'string', 'max:255'],
+                'email' => ValidationRules::emailUnique(),
                 'password' => ValidationRules::passwordRequired(),
             ],
             [
@@ -48,8 +48,8 @@ class RegisterController extends Controller
     protected function create(array $data)
     {
         $user = User::create([
-            'name'     => $data['name'],
-            'email'    => $data['email'],
+            'name' => $data['name'],
+            'email' => $data['email'],
             'password' => Hash::make($data['password']),
         ]);
 
@@ -70,13 +70,16 @@ class RegisterController extends Controller
         } elseif ($user->hasRole('doctor')) {
             return redirect('doctor/dashboard');
         }
+
         return redirect('/');
     }
 
     protected function redirectTo()
     {
         $user = auth()->user();
-        if (!$user) return '/';
+        if (! $user) {
+            return '/';
+        }
         if ($user->hasRole('administrador')) {
             return 'admin/dashboard';
         } elseif ($user->hasRole('paciente')) {
@@ -84,6 +87,7 @@ class RegisterController extends Controller
         } elseif ($user->hasRole('doctor')) {
             return 'doctor/dashboard';
         }
+
         return '/';
     }
 }

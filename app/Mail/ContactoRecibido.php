@@ -19,7 +19,7 @@ class ContactoRecibido extends Mailable
 
     public function build()
     {
-        return $this->subject('Nuevo contacto desde la web')
+        return $this->subject('Nuevo mensaje de contacto - Clínica Don Bosco')
             ->view('emails.contacto_recibido');
     }
 }

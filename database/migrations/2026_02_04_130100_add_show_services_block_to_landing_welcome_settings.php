@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('landing_welcome_settings', function (Blueprint $table) {
-            if (!Schema::hasColumn('landing_welcome_settings', 'show_services_block')) {
+            if (! Schema::hasColumn('landing_welcome_settings', 'show_services_block')) {
                 $table->boolean('show_services_block')->default(true)->after('hero_secondary_text');
             }
         });

@@ -2,17 +2,17 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Events\CitaAgendada;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreCitaOverrideRequest;
-use App\Events\CitaAgendada;
 use App\Jobs\EnviarConfirmacionCitaJob;
 use App\Models\Cita;
 use App\Models\Especialidad;
-use App\Models\Horario;
 use App\Models\LaboratorioOrden;
 use App\Models\User;
 use App\Services\PagoService;
 use App\Services\PriorityEvaluator;
+use App\Services\ProfessionalScheduleService;
 use Carbon\Carbon;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Auth;
@@ -22,37 +22,14 @@ class CitaOverrideController extends Controller
 {
     protected function laboratorioEspecialidadId(): ?int
     {
-        return Especialidad::where('nombre', 'Laboratorio Clinico')->value('id');
-    }
-
-    protected function horarioParaSlot(int $profesionalId, string $fecha, Carbon $slot): ?Horario
-    {
-        return Horario::query()
-            ->where('doctor_id', $profesionalId)
-            ->whereDate('fecha', $fecha)
-            ->whereTime('hora_inicio', '<=', $slot->format('H:i:s'))
-            ->whereTime('hora_fin', '>', $slot->format('H:i:s'))
-            ->orderBy('hora_inicio')
-            ->first();
-    }
-
-    protected function intervaloHorario(Horario $horario): int
-    {
-        return max(1, (int) ($horario->intervalo_minutos ?: 30));
-    }
-
-    protected function slotAlineadoConHorario(Horario $horario, string $fecha, Carbon $slot, string $tz = 'America/Guayaquil'): bool
-    {
-        $inicio = Carbon::parse($fecha.' '.substr((string) $horario->hora_inicio, 0, 5), $tz);
-        $seleccionado = Carbon::parse($fecha.' '.$slot->format('H:i'), $tz);
-
-        return $inicio->diffInMinutes($seleccionado) % $this->intervaloHorario($horario) === 0;
+        return Especialidad::laboratorioClinicoId();
     }
 
     public function create()
     {
         $pacientes = User::query()
-            ->whereHas('roles', fn ($q) => $q->where('name', 'paciente'))
+            ->onlyActive()
+            ->whereHas('roles', fn ($query) => $query->where('name', 'paciente'))
             ->orderBy('name')
             ->get(['id', 'name', 'email', 'dni']);
 
@@ -65,32 +42,34 @@ class CitaOverrideController extends Controller
     public function store(
         StoreCitaOverrideRequest $request,
         PagoService $pagoService,
-        PriorityEvaluator $priorityEvaluator
-    )
-    {
+        PriorityEvaluator $priorityEvaluator,
+        ProfessionalScheduleService $scheduleService
+    ) {
         $data = $request->validated();
         $motivoConsulta = $priorityEvaluator->sanitizeMotivo($data['motivo_consulta'] ?? null);
         $labId = $this->laboratorioEspecialidadId();
         $isLab = $labId && (int) $data['especialidad_id'] === (int) $labId;
 
         $pacienteValido = User::query()
+            ->onlyActive()
             ->where('id', $data['paciente_id'])
-            ->whereHas('roles', fn ($q) => $q->where('name', 'paciente'))
+            ->whereHas('roles', fn ($query) => $query->where('name', 'paciente'))
             ->exists();
 
-        if (!$pacienteValido) {
-            return back()->withErrors(['paciente_id' => 'El usuario seleccionado no pertenece a pacientes.'])->withInput();
+        if (! $pacienteValido) {
+            return back()->withErrors(['paciente_id' => 'El usuario seleccionado no pertenece a pacientes o esta inactivo.'])->withInput();
         }
 
         $rolEsperado = $isLab ? 'laboratorio' : 'doctor';
         $doctorValido = User::query()
+            ->onlyActive()
             ->where('id', $data['doctor_id'])
-            ->whereHas('roles', fn ($q) => $q->where('name', $rolEsperado))
-            ->whereHas('especialidades', fn ($q) => $q->where('especialidad_id', $data['especialidad_id']))
+            ->whereHas('roles', fn ($query) => $query->where('name', $rolEsperado))
+            ->whereHas('especialidades', fn ($query) => $query->where('especialidad_id', $data['especialidad_id']))
             ->exists();
 
-        if (!$doctorValido) {
-            return back()->withErrors(['doctor_id' => 'El profesional seleccionado no corresponde a la especialidad.'])->withInput();
+        if (! $doctorValido) {
+            return back()->withErrors(['doctor_id' => 'El profesional seleccionado no corresponde a la especialidad o esta inactivo.'])->withInput();
         }
 
         if ($isLab) {
@@ -105,50 +84,34 @@ class CitaOverrideController extends Controller
         $bloqueado = $pagoService->pacienteTieneBloqueo((int) $data['paciente_id']);
         $forzarBloqueo = $request->boolean('forzar_bloqueo');
 
-        if ($bloqueado && !$forzarBloqueo) {
+        if ($bloqueado && ! $forzarBloqueo) {
             return back()->withErrors([
                 'forzar_bloqueo' => 'El paciente tiene pagos pendientes. Active el override para continuar.',
             ])->withInput();
         }
         if ($bloqueado && blank($data['override_reason'] ?? null)) {
             return back()->withErrors([
-                'override_reason' => 'Debe registrar el motivo de excepción para auditoría.',
+                'override_reason' => 'Debe registrar el motivo de excepcion para auditoria.',
             ])->withInput();
         }
 
-        $ahora = now('America/Guayaquil');
-        $fechaHora = Carbon::createFromFormat('Y-m-d H:i', $data['fecha'].' '.$data['hora'], 'America/Guayaquil');
-        if ($fechaHora->lt($ahora->copy()->addHour())) {
-            return back()->withErrors(['fecha' => 'Debe agendar con al menos 1 hora de anticipación.'])->withInput();
-        }
-
         $slot = Carbon::createFromFormat('H:i', $data['hora']);
-        $horarioSeleccionado = $this->horarioParaSlot((int) $data['doctor_id'], (string) $data['fecha'], $slot);
+        $validationError = $scheduleService->validateBookingSlot(
+            professionalId: (int) $data['doctor_id'],
+            date: (string) $data['fecha'],
+            slot: $slot,
+            messages: [
+                'missing_schedule' => 'No hay horario configurado para ese profesional en ese dia y hora.',
+                'misaligned' => 'La hora seleccionada no coincide con un bloque disponible del horario configurado.',
+                'lead_time' => 'Debe agendar con al menos 1 hora de anticipacion.',
+                'lead_time_field' => 'fecha',
+                'conflict' => 'Ya existe una cita en ese horario o intervalo inmediato.',
+                'conflict_field' => 'hora',
+            ]
+        );
 
-        if (!$horarioSeleccionado) {
-            return back()->withErrors(['hora' => 'No hay horario configurado para ese profesional en ese dia y hora.'])->withInput();
-        }
-
-        if (!$this->slotAlineadoConHorario($horarioSeleccionado, (string) $data['fecha'], $slot)) {
-            return back()->withErrors(['hora' => 'La hora seleccionada no coincide con un bloque disponible del horario configurado.'])->withInput();
-        }
-
-        $intervalo = $this->intervaloHorario($horarioSeleccionado);
-
-        $citasMismoDia = Cita::query()
-            ->where('doctor_id', $data['doctor_id'])
-            ->whereDate('fecha', $data['fecha'])
-            ->where('activo', true)
-            ->get(['hora']);
-
-        $choca = $citasMismoDia->contains(function ($row) use ($slot, $intervalo) {
-            $hora = strlen((string) $row->hora) >= 5 ? substr((string) $row->hora, 0, 5) : (string) $row->hora;
-            $otro = Carbon::createFromFormat('H:i', $hora);
-            return $otro->diffInMinutes($slot) <= ($intervalo - 1);
-        });
-
-        if ($choca) {
-            return back()->withErrors(['hora' => 'Ya existe una cita en ese horario o intervalo inmediato.'])->withInput();
+        if ($validationError) {
+            return back()->withErrors([$validationError['field'] => $validationError['message']])->withInput();
         }
 
         try {
@@ -192,6 +155,7 @@ class CitaOverrideController extends Controller
             DB::commit();
         } catch (QueryException $e) {
             DB::rollBack();
+
             return back()->withErrors([
                 'hora' => 'El horario seleccionado ya fue ocupado por otra cita.',
             ])->withInput();
@@ -201,7 +165,7 @@ class CitaOverrideController extends Controller
         EnviarConfirmacionCitaJob::dispatch($cita);
 
         $msg = $bloqueado && $forzarBloqueo
-            ? 'Cita creada con override de pagos pendientes. Acción auditada.'
+            ? 'Cita creada con override de pagos pendientes. Accion auditada.'
             : 'Cita creada correctamente.';
 
         return redirect()

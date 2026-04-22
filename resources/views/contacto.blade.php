@@ -7,7 +7,7 @@
   @php
     $infoBadge = $siteSettings->get('contact.info_badge', 'Contacto');
     $contactTitle = $siteSettings->get('contact.title', 'Clínica Don Bosco');
-    $contactSubtitle = $siteSettings->get('contact.subtitle', 'Sistema de gestión médica para agendar citas facilmente y recibir atención especializada.');
+    $contactSubtitle = $siteSettings->get('contact.subtitle', 'Canales de contacto de la clínica para consultas administrativas, horarios y orientación sobre el uso del sistema de citas.');
     $addressLabel = $siteSettings->get('contact.address_label', 'Dirección');
     $contactAddress = $siteSettings->get('contact.address', 'Quito, Av. Colon y 6 de Diciembre');
     $phoneLabel = $siteSettings->get('contact.phone_label', 'Teléfono');
@@ -17,7 +17,7 @@
 
     $formSectionBadge = $siteSettings->get('contact.form_section_badge', 'Escríbenos');
     $formTitle = $siteSettings->get('contact.form_title', 'Formulario de contacto');
-    $formBadge = $siteSettings->get('contact.form_badge', 'Respuesta en menos de 24h');
+    $formBadge = $siteSettings->get('contact.form_badge', 'Mensaje para la clínica');
     $submitText = $siteSettings->get('contact.form_submit_text', 'Enviar');
 
     $nameLabel = $siteSettings->get('contact.form_name_label', 'Nombre');
@@ -97,6 +97,10 @@
             @csrf
 
             <input type="hidden" name="t0" value="{{ now()->timestamp }}">
+            <div class="hidden" aria-hidden="true">
+              <label for="empresa">Empresa</label>
+              <input id="empresa" type="text" name="empresa" value="" tabindex="-1" autocomplete="off">
+            </div>
 
             <div class="grid gap-4 md:grid-cols-2">
               <div class="form-group space-y-1">

@@ -95,7 +95,7 @@ document.addEventListener('DOMContentLoaded', function () {
     crearUsuarioPreferido: null,
     buffer: initialBuffer(),
     citasEncontradas: [],
-    retoHumano: { challengeId: null, targetKey: '', targetLabelEs: '', images: [] },
+    retoHumano: { challengeId: null, targetKey: '', targetLabelEs: '', images: [], verifying: false },
   };
 
   const limpiarCedula = (value) => String(value || '').replace(/\s+/g, '');
@@ -104,6 +104,14 @@ document.addEventListener('DOMContentLoaded', function () {
   const esTelefonoValido = (value) => /^\d{10}$/.test(value);
   const esCorreoValido = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizarCorreo(value));
   const esFechaValida = (value) => /^\d{4}-\d{2}-\d{2}$/.test(value);
+  const esPasswordValido = (value) => /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/.test(String(value || ''));
+  const MOTIVOS_NO_VALIDOS = ['no', 'ninguno', 'ninguna', 'n/a', 'na', 'sin motivo', 'omitir'];
+  const normalizarMotivoConsulta = (value) => String(value || '').trim().replace(/\s+/g, ' ');
+  const esMotivoConsultaValido = (value) => {
+    const motivo = normalizarMotivoConsulta(value).toLowerCase();
+    return motivo.length >= 3 && !MOTIVOS_NO_VALIDOS.includes(motivo);
+  };
+  const MENSAJE_MOTIVO_CONSULTA = 'Indica el motivo de la consulta en pocas palabras. Ejemplos: fiebre, dolor de cabeza o tos.';
   const normalizarSexo = (value) => {
     const v = (value || '').trim().toLowerCase();
     if (!v) return '';
@@ -137,14 +145,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const title = document.createElement('div');
     title.className = 'chat-verificacion-text';
-    title.textContent = `Para verificar que no eres un robot, escribe el número de: ${reto.targetLabelEs}.`;
+    title.textContent = `Para verificar que no eres un robot, haz clic o escribe el número de: ${reto.targetLabelEs}.`;
 
     const grid = document.createElement('div');
     grid.className = 'chat-verificacion-grid';
 
     reto.images.forEach((image, idx) => {
-      const item = document.createElement('div');
+      const item = document.createElement('button');
+      item.type = 'button';
       item.className = 'chat-verificacion-item';
+      item.setAttribute('aria-label', `Seleccionar opción ${idx + 1}`);
+      item.addEventListener('click', () => {
+        procesarRespuestaRetoHumano(idx + 1);
+      });
 
       const img = document.createElement('img');
       const resolvedUrl = /^https?:\/\//i.test(image.url)
@@ -241,6 +254,49 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
+  async function procesarRespuestaRetoHumano(respuesta) {
+    const seleccion = parseInt(respuesta, 10);
+
+    if (!state.retoHumano.challengeId || !Array.isArray(state.retoHumano.images) || state.retoHumano.images.length !== 4) {
+      addMessage('bot', 'Generando un nuevo reto...');
+      await mostrarRetoHumano();
+      return;
+    }
+
+    if (!seleccion || seleccion < 1 || seleccion > state.retoHumano.images.length) {
+      addMessage('bot', 'Escribe el número correspondiente al animal solicitado (1-4) o haz clic en la imagen.');
+      return;
+    }
+
+    const selected = state.retoHumano.images[seleccion - 1];
+    if (!selected || !selected.id) {
+      addMessage('bot', 'No se pudo leer la opción seleccionada. Intentaremos de nuevo.');
+      await mostrarRetoHumano();
+      return;
+    }
+
+    if (state.retoHumano.verifying) {
+      return;
+    }
+
+    state.retoHumano.verifying = true;
+
+    try {
+      addMessage('bot', 'Validando selección...');
+      const resultado = await verificarRetoHumano(state.retoHumano.challengeId, selected.id);
+      if (!resultado.ok) {
+        addMessage('bot', resultado.message || 'Selección incorrecta. Intenta nuevamente.');
+        await mostrarRetoHumano();
+        return;
+      }
+
+      state.step = 'cedula';
+      addMessage('bot', 'Validación completada.\n\nIngresa tu número de cédula (10 dígitos, solo números):');
+    } finally {
+      state.retoHumano.verifying = false;
+    }
+  }
+
   function addButtons(buttons) {
     const wrap = document.createElement('div');
     wrap.className = 'chat-options';
@@ -280,8 +336,8 @@ document.addEventListener('DOMContentLoaded', function () {
     if (a === 'info_citas') return startInfoCitas();
     if (a === 'actualizar_perfil') return startActualizarPerfil();
     if (a === 'registro_iniciar') return startRegistro();
-    if (a === 'registro_crear_si') return finalizarRegistro(true);
-    if (a === 'registro_crear_no') return finalizarRegistro(false);
+    if (a === 'registro_crear_si') return registrarUsuarioDesdeRegistro();
+    if (a === 'registro_crear_no') return continuarRegistroSinUsuario();
     if (a === 'finalizar') return finalizarChat();
     if (a === 'reenviar_codigo') return reenviarCodigo();
     if (a === 'estado_citas') return mostrarCitasPorEstado(btn.payload.estado, btn.payload.titulo);
@@ -328,7 +384,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   function resetChat() {
     log.innerHTML = '';
-    state.retoHumano = { challengeId: null, targetKey: '', targetLabelEs: '', images: [] };
+    state.retoHumano = { challengeId: null, targetKey: '', targetLabelEs: '', images: [], verifying: false };
     startIdentidad(true);
   }
 
@@ -351,9 +407,63 @@ document.addEventListener('DOMContentLoaded', function () {
     addMessage('bot','Ingresa tu número de cédula (10 dígitos):');
   }
 
-  function finalizarRegistro(crearUsuario) {
-    state.registro.crearUsuario = crearUsuario;
-    state.crearUsuarioPreferido = crearUsuario;
+  async function registrarUsuarioDesdeRegistro() {
+    state.registro.crearUsuario = true;
+    state.crearUsuarioPreferido = true;
+    addMessage('bot', 'Registrando tu usuario...');
+
+    try {
+      const res = await fetch(`${baseUrl}/chatbot/registrar-usuario`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': csrf,
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          nombre: state.registro.nombre,
+          cedula: state.registro.cedula,
+          email: state.registro.email,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.ok === false) {
+        addMessage('bot', data.message || 'No pudimos registrar tu usuario en este momento.');
+        return;
+      }
+
+      state.identidad = {
+        id: data.paciente?.id || null,
+        nombre: data.paciente?.nombre || state.registro.nombre,
+        cedula: state.registro.cedula,
+        email: data.paciente?.email || state.registro.email,
+        telefono: data.paciente?.telefono || '',
+      };
+      state.autenticado = true;
+      resetBufferConIdentidad();
+
+      let mensaje = data.usuario_creado
+        ? 'Creamos tu usuario. Tu correo es el usuario y tu cedula la contrasena inicial.'
+        : 'Tu usuario ya estaba registrado con ese correo y esa cedula.';
+
+      if (data.credenciales_enviadas) {
+        mensaje += ' Tambien enviamos esos datos al correo.';
+      } else if (data.credenciales_error) {
+        mensaje += ` ${data.credenciales_error}`;
+      }
+
+      addMessage('bot', mensaje);
+      startAgendar();
+    } catch (error) {
+      console.error(error);
+      addMessage('bot', 'No pudimos registrar tu usuario en este momento.');
+    }
+  }
+
+  function continuarRegistroSinUsuario() {
+    state.registro.crearUsuario = false;
+    state.crearUsuarioPreferido = false;
     state.identidad = {
       id: null,
       nombre: state.registro.nombre,
@@ -363,13 +473,7 @@ document.addEventListener('DOMContentLoaded', function () {
     };
     state.autenticado = true;
     resetBufferConIdentidad();
-    addMessage(
-      'bot',
-      crearUsuario
-        ?
-         'Crearemos tu usuario y enviaremos una contraseña temporal al correo.'
-        : 'Continuaremos sin crear usuario.'
-    );
+    addMessage('bot', 'Continuaremos sin crear usuario.');
     startAgendar();
   }
 
@@ -617,7 +721,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     state.step = 'motivo';
-    addMessage('bot','Indica el motivo de la consulta.');
+    addMessage('bot', MENSAJE_MOTIVO_CONSULTA);
   }
 
   async function pedirEspecialidades() {
@@ -785,7 +889,9 @@ document.addEventListener('DOMContentLoaded', function () {
         msg += `\nTarifa: ${state.buffer.doctor_tarifa}`;
       }
       if (data.credenciales_enviadas) {
-        msg += '\nSe creó una cuenta y te enviamos una contraseña temporal a tu correo.';
+        msg += '\nSe creo una cuenta. Tu usuario es tu correo y tu contrasena inicial es tu cedula. Tambien te enviamos esos datos al correo.';
+      } else if (data.credenciales_error) {
+        msg += `\n${data.credenciales_error}`;
       }
       if (state.buffer.email) {
         msg += `\nHemos enviado la confirmación al correo ${state.buffer.email}.`;
@@ -1223,33 +1329,7 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
       }
       if (state.step === 'verificacion_humano') {
-        const respuesta = parseInt(text, 10);
-        if (!state.retoHumano.challengeId || !Array.isArray(state.retoHumano.images) || state.retoHumano.images.length !== 4) {
-          addMessage('bot','Generando un nuevo reto...');
-          await mostrarRetoHumano();
-          return;
-        }
-        if (!respuesta || respuesta < 1 || respuesta > state.retoHumano.images.length) {
-          addMessage('bot','Escribe el número correspondiente al animal solicitado (1-4).');
-          return;
-        }
-
-        const selected = state.retoHumano.images[respuesta - 1];
-        if (!selected || !selected.id) {
-          addMessage('bot','No se pudo leer la opcion seleccionada. Intentaremos de nuevo.');
-          await mostrarRetoHumano();
-          return;
-        }
-
-        addMessage('bot','Validando seleccion...');
-        const resultado = await verificarRetoHumano(state.retoHumano.challengeId, selected.id);
-        if (!resultado.ok) {
-          addMessage('bot', resultado.message || 'Seleccion incorrecta. Intenta nuevamente.');
-          await mostrarRetoHumano();
-          return;
-        }
-        state.step = 'cedula';
-        return addMessage('bot','Validación completada.\n\nIngresa tu número de cédula (10 dígitos, solo números):');
+        return procesarRespuestaRetoHumano(text);
       }
       if (state.step === 'cedula') {
         return procesarCedula(text);
@@ -1296,7 +1376,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         state.registro.nombre = text;
         state.step = 'registro_crear';
-        addMessage('bot','¿Deseas crear un usuario con ese correo y recibir una contraseña temporal?');
+        addMessage('bot','¿Deseas crear un usuario con ese correo? Tu correo sera el usuario y tu cedula la contrasena inicial.');
         return addButtons([
           { label:'Sí, crear usuario', action:'registro_crear_si' },
           { label:'No, solo agendar', action:'registro_crear_no' },
@@ -1305,10 +1385,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
       if (state.step === 'registro_crear') {
         if (comando.startsWith('s')) {
-          return finalizarRegistro(true);
+          return registrarUsuarioDesdeRegistro();
         }
         if (comando.startsWith('n')) {
-          return finalizarRegistro(false);
+          return continuarRegistroSinUsuario();
         }
         return addMessage('bot','Responde si/no o usa los botones.');
       }
@@ -1331,10 +1411,13 @@ document.addEventListener('DOMContentLoaded', function () {
         state.buffer.telefono = text;
         state.identidad.telefono = text;
         state.step = 'motivo';
-        return addMessage('bot','Motivo de consulta (o escribe "no" para omitir):');
+        return addMessage('bot', MENSAJE_MOTIVO_CONSULTA);
       }
       if (state.step === 'motivo') {
-        state.buffer.motivo = text;
+        if (!esMotivoConsultaValido(text)) {
+          return addMessage('bot','El motivo de la cita es obligatorio y debe ser breve. Ejemplos: fiebre, dolor de cabeza o tos.');
+        }
+        state.buffer.motivo = normalizarMotivoConsulta(text);
         return pedirEspecialidades();
       }
       if (state.step === 'especialidad') {
@@ -1582,7 +1665,7 @@ document.addEventListener('DOMContentLoaded', function () {
       }
 
       if (state.step === 'perfil_password_nueva') {
-        if (text.length < 8 || !/^(=.*[A-Za-z])(=.*\d)(=.*[^A-Za-z0-9]).{8,}$/.test(text)) {
+        if (!esPasswordValido(text)) {
           return addMessage('bot','La nueva contraseña debe tener mínimo 8 caracteres e incluir letras, números y un carácter especial.');
         }
         if (state.buffer.password_actual && text === state.buffer.password_actual) {

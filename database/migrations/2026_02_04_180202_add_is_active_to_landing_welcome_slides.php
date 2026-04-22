@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('landing_welcome_slides', function (Blueprint $table) {
-            if (!Schema::hasColumn('landing_welcome_slides', 'is_active')) {
+            if (! Schema::hasColumn('landing_welcome_slides', 'is_active')) {
                 $table->boolean('is_active')->default(true)->after('image_path');
             }
         });

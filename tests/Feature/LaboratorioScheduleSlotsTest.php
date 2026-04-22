@@ -19,7 +19,7 @@ class LaboratorioScheduleSlotsTest extends TestCase
         $laboratorioRole = Role::firstOrCreate(['name' => 'laboratorio']);
         $pacienteRole = Role::firstOrCreate(['name' => 'paciente']);
 
-        $especialidad = Especialidad::factory()->create(['nombre' => 'Laboratorio Clinico']);
+        $especialidad = Especialidad::factory()->create(['nombre' => 'Laboratorio Clínico']);
         $laboratorio = User::factory()->create(['status' => 'active', 'suspended_until' => null]);
         $laboratorio->roles()->attach($laboratorioRole->id);
         $laboratorio->especialidades()->attach($especialidad->id);
@@ -61,7 +61,7 @@ class LaboratorioScheduleSlotsTest extends TestCase
         $doctor = $this->createUserWithRole('doctor');
         $paciente = $this->createUserWithRole('paciente');
         $laboratorio = $this->createUserWithRole('laboratorio');
-        $especialidad = Especialidad::factory()->create(['nombre' => 'Laboratorio Clinico']);
+        $especialidad = Especialidad::factory()->create(['nombre' => 'Laboratorio Clínico']);
         $laboratorio->especialidades()->attach($especialidad->id);
 
         $response = $this->actingAs($doctor)->get(route('doctor.laboratorio.create', ['paciente_id' => $paciente->id]));
@@ -77,7 +77,7 @@ class LaboratorioScheduleSlotsTest extends TestCase
         $doctor = $this->createUserWithRole('doctor');
         $paciente = $this->createUserWithRole('paciente');
         $laboratorio = $this->createUserWithRole('laboratorio');
-        $especialidad = Especialidad::factory()->create(['nombre' => 'Laboratorio Clinico']);
+        $especialidad = Especialidad::factory()->create(['nombre' => 'Laboratorio Clínico']);
         $laboratorio->especialidades()->attach($especialidad->id);
 
         Horario::create([

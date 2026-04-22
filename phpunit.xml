@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
-         bootstrap="vendor/autoload.php"
+         bootstrap="tests/bootstrap.php"
          colors="true"
 >
     <testsuites>
@@ -10,17 +10,27 @@
         </testsuite>
         <testsuite name="Feature">
             <directory>tests/Feature</directory>
+            <exclude>tests/Feature/AuditFunctionalFlowTest.php</exclude>
+        </testsuite>
+        <testsuite name="Audit">
+            <file>tests/Feature/AuditFunctionalFlowTest.php</file>
         </testsuite>
     </testsuites>
     <php>
         <!-- Entorno para testing -->
         <env name="APP_ENV" value="testing"/>
         <env name="DB_CONNECTION" value="sqlite"/>
-        <env name="DB_DATABASE" value=":memory:"/>
+        <env name="DB_DATABASE" value="tmp/testing.sqlite"/>
         <env name="CACHE_STORE" value="array"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="MAIL_MAILER" value="array"/>
+        <env name="APP_URL" value="http://localhost"/>
         <env name="APP_KEY" value="base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="/>
+        <env name="APP_CONFIG_CACHE" value="bootstrap/cache/config-testing.php"/>
+        <env name="APP_PACKAGES_CACHE" value="bootstrap/cache/packages-testing.php"/>
+        <env name="APP_SERVICES_CACHE" value="bootstrap/cache/services-testing.php"/>
+        <env name="APP_EVENTS_CACHE" value="bootstrap/cache/events-testing.php"/>
+        <env name="APP_ROUTES_CACHE" value="bootstrap/cache/routes-testing.php"/>
     </php>
 </phpunit>

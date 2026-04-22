@@ -21,8 +21,8 @@ class SubmitPagoRequest extends FormRequest
 
         $requiereComprobante = $metodo === Pago::METODO_TRANSFERENCIA
             && (
-                !$pago
-                || !$pago->comprobante_path
+                ! $pago
+                || ! $pago->comprobante_path
                 || $pago->estado === Pago::ESTADO_RECHAZADO
             );
 

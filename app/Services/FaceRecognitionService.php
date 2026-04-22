@@ -12,7 +12,7 @@ class FaceRecognitionService
         if (is_array($samples) && count($samples)) {
             $best = null;
             foreach ($samples as $stored) {
-                if (!is_array($stored) || !count($stored)) {
+                if (! is_array($stored) || ! count($stored)) {
                     continue;
                 }
                 $distance = $this->distance($incoming, $stored);
@@ -26,6 +26,7 @@ class FaceRecognitionService
         }
 
         $stored = $profile->descriptor ?? [];
+
         return $this->distance($incoming, $stored);
     }
 
@@ -34,6 +35,7 @@ class FaceRecognitionService
         $profileThreshold = (float) ($profile->threshold ?? 0);
         $configThreshold = (float) config('services.face.threshold', 0.42);
         $threshold = max($profileThreshold, $configThreshold);
+
         return $distance <= $threshold;
     }
 

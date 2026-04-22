@@ -1,12 +1,13 @@
 ﻿// resources/js/navbar.js
-document.addEventListener('DOMContentLoaded', () => {
+function initNavbar() {
   const header = document.getElementById('cnav-header');
   const menu = document.getElementById('cnav-menu');
   const toggle = document.getElementById('cnav-toggle');
   const closeBtn = document.getElementById('cnav-close');
   const mobileMq = window.matchMedia('(max-width: 1023.98px)');
 
-  if (!header || !menu) return;
+  if (!header || !menu || !toggle || !closeBtn || header.dataset.navbarReady === '1') return;
+  header.dataset.navbarReady = '1';
 
   // Mostrar sombra al hacer scroll
   const onScroll = () => {
@@ -49,4 +50,10 @@ document.addEventListener('DOMContentLoaded', () => {
     requestAnimationFrame(closeMenu);
   });
 
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initNavbar, { once: true });
+} else {
+  initNavbar();
+}

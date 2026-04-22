@@ -2,10 +2,9 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
-use App\Models\User;
 use App\Models\Role;
+use App\Models\User;
+use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
@@ -17,19 +16,31 @@ class DatabaseSeeder extends Seeder
             LabTestsSeeder::class,
         ]);
 
-        $superadmin = User::updateOrCreate(
+        $this->seedSuperadmin();
+    }
+
+    private function seedSuperadmin(): void
+    {
+        $user = User::updateOrCreate(
             ['email' => 'superadmin@clinic.test'],
             [
-                'name'     => 'Superadmin',
+                'name' => 'Superadmin',
+                'email' => 'superadmin@clinic.test',
                 'password' => 'superadmin1234',
-                'active'   => true,
-                'status'   => 'active',
+                'telefono' => '0990000100',
+                'dni' => '1000000100',
+                'direccion' => 'Clinica central',
+                'fecha_nacimiento' => '1985-01-10',
+                'sexo' => 'Masculino',
+                'status' => User::STATUS_ACTIVE,
             ]
         );
 
-        $superRole = Role::where('name', 'superadmin')->first();
-        if ($superRole) {
-            $superadmin->roles()->sync([$superRole->id]);
+        $roleId = Role::query()->where('name', 'superadmin')->value('id');
+        if ($roleId) {
+            $user->roles()->sync([$roleId]);
         }
+
+        $user->especialidades()->sync([]);
     }
 }

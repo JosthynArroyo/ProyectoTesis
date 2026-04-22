@@ -5,32 +5,14 @@
 
 @section('main')
 <div class="space-y-6">
-  <section class="card p-6">
-    <div class="page-header">
-      <div class="page-header__info">
-        <p class="text-xs uppercase tracking-widest text-slate-500">Superadmin</p>
-        <h1 class="mt-2 text-2xl font-semibold text-slate-900">Resumen general</h1>
-        <p class="text-slate-600">Visibilidad completa de usuarios, citas y permisos.</p>
-      </div>
-      <div class="page-header__actions">
-        <a class="btn btn-outline btn-full-mobile" href="{{ route('superadmin.admins.index') }}">
-          <i class="ri-shield-user-line"></i> Administradores
-        </a>
-        <a class="btn btn-primary btn-full-mobile" href="{{ route('superadmin.personalizacion.bienvenida.edit') }}">
-          <i class="ri-palette-line"></i> Personalización
-        </a>
-      </div>
-    </div>
-  </section>
-
-  @if($maintenanceEnabled)
-    <x-ui.alert tone="warning">
-      <div>
-        <strong>Modo mantenimiento activo.</strong> Solo el superadmin tiene acceso al sistema.
-      </div>
-    </x-ui.alert>
-  @endif
-
+  <div class="panel-action-bar">
+    <a class="btn btn-outline btn-full-mobile" href="{{ route('superadmin.admins.index') }}">
+      <i class="ri-shield-user-line"></i> Administradores
+    </a>
+    <a class="btn btn-primary btn-full-mobile" href="{{ route('superadmin.personalizacion.bienvenida.edit') }}">
+      <i class="ri-palette-line"></i> Personalización
+    </a>
+  </div>
   <section class="stat-grid">
     <a class="block" href="{{ route('superadmin.users.index') }}">
       <x-ui.stat label="Usuarios totales" :value="$totalUsuarios" tone="slate">
@@ -77,8 +59,8 @@
     <div class="page-header">
       <div class="page-header__info">
         <p class="text-xs uppercase tracking-widest text-slate-500">Actividad</p>
-        <h2>Citas y usuarios por dia</h2>
-        <p>Ultimos 7 dias de actividad del sistema.</p>
+        <h2>Citas y usuarios por día</h2>
+        <p>Últimos 7 días de actividad del sistema.</p>
       </div>
     </div>
     @php

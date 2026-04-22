@@ -24,7 +24,7 @@ class PagoLookupController extends Controller
         $esAdmin = $user->hasRole('administrador') || $user->hasRole('superadmin');
         $esPacientePropietario = $user->hasRole('paciente') && (int) $pago->paciente_id === (int) $user->id;
 
-        if (!$esAdmin && !$esPacientePropietario) {
+        if (! $esAdmin && ! $esPacientePropietario) {
             abort(403);
         }
 
@@ -35,4 +35,3 @@ class PagoLookupController extends Controller
         ]);
     }
 }
-

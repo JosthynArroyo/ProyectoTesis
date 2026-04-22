@@ -1,21 +1,19 @@
 <?php
-// app/Http/Controllers/ContactoController.php
 
 namespace App\Http\Controllers;
 
-use App\Models\Contacto;
+use App\Mail\ContactoRecibido;
+use App\Models\ContactMessage;
 use Illuminate\Http\Request;
-use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Throwable;
 
 class ContactoController extends Controller
 {
     public function __construct()
     {
-        // Usa el limiter nombrado "contacto"
-        $this->middleware('throttle:contacto')->only('enviarFormulario');
-        // Alternativa sin limiter nombrado:
-        // $this->middleware('throttle:5,1')->only('enviarFormulario');
+        $this->middleware('throttle:contacto')->only(['storeContacto', 'enviarFormulario']);
     }
 
     public function mostrarFormulario()
@@ -23,34 +21,53 @@ class ContactoController extends Controller
         return view('contacto');
     }
 
-    public function enviarFormulario(Request $request)
+    public function storeContacto(Request $request)
     {
-        // Honeypot y tiempo mínimo (>= 3s)
         $t0 = (int) $request->input('t0', 0);
-        $isBot   = filled($request->input('empresa'));
+        $isBot = filled($request->input('empresa'));
         $tooFast = $t0 > 0 && (now()->timestamp - $t0) < 3;
+
         if ($isBot || $tooFast) {
             return back()->with('success', 'Tu mensaje ha sido enviado correctamente.');
         }
 
         $datos = $request->validate([
-            'nombre'         => ['required','string','max:255'],
-            'email'          => ['required','email','max:255'],
-            'telefono'       => ['required','digits:10'],
-            'asunto'         => ['required','string','max:255'],
-            'mensaje'        => ['required','string','max:1000'],
-            'empresa'        => ['nullable','prohibited'], 
-            't0'             => ['required','integer'],
+            'nombre' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255'],
+            'telefono' => ['required', 'digits:10'],
+            'asunto' => ['required', 'string', 'max:255'],
+            'mensaje' => ['required', 'string', 'max:1000'],
+            'empresa' => ['nullable', 'prohibited'],
+            't0' => ['required', 'integer'],
         ]);
 
-        $payload = Arr::only($datos, ['nombre','email','telefono','asunto','mensaje']);
-        Contacto::create($payload);
+        $contactMessage = ContactMessage::create([
+            'nombre' => $datos['nombre'],
+            'correo' => $datos['email'],
+            'telefono' => $datos['telefono'],
+            'asunto' => $datos['asunto'],
+            'mensaje' => $datos['mensaje'],
+            'estado' => 'nuevo',
+        ]);
 
-        // Enviar email al administrador
-        Mail::to(config('mail.contact_to'))->send(
-            new \App\Mail\ContactoRecibido($datos) // ver clase abajo
-        );
+        try {
+            $recipient = config('mail.contact_to');
+
+            if ($recipient) {
+                Mail::to($recipient)->send(new ContactoRecibido($datos));
+            }
+        } catch (Throwable $exception) {
+            Log::warning('No se pudo enviar el correo de contacto.', [
+                'contact_message_id' => $contactMessage->id,
+                'error' => $exception->getMessage(),
+            ]);
+        }
 
         return back()->with('success', 'Tu mensaje ha sido enviado correctamente.');
+    }
+
+    public function enviarFormulario(Request $request)
+    {
+        return $this->storeContacto($request);
     }
 }

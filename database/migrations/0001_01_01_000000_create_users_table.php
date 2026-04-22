@@ -14,8 +14,8 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
-            $table->boolean('active')->default(0);
-            $table->string('role')->default('paciente'); 
+            $table->boolean('active')->default(1);
+            $table->string('role')->default('paciente');
             $table->rememberToken();
             $table->timestamps();
         });
@@ -35,16 +35,10 @@ return new class extends Migration
             $table->integer('last_activity')->index();
         });
 
-        Schema::create('role_user', function (Blueprint $table) {
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('role_id')->constrained()->cascadeOnDelete();
-            $table->primary(['user_id', 'role_id']);
-        });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('role_user');
         Schema::dropIfExists('sessions');
         Schema::dropIfExists('password_reset_tokens');
         Schema::dropIfExists('users');

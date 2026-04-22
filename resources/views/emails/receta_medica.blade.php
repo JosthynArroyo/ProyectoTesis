@@ -1,52 +1,56 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="utf-8">
-  <title>Receta médica</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-</head>
-<body style="margin:0; padding:0; background:#f8fafc; font-family:'Segoe UI', Arial, sans-serif; color:#0f172a;">
-  <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:#f8fafc; padding:24px 0;">
-    <tr>
-      <td align="center">
-        <table role="presentation" cellpadding="0" cellspacing="0" width="620" style="width:620px; max-width:92%; background:#ffffff; border-radius:16px; border:1px solid #e2e8f0; overflow:hidden; box-shadow:0 10px 30px rgba(15,23,42,0.08);">
-          <tr>
-            <td style="background:#0f766e; padding:22px 26px; text-align:left;">
-              @php($logoSrc = isset($message) ? $message->embed(public_path('img/logopdf.jpg')) : asset('img/logopdf.jpg'))
-              <img src="{{ $logoSrc }}" alt="Clínica Don Bosco" width="160" style="display:inline-block;">
+@php
+    $esActualizacion = ($motivo ?? 'creacion') === 'actualizacion';
+    $titulo = $esActualizacion ? 'Tu receta médica fue actualizada' : 'Tu receta médica está lista';
+    $doctor = $cita->doctor->name ?? 'tu profesional de salud';
+    $paciente = $cita->paciente->name ?? 'Paciente';
+    $fecha = $cita->fecha ? \Carbon\Carbon::parse($cita->fecha)->format('d/m/Y') : 'No disponible';
+    $hora = $cita->hora ? \Carbon\Carbon::parse($cita->hora)->format('H:i') : 'No disponible';
+@endphp
+
+<x-email.layout
+    eyebrow="Indicaciones médicas"
+    :title="$titulo"
+    :intro="'Adjuntamos el documento en PDF para que lo conserves y lo consultes cuando lo necesites.'"
+    badge="Documento adjunto"
+    preheader="Tu receta médica ya está disponible en Clínica Don Bosco."
+    footer-note="Sigue únicamente las indicaciones emitidas por tu profesional de salud. Si presentas molestias o dudas sobre la medicación, agenda una revisión médica."
+>
+    <p style="margin:0 0 22px; font-size:15px; line-height:1.7; color:#334155;">
+        Hola {{ $paciente }}, te enviamos la {{ $esActualizacion ? 'versión actualizada de tu receta médica' : 'receta médica generada durante tu atención' }}.
+    </p>
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%; border-collapse:separate; border-spacing:0; border:1px solid #dbe4ee; border-radius:22px; overflow:hidden; background:#ffffff;">
+        <tr>
+            <td colspan="2" style="padding:18px 20px; border-bottom:1px solid #e2e8f0; background:#f8fafc; font-size:13px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#0f766e;">
+                Datos de la atención
             </td>
-          </tr>
-          <tr>
-            <td style="padding:26px;">
-              <h2 style="margin:0 0 8px; font-size:20px;">
-                {{ $motivo === 'actualizacion' ? 'Actualización de receta médica' : 'Nueva receta médica' }}
-              </h2>
+        </tr>
+        <tr>
+            <td style="width:34%; padding:14px 20px; border-bottom:1px solid #eef2f7; font-size:13px; font-weight:700; color:#64748b;">Profesional</td>
+            <td style="padding:14px 20px; border-bottom:1px solid #eef2f7; font-size:14px; font-weight:600; color:#0f172a;">{{ $doctor }}</td>
+        </tr>
+        <tr>
+            <td style="padding:14px 20px; border-bottom:1px solid #eef2f7; font-size:13px; font-weight:700; color:#64748b;">Fecha</td>
+            <td style="padding:14px 20px; border-bottom:1px solid #eef2f7; font-size:14px; font-weight:600; color:#0f172a;">{{ $fecha }}</td>
+        </tr>
+        <tr>
+            <td style="padding:14px 20px; font-size:13px; font-weight:700; color:#64748b;">Hora</td>
+            <td style="padding:14px 20px; font-size:14px; font-weight:600; color:#0f172a;">{{ $hora }}</td>
+        </tr>
+    </table>
 
-              <p style="margin:0 0 12px;">Estimado/a {{ $cita->paciente->name ?? 'Paciente' }},</p>
+    <div style="margin-top:20px; padding:20px; border-radius:22px; background:#f8fafc; border:1px solid #dbe4ee;">
+        <div style="font-size:13px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#0f766e;">
+            Importante
+        </div>
+        <p style="margin:10px 0 0; font-size:14px; line-height:1.7; color:#475569;">
+            Guarda este archivo en un lugar seguro y preséntalo cuando sea necesario para tu seguimiento o dispensación de medicamentos.
+        </p>
+    </div>
 
-              <p style="margin:0 0 12px; color:#475569; line-height:1.6;">
-                Adjuntamos su {{ $motivo === 'actualizacion' ? 'receta actualizada' : 'nueva receta' }}
-                correspondiente a la cita con el Dr(a).
-                <strong>{{ $cita->doctor->name ?? '-' }}</strong>
-                del día {{ \Carbon\Carbon::parse($cita->fecha)->format('d/m/Y') }}
-                a las {{ \Carbon\Carbon::parse($cita->hora)->format('H:i') }}.
-              </p>
-
-              <p style="margin:0 0 12px; color:#475569; line-height:1.6;">
-                Por favor, siga las indicaciones médicas y conserve este documento para futuras consultas.
-              </p>
-
-              <p style="margin:20px 0 0;"> Clínica Don Bosco</p>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:12px; text-align:center; background:#f1f5f9; font-size:12px; color:#64748b;">
-              © {{ date('Y') }} Clínica Don Bosco · Este es un correo automático, no responder.
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
+    <x-slot:actions>
+        <a href="{{ route('paciente.dashboard') }}" style="display:inline-block; padding:14px 24px; border-radius:14px; background:#0f766e; color:#ffffff; text-decoration:none; font-size:14px; font-weight:700;">
+            Ir a mi panel
+        </a>
+    </x-slot:actions>
+</x-email.layout>

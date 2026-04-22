@@ -12,6 +12,14 @@ class SignSoapRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'subjetivo_motivo' => $this->motivoDesdeCita($this->input('subjetivo_motivo')),
+            'sv_talla' => $this->normalizeTalla($this->input('sv_talla')),
+        ]);
+    }
+
     public function rules(): array
     {
         return [
@@ -24,7 +32,9 @@ class SignSoapRequest extends FormRequest
             'notas_objetivas' => ['required', 'string', 'max:8000'],
             'assessment' => ['required', 'string', 'max:8000'],
             'plan_general' => ['required', 'string', 'max:8000'],
-            'plan_seguimiento' => ['required', 'string', 'max:8000'],
+            'plan_seguimiento' => ['nullable', 'string', 'max:8000'],
+            'follow_up_date' => ['nullable', 'date'],
+            'follow_up_notes' => ['nullable', 'string', 'max:8000'],
             'plan_notas' => ['required', 'string', 'max:8000'],
 
             'sv_ta' => ['required', 'string', 'max:20'],
@@ -80,6 +90,45 @@ class SignSoapRequest extends FormRequest
             if (! $tienePrincipal) {
                 $v->errors()->add('diagnosticos', 'Debes registrar al menos un diagnostico principal.');
             }
+
+            $legacyFollowUp = trim((string) $this->input('plan_seguimiento', ''));
+            $followUpDate = trim((string) $this->input('follow_up_date', ''));
+            $followUpNotes = trim((string) $this->input('follow_up_notes', ''));
+
+            if ($legacyFollowUp === '' && $followUpDate === '' && $followUpNotes === '') {
+                $v->errors()->add('follow_up_date', 'Registra la fecha o el resumen de seguimiento clínico.');
+            }
         });
+    }
+
+    private function normalizeTalla(mixed $value): mixed
+    {
+        if ($value === null || $value === '') {
+            return $value;
+        }
+
+        $normalized = str_replace(',', '.', trim((string) $value));
+        if (! is_numeric($normalized)) {
+            return $value;
+        }
+
+        $height = (float) $normalized;
+
+        return $height > 0 && $height <= 3
+            ? (string) round($height * 100, 2)
+            : $normalized;
+    }
+
+    private function motivoDesdeCita(mixed $value): mixed
+    {
+        if (filled($value)) {
+            return $value;
+        }
+
+        $cita = $this->route('cita');
+
+        return is_object($cita) && filled($cita->motivo_consulta)
+            ? $cita->motivo_consulta
+            : $value;
     }
 }

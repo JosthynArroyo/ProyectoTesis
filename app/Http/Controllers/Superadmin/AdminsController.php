@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Superadmin;
 use App\Http\Controllers\Controller;
 use App\Models\Role;
 use App\Models\User;
+use App\Support\DateField;
 use App\Support\ValidationRules;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -36,7 +37,7 @@ class AdminsController extends Controller
     {
         $data = $this->validatePayload($request);
 
-        $user = new User();
+        $user = new User;
         $user->name = $data['name'];
         $user->email = $data['email'];
         $user->password = Hash::make($data['password']);
@@ -45,14 +46,13 @@ class AdminsController extends Controller
         $user->direccion = $data['direccion'] ?? null;
         $user->fecha_nacimiento = $data['fecha_nacimiento'] ?? null;
         $user->sexo = $data['sexo'] ?? null;
-        $user->active = true;
-        $user->status = 'active';
+        $user->status = User::STATUS_ACTIVE;
         $user->save();
 
         $adminRole = Role::where('name', 'administrador')->firstOrFail();
         $user->roles()->sync([$adminRole->id]);
 
-        return redirect()->route('superadmin.admins.edit', $user)->with('success', 'Administrador creado correctamente.');
+        return redirect()->route('superadmin.admins.index')->with('success', 'Administrador creado correctamente.');
     }
 
     public function edit(User $admin)
@@ -72,7 +72,7 @@ class AdminsController extends Controller
                 ->withErrors(['Solo puedes editar cuentas con rol Administrador.']);
         }
 
-        $data = $this->validatePayload($request, $admin->id, true);
+        $data = $this->validatePayload($request, $admin->id, false);
 
         $admin->name = $data['name'];
         $admin->email = $data['email'];
@@ -173,8 +173,9 @@ class AdminsController extends Controller
         return back()->with('success', 'Administrador marcado como inactivo.');
     }
 
-    private function validatePayload(Request $request, int $ignoreId = null, bool $requirePassword = true): array
+    private function validatePayload(Request $request, ?int $ignoreId = null, bool $requirePassword = true): array
     {
+        DateField::mergeIntoRequest($request, 'fecha_nacimiento');
         $passwordRule = $requirePassword
             ? ValidationRules::passwordRequired()
             : ValidationRules::passwordOptional();
@@ -186,7 +187,7 @@ class AdminsController extends Controller
             'telefono' => ValidationRules::telefono(),
             'dni' => ValidationRules::cedulaUnique('users', $ignoreId),
             'direccion' => ['required', 'string', 'max:255'],
-            'fecha_nacimiento' => ['required', 'date', 'before:today'],
+            'fecha_nacimiento' => ValidationRules::birthDate(),
             'sexo' => ['required', 'in:Masculino,Femenino,Otro'],
         ]);
     }

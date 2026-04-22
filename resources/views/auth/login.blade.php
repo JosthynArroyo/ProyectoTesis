@@ -7,32 +7,37 @@
         <div class="card p-8">
           <div class="mb-6">
             <p class="text-xs uppercase tracking-widest text-slate-500">Acceso</p>
-            <h1 class="mt-2 text-2xl font-semibold text-slate-900">Iniciar sesión</h1>
-            <p class="text-slate-600">Ingresa con tu correo y contraseña para gestionar tus citas.</p>
+            <h1 class="mt-2 text-2xl font-semibold text-slate-900">Iniciar sesion</h1>
+            <p class="text-slate-600">Ingresa con tu correo y contrasena para gestionar tus citas.</p>
           </div>
 
           @if($errors->any())
             <x-ui.alert tone="error">{{ $errors->first() }}</x-ui.alert>
           @endif
 
-          <form method="POST" action="{{ route('login') }}" id="loginForm" class="space-y-4">
+          <form method="POST" action="{{ route('login') }}" id="loginForm" class="space-y-4" data-remember-login-form>
             @csrf
             <input type="hidden" name="remember" value="0">
 
             <div>
-              <label class="form-label" for="email">Correo electrónico</label>
-              <input id="email" type="email" name="email" placeholder="correo@ejemplo.com" value="{{ old('email') }}" required class="form-input">
+              <label class="form-label" for="email">Correo electronico</label>
+              <input id="email" type="email" name="email" placeholder="correo@ejemplo.com" value="{{ old('email') }}" required class="form-input" data-remember-login-email>
             </div>
 
             <div>
-              <label class="form-label" for="login_password">Contraseña</label>
+              <label class="form-label" for="login_password">Contrasena</label>
               <div class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2">
-                <input type="password" name="password" id="login_password" placeholder="Contraseña" required class="flex-1 bg-transparent text-sm">
-                <button type="button" class="toggle-eye" data-target="login_password" aria-label="Mostrar u ocultar contraseña">
+                <input type="password" name="password" id="login_password" placeholder="Contrasena" required class="flex-1 bg-transparent text-sm">
+                <button type="button" class="toggle-eye" data-target="login_password" aria-label="Mostrar u ocultar contrasena">
                   <i class="ri-eye-line"></i>
                 </button>
               </div>
             </div>
+
+            <label class="inline-flex cursor-pointer items-center gap-2 text-sm text-slate-500">
+              <input type="checkbox" name="remember" value="1" class="h-4 w-4 rounded border-slate-300" data-remember-login-checkbox @checked(old('remember'))>
+              Recuerdame
+            </label>
 
             <x-ui.form-actions>
               <x-slot:left>
@@ -43,23 +48,32 @@
               <button type="submit" class="btn btn-primary">Ingresar</button>
             </x-ui.form-actions>
           </form>
+
+          <div class="mt-5 flex flex-wrap gap-3 text-sm text-slate-500">
+            <button type="button" class="cursor-pointer hover:text-slate-800" data-legal-open="privacy-policy-modal">
+              Políticas de privacidad
+            </button>
+            <button type="button" class="cursor-pointer hover:text-slate-800" data-legal-open="terms-service-modal">
+              Términos de servicio
+            </button>
+          </div>
         </div>
 
         <div class="glass-panel p-8">
           <p class="text-xs uppercase tracking-widest text-slate-500">Bienvenida</p>
-          <h2 class="mt-2 text-2xl font-semibold text-slate-900">Bienvenido a tu panel clínico</h2>
-          <p class="mt-2 text-slate-600">Accede para agendar, modificar o revisar tus citas y resultados médicos desde cualquier dispositivo.</p>
+          <h2 class="mt-2 text-2xl font-semibold text-slate-900">Bienvenido a tu panel clinico</h2>
+          <p class="mt-2 text-slate-600">Accede para agendar citas, revisar resultados y consultar documentos medicos registrados en tu cuenta.</p>
           <div class="mt-6 grid gap-3">
             <div class="card p-4">
-              <p class="text-sm font-semibold text-slate-900">Gestión rápida</p>
-              <p class="text-sm text-slate-500">Reserva citas en minutos.</p>
+              <p class="text-sm font-semibold text-slate-900">Citas disponibles</p>
+              <p class="text-sm text-slate-500">Selecciona especialidad, profesional y horario registrado.</p>
             </div>
             <div class="card p-4">
-              <p class="text-sm font-semibold text-slate-900">Recordatorios inteligentes</p>
-              <p class="text-sm text-slate-500">No olvides tus consultas.</p>
+              <p class="text-sm font-semibold text-slate-900">Recordatorios de citas</p>
+              <p class="text-sm text-slate-500">Recibe avisos sobre tus proximas atenciones.</p>
             </div>
             <div class="card p-4">
-              <p class="text-sm font-semibold text-slate-900">Historial centralizado</p>
+              <p class="text-sm font-semibold text-slate-900">Documentos medicos</p>
               <p class="text-sm text-slate-500">Accede a tus resultados y recetas.</p>
             </div>
           </div>

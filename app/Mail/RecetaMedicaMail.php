@@ -36,11 +36,11 @@ class RecetaMedicaMail extends Mailable
         string $fileName,
         string $motivo = 'creacion'
     ) {
-        $this->cita         = $cita;
+        $this->cita = $cita;
         $this->relativePath = $relativePath;
-        $this->pdfOutput    = $pdfOutput;
-        $this->fileName     = $fileName ?: ('receta_'.$cita->id.'.pdf');
-        $this->motivo       = in_array($motivo, ['creacion','actualizacion'], true) ? $motivo : 'creacion';
+        $this->pdfOutput = $pdfOutput;
+        $this->fileName = $fileName ?: ('receta_'.$cita->id.'.pdf');
+        $this->motivo = in_array($motivo, ['creacion', 'actualizacion'], true) ? $motivo : 'creacion';
     }
 
     public function build()
@@ -54,12 +54,12 @@ class RecetaMedicaMail extends Mailable
         $email = $this->subject($subject)
             ->view('emails.receta_medica') // Usa tu vista. En ella puedes mostrar $motivo para el mensaje.
             ->with([
-                'cita'   => $this->cita,
+                'cita' => $this->cita,
                 'motivo' => $this->motivo, // para que la vista muestre "Nueva receta..." o "Actualización..."
             ]);
 
         // Adjuntar PDF si está disponible
-        if (!empty($this->pdfOutput)) {
+        if (! empty($this->pdfOutput)) {
             $email->attachData($this->pdfOutput, $this->fileName, ['mime' => 'application/pdf']);
         }
 

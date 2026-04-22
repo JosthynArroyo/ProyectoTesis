@@ -162,12 +162,12 @@ class CitaPrioridadController extends Controller
     private function buildAuditValue(string $nivel, string $fuente, bool $redFlag, ?string $redFlagType): string
     {
         $parts = [
-            'NIVEL:' . strtoupper($nivel),
-            'FUENTE:' . strtoupper($fuente),
+            'NIVEL:'.strtoupper($nivel),
+            'FUENTE:'.strtoupper($fuente),
         ];
 
         if ($redFlag) {
-            $parts[] = 'RED_FLAG:' . ($redFlagType ?: 'SI');
+            $parts[] = 'RED_FLAG:'.($redFlagType ?: 'SI');
         } else {
             $parts[] = 'RED_FLAG:NO';
         }
@@ -175,4 +175,3 @@ class CitaPrioridadController extends Controller
         return implode(' | ', $parts);
     }
 }
-

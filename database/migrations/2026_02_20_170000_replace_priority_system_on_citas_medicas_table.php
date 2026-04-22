@@ -11,34 +11,34 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('citas_medicas', function (Blueprint $table) {
-            if (!Schema::hasColumn('citas_medicas', 'motivo_consulta')) {
+            if (! Schema::hasColumn('citas_medicas', 'motivo_consulta')) {
                 $table->string('motivo_consulta', 80)->default('Consulta general')->after('hora');
             }
-            if (!Schema::hasColumn('citas_medicas', 'prioridad_nivel')) {
+            if (! Schema::hasColumn('citas_medicas', 'prioridad_nivel')) {
                 $table->string('prioridad_nivel', 10)->default('BAJA')->after('motivo_consulta');
             }
-            if (!Schema::hasColumn('citas_medicas', 'prioridad_fuente')) {
+            if (! Schema::hasColumn('citas_medicas', 'prioridad_fuente')) {
                 $table->string('prioridad_fuente', 40)->default('AUTOMATICA')->after('prioridad_nivel');
             }
-            if (!Schema::hasColumn('citas_medicas', 'prioridad_red_flag')) {
+            if (! Schema::hasColumn('citas_medicas', 'prioridad_red_flag')) {
                 $table->boolean('prioridad_red_flag')->default(false)->after('prioridad_fuente');
             }
-            if (!Schema::hasColumn('citas_medicas', 'prioridad_red_flag_tipo')) {
+            if (! Schema::hasColumn('citas_medicas', 'prioridad_red_flag_tipo')) {
                 $table->string('prioridad_red_flag_tipo', 80)->nullable()->after('prioridad_red_flag');
             }
-            if (!Schema::hasColumn('citas_medicas', 'prioridad_comentario')) {
+            if (! Schema::hasColumn('citas_medicas', 'prioridad_comentario')) {
                 $table->string('prioridad_comentario', 500)->nullable()->after('prioridad_red_flag_tipo');
             }
-            if (!Schema::hasColumn('citas_medicas', 'prioridad_es_adulto_mayor')) {
+            if (! Schema::hasColumn('citas_medicas', 'prioridad_es_adulto_mayor')) {
                 $table->boolean('prioridad_es_adulto_mayor')->default(false)->after('prioridad_comentario');
             }
-            if (!Schema::hasColumn('citas_medicas', 'prioridad_es_embarazo')) {
+            if (! Schema::hasColumn('citas_medicas', 'prioridad_es_embarazo')) {
                 $table->boolean('prioridad_es_embarazo')->default(false)->after('prioridad_es_adulto_mayor');
             }
-            if (!Schema::hasColumn('citas_medicas', 'prioridad_es_discapacidad')) {
+            if (! Schema::hasColumn('citas_medicas', 'prioridad_es_discapacidad')) {
                 $table->boolean('prioridad_es_discapacidad')->default(false)->after('prioridad_es_embarazo');
             }
-            if (!Schema::hasColumn('citas_medicas', 'prioridad_es_cronico')) {
+            if (! Schema::hasColumn('citas_medicas', 'prioridad_es_cronico')) {
                 $table->boolean('prioridad_es_cronico')->default(false)->after('prioridad_es_discapacidad');
             }
         });
@@ -78,7 +78,7 @@ return new class extends Migration
                 $flags = $patientFlags->get($cita->paciente_id);
 
                 $adultoMayor = false;
-                if (!empty($patient?->fecha_nacimiento)) {
+                if (! empty($patient?->fecha_nacimiento)) {
                     try {
                         $adultoMayor = Carbon::parse($patient->fecha_nacimiento)->age >= 65;
                     } catch (\Throwable $e) {
@@ -131,16 +131,16 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('citas_medicas', function (Blueprint $table) {
-            if (!Schema::hasColumn('citas_medicas', 'pending_since')) {
+            if (! Schema::hasColumn('citas_medicas', 'pending_since')) {
                 $table->timestamp('pending_since')->nullable()->after('hora');
             }
-            if (!Schema::hasColumn('citas_medicas', 'priority_score')) {
+            if (! Schema::hasColumn('citas_medicas', 'priority_score')) {
                 $table->integer('priority_score')->default(0)->after('pending_since');
             }
-            if (!Schema::hasColumn('citas_medicas', 'priority_level')) {
+            if (! Schema::hasColumn('citas_medicas', 'priority_level')) {
                 $table->string('priority_level', 20)->default('baja')->after('priority_score');
             }
-            if (!Schema::hasColumn('citas_medicas', 'last_priority_notified_at')) {
+            if (! Schema::hasColumn('citas_medicas', 'last_priority_notified_at')) {
                 $table->timestamp('last_priority_notified_at')->nullable()->after('priority_level');
             }
 
@@ -213,4 +213,3 @@ return new class extends Migration
         return mb_substr($value, 0, 80);
     }
 };
-

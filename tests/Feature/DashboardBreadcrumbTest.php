@@ -20,11 +20,11 @@ class DashboardBreadcrumbTest extends TestCase
         $response->assertOk();
         $response->assertSeeInOrder([
             '<nav aria-label="Breadcrumb" class="mt-1 lg:hidden">',
-            'href="' . route('superadmin.dashboard') . '"',
+            'href="'.route('superadmin.dashboard').'"',
             '>Inicio<',
             '>Usuarios<',
         ], false);
-        $response->assertDontSee('href="' . url('/superadmin') . '" class="hover:text-slate-700">Inicio</a>', false);
+        $response->assertDontSee('href="'.url('/superadmin').'" class="hover:text-slate-700">Inicio</a>', false);
     }
 
     public function test_dashboard_view_does_not_render_breadcrumb(): void

@@ -14,7 +14,7 @@ class EnsureFeatureAccess
         $user = $request->user();
 
         if (! $user) {
-            return redirect()->guest(url('/') . '?login=1');
+            return redirect()->guest(url('/').'?login=1');
         }
 
         $service = app(FeatureAccessService::class);
