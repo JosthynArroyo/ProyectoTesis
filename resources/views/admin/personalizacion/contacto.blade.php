@@ -26,3 +26,7 @@
 </div>
 @endsection
 
+@push('scripts')
+  @vite('resources/js/admin/personalizacion-contacto.js')
+@endpush
+

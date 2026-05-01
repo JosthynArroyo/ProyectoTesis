@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\AppointmentSlotHold;
 use App\Models\Cita;
 use App\Models\Horario;
 use Carbon\Carbon;
@@ -39,7 +40,14 @@ class ProfessionalScheduleService
         return $inicio->diffInMinutes($seleccionado) % $this->intervalMinutes($horario) === 0;
     }
 
-    public function hasConflict(int $professionalId, string $date, Carbon $slot, int $interval, ?int $exceptCitaId = null): bool
+    public function hasConflict(
+        int $professionalId,
+        string $date,
+        Carbon $slot,
+        int $interval,
+        ?int $exceptCitaId = null,
+        ?string $exceptHoldToken = null
+    ): bool
     {
         $query = Cita::query()
             ->where('doctor_id', $professionalId)
@@ -50,9 +58,25 @@ class ProfessionalScheduleService
             $query->where('id', '!=', $exceptCitaId);
         }
 
-        return $query->get(['hora'])->contains(function ($row) use ($slot, $interval) {
-            $hora = strlen((string) $row->hora) >= 5 ? substr((string) $row->hora, 0, 5) : (string) $row->hora;
-            $otro = Carbon::createFromFormat('H:i', $hora);
+        if ($query->get(['hora'])->contains(function ($row) use ($slot, $interval) {
+            $otro = $this->parseFlexibleTime((string) $row->hora);
+
+            return $otro->diffInMinutes($slot) <= ($interval - 1);
+        })) {
+            return true;
+        }
+
+        $holdQuery = AppointmentSlotHold::query()
+            ->active()
+            ->where('doctor_id', $professionalId)
+            ->whereDate('fecha', $date);
+
+        if (filled($exceptHoldToken)) {
+            $holdQuery->where('token', '!=', trim((string) $exceptHoldToken));
+        }
+
+        return $holdQuery->get(['hora'])->contains(function ($row) use ($slot, $interval) {
+            $otro = $this->parseFlexibleTime((string) $row->hora);
 
             return $otro->diffInMinutes($slot) <= ($interval - 1);
         });
@@ -64,6 +88,7 @@ class ProfessionalScheduleService
         Carbon $slot,
         array $messages = [],
         ?int $exceptCitaId = null,
+        ?string $exceptHoldToken = null,
         string $timezone = 'America/Guayaquil'
     ): ?array {
         $schedule = $this->findScheduleForSlot($professionalId, $date, $slot);
@@ -90,7 +115,7 @@ class ProfessionalScheduleService
         }
 
         $interval = $this->intervalMinutes($schedule);
-        if ($this->hasConflict($professionalId, $date, $slot, $interval, $exceptCitaId)) {
+        if ($this->hasConflict($professionalId, $date, $slot, $interval, $exceptCitaId, $exceptHoldToken)) {
             return [
                 'field' => $messages['conflict_field'] ?? 'error',
                 'message' => $messages['conflict'] ?? 'El profesional ya tiene una cita en ese horario o en un bloque inmediato del horario configurado.',
@@ -100,7 +125,12 @@ class ProfessionalScheduleService
         return null;
     }
 
-    public function buildSlotsForDate(int $professionalId, string $date, string $timezone = 'America/Guayaquil'): array
+    public function buildSlotsForDate(
+        int $professionalId,
+        string $date,
+        string $timezone = 'America/Guayaquil',
+        ?string $exceptHoldToken = null
+    ): array
     {
         $ahora = Carbon::now($timezone);
         $limiteHora = $ahora->copy()->addHour();
@@ -126,6 +156,19 @@ class ProfessionalScheduleService
             ->map(fn ($time) => substr((string) $time, 0, 5))
             ->flip();
 
+        $holdQuery = AppointmentSlotHold::query()
+            ->active()
+            ->where('doctor_id', $professionalId)
+            ->whereDate('fecha', $normalizedDate);
+
+        if (filled($exceptHoldToken)) {
+            $holdQuery->where('token', '!=', trim((string) $exceptHoldToken));
+        }
+
+        $reservadas = $holdQuery->pluck('hora')
+            ->map(fn ($time) => substr((string) $time, 0, 5))
+            ->flip();
+
         $slots = [];
         foreach ($horarios as $horario) {
             $step = $this->intervalMinutes($horario);
@@ -141,7 +184,7 @@ class ProfessionalScheduleService
                 if (! isset($slots[$hhmm])) {
                     $slots[$hhmm] = [
                         'hora' => $hhmm,
-                        'estado' => isset($ocupadas[$hhmm]) ? 'ocupado' : 'libre',
+                        'estado' => isset($ocupadas[$hhmm]) || isset($reservadas[$hhmm]) ? 'ocupado' : 'libre',
                     ];
                 }
             }

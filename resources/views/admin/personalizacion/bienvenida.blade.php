@@ -16,9 +16,8 @@
     @method('PUT')
     @include('shared.personalizacion-bienvenida-form', [
       'settings' => $settings,
-      'stats' => $stats ?? [],
+      'welcomeSiteSettings' => $welcomeSiteSettings ?? [],
       'slides' => $slides ?? [],
-      'cards' => $cards ?? [],
       'doctors' => $doctors ?? [],
       'prices' => $prices ?? [],
       'featuredIds' => $featuredIds ?? [],
@@ -26,7 +25,7 @@
     ])
 
     <div class="flex flex-wrap items-center justify-end gap-3">
-      <button class="btn btn-primary" type="submit">
+      <button class="btn btn-primary cursor-pointer" type="submit">
         <i class="ri-save-line"></i> Guardar cambios
       </button>
     </div>

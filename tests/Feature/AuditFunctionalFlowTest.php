@@ -41,7 +41,7 @@ class AuditFunctionalFlowTest extends TestCase
                 'queue.default' => 'sync',
                 'session.driver' => 'array',
                 'cache.default' => 'array',
-                'services.face.threshold' => 0.42,
+
                 'mail.contact_to' => 'qa@example.test',
             ]);
 
@@ -215,7 +215,7 @@ class AuditFunctionalFlowTest extends TestCase
 
         $appointments = $this->testPatientBookingFlows($patient, $doctor, $doctorSpecialty, $doctorDate);
         $this->testPatientRoutineLabRequest($patient);
-        $this->testFaceAuthFlow($patient);
+
 
         $followupSchedule = $this->testDoctorHorarioCrud($doctor, $doctorDate3);
         $this->testDoctorCoreFlows($doctor, $appointments, $patient, $followupSchedule);
@@ -1011,30 +1011,7 @@ class AuditFunctionalFlowTest extends TestCase
         );
     }
 
-    private function testFaceAuthFlow(User $patient): void
-    {
-        $this->actingAs($patient);
-        $descriptor = array_fill(0, 128, 0.12);
-        $enroll = $this->post('/face/enroll', ['descriptors' => [$descriptor, $descriptor]]);
-        $this->post('/salir');
-        $login = $this->postJson('/face/login', ['descriptor' => $descriptor]);
-        $home = $this->get('/home');
 
-        $this->record(
-            role: 'paciente',
-            module: 'Autenticación alternativa',
-            function: 'Enrolamiento y login facial',
-            route: 'POST /face/enroll + POST /face/login',
-            data: ['descriptor_length' => count($descriptor)],
-            steps: ['Registrar rostro', 'Cerrar sesión', 'Autenticar con mismo descriptor', 'Consultar /home'],
-            expected: 'Login facial exitoso.',
-            actual: sprintf('enroll=%s login=%s home=%s', $enroll->getStatusCode(), $login->getStatusCode(), $home->headers->get('Location')),
-            status: $login->getStatusCode() === 200 && str_contains((string) $home->headers->get('Location'), '/paciente/dashboard') ? 'EXITOSA' : 'FALLIDA',
-            evidence: ['controller' => 'app/Http/Controllers/FaceAuthController.php', 'table' => 'face_profiles']
-        );
-
-        $this->post('/salir');
-    }
 
     private function testDoctorHorarioCrud(User $doctor, Carbon $date): Horario
     {
@@ -1206,12 +1183,16 @@ class AuditFunctionalFlowTest extends TestCase
         );
 
         $recipeForm = $this->get('/doctor/recetas/crear/'.$principal->id);
-        $this->post('/doctor/recetas', [
+        $response = $this->post('/doctor/recetas', [
             'cita_id' => $principal->id,
             'diagnostico' => 'Cefalea tensional',
             'medicamentos' => 'Paracetamol 500mg',
             'indicaciones' => 'Tomar con alimentos',
         ]);
+        if (!$response->isSuccessful() && !$response->isRedirect()) {
+            dd($response->exception->getMessage(), $response->exception->getTraceAsString());
+        }
+
         $recipe = $principal->receta()->firstOrFail();
         $this->post('/doctor/recetas/actualizar', [
             'cita_id' => $principal->id,

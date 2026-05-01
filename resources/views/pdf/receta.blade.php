@@ -11,12 +11,12 @@
       <div class="header avoid-break">
         <div class="brand-block">
           @if(!empty($logoBase64))
-            <img class="logo" src="{{ $logoBase64 }}" alt="Logo Clínica">
+            <img class="logo" src="{{ $logoBase64 }}" alt="{{ $clinicIdentity->institutionalName() }}">
           @else
             <div class="logo" aria-hidden="true"></div>
           @endif
           <div>
-            <h1 class="clinic-title"><span class="brand">Clínica Don Bosco</span></h1>
+            <h1 class="clinic-title"><span class="brand">{{ $clinicIdentity->institutionalName() }}</span></h1>
             <div class="clinic-sub small muted">Receta médica</div>
           </div>
         </div>

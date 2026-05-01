@@ -14,8 +14,8 @@
     <section class="card p-6">
       <form class="flex flex-wrap items-end gap-3" method="GET" action="{{ route('admin.historial.index') }}">
         <div class="inline-control-shell flex-1">
-          <i class="ri-search-line text-slate-400"></i>
-          <input type="text" name="q" value="{{ $q ?? '' }}" placeholder="Buscar por paciente, cedula o correo..." class="w-full bg-transparent text-sm text-slate-700" required>
+          <i class="ri-search-line text-gray-400"></i>
+          <input type="text" name="q" value="{{ $q ?? '' }}" placeholder="Buscar por paciente, cedula o correo..." class="w-full bg-transparent text-sm text-gray-700" required>
         </div>
         <button class="btn btn-outline" type="submit">Filtrar</button>
       </form>

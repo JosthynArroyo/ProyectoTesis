@@ -165,6 +165,81 @@ class ChatbotRegistrationCredentialsTest extends TestCase
         Mail::assertNotSent(CuentaCreadaDesdeChat::class);
     }
 
+    public function test_chatbot_guest_schedule_flow_does_not_validate_email_against_an_unidentified_profile(): void
+    {
+        Event::fake([CitaAgendada::class]);
+        Mail::fake();
+        Queue::fake();
+
+        [$doctor, $especialidad, $fecha] = $this->createDoctorWithAvailability();
+
+        $existingPatientRole = Role::query()->firstOrCreate(['name' => 'paciente']);
+        $existingPatient = User::factory()->create([
+            'name' => 'Paciente Existente',
+            'email' => 'existente@example.com',
+            'dni' => '1111222233',
+            'status' => User::STATUS_ACTIVE,
+        ]);
+        $existingPatient->roles()->sync([$existingPatientRole->id]);
+
+        $payload = [
+            'nombre' => 'Visitante Nuevo',
+            'cedula' => '3333444455',
+            'email' => 'existente@example.com',
+            'telefono' => '0997654321',
+            'especialidad_id' => $especialidad->id,
+            'doctor_id' => $doctor->id,
+            'fecha' => $fecha,
+            'hora' => '10:00',
+            'motivo' => 'Consulta preventiva',
+            'crear_usuario' => false,
+            'paciente_id' => null,
+        ];
+
+        $this->postJson(route('chatbot.agendar'), $payload)
+            ->assertStatus(409)
+            ->assertJsonPath('ok', false)
+            ->assertJsonPath('message', 'Ya existe un paciente registrado con esos datos. Continúa con el flujo de paciente existente o crea tu usuario.');
+    }
+
+    public function test_chatbot_schedule_validates_email_when_patient_was_identified_previously(): void
+    {
+        Event::fake([CitaAgendada::class]);
+        Mail::fake();
+        Queue::fake();
+
+        [$doctor, $especialidad, $fecha] = $this->createDoctorWithAvailability();
+
+        $patientRole = Role::query()->firstOrCreate(['name' => 'paciente']);
+        $patient = User::factory()->create([
+            'name' => 'Paciente Identificado',
+            'email' => 'paciente.identificado@example.com',
+            'dni' => '1231231234',
+            'telefono' => '0991231234',
+            'status' => User::STATUS_ACTIVE,
+        ]);
+        $patient->roles()->sync([$patientRole->id]);
+
+        $payload = [
+            'nombre' => $patient->name,
+            'cedula' => $patient->dni,
+            'email' => 'otro.correo@example.com',
+            'telefono' => $patient->telefono,
+            'paciente_id' => $patient->id,
+            'especialidad_id' => $especialidad->id,
+            'doctor_id' => $doctor->id,
+            'fecha' => $fecha,
+            'hora' => '10:00',
+            'motivo' => 'Chequeo general',
+            'crear_usuario' => false,
+        ];
+
+        $this->postJson(route('chatbot.agendar'), $payload)
+            ->assertStatus(403)
+            ->assertJsonPath('ok', false)
+            ->assertJsonPath('message', 'El correo no coincide con tu perfil.');
+    }
+
     public function test_chatbot_requires_a_real_reason_when_scheduling(): void
     {
         Event::fake([CitaAgendada::class]);

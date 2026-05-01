@@ -53,24 +53,24 @@
                 @endphp
                 <tr id="recordatorio-enviado-{{ $recordatorioEnviado->id }}">
                   <td data-label="Paciente">
-                    <div class="text-sm font-semibold text-slate-900">{{ $citaEnviada?->paciente?->name ?? 'Paciente no disponible' }}</div>
+                    <div class="text-sm font-semibold text-gray-900">{{ $citaEnviada?->paciente?->name ?? 'Paciente no disponible' }}</div>
                   </td>
                   <td data-label="Doctor">
-                    <div class="text-sm font-semibold text-slate-900">{{ $citaEnviada?->doctor?->name ?? 'Sin doctor asignado' }}</div>
+                    <div class="text-sm font-semibold text-gray-900">{{ $citaEnviada?->doctor?->name ?? 'Sin doctor asignado' }}</div>
                   </td>
                   <td data-label="Especialidad">
-                    <div class="text-sm text-slate-700">{{ $citaEnviada?->especialidad?->nombre ?? 'Sin especialidad' }}</div>
+                    <div class="text-sm text-gray-700">{{ $citaEnviada?->especialidad?->nombre ?? 'Sin especialidad' }}</div>
                   </td>
                   <td data-label="Fecha">
-                    <div class="text-sm text-slate-700">{{ optional($citaEnviada?->fecha)->format('d/m/Y') ?? '-' }}</div>
+                    <div class="text-sm text-gray-700">{{ optional($citaEnviada?->fecha)->format('d/m/Y') ?? '-' }}</div>
                   </td>
                   <td data-label="Hora">
-                    <div class="text-sm text-slate-700">{{ $recordatorioEnviado->cita_inicio_at?->format('H:i') ?? '-' }}</div>
+                    <div class="text-sm text-gray-700">{{ $recordatorioEnviado->cita_inicio_at?->format('H:i') ?? '-' }}</div>
                   </td>
                   <td data-label="Telefono">
-                    <div class="text-sm font-semibold text-slate-900">{{ $citaEnviada?->paciente?->telefono ?? 'No registrado' }}</div>
+                    <div class="text-sm font-semibold text-gray-900">{{ $citaEnviada?->paciente?->telefono ?? 'No registrado' }}</div>
                     @if($recordatorioEnviado->telefono_normalizado)
-                      <div class="mt-1 text-xs text-slate-500">WhatsApp: {{ $recordatorioEnviado->telefono_normalizado }}</div>
+                      <div class="mt-1 text-xs text-gray-500">WhatsApp: {{ $recordatorioEnviado->telefono_normalizado }}</div>
                     @else
                       <div class="mt-1">
                         <x-ui.badge tone="neutral">Sin telefono valido</x-ui.badge>
@@ -78,10 +78,10 @@
                     @endif
                   </td>
                   <td data-label="Enviado el">
-                    <div class="text-sm text-slate-700">{{ $recordatorioEnviado->enviado_at?->format('d/m/Y H:i') ?? '-' }}</div>
+                    <div class="text-sm text-gray-700">{{ $recordatorioEnviado->enviado_at?->format('d/m/Y H:i') ?? '-' }}</div>
                   </td>
                   <td data-label="Gestionado por">
-                    <div class="text-sm text-slate-700">{{ $recordatorioEnviado->gestionadoPor?->name ?? 'No registrado' }}</div>
+                    <div class="text-sm text-gray-700">{{ $recordatorioEnviado->gestionadoPor?->name ?? 'No registrado' }}</div>
                   </td>
                   <td data-label="Estado">
                     <x-ui.badge tone="success">Enviado</x-ui.badge>
@@ -92,7 +92,7 @@
           </table>
         </div>
 
-        <div class="mt-6 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500">
+        <div class="mt-6 flex flex-wrap items-center justify-between gap-3 text-sm text-gray-500">
           <div>Pagina {{ $recordatoriosEnviados->currentPage() }} de {{ $recordatoriosEnviados->lastPage() }}</div>
           {!! $recordatoriosEnviados->withQueryString()->links() !!}
         </div>

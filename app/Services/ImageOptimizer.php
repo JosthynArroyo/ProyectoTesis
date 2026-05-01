@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Intervention\Image\Drivers\Gd\Driver as GdDriver;
@@ -13,13 +14,13 @@ use Throwable;
 
 class ImageOptimizer
 {
-    private ImageManager $manager;
+    private ?ImageManager $manager;
 
     private ?bool $avifSupported = null;
 
     public function __construct(?ImageManager $manager = null)
     {
-        $this->manager = $manager ?? $this->buildManager();
+        $this->manager = $manager;
     }
 
     public function optimizeAndStore(
@@ -54,6 +55,8 @@ class ImageOptimizer
             absolutePath: (string) $file->getRealPath(),
             folder: $folder,
             baseName: $baseName,
+            extension: $extension,
+            mime: $mime,
             sizes: $sizes,
             generateAvif: $generateAvif
         );
@@ -115,7 +118,14 @@ class ImageOptimizer
             return null;
         }
 
-        return $this->optimizeRasterFromAbsolutePath($absolutePath, $folder, $baseName, $sizes);
+        return $this->optimizeRasterFromAbsolutePath(
+            absolutePath: $absolutePath,
+            folder: $folder,
+            baseName: $baseName,
+            extension: $extension,
+            mime: $mime,
+            sizes: $sizes
+        );
     }
 
     public function deleteByStoredPath(?string $storedPath, ?string $folder = null): void
@@ -194,6 +204,18 @@ class ImageOptimizer
             .'.svg';
     }
 
+    public function buildOriginalRasterPath(string $folder, string $baseName, string $extension): string
+    {
+        $folder = $this->sanitizeFolder($folder);
+        $extension = $this->normalizeRasterExtension($extension);
+
+        return trim($this->basePath(), '/')
+            .'/'.$folder
+            .'/original/'
+            .$this->normalizeBaseName($baseName)
+            .'.'.$extension;
+    }
+
     public function mapLegacyFolder(string $path): ?string
     {
         $path = ltrim(str_replace('\\', '/', strtolower($path)), '/');
@@ -212,11 +234,24 @@ class ImageOptimizer
         string $absolutePath,
         string $folder,
         string $baseName,
+        string $extension,
+        string $mime,
         array $sizes = [],
         bool $generateAvif = true
     ): string {
+        $manager = $this->resolveManagerForRaster($mime, $extension);
+        if (! $manager) {
+            return $this->storeOriginalRaster(
+                absolutePath: $absolutePath,
+                folder: $folder,
+                baseName: $baseName,
+                extension: $extension,
+                reason: $this->unsupportedRasterReason($mime, $extension)
+            );
+        }
+
         $definitions = $this->resolveSizes($sizes);
-        $image = $this->manager->read($absolutePath)->orient();
+        $image = $manager->read($absolutePath)->orient();
 
         foreach ($definitions as $sizeName => $definition) {
             $variant = clone $image;
@@ -263,6 +298,31 @@ class ImageOptimizer
     {
         $path = $this->buildOriginalSvgPath($folder, $baseName);
         Storage::disk($this->disk())->put($path, $contents);
+
+        return $path;
+    }
+
+    private function storeOriginalRaster(
+        string $absolutePath,
+        string $folder,
+        string $baseName,
+        string $extension,
+        string $reason
+    ): string {
+        $path = $this->buildOriginalRasterPath($folder, $baseName, $extension);
+        $contents = @file_get_contents($absolutePath);
+
+        if ($contents === false) {
+            throw new InvalidArgumentException('Unable to read image contents.');
+        }
+
+        Storage::disk($this->disk())->put($path, $contents);
+
+        Log::warning('Image optimization skipped because raster support is unavailable.', [
+            'folder' => $folder,
+            'path' => $path,
+            'reason' => $reason,
+        ]);
 
         return $path;
     }
@@ -341,6 +401,137 @@ class ImageOptimizer
         return Str::startsWith($path, ['http://', 'https://', 'data:']);
     }
 
+    private function resolveManagerForRaster(string $mime, string $extension): ?ImageManager
+    {
+        if ($this->manager instanceof ImageManager) {
+            return $this->manager;
+        }
+
+        if ($this->imagickCanOptimizeRaster($extension)) {
+            return new ImageManager(new ImagickDriver);
+        }
+
+        if ($this->gdCanOptimizeRaster($mime, $extension)) {
+            return new ImageManager(new GdDriver);
+        }
+
+        return null;
+    }
+
+    private function imagickCanOptimizeRaster(string $extension): bool
+    {
+        if (! extension_loaded('imagick') || ! class_exists(\Imagick::class)) {
+            return false;
+        }
+
+        $sourceFormat = $this->imagickFormatForExtension($extension);
+        if ($sourceFormat === null) {
+            return false;
+        }
+
+        return $this->imagickSupportsFormat($sourceFormat)
+            && $this->imagickSupportsFormat('WEBP');
+    }
+
+    private function gdCanOptimizeRaster(string $mime, string $extension): bool
+    {
+        if (! extension_loaded('gd')) {
+            return false;
+        }
+
+        return match ($this->normalizeRasterExtension($extension)) {
+            'jpg' => $this->gdSupportsJpeg(),
+            'png' => $this->gdSupportsPng(),
+            'webp' => $this->gdSupportsWebp(),
+            default => in_array($mime, ['image/jpeg', 'image/pjpeg', 'image/png', 'image/webp'], true)
+                && false,
+        };
+    }
+
+    private function gdSupportsJpeg(): bool
+    {
+        $info = $this->gdInfo();
+
+        return function_exists('imagejpeg')
+            && function_exists('imagecreatefromjpeg')
+            && (bool) ($info['JPEG Support'] ?? false)
+            && $this->gdCanEncodeWebp();
+    }
+
+    private function gdSupportsPng(): bool
+    {
+        $info = $this->gdInfo();
+
+        return function_exists('imagepng')
+            && function_exists('imagecreatefrompng')
+            && (bool) ($info['PNG Support'] ?? false)
+            && $this->gdCanEncodeWebp();
+    }
+
+    private function gdSupportsWebp(): bool
+    {
+        return function_exists('imagecreatefromwebp')
+            && $this->gdCanEncodeWebp();
+    }
+
+    private function gdCanEncodeWebp(): bool
+    {
+        $info = $this->gdInfo();
+
+        return function_exists('imagewebp')
+            && (bool) ($info['WebP Support'] ?? false);
+    }
+
+    private function gdInfo(): array
+    {
+        return function_exists('gd_info') ? (array) gd_info() : [];
+    }
+
+    private function imagickSupportsFormat(string $format): bool
+    {
+        try {
+            return \Imagick::queryFormats($format) !== [];
+        } catch (Throwable) {
+            return false;
+        }
+    }
+
+    private function imagickFormatForExtension(string $extension): ?string
+    {
+        return match ($this->normalizeRasterExtension($extension)) {
+            'jpg' => 'JPEG',
+            'png' => 'PNG',
+            'webp' => 'WEBP',
+            default => null,
+        };
+    }
+
+    private function unsupportedRasterReason(string $mime, string $extension): string
+    {
+        $driverAvailability = [
+            'imagick' => extension_loaded('imagick'),
+            'gd' => extension_loaded('gd'),
+        ];
+
+        return sprintf(
+            'source=%s mime=%s imagick=%s gd=%s',
+            $this->normalizeRasterExtension($extension),
+            $mime !== '' ? $mime : 'unknown',
+            $driverAvailability['imagick'] ? 'on' : 'off',
+            $driverAvailability['gd'] ? 'on' : 'off'
+        );
+    }
+
+    private function normalizeRasterExtension(string $extension): string
+    {
+        $extension = strtolower(trim($extension));
+
+        return match ($extension) {
+            'jpeg' => 'jpg',
+            default => $extension,
+        };
+    }
+
     private function shouldGenerateAvif(): bool
     {
         if (! (bool) config('image_optimization.generate_avif', true)) {
@@ -352,15 +543,6 @@ class ImageOptimizer
         }
 
         return true;
-    }
-
-    private function buildManager(): ImageManager
-    {
-        if (extension_loaded('imagick')) {
-            return new ImageManager(new ImagickDriver);
-        }
-
-        return new ImageManager(new GdDriver);
     }
 
     private function disk(): string

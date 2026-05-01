@@ -191,7 +191,7 @@ class CitaComprobanteFlowTest extends TestCase
         $this->actingAs($paciente)
             ->get(route('paciente.pagos.index'))
             ->assertOk()
-            ->assertSee('No hay pagos para mostrar');
+            ->assertSee('No hay órdenes de cobro para mostrar.');
     }
 
     public function test_orden_de_pago_y_comprobante_usan_identificadores_distintos(): void

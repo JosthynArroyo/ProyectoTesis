@@ -24,6 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $schedule->command('users:deactivate-inactive')->dailyAt('02:30')->withoutOverlapping();
         $schedule->command('citas:marcar-no-show')->everyTenMinutes()->withoutOverlapping();
+        $schedule->command('citas:sync-recordatorios')->everyTenMinutes()->withoutOverlapping();
         $schedule->command('citas:recordatorio-whatsapp')->dailyAt($reminderHour.':00')->withoutOverlapping();
     })
     ->withMiddleware(function (Middleware $middleware): void {

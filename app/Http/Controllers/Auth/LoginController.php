@@ -81,23 +81,7 @@ class LoginController extends Controller
                 ->with('auth_error', 'Tu cuenta está deshabilitada o suspendida.');
         }
 
-        if ($user->hasRole('superadmin')) {
-            return redirect()->intended('superadmin/dashboard');
-        }
-        if ($user->hasRole('administrador')) {
-            return redirect()->intended('admin/dashboard');
-        }
-        if ($user->hasRole('paciente')) {
-            return redirect()->intended('paciente/dashboard');
-        }
-        if ($user->hasRole('doctor')) {
-            return redirect()->intended('doctor/dashboard');
-        }
-        if ($user->hasRole('laboratorio')) {
-            return redirect()->intended('laboratorio/dashboard');
-        }
-
-        return redirect('/');
+        return redirect($user->dashboardPath());
     }
 
     protected function redirectTo()
@@ -107,19 +91,7 @@ class LoginController extends Controller
             return url('/').'?login=1';
         }
 
-        if ($user && $user->hasRole('superadmin')) {
-            return 'superadmin/dashboard';
-        } elseif ($user && $user->hasRole('administrador')) {
-            return 'admin/dashboard';
-        } elseif ($user && $user->hasRole('paciente')) {
-            return 'paciente/dashboard';
-        } elseif ($user && $user->hasRole('doctor')) {
-            return 'doctor/dashboard';
-        } elseif ($user && $user->hasRole('laboratorio')) {
-            return 'laboratorio/dashboard';
-        }
-
-        return '/';
+        return $user?->dashboardPath() ?? '/';
     }
 
     protected function loggedOut(Request $request)

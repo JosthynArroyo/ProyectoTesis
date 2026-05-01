@@ -11,13 +11,13 @@
     <x-ui.alert tone="success">{{ session('success') }}</x-ui.alert>
   @endif
 
-  <form class="form space-y-6" method="POST" action="{{ route('superadmin.personalizacion.servicios.update') }}" data-draft-key="superadmin.personalizacion.servicios">
+  <form class="form space-y-6" method="POST" action="{{ route('superadmin.personalizacion.servicios.update') }}" enctype="multipart/form-data" data-draft-key="superadmin.personalizacion.servicios">
     @csrf
     @method('PUT')
     @include('shared.personalizacion-servicios-form', ['especialidades' => $especialidades])
 
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <p class="text-xs text-slate-500" data-draft-status></p>
+      <p class="text-xs text-gray-500" data-draft-status></p>
       <div class="flex flex-wrap items-center gap-3">
         <button class="btn btn-outline" type="button" data-save-draft>
           <i class="ri-draft-line"></i> Guardar borrador

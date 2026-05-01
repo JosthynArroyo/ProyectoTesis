@@ -28,7 +28,7 @@
       $avatarImage = $imageUrlService->variants($user->avatar, $avatarFolder, $avatarEntity);
     @endphp
     <div class="flex flex-wrap items-center gap-4">
-      <div class="h-20 w-20 overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+      <div class="h-20 w-20 overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
         <img
           src="{{ $avatarImage['thumb'] }}"
           @if($avatarImage['srcset']) srcset="{{ $avatarImage['srcset'] }}" sizes="80px" @endif
@@ -40,27 +40,27 @@
       </div>
       <div>
         <div class="flex flex-wrap items-center gap-2">
-          <h3 class="text-lg font-semibold text-slate-900">{{ $user->name }}</h3>
+          <h3 class="text-lg font-semibold text-gray-900">{{ $user->name }}</h3>
           <span class="badge {{ $statusTone }}">{{ $statusLabel }}</span>
         </div>
         @if($user->suspended_until)
-          <div class="text-sm text-slate-500">Suspendido hasta {{ $user->suspended_until->format('Y-m-d H:i') }}</div>
+          <div class="text-sm text-gray-500">Suspendido hasta {{ $user->suspended_until->format('Y-m-d H:i') }}</div>
         @endif
       </div>
     </div>
 
     <dl class="mt-6 grid gap-4 md:grid-cols-2">
       <div>
-        <dt class="text-xs uppercase tracking-widest text-slate-400">Correo electrónico</dt>
-        <dd class="flex items-center gap-2 text-sm text-slate-700">
+        <dt class="text-xs uppercase tracking-widest text-gray-400">Correo electrónico</dt>
+        <dd class="flex items-center gap-2 text-sm text-gray-700">
           <span id="emailText">{{ $user->email }}</span>
           <button class="btn btn-ghost px-2" data-copy="#emailText"><i class="ri-file-copy-line"></i></button>
         </dd>
       </div>
 
       <div>
-        <dt class="text-xs uppercase tracking-widest text-slate-400">Teléfono</dt>
-        <dd class="flex items-center gap-2 text-sm text-slate-700">
+        <dt class="text-xs uppercase tracking-widest text-gray-400">Teléfono</dt>
+        <dd class="flex items-center gap-2 text-sm text-gray-700">
           <span id="telText">{{ $user->telefono ?? '-' }}</span>
           @if($user->telefono)
             <a class="btn btn-ghost px-2" href="tel:{{ $user->telefono }}"><i class="ri-phone-line"></i></a>
@@ -70,35 +70,35 @@
       </div>
 
       <div>
-        <dt class="text-xs uppercase tracking-widest text-slate-400">Cédula</dt>
-        <dd class="text-sm text-slate-700">{{ $user->dni ?? '-' }}</dd>
+        <dt class="text-xs uppercase tracking-widest text-gray-400">Cédula</dt>
+        <dd class="text-sm text-gray-700">{{ $user->dni ?? '-' }}</dd>
       </div>
       <div>
-        <dt class="text-xs uppercase tracking-widest text-slate-400">Dirección</dt>
-        <dd class="text-sm text-slate-700">{{ $user->direccion ?? '-' }}</dd>
+        <dt class="text-xs uppercase tracking-widest text-gray-400">Dirección</dt>
+        <dd class="text-sm text-gray-700">{{ $user->direccion ?? '-' }}</dd>
       </div>
 
       <div>
-        <dt class="text-xs uppercase tracking-widest text-slate-400">Fecha de nacimiento</dt>
-        <dd class="text-sm text-slate-700">{{ optional($user->fecha_nacimiento)->format('Y-m-d') ?? '-' }}</dd>
+        <dt class="text-xs uppercase tracking-widest text-gray-400">Fecha de nacimiento</dt>
+        <dd class="text-sm text-gray-700">{{ optional($user->fecha_nacimiento)->format('Y-m-d') ?? '-' }}</dd>
       </div>
       <div>
-        <dt class="text-xs uppercase tracking-widest text-slate-400">Sexo</dt>
-        <dd class="text-sm text-slate-700">{{ $user->sexo ?? '-' }}</dd>
+        <dt class="text-xs uppercase tracking-widest text-gray-400">Sexo</dt>
+        <dd class="text-sm text-gray-700">{{ $user->sexo ?? '-' }}</dd>
       </div>
 
       <div class="md:col-span-2">
-        <dt class="text-xs uppercase tracking-widest text-slate-400">Especialidades</dt>
-        <dd class="text-sm text-slate-700">{{ ($user->especialidades->pluck('nombre')->implode(', ')) ?: '—' }}</dd>
+        <dt class="text-xs uppercase tracking-widest text-gray-400">Especialidades</dt>
+        <dd class="text-sm text-gray-700">{{ ($user->especialidades->pluck('nombre')->implode(', ')) ?: '—' }}</dd>
       </div>
 
       <div>
-        <dt class="text-xs uppercase tracking-widest text-slate-400">Último acceso</dt>
-        <dd class="text-sm text-slate-700">{{ optional($user->last_login_at)->format('Y-m-d H:i') ?? '-' }}</dd>
+        <dt class="text-xs uppercase tracking-widest text-gray-400">Último acceso</dt>
+        <dd class="text-sm text-gray-700">{{ optional($user->last_login_at)->format('Y-m-d H:i') ?? '-' }}</dd>
       </div>
       <div>
-        <dt class="text-xs uppercase tracking-widest text-slate-400">Creado</dt>
-        <dd class="text-sm text-slate-700">{{ $user->created_at->format('Y-m-d H:i') }}</dd>
+        <dt class="text-xs uppercase tracking-widest text-gray-400">Creado</dt>
+        <dd class="text-sm text-gray-700">{{ $user->created_at->format('Y-m-d H:i') }}</dd>
       </div>
     </dl>
 

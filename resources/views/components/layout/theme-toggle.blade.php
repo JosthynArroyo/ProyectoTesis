@@ -1,7 +1,7 @@
 <button
     type="button"
     data-theme-toggle
-    class="theme-toggler inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-100/90 p-1 text-xs text-slate-500"
+    class="theme-toggler inline-flex items-center gap-1 rounded-full border border-gray-200 bg-gray-100/90 p-1 text-xs text-gray-500"
     aria-label="Cambiar tema"
     aria-pressed="false"
     title="Cambiar tema"
@@ -15,7 +15,7 @@
     </span>
     <span
         data-theme-icon="dark"
-        class="inline-flex h-7 w-7 items-center justify-center rounded-full text-slate-500"
+        class="inline-flex h-7 w-7 items-center justify-center rounded-full text-gray-500"
         aria-hidden="true"
     >
         <i class="ri-moon-line"></i>
@@ -35,14 +35,14 @@
             hidden
             data-theme-preference-toast
         >
-            <div class="toast-h border-b border-slate-100">
+            <div class="toast-h border-b border-gray-100">
                 <div class="flex min-w-0 items-start gap-3">
                     <span class="theme-preference-card__icon theme-preference-toast__icon">
                         <i class="ri-contrast-2-line" data-theme-preference-icon></i>
                     </span>
                     <div class="theme-preference-toast__summary min-w-0">
-                        <h3 id="themePreferenceTitle" class="text-sm font-semibold text-slate-900" data-theme-preference-title>Preferencia de tema</h3>
-                        <p class="mt-1 text-xs text-slate-500" data-theme-preference-description>
+                        <h3 id="themePreferenceTitle" class="text-sm font-semibold text-gray-900" data-theme-preference-title>Preferencia de tema</h3>
+                        <p class="mt-1 text-xs text-gray-500" data-theme-preference-description>
                             Puedes seguir navegando mientras decides si quieres dejar este cambio solo por ahora o guardarlo.
                         </p>
                     </div>
@@ -57,7 +57,7 @@
                 </button>
             </div>
             <div class="toast-b">
-                <p class="text-xs text-slate-500" data-theme-preference-note>
+                <p class="text-xs text-gray-500" data-theme-preference-note>
                     Si no eliges guardar, este cambio se mantendr&aacute; solo durante la sesi&oacute;n actual.
                 </p>
                 <div class="theme-preference-toast__actions">

@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>@yield('title','Panel Administrativo - Clínica Don Bosco')</title>
+  <title>@yield('title', 'Panel Administrativo - '.$clinicIdentity->name())</title>
   @include('layouts.partials.panel-theme-head')
   @include('layouts.partials.favicon')
   @include('layouts.partials.fonts')
@@ -35,15 +35,15 @@
 @php
   $sidebarRoutes = ['admin.dashboard', 'admin.perfil.edit', 'admin.usuarios.index', 'admin.personalizacion.index', 'admin.horarios.index', 'admin.pagos.index', 'admin.cambios-citas.index', 'admin.historial.index', 'admin.recordatorios.index', 'admin.contacto.mensajes'];
 @endphp
-<body class="min-h-screen text-slate-900 dashboard-shell">
+<body class="min-h-screen text-gray-900 dashboard-shell">
 <div class="min-h-screen lg:flex dashboard-layout">
   @include('admin.partials.sidebar')
-  <div class="fixed inset-0 z-30 hidden bg-slate-900/50 backdrop-blur-sm lg:hidden" data-sidebar-overlay></div>
+  <div class="fixed inset-0 z-30 hidden bg-gray-900/50 backdrop-blur-sm lg:hidden" data-sidebar-overlay></div>
 
   <div class="flex min-h-screen flex-1 flex-col">
     <x-layout.dashboard-header :title="$headerTitle" :subtitle="$headerSubtitle" role="Administración" :profile-route="route('admin.perfil.edit')" />
 
-    <div class="dashboard-content flex-1 pb-10">
+    <div class="dashboard-content dashboard-content--with-sidebar flex-1 pb-10">
       <div class="page-shell min-w-0">
         @if($hasRight)
           <div class="grid gap-6 lg:grid-cols-[1fr_320px]">
@@ -74,14 +74,14 @@
   <div class="modal-backdrop" data-close-personalizacion></div>
   <div class="modal-dialog" role="document" tabindex="-1">
     <div class="card mx-auto w-full max-w-md">
-      <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+      <div class="flex items-center justify-between border-b border-gray-100 px-6 py-4">
         <h3 id="personalizacionTitle" class="text-lg font-semibold">Solicitar permiso para acceder a Personalización</h3>
         <button class="btn btn-ghost px-2" aria-label="Cerrar modal" data-close-personalizacion>
           <i class="ri-close-line text-lg"></i>
         </button>
       </div>
       <div class="p-6 space-y-4">
-        <p class="text-sm text-slate-600">
+        <p class="text-sm text-gray-600">
           Para acceder a la sección de Personalización necesitas aprobación del superadmin.
         </p>
         <div @class(['hidden' => ! $personalizacionPending]) data-personalizacion-pending-state>

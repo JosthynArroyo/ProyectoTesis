@@ -127,6 +127,15 @@ class Pago extends Model
         return $query->whereNotNull('comprobante_path');
     }
 
+    public function scopeConOrdenCobroReal(Builder $query): Builder
+    {
+        return $query
+            ->whereNotNull('folio_unico')
+            ->where('folio_unico', '!=', '')
+            ->whereNotNull('token_publico')
+            ->where('token_publico', '!=', '');
+    }
+
     public function requiereComprobante(): bool
     {
         return $this->metodo_pago === self::METODO_TRANSFERENCIA;

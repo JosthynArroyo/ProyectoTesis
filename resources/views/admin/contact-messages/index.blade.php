@@ -39,7 +39,7 @@
             @endphp
             <tr>
               <td data-label="Nombre">
-                <div class="text-sm font-semibold text-slate-900">{{ $message->nombre }}</div>
+                <div class="text-sm font-semibold text-gray-900">{{ $message->nombre }}</div>
               </td>
               <td data-label="Correo">
                 <a href="mailto:{{ $message->correo }}" class="text-sm text-teal-700 hover:underline">{{ $message->correo }}</a>

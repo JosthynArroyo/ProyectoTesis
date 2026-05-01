@@ -75,34 +75,64 @@ class OrdenController extends Controller
 
     public function marcarMuestra(LaboratorioOrden $orden)
     {
-        $orden->load('cita');
-        if ($orden->cita->doctor_id !== Auth::id()) {
-            abort(403);
-        }
+        $orden = DB::transaction(function () use ($orden) {
+            $orden = LaboratorioOrden::query()
+                ->with('cita')
+                ->whereKey($orden->id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        if ($orden->estado === LaboratorioOrden::ESTADO_RESULTADO_DISPONIBLE) {
+            if ($orden->cita->doctor_id !== Auth::id()) {
+                abort(403);
+            }
+
+            if ($orden->estado === LaboratorioOrden::ESTADO_RESULTADO_DISPONIBLE) {
+                return null;
+            }
+
+            if ($orden->estado !== LaboratorioOrden::ESTADO_MUESTRA_TOMADA) {
+                $orden->estado = LaboratorioOrden::ESTADO_MUESTRA_TOMADA;
+                $orden->save();
+            }
+
+            return $orden;
+        });
+
+        if (! $orden) {
             return back()->withErrors(['error' => 'Los resultados ya fueron publicados.']);
         }
-
-        $orden->estado = LaboratorioOrden::ESTADO_MUESTRA_TOMADA;
-        $orden->save();
 
         return back()->with('success', 'Muestra registrada.');
     }
 
     public function marcarMuestraAutoOrder(LabOrder $labOrder)
     {
-        $this->authorizeSelfServiceOrder($labOrder);
+        $labOrder = DB::transaction(function () use ($labOrder) {
+            $labOrder = LabOrder::query()
+                ->whereKey($labOrder->id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        if ($labOrder->status === LabOrder::STATUS_RESULTADO_LISTO) {
+            $this->authorizeSelfServiceOrder($labOrder);
+
+            if ($labOrder->status === LabOrder::STATUS_RESULTADO_LISTO) {
+                return null;
+            }
+
+            if ($labOrder->status !== LabOrder::STATUS_MUESTRA_TOMADA) {
+                $labOrder->forceFill([
+                    'laboratorio_id' => Auth::id(),
+                    'scheduled_at' => $labOrder->scheduled_at ?? now(config('app.timezone', 'America/Guayaquil')),
+                    'status' => LabOrder::STATUS_MUESTRA_TOMADA,
+                ])->save();
+            }
+
+            return $labOrder;
+        });
+
+        if (! $labOrder) {
             return back()->withErrors(['error' => 'Los resultados ya fueron publicados.']);
         }
-
-        $labOrder->forceFill([
-            'laboratorio_id' => Auth::id(),
-            'scheduled_at' => $labOrder->scheduled_at ?? now(config('app.timezone', 'America/Guayaquil')),
-            'status' => LabOrder::STATUS_MUESTRA_TOMADA,
-        ])->save();
 
         return back()->with('success', 'Muestra registrada para la solicitud del paciente.');
     }
@@ -126,17 +156,41 @@ class OrdenController extends Controller
 
         $path = $request->file('resultado_pdf')->store('laboratorio_resultados');
 
-        $orden->resultado_path = $path;
-        $orden->resultado_resumen = $data['resultado_resumen'] ?? null;
-        $orden->resultado_publicado_at = now('America/Guayaquil');
-        $orden->estado = LaboratorioOrden::ESTADO_RESULTADO_DISPONIBLE;
+        $orden = DB::transaction(function () use ($orden, $path, $data) {
+            $orden = LaboratorioOrden::query()
+                ->with(['cita.paciente', 'cita.doctor', 'cita.especialidad'])
+                ->whereKey($orden->id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        if ($orden->cita->paciente && $orden->cita->paciente->email) {
-            Mail::to($orden->cita->paciente->email)->send(new ResultadoLaboratorioMail($orden));
-            $orden->resultado_enviado_at = now('America/Guayaquil');
+            if ($orden->cita->doctor_id !== Auth::id()) {
+                abort(403);
+            }
+
+            if ($orden->estado === LaboratorioOrden::ESTADO_RESULTADO_DISPONIBLE) {
+                Storage::delete($path);
+
+                return null;
+            }
+
+            $orden->resultado_path = $path;
+            $orden->resultado_resumen = $data['resultado_resumen'] ?? null;
+            $orden->resultado_publicado_at = now('America/Guayaquil');
+            $orden->estado = LaboratorioOrden::ESTADO_RESULTADO_DISPONIBLE;
+            $orden->save();
+
+            return $orden->refresh();
+        });
+
+        if (! $orden) {
+            return back()->withErrors(['error' => 'Los resultados ya fueron publicados.']);
         }
 
-        $orden->save();
+        if ($orden->cita->paciente && $orden->cita->paciente->email && ! $orden->resultado_enviado_at) {
+            Mail::to($orden->cita->paciente->email)->send(new ResultadoLaboratorioMail($orden));
+            $orden->resultado_enviado_at = now('America/Guayaquil');
+            $orden->save();
+        }
 
         return back()->with('success', 'Resultados subidos y notificados al paciente.');
     }
@@ -158,21 +212,42 @@ class OrdenController extends Controller
 
         $path = $request->file('resultado_pdf')->store('laboratorio_resultados');
 
-        $labOrder->forceFill([
-            'laboratorio_id' => Auth::id(),
-            'scheduled_at' => $labOrder->scheduled_at ?? now(config('app.timezone', 'America/Guayaquil')),
-            'resultado_path' => $path,
-            'resultado_resumen' => $data['resultado_resumen'],
-            'resultado_publicado_at' => now('America/Guayaquil'),
-            'status' => LabOrder::STATUS_RESULTADO_LISTO,
-        ]);
+        $labOrder = DB::transaction(function () use ($labOrder, $path, $data) {
+            $labOrder = LabOrder::query()
+                ->with(['patient', 'doctor', 'items'])
+                ->whereKey($labOrder->id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        if ($labOrder->patient && $labOrder->patient->email) {
-            Mail::to($labOrder->patient->email)->send(new ResultadoLaboratorioMail($labOrder));
-            $labOrder->resultado_enviado_at = now('America/Guayaquil');
+            $this->authorizeSelfServiceOrder($labOrder);
+
+            if ($labOrder->status === LabOrder::STATUS_RESULTADO_LISTO) {
+                Storage::delete($path);
+
+                return null;
+            }
+
+            $labOrder->forceFill([
+                'laboratorio_id' => Auth::id(),
+                'scheduled_at' => $labOrder->scheduled_at ?? now(config('app.timezone', 'America/Guayaquil')),
+                'resultado_path' => $path,
+                'resultado_resumen' => $data['resultado_resumen'],
+                'resultado_publicado_at' => now('America/Guayaquil'),
+                'status' => LabOrder::STATUS_RESULTADO_LISTO,
+            ])->save();
+
+            return $labOrder->refresh();
+        });
+
+        if (! $labOrder) {
+            return back()->withErrors(['error' => 'Los resultados ya fueron publicados.']);
         }
 
-        $labOrder->save();
+        if ($labOrder->patient && $labOrder->patient->email && ! $labOrder->resultado_enviado_at) {
+            Mail::to($labOrder->patient->email)->send(new ResultadoLaboratorioMail($labOrder));
+            $labOrder->resultado_enviado_at = now('America/Guayaquil');
+            $labOrder->save();
+        }
 
         $item = $labOrder->items()->first();
         if ($item) {

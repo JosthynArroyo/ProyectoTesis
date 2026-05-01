@@ -13,7 +13,7 @@
     @csrf
     @method('PUT')
     <section class="card p-6 space-y-4">
-      <label class="flex items-center gap-3 text-sm font-semibold text-slate-700">
+      <label class="flex items-center gap-3 text-sm font-semibold text-gray-700">
         <input type="hidden" name="maintenance_enabled" value="0">
         <input type="checkbox" name="maintenance_enabled" value="1" @checked(($settings['maintenance.enabled'] ?? '0') === '1')>
         Activar modo mantenimiento
@@ -37,9 +37,9 @@
           <label class="form-label" for="maintenance_allow_ips">Lista blanca de IPs</label>
           <input class="form-input" id="maintenance_allow_ips" name="maintenance_allow_ips"
                  value="{{ old('maintenance_allow_ips', $settings['maintenance.allow_ips'] ?? '') }}"
-                 placeholder="Ej: 127.0.0.1, 190.0.0.10" required>
-          <p class="mt-1 text-xs text-slate-500">Solo estas IPs podrán acceder sin ser superadmin. Puedes separarlas con coma, espacio o punto y coma.</p>
-          <p class="mt-1 text-xs text-slate-500">IPs detectadas en esta solicitud: <span class="font-semibold text-slate-700">{{ !empty($detectedIps) ? implode(', ', $detectedIps) : 'No disponible' }}</span></p>
+                 placeholder="Ej: 127.0.0.1, 190.0.0.10">
+          <p class="mt-1 text-xs text-gray-500">Solo estas IPs podrán acceder sin ser superadmin. Puedes separarlas con coma, espacio o punto y coma.</p>
+          <p class="mt-1 text-xs text-gray-500">IPs detectadas en esta solicitud: <span class="font-semibold text-gray-700">{{ !empty($detectedIps) ? implode(', ', $detectedIps) : 'No disponible' }}</span></p>
           @error('maintenance_allow_ips')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
         </div>
       </div>

@@ -14,11 +14,14 @@ use App\Models\User;
 use App\Services\CitaComprobanteService;
 use App\Services\PagoService;
 use App\Services\PriorityEvaluator;
+use App\Services\ProfessionalScheduleService;
+use App\Services\SlotHoldService;
 use App\Support\ValidationRules;
 use Carbon\Carbon;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -74,18 +77,57 @@ class ChatBotController extends Controller
         ]);
     }
 
-    public function fechasDisponibles(User $doctor)
+    public function fechasDisponibles(User $doctor, ProfessionalScheduleService $scheduleService)
     {
-        abort_unless($doctor->isActive() && ($doctor->hasRole('doctor') || $doctor->hasRole('laboratorio')), 404);
+        try {
+            abort_unless($doctor->isActive() && ($doctor->hasRole('doctor') || $doctor->hasRole('laboratorio')), 404);
 
-        $tz = config('app.timezone', 'America/Guayaquil');
-        $hoy = Carbon::today($tz);
-        if ($doctor->hasRole('laboratorio')) {
+            $tz = config('app.timezone', 'America/Guayaquil');
+            $hoy = Carbon::today($tz);
+            if ($doctor->hasRole('laboratorio')) {
+                $fechas = [];
+
+                for ($i = 0; $i < 30; $i++) {
+                    $fecha = $hoy->copy()->addDays($i)->toDateString();
+                    $slotsLibres = $this->calcularSlotsDisponibles($doctor->id, $fecha);
+                    if (empty($slotsLibres)) {
+                        continue;
+                    }
+
+                    $fechas[] = [
+                        'value' => $fecha,
+                        'label' => Carbon::parse($fecha)->locale('es')->isoFormat('dddd D [de] MMMM'),
+                    ];
+
+                    if (count($fechas) >= 7) {
+                        break;
+                    }
+                }
+
+                if (empty($fechas)) {
+                    return response()->json([
+                        'ok' => false,
+                        'message' => 'Este médico no tiene horarios libres próximamente.',
+                    ], 404);
+                }
+
+                return response()->json([
+                    'ok' => true,
+                    'doctor' => ['id' => $doctor->id, 'nombre' => $doctor->name],
+                    'fechas' => $fechas,
+                ]);
+            }
+
+            $horarios = Horario::where('doctor_id', $doctor->id)
+                ->whereDate('fecha', '>=', $hoy)
+                ->orderBy('fecha')
+                ->limit(30)
+                ->get()
+                ->groupBy(fn ($h) => Carbon::parse($h->fecha)->toDateString());
+
             $fechas = [];
-
-            for ($i = 0; $i < 30; $i++) {
-                $fecha = $hoy->copy()->addDays($i)->toDateString();
-                $slotsLibres = $this->calcularSlotsDisponibles($doctor->id, $fecha);
+            foreach ($horarios as $fecha => $bloques) {
+                $slotsLibres = $this->calcularSlotsDisponibles($doctor->id, $fecha, $bloques);
                 if (empty($slotsLibres)) {
                     continue;
                 }
@@ -112,57 +154,38 @@ class ChatBotController extends Controller
                 'doctor' => ['id' => $doctor->id, 'nombre' => $doctor->name],
                 'fechas' => $fechas,
             ]);
-        }
+        } catch (\Throwable $e) {
+            Log::error('Error en Chatbot al consultar fechasDisponibles', [
+                'doctor_id' => $doctor->id ?? null,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
 
-        $horarios = Horario::where('doctor_id', $doctor->id)
-            ->whereDate('fecha', '>=', $hoy)
-            ->orderBy('fecha')
-            ->limit(30)
-            ->get()
-            ->groupBy(fn ($h) => Carbon::parse($h->fecha)->toDateString());
-
-        $fechas = [];
-        foreach ($horarios as $fecha => $bloques) {
-            $slotsLibres = $this->calcularSlotsDisponibles($doctor->id, $fecha, $bloques);
-            if (empty($slotsLibres)) {
-                continue;
-            }
-
-            $fechas[] = [
-                'value' => $fecha,
-                'label' => Carbon::parse($fecha)->locale('es')->isoFormat('dddd D [de] MMMM'),
-            ];
-
-            if (count($fechas) >= 7) {
-                break;
-            }
-        }
-
-        if (empty($fechas)) {
             return response()->json([
                 'ok' => false,
-                'message' => 'Este médico no tiene horarios libres próximamente.',
-            ], 404);
+                'message' => 'Ocurrió un error inesperado al cargar las fechas disponibles.',
+            ], 500);
         }
-
-        return response()->json([
-            'ok' => true,
-            'doctor' => ['id' => $doctor->id, 'nombre' => $doctor->name],
-            'fechas' => $fechas,
-        ]);
     }
 
-    public function agendar(Request $request, PriorityEvaluator $priorityEvaluator)
+    public function agendar(
+        Request $request,
+        PriorityEvaluator $priorityEvaluator,
+        ProfessionalScheduleService $scheduleService,
+        SlotHoldService $slotHoldService
+    )
     {
         $data = $request->validate([
             'nombre' => ['required', 'string', 'max:255'],
             'cedula' => ['required', 'digits:10'],
             'email' => ['required', 'email', 'max:255'],
             'telefono' => ['required', 'digits:10'],
+            'paciente_id' => ['nullable', 'integer', 'exists:users,id'],
             'especialidad_id' => ['required', 'exists:especialidades,id'],
             'doctor_id' => ['required', 'integer', 'exists:users,id'],
             'fecha' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
             'hora' => ['required', 'date_format:H:i'],
+            'hold_token' => ['nullable', 'string', 'max:80'],
             'motivo_consulta' => ValidationRules::motivoConsulta(false),
             'motivo' => array_merge(['required_without:motivo_consulta'], ValidationRules::motivoConsulta(false)),
             'crear_usuario' => ['required', 'boolean'],
@@ -171,6 +194,7 @@ class ChatBotController extends Controller
         $motivoConsulta = $priorityEvaluator->sanitizeMotivo($data['motivo_consulta'] ?? $data['motivo'] ?? null);
 
         $crearUsuario = array_key_exists('crear_usuario', $data) ? (bool) $data['crear_usuario'] : null;
+        $identifiedPatientId = filled($data['paciente_id'] ?? null) ? (int) $data['paciente_id'] : null;
         $user = $request->user();
         $usuarioCreado = false;
         $credencialesEnviadas = false;
@@ -219,16 +243,47 @@ class ChatBotController extends Controller
                 $user->save();
             }
         } else {
-            $user = User::query()
-                ->role('paciente')
-                ->where('dni', $data['cedula'])
-                ->first();
-
-            if (! $user && ! empty($data['email'])) {
+            if ($identifiedPatientId) {
                 $user = User::query()
                     ->role('paciente')
-                    ->where('email', $data['email'])
+                    ->whereKey($identifiedPatientId)
                     ->first();
+
+                if (! $user) {
+                    return response()->json([
+                        'ok' => false,
+                        'message' => 'No encontramos el paciente identificado para este agendamiento.',
+                    ], 404);
+                }
+            } elseif ($crearUsuario === false) {
+                $duplicatePatient = User::query()
+                    ->role('paciente')
+                    ->where(function ($query) use ($data) {
+                        $query->where('dni', $data['cedula'])
+                            ->orWhere('email', $data['email']);
+                    })
+                    ->first();
+
+                if ($duplicatePatient) {
+                    return response()->json([
+                        'ok' => false,
+                        'message' => 'Ya existe un paciente registrado con esos datos. Continúa con el flujo de paciente existente o crea tu usuario.',
+                    ], 409);
+                }
+
+                $user = null;
+            } else {
+                $user = User::query()
+                    ->role('paciente')
+                    ->where('dni', $data['cedula'])
+                    ->first();
+
+                if (! $user && ! empty($data['email'])) {
+                    $user = User::query()
+                        ->role('paciente')
+                        ->where('email', $data['email'])
+                        ->first();
+                }
             }
 
             if ($user) {
@@ -328,7 +383,24 @@ class ChatBotController extends Controller
         }
 
         $fecha = Carbon::parse($data['fecha'])->toDateString();
-        if (! $this->slotDisponible($doctor->id, $fecha, $data['hora'])) {
+        $slot = Carbon::createFromFormat('H:i', $data['hora']);
+        $validationError = $scheduleService->validateBookingSlot(
+            professionalId: (int) $doctor->id,
+            date: $fecha,
+            slot: $slot,
+            messages: [
+                'missing_schedule' => 'No existe disponibilidad configurada para ese horario.',
+                'misaligned' => 'La hora seleccionada no coincide con un bloque disponible.',
+                'lead_time' => 'Debes agendar con al menos 1 hora de anticipacion.',
+                'lead_time_field' => 'hora',
+                'conflict' => 'El horario escogido ya no esta disponible.',
+                'conflict_field' => 'hora',
+            ],
+            exceptHoldToken: $data['hold_token'] ?? null,
+            timezone: config('app.timezone', 'America/Guayaquil')
+        );
+
+        if ($validationError) {
             return response()->json([
                 'ok' => false,
                 'message' => 'El horario escogido ya no está disponible.',
@@ -336,19 +408,46 @@ class ChatBotController extends Controller
         }
 
         try {
-            $cita = Cita::create([
-                'paciente_id' => $user->id,
-                'doctor_id' => $doctor->id,
-                'especialidad_id' => $data['especialidad_id'],
-                'fecha' => $fecha,
-                'hora' => $data['hora'],
-                'motivo_consulta' => $motivoConsulta,
-                'estado' => Cita::ESTADO_PENDIENTE,
-                'activo' => true,
-            ]);
-            $priorityEvaluator->apply($cita);
-            $cita->save();
+            $cita = DB::transaction(function () use (
+                $user,
+                $doctor,
+                $data,
+                $fecha,
+                $slot,
+                $motivoConsulta,
+                $priorityEvaluator,
+                $slotHoldService
+            ) {
+                $cita = Cita::create([
+                    'paciente_id' => $user->id,
+                    'doctor_id' => $doctor->id,
+                    'especialidad_id' => $data['especialidad_id'],
+                    'fecha' => $fecha,
+                    'hora' => $slot->format('H:i:00'),
+                    'motivo_consulta' => $motivoConsulta,
+                    'estado' => Cita::ESTADO_PENDIENTE,
+                    'activo' => true,
+                ]);
+                $priorityEvaluator->apply($cita);
+                $cita->save();
+
+                $slotHoldService->completeByToken(
+                    token: $data['hold_token'] ?? null,
+                    professionalId: (int) $doctor->id,
+                    date: $fecha,
+                    time: $slot->format('H:i:00')
+                );
+
+                return $cita->refresh();
+            });
         } catch (QueryException $e) {
+            $slotHoldService->releaseByToken(
+                token: $data['hold_token'] ?? null,
+                professionalId: (int) $doctor->id,
+                date: $fecha,
+                time: $slot->format('H:i:00')
+            );
+
             if ($e->getCode() === '23000' || str_contains($e->getMessage(), 'UNIQUE')) {
                 return response()->json([
                     'ok' => false,
@@ -644,16 +743,42 @@ class ChatBotController extends Controller
             }
         }
 
-        if (Carbon::parse($cita->fecha)->isPast()) {
+        $transition = DB::transaction(function () use ($cita) {
+            $cita = Cita::query()->whereKey($cita->id)->lockForUpdate()->firstOrFail();
+
+            if (Carbon::parse($cita->fecha)->isPast()) {
+                return [
+                    'ok' => false,
+                    'status' => 422,
+                    'message' => 'No es posible cancelar citas pasadas.',
+                    'cita' => $cita,
+                ];
+            }
+
+            if (in_array($cita->estado, [Cita::ESTADO_CANCELADA, Cita::ESTADO_REALIZADA, Cita::ESTADO_NO_SE_PRESENTO], true)) {
+                return [
+                    'ok' => false,
+                    'status' => 422,
+                    'message' => 'Esta cita ya no puede ser cancelada.',
+                    'cita' => $cita,
+                ];
+            }
+
+            $cita->estado = Cita::ESTADO_CANCELADA;
+            $cita->activo = false;
+            $cita->save();
+
+            return ['ok' => true, 'status' => 200, 'message' => null, 'cita' => $cita->refresh()];
+        });
+
+        if (! $transition['ok']) {
             return response()->json([
                 'ok' => false,
-                'message' => 'No es posible cancelar citas pasadas.',
-            ], 422);
+                'message' => $transition['message'],
+            ], $transition['status']);
         }
 
-        $cita->estado = Cita::ESTADO_CANCELADA;
-        $cita->activo = false;
-        $cita->save();
+        $cita = $transition['cita'];
         app(CitaComprobanteService::class)->sincronizarComprobante($cita);
 
         NotificarCambioEstadoCitaJob::dispatch($cita, 'cancelada', 'paciente');
@@ -664,7 +789,11 @@ class ChatBotController extends Controller
         ]);
     }
 
-    public function reagendar(Request $request, PriorityEvaluator $priorityEvaluator)
+    public function reagendar(
+        Request $request,
+        PriorityEvaluator $priorityEvaluator,
+        ProfessionalScheduleService $scheduleService
+    )
     {
         $isGuest = ! $request->user();
         $data = $request->validate([
@@ -738,24 +867,47 @@ class ChatBotController extends Controller
 
         $nuevaFecha = Carbon::parse($data['fecha'])->toDateString();
 
-        if (! $this->slotDisponible($cita->doctor_id, $nuevaFecha, $data['hora'])) {
+        $slot = Carbon::createFromFormat('H:i', $data['hora']);
+        $validationError = $scheduleService->validateBookingSlot(
+            professionalId: (int) $cita->doctor_id,
+            date: $nuevaFecha,
+            slot: $slot,
+            messages: [
+                'missing_schedule' => 'No existe disponibilidad configurada para ese horario.',
+                'misaligned' => 'La hora seleccionada no coincide con un bloque disponible.',
+                'lead_time' => 'Debes reagendar con al menos 1 hora de anticipacion.',
+                'lead_time_field' => 'hora',
+                'conflict' => 'Ese horario ya no esta disponible.',
+                'conflict_field' => 'hora',
+            ],
+            exceptCitaId: (int) $cita->id,
+            timezone: config('app.timezone', 'America/Guayaquil')
+        );
+
+        if ($validationError) {
             return response()->json([
                 'ok' => false,
                 'message' => 'Ese horario ya no está disponible.',
             ], 422);
         }
 
-        $cita->fecha = $nuevaFecha;
-        $cita->hora = $data['hora'];
-        $cita->estado = Cita::ESTADO_PENDIENTE;
-        $cita->activo = true;
+        $cita = DB::transaction(function () use ($cita, $nuevaFecha, $slot, $request, $priorityEvaluator) {
+            $cita = Cita::query()->whereKey($cita->id)->lockForUpdate()->firstOrFail();
 
-        if ($request->filled('motivo_consulta')) {
-            $cita->motivo_consulta = $priorityEvaluator->sanitizeMotivo($request->input('motivo_consulta'));
-        }
+            $cita->fecha = $nuevaFecha;
+            $cita->hora = $slot->format('H:i:00');
+            $cita->estado = Cita::ESTADO_PENDIENTE;
+            $cita->activo = true;
 
-        $priorityEvaluator->apply($cita);
-        $cita->save();
+            if ($request->filled('motivo_consulta')) {
+                $cita->motivo_consulta = $priorityEvaluator->sanitizeMotivo($request->input('motivo_consulta'));
+            }
+
+            $priorityEvaluator->apply($cita);
+            $cita->save();
+
+            return $cita->refresh();
+        });
         app(CitaComprobanteService::class)->sincronizarComprobante($cita);
 
         NotificarCambioEstadoCitaJob::dispatch($cita, 'reagendada', 'paciente');
@@ -1212,70 +1364,16 @@ class ChatBotController extends Controller
         return 'chatbot:codigo:'.sha1($cedula.'|'.strtolower($email));
     }
 
-    protected function slotDisponible(int $doctorId, string $fecha, string $hora): bool
-    {
-        $doctorActivo = User::query()
-            ->onlyActive()
-            ->whereKey($doctorId)
-            ->whereHas('roles', fn ($query) => $query->whereIn('name', ['doctor', 'laboratorio']))
-            ->exists();
-
-        if (! $doctorActivo) {
-            return false;
-        }
-
-        $libres = $this->calcularSlotsDisponibles($doctorId, $fecha);
-
-        return in_array($hora, $libres, true);
-    }
-
     protected function calcularSlotsDisponibles(int $doctorId, string $fecha, $bloques = null): array
     {
-        $tz = config('app.timezone', 'America/Guayaquil');
-        $hoy = Carbon::now($tz);
-        $limite = $hoy->copy()->addHour();
-        $fechaCarbon = Carbon::parse($fecha, $tz);
-        $esHoy = $fechaCarbon->isSameDay($hoy);
-
-        $bloques = $bloques ?: Horario::where('doctor_id', $doctorId)
-            ->whereDate('fecha', $fecha)
-            ->get();
-
-        if ($bloques->isEmpty()) {
-            return [];
-        }
-
-        $ocupadas = Cita::where('doctor_id', $doctorId)
-            ->whereDate('fecha', $fecha)
-            ->where('activo', true)
-            ->whereIn('estado', [Cita::ESTADO_PENDIENTE, Cita::ESTADO_CONFIRMADA])
+        return collect(app(ProfessionalScheduleService::class)->buildSlotsForDate(
+            $doctorId,
+            $fecha,
+            config('app.timezone', 'America/Guayaquil')
+        ))
+            ->filter(fn ($slot) => ($slot['estado'] ?? null) === 'libre')
             ->pluck('hora')
-            ->map(fn ($hora) => substr($hora, 0, 5))
-            ->toArray();
-
-        $slots = [];
-        foreach ($bloques as $horario) {
-            $step = property_exists($horario, 'intervalo_minutos') && $horario->intervalo_minutos
-                ? (int) $horario->intervalo_minutos
-                : 30;
-
-            $inicio = Carbon::parse("{$fecha} {$horario->hora_inicio}", $tz);
-            $fin = Carbon::parse("{$fecha} {$horario->hora_fin}", $tz);
-
-            for ($cursor = $inicio->copy(); $cursor->lt($fin); $cursor->addMinutes($step)) {
-                if ($esHoy && $cursor->lt($limite)) {
-                    continue; // No ofrecer horas que ya pasaron ni las que están dentro de la siguiente hora
-                }
-
-                $hhmm = $cursor->format('H:i');
-                if (! in_array($hhmm, $ocupadas, true)) {
-                    $slots[] = $hhmm;
-                }
-            }
-        }
-
-        sort($slots);
-
-        return array_values(array_unique($slots));
+            ->values()
+            ->all();
     }
 }

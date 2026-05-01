@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
       zone.addEventListener(eventName, (event) => {
         event.preventDefault();
         event.stopPropagation();
-        zone.classList.add('border-teal-400', 'bg-teal-50/70');
+        zone.classList.add('border-teal-400', 'bg-gray-100/70');
       });
     });
 
@@ -39,7 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
       zone.addEventListener(eventName, (event) => {
         event.preventDefault();
         event.stopPropagation();
-        zone.classList.remove('border-teal-400', 'bg-teal-50/70');
+        zone.classList.remove('border-teal-400', 'bg-gray-100/70');
       });
     });
 

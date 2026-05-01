@@ -88,19 +88,19 @@
       <input type="hidden" name="plan_seguimiento" value="{{ old('plan_seguimiento', $nota?->plan_seguimiento) }}">
 
       <div class="grid gap-6 xl:grid-cols-2">
-        <section class="space-y-4 rounded-2xl border border-slate-200 p-4">
+        <section class="space-y-4 rounded-2xl border border-gray-200 p-4">
           <div>
-            <p class="text-xs uppercase tracking-widest text-slate-500">Subjetivo</p>
-            <h3 class="text-lg font-semibold text-slate-900">Motivo, alergias y antecedentes</h3>
+            <p class="text-xs uppercase tracking-widest text-gray-500">Subjetivo</p>
+            <h3 class="text-lg font-semibold text-gray-900">Motivo, alergias y antecedentes</h3>
           </div>
 
           <div>
             <label class="form-label" for="subjetivo_motivo">Motivo de consulta</label>
             <textarea id="subjetivo_motivo" name="subjetivo_motivo" class="form-textarea" rows="3" @if($isSigned) readonly @endif>{{ $motivoConsulta }}</textarea>
-            <p class="mt-2 text-xs text-slate-500">Tomado del motivo registrado por el paciente al agendar la cita.</p>
+            <p class="mt-2 text-xs text-gray-500">Tomado del motivo registrado por el paciente al agendar la cita.</p>
           </div>
 
-          <label class="inline-flex items-center gap-2 text-sm text-slate-700">
+          <label class="inline-flex items-center gap-2 text-sm text-gray-700">
             <input type="checkbox" name="alergias_no_conocidas" value="1" @checked($alergiasNoConocidasChecked) @if($isSigned) disabled @endif>
             Sin alergias conocidas
           </label>
@@ -128,10 +128,10 @@
           </div>
         </section>
 
-        <section class="space-y-4 rounded-2xl border border-slate-200 p-4">
+        <section class="space-y-4 rounded-2xl border border-gray-200 p-4">
           <div>
-            <p class="text-xs uppercase tracking-widest text-slate-500">Objetivo</p>
-            <h3 class="text-lg font-semibold text-slate-900">Signos vitales y exploracion</h3>
+            <p class="text-xs uppercase tracking-widest text-gray-500">Objetivo</p>
+            <h3 class="text-lg font-semibold text-gray-900">Signos vitales y exploracion</h3>
           </div>
 
           <div class="grid gap-3 md:grid-cols-2">
@@ -144,13 +144,13 @@
             <div class="relative md:col-span-2">
               <label class="sr-only" for="sv_talla">Estatura en centimetros</label>
               <input id="sv_talla" name="sv_talla" type="number" step="0.01" min="0" max="300" class="form-input pr-20" placeholder="Estatura" value="{{ old('sv_talla', $sv['talla'] ?? '') }}" aria-describedby="sv_talla_unit sv_talla_help" required @if($isSigned) readonly @endif>
-              <span id="sv_talla_unit" class="pointer-events-none absolute inset-y-0 right-10 flex items-center text-sm font-semibold text-slate-500">cm</span>
+              <span id="sv_talla_unit" class="pointer-events-none absolute inset-y-0 right-10 flex items-center text-sm font-semibold text-gray-500">cm</span>
             </div>
-            <p id="sv_talla_help" class="text-xs text-slate-500 md:col-span-2">Registra la estatura en centimetros. Puedes escribir 163 o 1,63; se guardara como 163 cm.</p>
+            <p id="sv_talla_help" class="text-xs text-gray-500 md:col-span-2">Registra la estatura en centimetros. Puedes escribir 163 o 1,63; se guardara como 163 cm.</p>
           </div>
 
           @if(!empty($signosPrevios))
-            <div class="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+            <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
               Ultimos signos previos: TA {{ $signosPrevios['ta'] ?? '---' }}, FC {{ $signosPrevios['fc'] ?? '---' }}, FR {{ $signosPrevios['fr'] ?? '---' }}, Temp {{ $signosPrevios['temp'] ?? '---' }}.
             </div>
           @endif
@@ -160,10 +160,10 @@
         </section>
       </div>
 
-      <section class="space-y-4 rounded-2xl border border-slate-200 p-4">
+      <section class="space-y-4 rounded-2xl border border-gray-200 p-4">
         <div>
-          <p class="text-xs uppercase tracking-widest text-slate-500">Evaluacion</p>
-          <h3 class="text-lg font-semibold text-slate-900">Assessment y diagnosticos</h3>
+          <p class="text-xs uppercase tracking-widest text-gray-500">Evaluacion</p>
+          <h3 class="text-lg font-semibold text-gray-900">Assessment y diagnosticos</h3>
         </div>
 
         <textarea id="assessment" name="assessment" class="form-textarea" rows="4" placeholder="Evaluacion medica" required @if($isSigned) readonly @endif>{{ old('assessment', $nota?->assessment) }}</textarea>
@@ -191,10 +191,10 @@
         </div>
       </section>
 
-      <section class="space-y-4 rounded-2xl border border-slate-200 p-4">
+      <section class="space-y-4 rounded-2xl border border-gray-200 p-4">
         <div>
-          <p class="text-xs uppercase tracking-widest text-slate-500">Plan</p>
-          <h3 class="text-lg font-semibold text-slate-900">Tratamiento y seguimiento</h3>
+          <p class="text-xs uppercase tracking-widest text-gray-500">Plan</p>
+          <h3 class="text-lg font-semibold text-gray-900">Tratamiento y seguimiento</h3>
         </div>
 
         <textarea id="plan_general" name="plan_general" class="form-textarea" rows="4" placeholder="Tratamiento indicado" required @if($isSigned) readonly @endif>{{ old('plan_general', $nota?->plan_general) }}</textarea>
@@ -210,16 +210,16 @@
         </div>
         <textarea id="plan_notas" name="plan_notas" class="form-textarea" rows="4" placeholder="Indicaciones al paciente" required @if($isSigned) readonly @endif>{{ old('plan_notas', $nota?->plan_notas) }}</textarea>
 
-        <div class="rounded-2xl border border-slate-200 bg-white/80 p-4" id="plan-control-box">
+        <div class="rounded-2xl border border-gray-200 bg-white/80 p-4" id="plan-control-box">
           @if($isSigned && $controlCita)
             <div class="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h4 class="text-sm font-semibold text-slate-900">Control agendado</h4>
-                <p class="mt-1 text-sm font-semibold text-slate-900">
+                <h4 class="text-sm font-semibold text-gray-900">Control agendado</h4>
+                <p class="mt-1 text-sm font-semibold text-gray-900">
                   {{ \Carbon\Carbon::parse($controlCita->fecha)->format('d/m/Y') }}
                   {{ \Carbon\Carbon::parse($controlCita->hora)->format('H:i') }}
                 </p>
-                <p class="mt-1 text-xs text-slate-500">Estado: {{ $controlEstado }}. Puedes reagendar o cancelar este control.</p>
+                <p class="mt-1 text-xs text-gray-500">Estado: {{ $controlEstado }}. Puedes reagendar o cancelar este control.</p>
               </div>
               <form method="POST" action="{{ route('doctor.citas.proxima.cancelar', ['cita' => $cita->id, 'control' => $controlCita->id]) }}">
                 @csrf
@@ -242,10 +242,10 @@
                 <button class="btn btn-outline w-full lg:w-auto" type="button" id="btn-agendar-control" disabled>Reagendar control</button>
               </div>
             </div>
-            <p id="control-help" class="mt-2 text-xs text-slate-500">Selecciona una nueva fecha para consultar horarios disponibles.</p>
+            <p id="control-help" class="mt-2 text-xs text-gray-500">Selecciona una nueva fecha para consultar horarios disponibles.</p>
           @else
-            <h4 class="text-sm font-semibold text-slate-900">Agendar control</h4>
-            <p class="mt-1 text-xs text-slate-500">Programa la proxima cita de seguimiento sin salir de esta consulta.</p>
+            <h4 class="text-sm font-semibold text-gray-900">Agendar control</h4>
+            <p class="mt-1 text-xs text-gray-500">Programa la proxima cita de seguimiento sin salir de esta consulta.</p>
             @if($isSigned)
               <div class="mt-3 grid gap-3 lg:grid-cols-[1fr_1fr_auto]">
                 <div>
@@ -262,9 +262,9 @@
                   <button class="btn btn-outline w-full lg:w-auto" type="button" id="btn-agendar-control" disabled>Agendar control</button>
                 </div>
               </div>
-              <p id="control-help" class="mt-2 text-xs text-slate-500">Selecciona una fecha para consultar horarios disponibles.</p>
+              <p id="control-help" class="mt-2 text-xs text-gray-500">Selecciona una fecha para consultar horarios disponibles.</p>
             @else
-              <p class="mt-2 text-xs text-slate-500">Firma la nota para habilitar el agendamiento del siguiente control.</p>
+              <p class="mt-2 text-xs text-gray-500">Firma la nota para habilitar el agendamiento del siguiente control.</p>
             @endif
           @endif
         </div>
@@ -286,8 +286,8 @@
     <section class="card p-6 space-y-4">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 class="text-lg font-semibold text-slate-900">Consulta cerrada</h3>
-          <p class="text-sm text-slate-600">La nota ya fue firmada. La correccion posterior se registra mediante enmiendas.</p>
+          <h3 class="text-lg font-semibold text-gray-900">Consulta cerrada</h3>
+          <p class="text-sm text-gray-600">La nota ya fue firmada. La correccion posterior se registra mediante enmiendas.</p>
         </div>
         @if($cita->estado === \App\Models\Cita::ESTADO_CONFIRMADA)
           <form action="{{ route('doctor.citas.realizar', $cita->id) }}" method="POST">
@@ -299,19 +299,19 @@
     </section>
 
     <section class="card p-6 space-y-4">
-      <h3 class="text-lg font-semibold text-slate-900">Enmiendas y aclaraciones</h3>
+      <h3 class="text-lg font-semibold text-gray-900">Enmiendas y aclaraciones</h3>
       @if(collect($nota?->enmiendas ?? [])->isNotEmpty())
         <div class="space-y-3">
           @foreach(($nota?->enmiendas ?? []) as $enmienda)
-            <div class="rounded-xl border border-slate-200 bg-white/90 px-3 py-3 text-sm text-slate-700">
-              <div class="font-semibold text-slate-900">{{ $enmienda->motivo }}</div>
+            <div class="rounded-xl border border-gray-200 bg-white/90 px-3 py-3 text-sm text-gray-700">
+              <div class="font-semibold text-gray-900">{{ $enmienda->motivo }}</div>
               <p class="mt-2">{{ $enmienda->contenido }}</p>
-              <div class="mt-2 text-xs text-slate-500">{{ $enmienda->autor?->name ?? 'Usuario' }} | {{ $enmienda->created_at?->format('Y-m-d H:i') }}</div>
+              <div class="mt-2 text-xs text-gray-500">{{ $enmienda->autor?->name ?? 'Usuario' }} | {{ $enmienda->created_at?->format('Y-m-d H:i') }}</div>
             </div>
           @endforeach
         </div>
       @else
-        <p class="text-sm text-slate-600">No hay enmiendas registradas.</p>
+        <p class="text-sm text-gray-600">No hay enmiendas registradas.</p>
       @endif
 
       <form method="POST" action="{{ route('doctor.citas.soap.enmienda', $cita->id) }}" class="space-y-3">

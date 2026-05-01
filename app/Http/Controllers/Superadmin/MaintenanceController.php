@@ -30,7 +30,7 @@ class MaintenanceController extends Controller
             'maintenance_enabled' => ['required', 'boolean'],
             'maintenance_message' => ['required', 'string', 'max:240'],
             'maintenance_until' => ['required', 'date'],
-            'maintenance_allow_ips' => ['required', 'string', 'max:255'],
+            'maintenance_allow_ips' => ['nullable', 'string', 'max:255'],
         ]);
 
         $payload = [

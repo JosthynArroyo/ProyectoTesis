@@ -18,8 +18,8 @@
 
   <div class="grid gap-6 lg:grid-cols-2">
     <section class="card p-6 space-y-4">
-      <h2 class="text-lg font-semibold text-slate-900">Datos del cobro</h2>
-      <div class="space-y-2 break-words text-sm text-slate-700">
+      <h2 class="text-lg font-semibold text-gray-900">Datos del cobro</h2>
+      <div class="space-y-2 break-words text-sm text-gray-700">
         <p><strong>Folio orden:</strong> {{ $pago->folio_unico ?: 'SIN FOLIO' }}</p>
         <p><strong>Token público:</strong> {{ $pago->token_publico ?: 'N/D' }}</p>
         <p><strong>Paciente:</strong> {{ $pago->paciente?->name }} ({{ $pago->paciente?->dni }})</p>
@@ -42,7 +42,7 @@
         @endif
       </div>
 
-      <form method="POST" action="{{ route('admin.pagos.monto.update', $pago) }}" class="grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-3">
+      <form method="POST" action="{{ route('admin.pagos.monto.update', $pago) }}" class="grid gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4 md:grid-cols-3">
         @csrf
         <div>
           <label class="form-label" for="monto">Monto</label>
@@ -57,7 +57,7 @@
         </div>
       </form>
 
-      <form method="POST" action="{{ route('admin.pagos.metodo.update', $pago) }}" class="grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-2">
+      <form method="POST" action="{{ route('admin.pagos.metodo.update', $pago) }}" class="grid gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4 md:grid-cols-2">
         @csrf
         <div>
           <label class="form-label" for="metodo_pago">Metodo de pago</label>
@@ -70,7 +70,7 @@
         <div>
           <label class="form-label" for="metodo_obs">Observacion</label>
           <textarea id="metodo_obs" name="observacion_admin" class="form-input" rows="2">{{ old('observacion_admin') }}</textarea>
-          <p class="mt-1 text-xs text-slate-500">Si cambia un metodo ya definido, la observacion es obligatoria y queda en auditoria.</p>
+          <p class="mt-1 text-xs text-gray-500">Si cambia un metodo ya definido, la observacion es obligatoria y queda en auditoria.</p>
         </div>
         <div class="md:col-span-2">
           <button type="submit" class="btn btn-outline w-full">Guardar metodo de pago</button>
@@ -78,14 +78,14 @@
       </form>
 
       @if($pago->observacion_admin)
-        <div class="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+        <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
           <strong>Observacion administrativa:</strong> {{ $pago->observacion_admin }}
         </div>
       @endif
     </section>
 
     <section class="card p-6 space-y-4">
-      <h2 class="text-lg font-semibold text-slate-900">Comprobante</h2>
+      <h2 class="text-lg font-semibold text-gray-900">Comprobante</h2>
 
       @if($pago->comprobante_path)
         @if($pago->comprobanteEsPdf())
@@ -93,32 +93,32 @@
             Abrir PDF
           </a>
         @else
-          <img src="{{ route('admin.pagos.comprobante', $pago) }}" alt="Comprobante del pago {{ $pago->id }}" class="w-full rounded-xl border border-slate-200 object-contain max-h-[420px]" loading="lazy" decoding="async">
+          <img src="{{ route('admin.pagos.comprobante', $pago) }}" alt="Comprobante del pago {{ $pago->id }}" class="w-full rounded-xl border border-gray-200 object-contain max-h-[420px]" loading="lazy" decoding="async">
         @endif
       @else
-        <p class="text-sm text-slate-500">No se ha adjuntado comprobante.</p>
+        <p class="text-sm text-gray-500">No se ha adjuntado comprobante.</p>
       @endif
 
-      <hr class="border-slate-200">
+      <hr class="border-gray-200">
 
-      <h3 class="text-base font-semibold text-slate-900">Recibo de pago</h3>
+      <h3 class="text-base font-semibold text-gray-900">Recibo de pago</h3>
       @if($pago->receipt)
-        <p class="text-sm text-slate-700"><strong>Folio:</strong> {{ $pago->receipt->folio_recibo }}</p>
-        <p class="text-sm text-slate-700"><strong>Emitido:</strong> {{ $pago->receipt->emitido_en?->format('Y-m-d H:i') }}</p>
-        <p class="text-sm text-slate-700"><strong>Emisor:</strong> {{ $pago->receipt->emisor?->name ?: 'N/D' }}</p>
+        <p class="text-sm text-gray-700"><strong>Folio:</strong> {{ $pago->receipt->folio_recibo }}</p>
+        <p class="text-sm text-gray-700"><strong>Emitido:</strong> {{ $pago->receipt->emitido_en?->format('Y-m-d H:i') }}</p>
+        <p class="text-sm text-gray-700"><strong>Emisor:</strong> {{ $pago->receipt->emisor?->name ?: 'N/D' }}</p>
         <a href="{{ route('admin.pagos.recibo.pdf', $pago) }}" class="btn btn-outline" target="_blank" rel="noopener">Abrir recibo PDF</a>
       @else
-        <p class="text-sm text-slate-500">Aún no se ha emitido recibo.</p>
+        <p class="text-sm text-gray-500">Aún no se ha emitido recibo.</p>
       @endif
     </section>
   </div>
 
   <section class="card p-6">
-    <h2 class="text-lg font-semibold text-slate-900">Acciones administrativas</h2>
-    <p class="mt-1 text-sm text-slate-500">Rechazar y anular requieren observacion obligatoria.</p>
+    <h2 class="text-lg font-semibold text-gray-900">Acciones administrativas</h2>
+    <p class="mt-1 text-sm text-gray-500">Rechazar y anular requieren observacion obligatoria.</p>
 
     <div class="mt-4 grid gap-4 lg:grid-cols-3">
-      <form method="POST" action="{{ route('admin.pagos.aprobar', $pago) }}" class="space-y-2 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+      <form method="POST" action="{{ route('admin.pagos.aprobar', $pago) }}" class="space-y-2 rounded-xl border border-gray-200 bg-gray-100 p-4">
         @csrf
         <label class="form-label" for="approve_obs">Observacion (opcional)</label>
         <textarea id="approve_obs" name="observacion_admin" class="form-input" rows="3">{{ old('observacion_admin') }}</textarea>
@@ -132,7 +132,7 @@
         <button type="submit" class="btn btn-danger w-full">Rechazar pago</button>
       </form>
 
-      <form method="POST" action="{{ route('admin.pagos.anular', $pago) }}" class="space-y-2 rounded-xl border border-slate-300 bg-slate-100 p-4">
+      <form method="POST" action="{{ route('admin.pagos.anular', $pago) }}" class="space-y-2 rounded-xl border border-gray-300 bg-gray-100 p-4">
         @csrf
         <label class="form-label" for="void_obs">Motivo de anulacion</label>
         <textarea id="void_obs" name="observacion_admin" class="form-input" rows="3" required>{{ old('observacion_admin') }}</textarea>
@@ -142,7 +142,7 @@
   </section>
 
   <section class="card p-6">
-    <h2 class="text-lg font-semibold text-slate-900">Historial de estado de cobro</h2>
+    <h2 class="text-lg font-semibold text-gray-900">Historial de estado de cobro</h2>
     <div class="mt-4 table-shell table-responsive-cards">
       <table class="table">
         <thead>
@@ -174,7 +174,7 @@
   </section>
 
   <section class="card p-6">
-    <h2 class="text-lg font-semibold text-slate-900">Historial de recibo</h2>
+    <h2 class="text-lg font-semibold text-gray-900">Historial de recibo</h2>
     <div class="mt-4 table-shell table-responsive-cards">
       <table class="table">
         <thead>

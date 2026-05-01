@@ -50,7 +50,7 @@
     <a class="block" href="{{ route('superadmin.dashboard') }}">
       <x-ui.stat label="Citas hoy" :value="$citasHoy" tone="teal">
         <x-slot:icon><i class="ri-calendar-todo-line"></i></x-slot:icon>
-        <div class="mt-2 text-sm text-slate-500">Pendientes: {{ $pendientes }}</div>
+        <div class="mt-2 text-sm text-gray-500">Pendientes: {{ $pendientes }}</div>
       </x-ui.stat>
     </a>
   </section>
@@ -58,7 +58,7 @@
   <section class="card p-6">
     <div class="page-header">
       <div class="page-header__info">
-        <p class="text-xs uppercase tracking-widest text-slate-500">Actividad</p>
+        <p class="text-xs uppercase tracking-widest text-gray-500">Actividad</p>
         <h2>Citas y usuarios por día</h2>
         <p>Últimos 7 días de actividad del sistema.</p>
       </div>
@@ -66,20 +66,28 @@
     @php
       $maxCitas = max($activity->max('citas') ?: 1, 1);
     @endphp
-    <div class="mt-4 grid gap-3 sm:grid-cols-7">
+    <div class="activity-strip mt-4">
       @foreach($activity as $item)
         @php
           $height = max(10, (int) round(($item['citas'] / $maxCitas) * 100));
         @endphp
-        <div class="rounded-2xl border border-slate-200 bg-white/90 p-3">
-          <p class="text-[11px] font-semibold text-slate-500">{{ $item['label'] }}</p>
-          <div class="mt-3 h-24 rounded-xl bg-slate-100/80 p-2">
+        <div class="activity-card">
+          <p class="activity-card__label">{{ $item['label'] }}</p>
+          <div class="activity-card__track">
             <div class="flex h-full items-end">
-              <div class="w-full rounded-md bg-teal-500/85" style="height: {{ $height }}%"></div>
+              <div class="activity-card__bar" style="height: {{ $height }}%"></div>
             </div>
           </div>
-          <p class="mt-2 text-xs text-slate-600">Citas: <strong>{{ $item['citas'] }}</strong></p>
-          <p class="text-xs text-slate-500">Usuarios: {{ $item['usuarios'] }}</p>
+          <div class="activity-card__stats">
+            <p class="activity-card__stat">
+              <span>Citas</span>
+              <strong>{{ $item['citas'] }}</strong>
+            </p>
+            <p class="activity-card__stat activity-card__stat--muted">
+              <span>Usuarios</span>
+              <strong>{{ $item['usuarios'] }}</strong>
+            </p>
+          </div>
         </div>
       @endforeach
     </div>
@@ -88,14 +96,14 @@
   <section class="card p-6">
     <div class="page-header">
       <div class="page-header__info">
-        <p class="text-xs uppercase tracking-widest text-slate-500">Solicitudes</p>
+        <p class="text-xs uppercase tracking-widest text-gray-500">Solicitudes</p>
         <h2>Personalización</h2>
         <p>Revisa permisos pendientes de administradores.</p>
       </div>
       <div class="page-header__actions">
         <div class="text-right">
-          <p class="text-3xl font-semibold text-slate-900">{{ $pendientesPersonalizacion }}</p>
-          <p class="text-xs text-slate-500">Pendientes</p>
+          <p class="text-3xl font-semibold text-gray-900">{{ $pendientesPersonalizacion }}</p>
+          <p class="text-xs text-gray-500">Pendientes</p>
         </div>
       </div>
     </div>

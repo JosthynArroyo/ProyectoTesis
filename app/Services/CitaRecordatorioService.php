@@ -10,8 +10,6 @@ use Illuminate\Database\Eloquent\Builder;
 
 class CitaRecordatorioService
 {
-    private bool $trackedAppointmentsRefreshed = false;
-
     public function __construct(
         protected SiteSettingsService $siteSettings,
         protected WhatsAppService $whatsApp,
@@ -178,16 +176,13 @@ class CitaRecordatorioService
         $inicio = $cita->inicioProgramado($this->timezone());
         $paciente = trim((string) ($cita->paciente?->name ?? 'Paciente'));
         $doctor = $this->formatDoctorName($cita->doctor?->name);
-        $especialidad = trim((string) ($cita->especialidad?->nombre ?? 'Consulta médica'));
-        $clinica = trim((string) $this->siteSettings->get(
-            'branding.name',
-            $this->siteSettings->get('contact.title', 'Clínica Don Bosco')
-        ));
+        $especialidad = trim((string) ($cita->especialidad?->nombre ?? 'Consulta medica'));
+        $clinica = trim((string) app(ClinicIdentityService::class)->name());
 
         $lineas = [
             'Hola, '.$paciente.'.',
-            'Le recordamos su cita médica con '.$doctor.' en '.$especialidad.', programada para el '.$inicio->format('d/m/Y').' a las '.$inicio->format('H:i').'.',
-            'Por favor, llegue con anticipación.',
+            'Le recordamos su cita medica con '.$doctor.' en '.$especialidad.', programada para el '.$inicio->format('d/m/Y').' a las '.$inicio->format('H:i').'.',
+            'Por favor, llegue con anticipacion.',
         ];
 
         if ($clinica !== '') {
@@ -200,7 +195,33 @@ class CitaRecordatorioService
 
     public function targetDescription(): string
     {
-        return 'Desde las 12:00 PM del día anterior';
+        return 'Desde las 12:00 PM del dia anterior';
+    }
+
+    public function syncTrackedAppointments(int $chunkSize = 200): int
+    {
+        $now = $this->now();
+        $sincronizados = 0;
+
+        $this->trackedAppointmentsQuery()
+            ->orderBy('id')
+            ->chunkById($chunkSize, function ($citas) use ($now, &$sincronizados): void {
+                foreach ($citas as $cita) {
+                    if ($cita->inicioProgramado($this->timezone())->lessThanOrEqualTo($now)) {
+                        continue;
+                    }
+
+                    if (! $this->hasMinimumLeadTime($cita)) {
+                        continue;
+                    }
+
+                    if ($this->syncForCita($cita)) {
+                        $sincronizados++;
+                    }
+                }
+            });
+
+        return $sincronizados;
     }
 
     public function timezone(): string
@@ -220,35 +241,8 @@ class CitaRecordatorioService
             && $this->hasMinimumLeadTime($cita);
     }
 
-    private function refreshTrackedAppointments(): void
-    {
-        if ($this->trackedAppointmentsRefreshed) {
-            return;
-        }
-
-        $this->trackedAppointmentsRefreshed = true;
-        $now = $this->now();
-
-        $this->trackedAppointmentsQuery()
-            ->orderBy('id')
-            ->chunkById(200, function ($citas) use ($now): void {
-                foreach ($citas as $cita) {
-                    if ($cita->inicioProgramado($this->timezone())->lessThanOrEqualTo($now)) {
-                        continue;
-                    }
-
-                    if (! $this->hasMinimumLeadTime($cita)) {
-                        continue;
-                    }
-
-                    $this->syncForCita($cita);
-                }
-            });
-    }
-
     private function pendingTrackedQuery(): Builder
     {
-        $this->refreshTrackedAppointments();
         $now = $this->now();
 
         return CitaRecordatorio::query()

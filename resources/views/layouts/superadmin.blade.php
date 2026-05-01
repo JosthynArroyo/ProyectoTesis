@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>@yield('title','Panel Superadmin - Clínica Don Bosco')</title>
+  <title>@yield('title', 'Panel Superadmin - '.$clinicIdentity->name())</title>
   @include('layouts.partials.panel-theme-head')
   @include('layouts.partials.favicon')
   @include('layouts.partials.fonts')
@@ -25,15 +25,15 @@
 @php
   $sidebarRoutes = ['superadmin.dashboard', 'superadmin.users.index', 'superadmin.admins.index', 'superadmin.solicitudes.personalizacion.index', 'superadmin.personalizacion.index'];
 @endphp
-<body class="min-h-screen text-slate-900 dashboard-shell">
+<body class="min-h-screen text-gray-900 dashboard-shell">
 <div class="min-h-screen lg:flex dashboard-layout">
   @include('superadmin.partials.sidebar')
-  <div class="fixed inset-0 z-30 hidden bg-slate-900/50 backdrop-blur-sm lg:hidden" data-sidebar-overlay></div>
+  <div class="fixed inset-0 z-30 hidden bg-gray-900/50 backdrop-blur-sm lg:hidden" data-sidebar-overlay></div>
 
   <div class="flex min-h-screen flex-1 flex-col">
     <x-layout.dashboard-header :title="$headerTitle" :subtitle="$headerSubtitle" role="Superadmin" />
 
-    <div class="dashboard-content flex-1 pb-10">
+    <div class="dashboard-content dashboard-content--with-sidebar flex-1 pb-10">
       <div class="page-shell min-w-0">
         @if($hasRight)
           <div class="grid gap-6 lg:grid-cols-[1fr_320px]">

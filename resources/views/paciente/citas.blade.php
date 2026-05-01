@@ -14,7 +14,7 @@
 <div class="space-y-6">
   <div class="panel-action-bar">
     @if($bloqueoPagosPendientes)
-      <button type="button" class="btn btn-primary btn-full-mobile cursor-not-allowed opacity-60" disabled aria-disabled="true" title="Tienes órdenes de pago vencidas de citas concluidas. Regulariza tu cuenta para agendar una nueva cita.">
+      <button type="button" class="btn btn-primary btn-full-mobile cursor-not-allowed opacity-60" disabled aria-disabled="true" title="Tienes órdenes de cobro vencidas de citas concluidas. Regulariza tu cuenta para agendar una nueva cita.">
         <i class="ri-lock-2-line"></i>
         <span class="cta-text">Agendar cita</span>
       </button>
@@ -28,9 +28,9 @@
 
   <section class="card p-6" aria-label="Barra de búsqueda y filtros">
     <form class="flex flex-wrap items-end gap-3" method="GET" action="{{ url()->current() }}">
-      <div class="flex flex-1 items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2" role="search">
-        <i class="ri-search-line text-slate-400"></i>
-        <input type="text" name="q" value="{{ request('q') }}" placeholder="Buscar por doctor o especialidad..." aria-label="Buscar citas" class="w-full bg-transparent text-sm text-slate-700"/>
+      <div class="flex flex-1 items-center gap-2 rounded-xl border border-gray-200 bg-white/90 px-3 py-2" role="search">
+        <i class="ri-search-line text-gray-400"></i>
+        <input type="text" name="q" value="{{ request('q') }}" placeholder="Buscar por doctor o especialidad..." aria-label="Buscar citas" class="w-full bg-transparent text-sm text-gray-700"/>
       </div>
       @error('q')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
       @php $est = request('estado'); @endphp
@@ -72,8 +72,8 @@
 
   @if($bloqueoPagosPendientes)
     <x-ui.alert tone="warning">
-      Tienes órdenes de pago vencidas de citas concluidas. Regulariza tu cuenta para agendar una nueva cita.
-      <a href="{{ route('paciente.pagos.index') }}" class="font-semibold underline">Ir a Mis pagos</a>
+      Tienes órdenes de cobro vencidas de citas concluidas. Regulariza tu cuenta para agendar una nueva cita.
+      <a href="{{ route('paciente.pagos.index') }}" class="font-semibold underline">Ir a Órdenes de cobro</a>
     </x-ui.alert>
   @endif
 
@@ -86,7 +86,7 @@
           <p>Agenda tu primera cita para verla aquí con su estado y acciones.</p>
           @if($bloqueoPagosPendientes)
             <button type="button" class="btn btn-primary cursor-not-allowed opacity-60" disabled aria-disabled="true">Agendar cita</button>
-            <p class="text-xs text-amber-700">Tienes órdenes de pago vencidas de citas concluidas. Regulariza tu cuenta para agendar una nueva cita.</p>
+            <p class="text-xs text-amber-700">Tienes órdenes de cobro vencidas de citas concluidas. Regulariza tu cuenta para agendar una nueva cita.</p>
           @else
             <a href="{{ route('paciente.crear-cita') }}" class="btn btn-primary">
               <i class="ri-add-line"></i>
@@ -100,13 +100,13 @@
         <article id="cita-{{ $cita->id }}" class="card p-5 {{ $highlightCita === $cita->id ? 'record-highlight' : '' }}">
           <div class="flex flex-wrap items-start justify-between gap-4">
             <div class="flex items-center gap-3">
-              <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-sm font-semibold text-slate-600" aria-hidden="true">
+              <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-100 text-sm font-semibold text-gray-600" aria-hidden="true">
                 @php $name = optional($cita->doctor)->name ?? 'DR'; $ini = mb_substr(trim($name),0,2,'UTF-8'); @endphp
                 {{ mb_strtoupper($ini,'UTF-8') }}
               </div>
               <div>
                 <div class="flex flex-wrap items-center gap-2">
-                  <h3 class="doctor-name text-base font-semibold text-slate-900">{{ optional($cita->doctor)->name ?? 'Sin asignar' }}</h3>
+                  <h3 class="doctor-name text-base font-semibold text-gray-900">{{ optional($cita->doctor)->name ?? 'Sin asignar' }}</h3>
                   @switch($cita->estado)
                     @case('pendiente')  <span class="badge warning">En revisión</span>  @break
                     @case('confirmada') <span class="badge info">Confirmada</span> @break
@@ -116,7 +116,7 @@
                     @default            <span class="badge info">{{ ucfirst($cita->estado) }}</span>
                   @endswitch
                 </div>
-                <p class="text-sm text-slate-500">{{ optional($cita->especialidad)->nombre ?? 'Sin especialidad' }}</p>
+                <p class="text-sm text-gray-500">{{ optional($cita->especialidad)->nombre ?? 'Sin especialidad' }}</p>
               </div>
             </div>
             <span class="chip" aria-label="Fecha y hora">
@@ -126,17 +126,17 @@
             </span>
           </div>
 
-          <div class="mt-4 flex flex-wrap gap-4 text-sm text-slate-600">
+          <div class="mt-4 flex flex-wrap gap-4 text-sm text-gray-600">
             <span><strong>Fecha:</strong> {{ \Carbon\Carbon::parse($cita->fecha)->format('Y/m/d') }}</span>
             <span><strong>Hora:</strong> {{ \Carbon\Carbon::parse($cita->hora)->format('H:i') }}</span>
           </div>
 
-          <div class="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div class="mt-4 rounded-2xl border border-gray-200 bg-gray-50 p-4">
             <div class="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p class="text-xs uppercase tracking-widest text-slate-500">Comprobante de cita</p>
-                <p class="text-sm font-semibold text-slate-900">{{ $cita->folio_cita ?: 'Se emitirá al descargar' }}</p>
-                <p class="text-xs text-slate-500">Sirve para validar en recepción que la cita te pertenece.</p>
+                <p class="text-xs uppercase tracking-widest text-gray-500">Comprobante de cita</p>
+                <p class="text-sm font-semibold text-gray-900">{{ $cita->folio_cita ?: 'Se emitirá al descargar' }}</p>
+                <p class="text-xs text-gray-500">Sirve para validar en recepción que la cita te pertenece.</p>
               </div>
               <span class="badge {{ $cita->comprobanteEstaVigente() ? 'success' : 'danger' }}">
                 {{ $cita->comprobanteEstaVigente() ? 'Vigente' : 'Sin vigencia' }}
@@ -144,7 +144,7 @@
             </div>
 
             @if($cita->token_validacion)
-              <p class="mt-2 text-xs text-slate-500">Código: {{ $cita->token_validacion }}</p>
+              <p class="mt-2 text-xs text-gray-500">Código: {{ $cita->token_validacion }}</p>
             @endif
 
             <div class="mt-3 flex flex-wrap gap-2">

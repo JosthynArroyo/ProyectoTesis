@@ -12,14 +12,14 @@
 <div class="space-y-6">
     <section class="card p-4">
         <div class="flex items-center justify-between gap-3">
-            <p class="text-sm font-semibold text-slate-900">Progreso del formulario</p>
-            <span class="text-xs text-slate-500" data-step-summary>Paso 1 de 4</span>
+            <p class="text-sm font-semibold text-gray-900">Progreso del formulario</p>
+            <span class="text-xs text-gray-500" data-step-summary>Paso 1 de 4</span>
         </div>
         <ol class="mt-3 grid gap-2 sm:grid-cols-4" data-cita-stepper>
-            <li class="rounded-xl border border-teal-200 bg-teal-50 px-3 py-2 text-xs font-semibold text-teal-700" data-step-item="1">1. Especialidad</li>
-            <li class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-500" data-step-item="2">2. Doctor</li>
-            <li class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-500" data-step-item="3">3. Fecha y hora</li>
-            <li class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-500" data-step-item="4">4. Motivo y confirmar</li>
+            <li class="rounded-xl border border-gray-200 bg-gray-100 px-3 py-2 text-xs font-semibold text-gray-700" data-step-item="1">1. Especialidad</li>
+            <li class="rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-500" data-step-item="2">2. Doctor</li>
+            <li class="rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-500" data-step-item="3">3. Fecha y hora</li>
+            <li class="rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-500" data-step-item="4">4. Motivo y confirmar</li>
         </ol>
     </section>
 
@@ -36,11 +36,14 @@
               data-old-esp="{{ $selectedEsp }}"
               data-old-doc="{{ old('doctor_id') }}"
               data-old-hora="{{ old('hora') }}"
+              data-old-hold-token="{{ old('hold_token') }}"
               data-tarifa-template="{{ route('api.tarifa.doctor.show', ['id' => 'DOC_ID']) }}"
               data-slots-template="{{ url('/api/doctor/DOC_ID/fecha/FECHA/slots') }}"
+              data-slot-hold-url="{{ route('api.slot-holds.store') }}"
               data-laboratorio-id="{{ $laboratorioId ?? '' }}"
               class="space-y-5">
             @csrf
+            <input type="hidden" name="hold_token" value="{{ old('hold_token') }}">
 
             <section class="panel-form-section">
                 <div class="panel-form-section__header">
@@ -79,7 +82,7 @@
                         </div>
                         @error('doctor_id')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
 
-                        <div id="tarifaPanel" class="mt-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2 text-sm text-slate-600" aria-live="polite" hidden>
+                        <div id="tarifaPanel" class="mt-2 rounded-xl border border-gray-200 bg-white/90 px-3 py-2 text-sm text-gray-600" aria-live="polite" hidden>
                             <span id="tarifaLabel">Tarifa: -</span>
                         </div>
                     </div>
@@ -118,7 +121,7 @@
                             </button>
                         </div>
                         @error('fecha')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
-                        <div class="text-xs text-slate-500">Solo se permiten fechas a partir de hoy.</div>
+                        <div class="text-xs text-gray-500">Solo se permiten fechas a partir de hoy.</div>
                     </div>
 
                     <div>
@@ -127,7 +130,7 @@
                             <option value="">{{ old('doctor_id') && old('fecha') ? 'Cargando horarios...' : 'Seleccione doctor y fecha' }}</option>
                         </select>
                         @error('hora')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
-                        <div id="horaHelp" class="text-xs text-slate-500">Se listan solo horarios disponibles y en formato de 24 horas.</div>
+                        <div id="horaHelp" class="text-xs text-gray-500">Se listan solo horarios disponibles y en formato de 24 horas.</div>
                     </div>
                 </div>
             </section>
@@ -156,7 +159,7 @@
                            data-step-field="4"
                            placeholder="Ej: dolor de garganta">
                     @error('motivo_consulta')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
-                    <div class="mt-1 text-xs text-slate-500">Campo obligatorio, breve y en una sola linea (3-80 caracteres).</div>
+                    <div class="mt-1 text-xs text-gray-500">Campo obligatorio, breve y en una sola linea (3-80 caracteres).</div>
                     <div class="mt-2 flex flex-wrap gap-2" data-motivo-chip-group data-target="#motivo_consulta">
                         @foreach(['Fiebre','Dolor de garganta','Dolor abdominal','Tos','Dolor de cabeza','Nauseas','Diarrea','Malestar general'] as $chip)
                             <button type="button" class="chip" data-motivo-chip="{{ $chip }}">{{ $chip }}</button>
@@ -206,18 +209,18 @@
                     </div>
 
                     <div class="md:col-span-2 grid gap-3 sm:grid-cols-2">
-                        <div class="rounded-2xl border border-slate-200 bg-white/90 p-3">
-                            <h3 class="text-xs font-semibold text-slate-700">Preparacion previa</h3>
-                            <ul class="mt-2 space-y-1 text-xs text-slate-500">
+                        <div class="rounded-2xl border border-gray-200 bg-white/90 p-3">
+                            <h3 class="text-xs font-semibold text-gray-700">Preparacion previa</h3>
+                            <ul class="mt-2 space-y-1 text-xs text-gray-500">
                                 <li><strong>Ayuno:</strong> <span data-lab-prep="ayuno">Selecciona un examen para ver la preparacion.</span></li>
                                 <li><strong>Agua:</strong> <span data-lab-prep="agua">Selecciona un examen para ver la preparacion.</span></li>
                                 <li><strong>Horario recomendado:</strong> <span data-lab-prep="horario">Selecciona un examen para ver la preparacion.</span></li>
                             </ul>
                         </div>
 
-                        <div class="rounded-2xl border border-slate-200 bg-white/90 p-3">
-                            <h3 class="text-xs font-semibold text-slate-700">Indicaciones del medico</h3>
-                            <p class="mt-2 text-xs text-slate-500" data-lab-indicaciones>Sin indicaciones adicionales.</p>
+                        <div class="rounded-2xl border border-gray-200 bg-white/90 p-3">
+                            <h3 class="text-xs font-semibold text-gray-700">Indicaciones del medico</h3>
+                            <p class="mt-2 text-xs text-gray-500" data-lab-indicaciones>Sin indicaciones adicionales.</p>
                         </div>
                     </div>
                 </div>
@@ -238,20 +241,20 @@
     <div class="modal-backdrop" data-doctor-profile-close></div>
     <div class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="doctorProfileTitle" tabindex="-1">
         <article class="card w-full max-w-3xl overflow-hidden">
-            <div class="flex items-start justify-between gap-4 border-b border-slate-200 p-4 sm:p-6">
+            <div class="flex items-start justify-between gap-4 border-b border-gray-200 p-4 sm:p-6">
                 <div class="flex min-w-0 items-center gap-4">
                     <img
                         data-doctor-profile-avatar
                         src="{{ app(\App\Support\ImageUrl::class)->fallback('doctor') }}"
                         data-fallback-src="{{ app(\App\Support\ImageUrl::class)->fallback('doctor') }}"
                         alt="Foto del doctor"
-                        class="doctor-avatar-photo h-20 w-20 flex-none rounded-lg border border-slate-200 sm:h-24 sm:w-24"
+                        class="doctor-avatar-photo h-20 w-20 flex-none rounded-lg border border-gray-200 sm:h-24 sm:w-24"
                         loading="lazy"
                         decoding="async">
                     <div class="min-w-0">
-                        <p class="text-xs font-semibold uppercase tracking-widest text-slate-500">Perfil profesional</p>
-                        <h2 id="doctorProfileTitle" class="mt-1 break-words text-xl font-semibold text-slate-900 sm:text-2xl" data-doctor-profile-name>Doctor</h2>
-                        <p class="mt-1 text-sm text-slate-500" data-doctor-profile-role>Especialista activo</p>
+                        <p class="text-xs font-semibold uppercase tracking-widest text-gray-500">Perfil profesional</p>
+                        <h2 id="doctorProfileTitle" class="mt-1 break-words text-xl font-semibold text-gray-900 sm:text-2xl" data-doctor-profile-name>Doctor</h2>
+                        <p class="mt-1 text-sm text-gray-500" data-doctor-profile-role>Especialista activo</p>
                     </div>
                 </div>
                 <button type="button" class="btn btn-ghost px-3" data-doctor-profile-close aria-label="Cerrar perfil del doctor">
@@ -260,40 +263,40 @@
             </div>
 
             <div class="grid gap-4 p-4 sm:grid-cols-2 sm:p-6">
-                <div class="rounded-xl border border-slate-200 bg-slate-50/80 p-4">
-                    <div class="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                <div class="rounded-xl border border-gray-200 bg-gray-50/80 p-4">
+                    <div class="flex items-center gap-2 text-sm font-semibold text-gray-900">
                         <i class="ri-stethoscope-line text-teal-600"></i>
                         Especialidades
                     </div>
                     <div class="mt-3 flex flex-wrap gap-2" data-doctor-profile-specialties></div>
                 </div>
 
-                <div class="rounded-xl border border-slate-200 bg-slate-50/80 p-4">
-                    <div class="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                <div class="rounded-xl border border-gray-200 bg-gray-50/80 p-4">
+                    <div class="flex items-center gap-2 text-sm font-semibold text-gray-900">
                         <i class="ri-money-dollar-circle-line text-teal-600"></i>
                         Tarifa
                     </div>
-                    <p class="mt-3 text-sm text-slate-600" data-doctor-profile-price>Tarifa no configurada</p>
+                    <p class="mt-3 text-sm text-gray-600" data-doctor-profile-price>Tarifa no configurada</p>
                 </div>
 
-                <div class="rounded-xl border border-slate-200 bg-white p-4">
-                    <div class="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                <div class="rounded-xl border border-gray-200 bg-white p-4">
+                    <div class="flex items-center gap-2 text-sm font-semibold text-gray-900">
                         <i class="ri-phone-line text-teal-600"></i>
                         Contacto
                     </div>
-                    <p class="mt-3 break-words text-sm text-slate-600" data-doctor-profile-phone>No registrado</p>
+                    <p class="mt-3 break-words text-sm text-gray-600" data-doctor-profile-phone>No registrado</p>
                 </div>
 
-                <div class="rounded-xl border border-slate-200 bg-white p-4">
-                    <div class="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                <div class="rounded-xl border border-gray-200 bg-white p-4">
+                    <div class="flex items-center gap-2 text-sm font-semibold text-gray-900">
                         <i class="ri-map-pin-line text-teal-600"></i>
                         Ubicacion
                     </div>
-                    <p class="mt-3 break-words text-sm text-slate-600" data-doctor-profile-address>No registrada</p>
+                    <p class="mt-3 break-words text-sm text-gray-600" data-doctor-profile-address>No registrada</p>
                 </div>
             </div>
 
-            <div class="border-t border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-500 sm:px-6">
+            <div class="border-t border-gray-200 bg-gray-50/80 px-4 py-3 text-sm text-gray-500 sm:px-6">
                 Selecciona fecha y hora despues de revisar la disponibilidad del profesional.
             </div>
         </article>

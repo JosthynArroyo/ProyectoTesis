@@ -11,6 +11,7 @@ use App\Models\Cita;
 use App\Models\Especialidad;
 use App\Models\LaboratorioOrden;
 use App\Models\User;
+use App\Services\ClinicIdentityService;
 use Tests\TestCase;
 
 class EmailTemplatesRenderTest extends TestCase
@@ -20,13 +21,13 @@ class EmailTemplatesRenderTest extends TestCase
         $html = (new CambioEstadoCitaMail($this->makeCita(), 'paciente', 'agendada', 'paciente'))->render();
 
         $this->assertStringContainsString('Resumen de la cita', $html);
-        $this->assertStringContainsString('Clínica Don Bosco', $html);
+        $this->assertStringContainsString(app(ClinicIdentityService::class)->name(), $html);
     }
 
     public function test_renderiza_correo_de_contacto_con_nuevo_patron(): void
     {
         $html = (new ContactoRecibido([
-            'nombre' => 'María López',
+            'nombre' => 'Maria Lopez',
             'email' => 'maria@example.com',
             'telefono' => '0999999999',
             'asunto' => 'Consulta de horarios',
@@ -46,9 +47,9 @@ class EmailTemplatesRenderTest extends TestCase
 
         $cita = $this->makeCita();
         $orden = new LaboratorioOrden([
-            'tipo_examen' => 'Biometría hemática',
+            'tipo_examen' => 'Biometria hematica',
             'prioridad' => 'urgente',
-            'resultado_resumen' => 'Los parámetros evaluados se encuentran dentro del rango esperado.',
+            'resultado_resumen' => 'Los parametros evaluados se encuentran dentro del rango esperado.',
         ]);
         $orden->id = 24;
         $orden->setRelation('cita', $cita);
@@ -67,7 +68,7 @@ class EmailTemplatesRenderTest extends TestCase
     private function makeCita(): Cita
     {
         $paciente = new User([
-            'name' => 'Ana Pérez',
+            'name' => 'Ana Perez',
             'email' => 'ana@example.com',
         ]);
 
@@ -77,7 +78,7 @@ class EmailTemplatesRenderTest extends TestCase
         ]);
 
         $especialidad = new Especialidad([
-            'nombre' => 'Cardiología',
+            'nombre' => 'Cardiologia',
         ]);
 
         $cita = new Cita([

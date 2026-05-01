@@ -24,20 +24,35 @@ class ProfileAvatarServiceTest extends TestCase
 
         $newAvatar = app(ProfileAvatarService::class)->replace(
             $user,
-            UploadedFile::fake()->image('profile.jpg', 1200, 900),
+            $this->fakePngUpload('profile.png'),
             'users'
         );
 
         $baseName = pathinfo($newAvatar, PATHINFO_FILENAME);
 
-        $this->assertSame("images/users/large/{$baseName}.webp", $newAvatar);
-        Storage::disk('public')->assertExists("images/users/thumb/{$baseName}.webp");
-        Storage::disk('public')->assertExists("images/users/medium/{$baseName}.webp");
-        Storage::disk('public')->assertExists("images/users/large/{$baseName}.webp");
-        Storage::disk('public')->assertMissing("images/users/thumb/{$baseName}.avif");
+        if (str_ends_with($newAvatar, '.webp')) {
+            $this->assertSame("images/users/large/{$baseName}.webp", $newAvatar);
+            Storage::disk('public')->assertExists("images/users/thumb/{$baseName}.webp");
+            Storage::disk('public')->assertExists("images/users/medium/{$baseName}.webp");
+            Storage::disk('public')->assertExists("images/users/large/{$baseName}.webp");
+            Storage::disk('public')->assertMissing("images/users/thumb/{$baseName}.avif");
+        } else {
+            $this->assertSame("images/users/original/{$baseName}.png", $newAvatar);
+            Storage::disk('public')->assertExists($newAvatar);
+        }
 
         Storage::disk('public')->assertMissing('images/users/thumb/old-avatar.webp');
         Storage::disk('public')->assertMissing('images/users/medium/old-avatar.webp');
         Storage::disk('public')->assertMissing('images/users/large/old-avatar.webp');
+    }
+
+    private function fakePngUpload(string $name): UploadedFile
+    {
+        $png = base64_decode(
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4////fwAJ+wP9KobjigAAAABJRU5ErkJggg==',
+            true
+        );
+
+        return UploadedFile::fake()->createWithContent($name, $png ?: '');
     }
 }

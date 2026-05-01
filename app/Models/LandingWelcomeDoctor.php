@@ -12,6 +12,12 @@ class LandingWelcomeDoctor extends Model
         'name',
         'specialty',
         'photo_path',
+        'experience_label',
+        'featured_label',
+        'attendance_label',
+        'availability_label',
+        'cta_text',
+        'pill_text',
         'is_active',
         'sort_order',
     ];

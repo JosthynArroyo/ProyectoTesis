@@ -7,7 +7,7 @@
 @section('main')
   <div class="space-y-6">
     <div class="card p-6">
-      <h3 class="text-lg font-semibold text-slate-900">Editar horario</h3>
+      <h3 class="text-lg font-semibold text-gray-900">Editar horario</h3>
       <form method="POST" action="{{ route('doctor.horario.update',$h) }}" class="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         @csrf @method('PUT')
         <div>

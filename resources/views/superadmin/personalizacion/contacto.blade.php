@@ -18,7 +18,7 @@
     @include('shared.personalizacion-contacto-form', ['settings' => $settings])
 
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <p class="text-xs text-slate-500" data-draft-status></p>
+      <p class="text-xs text-gray-500" data-draft-status></p>
       <div class="flex flex-wrap items-center gap-3">
         <button class="btn btn-outline" type="button" data-save-draft>
           <i class="ri-draft-line"></i> Guardar borrador
@@ -41,6 +41,7 @@
 @endsection
 
 @push('scripts')
+  @vite('resources/js/admin/personalizacion-contacto.js')
   @vite('resources/js/admin/personalizacion-drafts.js')
 @endpush
 

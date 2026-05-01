@@ -9,7 +9,7 @@
     @if(session('success')) <x-ui.alert tone="success">{{ session('success') }}</x-ui.alert> @endif
 
     <div class="card p-6">
-      <h3 class="text-lg font-semibold text-slate-900">Filtrar</h3>
+      <h3 class="text-lg font-semibold text-gray-900">Filtrar</h3>
       <form method="GET" class="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         <div>
           <label class="form-label" for="doctor-horario-filtro-desde">Desde</label>
@@ -40,8 +40,8 @@
     <div class="card p-6">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 class="text-lg font-semibold text-slate-900">Generar por rango</h3>
-          <p class="text-sm text-slate-500">Opción recomendada para cargar varios días de una vez.</p>
+          <h3 class="text-lg font-semibold text-gray-900">Generar por rango</h3>
+          <p class="text-sm text-gray-500">Opción recomendada para cargar varios días de una vez.</p>
         </div>
         <span class="badge info">Recomendado</span>
       </div>
@@ -73,7 +73,7 @@
           @php($dias=[1=>'Lun',2=>'Mar',3=>'Mié',4=>'Jue',5=>'Vie',6=>'Sáb',7=>'Dom'])
           <div class="mt-2 flex flex-wrap gap-2">
             @foreach($dias as $k=>$v)
-              <label class="flex items-center gap-2 rounded-full border border-slate-200 px-3 py-2 text-xs font-semibold">
+              <label class="flex items-center gap-2 rounded-full border border-gray-200 px-3 py-2 text-xs font-semibold">
                 <input type="checkbox" name="dias[]" value="{{ $k }}" {{ $k <= 5 ? 'checked' : '' }}>
                 <span>{{ $v }}</span>
               </label>
@@ -99,7 +99,7 @@
         </div>
 
         <div class="sm:col-span-4">
-          <label class="flex items-center gap-2 text-sm text-slate-600">
+          <label class="flex items-center gap-2 text-sm text-gray-600">
             <input type="hidden" name="sobrescribir" value="0">
             <input type="checkbox" name="sobrescribir" value="1">
             Sobrescribir días existentes
@@ -114,7 +114,7 @@
     </div>
 
     <div class="card p-6">
-      <h3 class="text-lg font-semibold text-slate-900">Crear horario (un día)</h3>
+      <h3 class="text-lg font-semibold text-gray-900">Crear horario (un día)</h3>
       <form method="POST" action="{{ route('doctor.horario.store') }}" class="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         @csrf
         <div>
@@ -151,7 +151,7 @@
 
     <div class="card p-6">
       <div class="flex items-center justify-between">
-        <h3 class="text-lg font-semibold text-slate-900">Mis horarios</h3>
+        <h3 class="text-lg font-semibold text-gray-900">Mis horarios</h3>
       </div>
       <div class="mt-4 table-shell table-responsive-cards">
         <table class="table">

@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const renderStatus = (message, tone = 'neutral') => {
     emailStatus.textContent = message || '';
-    emailStatus.classList.remove('text-slate-500', 'text-emerald-700', 'text-rose-600');
+    emailStatus.classList.remove('text-gray-500', 'text-emerald-700', 'text-rose-600');
     if (tone === 'success') {
       emailStatus.classList.add('text-emerald-700');
       return;
@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
       emailStatus.classList.add('text-rose-600');
       return;
     }
-    emailStatus.classList.add('text-slate-500');
+    emailStatus.classList.add('text-gray-500');
   };
 
   const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);

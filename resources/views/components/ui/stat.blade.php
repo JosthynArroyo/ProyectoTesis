@@ -6,13 +6,28 @@
 
 @php
     $toneMap = [
-        'teal' => 'bg-teal-100 text-teal-700',
-        'sky' => 'bg-sky-100 text-sky-700',
-        'amber' => 'bg-amber-100 text-amber-700',
-        'rose' => 'bg-rose-100 text-rose-700',
-        'slate' => 'bg-slate-100 text-slate-600',
+        'teal' => [
+            'card' => 'stat-card--teal',
+            'icon' => 'stat-card__icon--teal',
+        ],
+        'sky' => [
+            'card' => 'stat-card--sky',
+            'icon' => 'stat-card__icon--sky',
+        ],
+        'amber' => [
+            'card' => 'stat-card--amber',
+            'icon' => 'stat-card__icon--amber',
+        ],
+        'rose' => [
+            'card' => 'stat-card--rose',
+            'icon' => 'stat-card__icon--rose',
+        ],
+        'slate' => [
+            'card' => 'stat-card--slate',
+            'icon' => 'stat-card__icon--slate',
+        ],
     ];
-    $toneClass = $toneMap[$tone] ?? $toneMap['slate'];
+    $toneClasses = $toneMap[$tone] ?? $toneMap['slate'];
     $hasValue = !is_null($value) && $value !== '';
     $displayValue = $value;
 
@@ -26,17 +41,17 @@
     }
 @endphp
 
-<div {{ $attributes->merge(['class' => 'card stat-card p-5']) }}>
+<div {{ $attributes->merge(['class' => 'card stat-card '.$toneClasses['card'].' p-5']) }}>
     <div class="flex items-start gap-4">
-        <div class="stat-card__icon flex h-12 w-12 items-center justify-center rounded-2xl {{ $toneClass }}">
+        <div class="stat-card__icon {{ $toneClasses['icon'] }} flex h-12 w-12 items-center justify-center rounded-2xl">
             {{ $icon ?? '' }}
         </div>
         <div class="flex-1">
             @if($label)
-                <p class="stat-card__label text-xs uppercase tracking-wide text-slate-500">{{ $label }}</p>
+                <p class="stat-card__label text-xs uppercase tracking-wide text-gray-500">{{ $label }}</p>
             @endif
             @if($hasValue)
-                <p class="stat-card__value mt-1 text-2xl font-semibold text-slate-900">{{ $displayValue }}</p>
+                <p class="stat-card__value mt-1 text-2xl font-semibold text-gray-900">{{ $displayValue }}</p>
             @endif
             {{ $slot }}
         </div>

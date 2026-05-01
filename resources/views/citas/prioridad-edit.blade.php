@@ -8,9 +8,9 @@
 <div class="space-y-6">
   <section class="card p-6">
     <div class="space-y-2">
-      <p class="text-xs uppercase tracking-widest text-slate-500">Cita #{{ $cita->id }}</p>
-      <h1 class="text-2xl font-semibold text-slate-900">Actualizar prioridad</h1>
-      <p class="text-slate-600">
+      <p class="text-xs uppercase tracking-widest text-gray-500">Cita #{{ $cita->id }}</p>
+      <h1 class="text-2xl font-semibold text-gray-900">Actualizar prioridad</h1>
+      <p class="text-gray-600">
         Paciente: <strong>{{ optional($cita->paciente)->name ?? 'Sin paciente' }}</strong> |
         Doctor: <strong>{{ optional($cita->doctor)->name ?? 'Sin doctor' }}</strong> |
         Fecha: <strong>{{ \Carbon\Carbon::parse($cita->fecha)->format('d/m/Y') }}</strong> {{ \Carbon\Carbon::parse($cita->hora)->format('H:i') }}
@@ -39,7 +39,7 @@
           @error('prioridad_nivel')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
         </div>
 
-        <div class="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
+        <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600">
           <p><strong>Actual:</strong> {{ $cita->prioridad_nivel }}</p>
           <p><strong>Fuente:</strong> {{ $cita->prioridad_fuente }}</p>
           <p>

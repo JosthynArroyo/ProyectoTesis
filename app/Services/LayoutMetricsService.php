@@ -13,7 +13,15 @@ use Throwable;
 
 class LayoutMetricsService
 {
-    private const CACHE_SECONDS = 30;
+    private const ADMIN_NOTIFICATIONS_CACHE_SECONDS = 180;
+
+    private const ADMIN_RECORDATORIOS_CACHE_SECONDS = 180;
+
+    private const FEATURE_STATUS_CACHE_SECONDS = 300;
+
+    private const SUPERADMIN_PENDING_CACHE_SECONDS = 180;
+
+    private const PATIENT_PAYMENT_BLOCK_CACHE_SECONDS = 180;
 
     public function adminNotifications(?User $user): array
     {
@@ -25,7 +33,7 @@ class LayoutMetricsService
             ];
         }
 
-        return $this->remember('layout:admin:notifications', function (): array {
+        return $this->remember('layout:admin:notifications', self::ADMIN_NOTIFICATIONS_CACHE_SECONDS, function (): array {
             $pendingPagos = Pago::query()
                 ->where('estado', Pago::ESTADO_EN_VERIFICACION)
                 ->count();
@@ -78,7 +86,7 @@ class LayoutMetricsService
             ];
         }
 
-        return $this->remember("layout:feature-status:{$feature}:user:{$user->id}", function () use ($user, $feature): array {
+        return $this->remember("layout:feature-status:{$feature}:user:{$user->id}", self::FEATURE_STATUS_CACHE_SECONDS, function () use ($user, $feature): array {
             $pending = FeatureAccessRequest::query()
                 ->where('user_id', $user->id)
                 ->forFeature($feature)
@@ -110,7 +118,7 @@ class LayoutMetricsService
             return 0;
         }
 
-        return $this->remember('layout:superadmin:personalizacion:pending', fn (): int => (int) FeatureAccessRequest::query()
+        return $this->remember('layout:superadmin:personalizacion:pending', self::SUPERADMIN_PENDING_CACHE_SECONDS, fn (): int => (int) FeatureAccessRequest::query()
             ->forFeature('personalizacion')
             ->pending()
             ->count());
@@ -124,13 +132,18 @@ class LayoutMetricsService
 
         return $this->remember(
             "layout:patient:{$user->id}:payment-block",
+            self::PATIENT_PAYMENT_BLOCK_CACHE_SECONDS,
             fn (): bool => app(PagoService::class)->pacienteTieneBloqueo((int) $user->id)
         );
     }
 
     private function adminRecordatoriosPendientes(): int
     {
-        return $this->remember('layout:admin:recordatorios:pendientes', fn (): int => app(CitaRecordatorioService::class)->countPendingDue());
+        return $this->remember(
+            'layout:admin:recordatorios:pendientes',
+            self::ADMIN_RECORDATORIOS_CACHE_SECONDS,
+            fn (): int => app(CitaRecordatorioService::class)->countPendingDue()
+        );
     }
 
     private function userHasRole(?User $user, string $role): bool
@@ -153,10 +166,10 @@ class LayoutMetricsService
         ];
     }
 
-    private function remember(string $key, Closure $callback): mixed
+    private function remember(string $key, int $seconds, Closure $callback): mixed
     {
         try {
-            return Cache::remember($key, now()->addSeconds(self::CACHE_SECONDS), $callback);
+            return Cache::remember($key, now()->addSeconds($seconds), $callback);
         } catch (Throwable) {
             return $callback();
         }

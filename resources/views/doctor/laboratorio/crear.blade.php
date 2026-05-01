@@ -65,7 +65,7 @@
                   </option>
                 @endforeach
               </select>
-              <div class="text-xs text-slate-500">Si existe un usuario de laboratorio unico se selecciona automaticamente.</div>
+              <div class="text-xs text-gray-500">Si existe un usuario de laboratorio unico se selecciona automaticamente.</div>
             @endif
             @error('doctor_id')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
             @if($labId && $doctoresLab->isEmpty())
@@ -111,7 +111,7 @@
             <select id="hora" name="hora" required disabled class="form-select">
               <option value="">{{ old('doctor_id', $defaultLabId) && old('fecha') ? 'Cargando horarios...' : 'Seleccione laboratorio y fecha' }}</option>
             </select>
-            <div id="horaHelp" class="text-xs text-slate-500">Se muestran solo horarios configurados y realmente disponibles.</div>
+            <div id="horaHelp" class="text-xs text-gray-500">Se muestran solo horarios configurados y realmente disponibles.</div>
             @error('hora')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
           </div>
         </div>
@@ -143,7 +143,7 @@
               placeholder="Ej: dolor de garganta"
             >
             @error('motivo_consulta')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
-            <div class="mt-1 text-xs text-slate-500">Campo obligatorio, breve y en una sola linea (3-80 caracteres).</div>
+            <div class="mt-1 text-xs text-gray-500">Campo obligatorio, breve y en una sola linea (3-80 caracteres).</div>
             <div class="mt-2 flex flex-wrap gap-2" data-motivo-chip-group data-target="#motivo_consulta">
               @foreach(['Fiebre','Dolor de garganta','Dolor abdominal','Tos','Dolor de cabeza','Nauseas','Diarrea','Malestar general'] as $chip)
                 <button type="button" class="chip" data-motivo-chip="{{ $chip }}">{{ $chip }}</button>

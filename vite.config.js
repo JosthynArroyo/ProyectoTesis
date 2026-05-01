@@ -5,11 +5,7 @@ import { fileURLToPath } from 'node:url'
 
 export default defineConfig({
   base: '',
-  resolve: {
-    alias: {
-      '@tensorflow/tfjs-core': fileURLToPath(new URL('./node_modules/@tensorflow/tfjs-core/dist/index.js', import.meta.url)),
-    },
-  },
+
   build: {
     outDir: 'public/build',
     assetsDir: 'assets',
@@ -20,25 +16,7 @@ export default defineConfig({
         manualChunks(id) {
           if (!id.includes('node_modules')) return undefined
 
-          if (id.includes('face-api.js')) {
-            return 'face-api'
-          }
 
-          if (id.includes('@tensorflow/tfjs-core')) {
-            if (id.includes('/backends/webgl/') || id.includes('\\backends\\webgl\\')) {
-              return 'tfjs-webgl'
-            }
-
-            if (id.includes('/backends/cpu/') || id.includes('\\backends\\cpu\\')) {
-              return 'tfjs-cpu'
-            }
-
-            if (id.includes('/ops/') || id.includes('\\ops\\')) {
-              return 'tfjs-ops'
-            }
-
-            return 'tfjs-core'
-          }
 
           return 'vendor'
         },
@@ -59,6 +37,7 @@ export default defineConfig({
         'resources/css/navbar.css',
         'resources/css/modal.css',
         'resources/css/contacto.css',
+        'resources/css/demo/demo-dashboard.css',
         'resources/css/chatbot/widget.css',
         'resources/css/panel/account-pages.css',
         'resources/css/panel/weekly-schedule.css',
@@ -111,13 +90,14 @@ export default defineConfig({
         'resources/js/navbar.js',
         'resources/js/chatbot/widget.js',
         'resources/js/servicios.js',
-        'resources/js/face-login-modal.js',
+
         'resources/js/welcome-login-modal.js',
         'resources/js/welcome-carousel.js',
         'resources/js/dashboard-admin.js',
         'resources/js/dashboard-admin-extras.js',
         'resources/js/dashboard-doctor.js',
         'resources/js/contacto.js',
+        'resources/js/demo/demo-actions.js',
         //Doctor
         'resources/js/doctor/agenda.js',
         'resources/js/doctor/citas.js',
@@ -148,13 +128,13 @@ export default defineConfig({
         'resources/js/admin/override-create.js',
         'resources/js/admin/personalizacion-modal.js',
         'resources/js/admin/personalizacion-bienvenida.js',
+        'resources/js/admin/personalizacion-contacto.js',
         'resources/js/admin/personalizacion-drafts.js',
         'resources/js/admin/personalizacion-servicios.js',
         // Auth
         'resources/js/auth/password-toggle.js',
         'resources/js/auth/password-reset.js',
-        'resources/js/auth/face-enroll.js',
-        'resources/js/auth/face-login.js',
+
       ],
       refresh: true,
     }),

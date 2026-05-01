@@ -13,7 +13,7 @@
 
   @stack('styles')
 </head>
-<body class="min-h-screen text-slate-900">
+<body class="min-h-screen text-gray-900">
   @php($maintenanceEnabled = $siteSettings->getBool('maintenance.enabled', false))
   @yield('content')
 

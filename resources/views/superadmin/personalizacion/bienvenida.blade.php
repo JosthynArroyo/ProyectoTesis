@@ -16,9 +16,8 @@
     @method('PUT')
     @include('shared.personalizacion-bienvenida-form', [
       'settings' => $settings,
-      'stats' => $stats ?? [],
+      'welcomeSiteSettings' => $welcomeSiteSettings ?? [],
       'slides' => $slides ?? [],
-      'cards' => $cards ?? [],
       'doctors' => $doctors ?? [],
       'prices' => $prices ?? [],
       'featuredIds' => $featuredIds ?? [],
@@ -26,20 +25,20 @@
     ])
 
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <p class="text-xs text-slate-500" data-draft-status></p>
+      <p class="text-xs text-gray-500" data-draft-status></p>
       <div class="flex flex-wrap items-center gap-3">
-        <button class="btn btn-outline" type="button" data-save-draft>
+        <button class="btn btn-outline cursor-pointer" type="button" data-save-draft>
           <i class="ri-draft-line"></i> Guardar borrador
         </button>
-        <button class="btn btn-outline" type="button" data-restore-draft>
+        <button class="btn btn-outline cursor-pointer" type="button" data-restore-draft>
           <i class="ri-history-line"></i> Restaurar borrador
         </button>
-        <button class="btn btn-ghost" type="button" data-clear-draft>
+        <button class="btn btn-ghost cursor-pointer" type="button" data-clear-draft>
           <i class="ri-delete-bin-7-line"></i> Limpiar borrador
         </button>
       </div>
       <div class="flex items-center gap-3">
-      <button class="btn btn-primary" type="submit">
+      <button class="btn btn-primary cursor-pointer" type="submit">
         <i class="ri-save-line"></i> Guardar cambios
       </button>
       </div>

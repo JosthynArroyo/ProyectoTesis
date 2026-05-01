@@ -6,9 +6,9 @@
 <div class="space-y-6">
   <section class="card p-6">
     <div>
-      <p class="text-xs uppercase tracking-widest text-slate-500">Datos de cuenta</p>
-      <h3 class="mt-2 text-lg font-semibold text-slate-900">Credenciales de acceso</h3>
-      <p class="text-sm text-slate-500">Nombre visible y credenciales iniciales para el inicio de sesión.</p>
+      <p class="text-xs uppercase tracking-widest text-gray-500">Datos de cuenta</p>
+      <h3 class="mt-2 text-lg font-semibold text-gray-900">Credenciales de acceso</h3>
+      <p class="text-sm text-gray-500">Nombre visible y credenciales iniciales para el inicio de sesión.</p>
     </div>
     <div class="mt-4 form-grid form-grid--2">
       <div>
@@ -19,14 +19,14 @@
       <div>
         <label for="email" class="form-label">Correo electrónico</label>
         <input class="form-input" id="email" name="email" type="email" value="{{ old('email', $u->email) }}" required>
-        <p class="mt-1 text-xs text-slate-500" data-email-availability aria-live="polite"></p>
+        <p class="mt-1 text-xs text-gray-500" data-email-availability aria-live="polite"></p>
         @error('email')<small class="text-xs text-rose-600">{{ $message }}</small>@enderror
       </div>
 
       @if(!$user)
       <div>
         <label for="password" class="form-label">Contraseña</label>
-        <div class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2" data-password-wrap>
+        <div class="flex items-center gap-2 rounded-xl border border-gray-200 bg-white/90 px-3 py-2" data-password-wrap>
           <input class="flex-1 bg-transparent text-sm" name="password" id="password" type="password" autocomplete="new-password" minlength="8" required>
           <button type="button" class="btn-eye" data-target="#password" aria-label="Mostrar u ocultar"><i class="ri-eye-line"></i></button>
         </div>
@@ -34,7 +34,7 @@
       </div>
       <div>
         <label for="password_confirmation" class="form-label">Confirmación</label>
-        <div class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2" data-password-wrap>
+        <div class="flex items-center gap-2 rounded-xl border border-gray-200 bg-white/90 px-3 py-2" data-password-wrap>
           <input class="flex-1 bg-transparent text-sm" name="password_confirmation" id="password_confirmation" type="password" autocomplete="new-password" minlength="8" required>
           <button type="button" class="btn-eye" data-target="#password_confirmation" aria-label="Mostrar u ocultar"><i class="ri-eye-line"></i></button>
         </div>
@@ -46,9 +46,9 @@
 
   <section class="card p-6">
     <div>
-      <p class="text-xs uppercase tracking-widest text-slate-500">Información personal y contacto</p>
-      <h3 class="mt-2 text-lg font-semibold text-slate-900">Datos básicos</h3>
-      <p class="text-sm text-slate-500">Teléfono, documento y datos demográficos para el expediente.</p>
+      <p class="text-xs uppercase tracking-widest text-gray-500">Información personal y contacto</p>
+      <h3 class="mt-2 text-lg font-semibold text-gray-900">Datos básicos</h3>
+      <p class="text-sm text-gray-500">Teléfono, documento y datos demográficos para el expediente.</p>
     </div>
     <div class="mt-4 form-grid form-grid--2">
       <div>
@@ -87,27 +87,27 @@
 
   <section class="card p-6" id="patient-flags-section" style="display:none">
     <div>
-      <p class="text-xs uppercase tracking-widest text-slate-500">Prioridad del paciente</p>
-      <h3 class="mt-2 text-lg font-semibold text-slate-900">Indicadores clínicos</h3>
-      <p class="text-sm text-slate-500">Solo aplica a pacientes. Marca condiciones relevantes.</p>
+      <p class="text-xs uppercase tracking-widest text-gray-500">Prioridad del paciente</p>
+      <h3 class="mt-2 text-lg font-semibold text-gray-900">Indicadores clínicos</h3>
+      <p class="text-sm text-gray-500">Solo aplica a pacientes. Marca condiciones relevantes.</p>
     </div>
     <div class="mt-4 form-grid form-grid--2">
-      <label class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2 text-sm">
+      <label class="flex items-center gap-2 rounded-xl border border-gray-200 bg-white/90 px-3 py-2 text-sm">
         <input type="hidden" name="adulto_mayor" value="0">
         <input type="checkbox" name="adulto_mayor" value="1" @checked(old('adulto_mayor', optional($u->patientFlag)->adulto_mayor))>
         <span>Adulto mayor</span>
       </label>
-      <label class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2 text-sm">
+      <label class="flex items-center gap-2 rounded-xl border border-gray-200 bg-white/90 px-3 py-2 text-sm">
         <input type="hidden" name="embarazo" value="0">
         <input type="checkbox" name="embarazo" value="1" @checked(old('embarazo', optional($u->patientFlag)->embarazo))>
         <span>Embarazo</span>
       </label>
-      <label class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2 text-sm">
+      <label class="flex items-center gap-2 rounded-xl border border-gray-200 bg-white/90 px-3 py-2 text-sm">
         <input type="hidden" name="discapacidad" value="0">
         <input type="checkbox" name="discapacidad" value="1" @checked(old('discapacidad', optional($u->patientFlag)->discapacidad))>
         <span>Discapacidad</span>
       </label>
-      <label class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2 text-sm">
+      <label class="flex items-center gap-2 rounded-xl border border-gray-200 bg-white/90 px-3 py-2 text-sm">
         <input type="hidden" name="cronico" value="0">
         <input type="checkbox" name="cronico" value="1" @checked(old('cronico', optional($u->patientFlag)->cronico))>
         <span>Crónico</span>
@@ -121,9 +121,9 @@
 
   <section class="card p-6">
     <div>
-      <p class="text-xs uppercase tracking-widest text-slate-500">Rol y seguridad</p>
-      <h3 class="mt-2 text-lg font-semibold text-slate-900">Permisos y especialidad</h3>
-      <p class="text-sm text-slate-500">Selecciona rol y define especialidad y tarifa si aplica.</p>
+      <p class="text-xs uppercase tracking-widest text-gray-500">Rol y seguridad</p>
+      <h3 class="mt-2 text-lg font-semibold text-gray-900">Permisos y especialidad</h3>
+      <p class="text-sm text-gray-500">Selecciona rol y define especialidad y tarifa si aplica.</p>
     </div>
     <div class="mt-4 form-grid form-grid--2">
       <div>

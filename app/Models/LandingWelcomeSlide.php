@@ -10,6 +10,10 @@ class LandingWelcomeSlide extends Model
 
     protected $fillable = [
         'image_path',
+        'alt',
+        'title',
+        'subtitle',
+        'text',
         'is_active',
         'sort_order',
     ];

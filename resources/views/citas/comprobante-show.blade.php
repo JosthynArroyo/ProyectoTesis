@@ -16,16 +16,16 @@
 @section('main')
 <div class="space-y-6">
   <section class="card p-6">
-    <p class="text-xs uppercase tracking-widest text-slate-500">Comprobante de cita</p>
-    <h1 class="mt-2 text-2xl font-semibold text-slate-900">Folio {{ $cita->folio_cita ?: 'SIN FOLIO' }}</h1>
-    <p class="mt-1 text-sm text-slate-600">Código de validación: {{ $cita->token_validacion ?: 'N/D' }}</p>
+    <p class="text-xs uppercase tracking-widest text-gray-500">Comprobante de cita</p>
+    <h1 class="mt-2 text-2xl font-semibold text-gray-900">Folio {{ $cita->folio_cita ?: 'SIN FOLIO' }}</h1>
+    <p class="mt-1 text-sm text-gray-600">Código de validación: {{ $cita->token_validacion ?: 'N/D' }}</p>
   </section>
 
   <section class="card p-6">
     <div class="flex flex-wrap items-start justify-between gap-4">
       <div>
-        <p class="text-xs uppercase tracking-widest text-slate-500">Estado actual de la cita</p>
-        <p class="text-lg font-semibold text-slate-900">{{ $cita->estadoComprobante() }}</p>
+        <p class="text-xs uppercase tracking-widest text-gray-500">Estado actual de la cita</p>
+        <p class="text-lg font-semibold text-gray-900">{{ $cita->estadoComprobante() }}</p>
       </div>
       <span class="badge {{ $cita->comprobanteEstaVigente() ? 'success' : 'danger' }}">
         {{ $cita->comprobanteEstaVigente() ? 'Comprobante vigente' : 'Comprobante sin vigencia' }}
@@ -34,33 +34,33 @@
 
     <div class="mt-6 grid gap-4 md:grid-cols-2">
       <div>
-        <p class="text-xs uppercase tracking-widest text-slate-500">Paciente</p>
-        <p class="text-sm font-semibold text-slate-900">{{ $cita->paciente?->name ?? 'N/D' }}</p>
-        <p class="text-xs text-slate-500">{{ $cita->paciente?->dni ?? 'N/D' }}</p>
+        <p class="text-xs uppercase tracking-widest text-gray-500">Paciente</p>
+        <p class="text-sm font-semibold text-gray-900">{{ $cita->paciente?->name ?? 'N/D' }}</p>
+        <p class="text-xs text-gray-500">{{ $cita->paciente?->dni ?? 'N/D' }}</p>
       </div>
       <div>
-        <p class="text-xs uppercase tracking-widest text-slate-500">Clínica</p>
-        <p class="text-sm font-semibold text-slate-900">Clínica Don Bosco</p>
+        <p class="text-xs uppercase tracking-widest text-gray-500">Clínica</p>
+        <p class="text-sm font-semibold text-gray-900">{{ $clinicIdentity->institutionalName() }}</p>
       </div>
       <div>
-        <p class="text-xs uppercase tracking-widest text-slate-500">Fecha</p>
-        <p class="text-sm font-semibold text-slate-900">{{ $cita->fecha?->format('Y-m-d') ?? 'N/D' }}</p>
+        <p class="text-xs uppercase tracking-widest text-gray-500">Fecha</p>
+        <p class="text-sm font-semibold text-gray-900">{{ $cita->fecha?->format('Y-m-d') ?? 'N/D' }}</p>
       </div>
       <div>
-        <p class="text-xs uppercase tracking-widest text-slate-500">Hora</p>
-        <p class="text-sm font-semibold text-slate-900">{{ $cita->hora ? substr((string) $cita->hora, 0, 5) : 'N/D' }}</p>
+        <p class="text-xs uppercase tracking-widest text-gray-500">Hora</p>
+        <p class="text-sm font-semibold text-gray-900">{{ $cita->hora ? substr((string) $cita->hora, 0, 5) : 'N/D' }}</p>
       </div>
       <div>
-        <p class="text-xs uppercase tracking-widest text-slate-500">Médico</p>
-        <p class="text-sm font-semibold text-slate-900">{{ $cita->doctor?->name ?? 'N/D' }}</p>
+        <p class="text-xs uppercase tracking-widest text-gray-500">Médico</p>
+        <p class="text-sm font-semibold text-gray-900">{{ $cita->doctor?->name ?? 'N/D' }}</p>
       </div>
       <div>
-        <p class="text-xs uppercase tracking-widest text-slate-500">Especialidad</p>
-        <p class="text-sm font-semibold text-slate-900">{{ $cita->especialidad?->nombre ?? 'N/D' }}</p>
+        <p class="text-xs uppercase tracking-widest text-gray-500">Especialidad</p>
+        <p class="text-sm font-semibold text-gray-900">{{ $cita->especialidad?->nombre ?? 'N/D' }}</p>
       </div>
     </div>
 
-    <div class="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+    <div class="mt-6 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700">
       Este comprobante identifica la cita agendada para validación en recepción. No representa una deuda ni una orden de pago.
     </div>
 

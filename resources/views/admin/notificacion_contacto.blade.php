@@ -6,14 +6,14 @@
 @section('main')
   @php
     $infoBadge = $siteSettings->get('contact.info_badge', 'Contacto');
-    $contactTitle = $siteSettings->get('contact.title', 'Clínica Don Bosco');
+    $contactTitle = $siteSettings->get('contact.title', $clinicIdentity->name());
     $contactSubtitle = $siteSettings->get('contact.subtitle', 'Sistema de gestión médica para agendar citas fácilmente y recibir atención especializada.');
     $addressLabel = $siteSettings->get('contact.address_label', 'Dirección');
-    $contactAddress = $siteSettings->get('contact.address', 'Quito, Av. Colon y 6 de Diciembre');
+    $contactAddress = $siteSettings->get('contact.address', '');
     $phoneLabel = $siteSettings->get('contact.phone_label', 'Teléfono');
-    $contactPhone = $siteSettings->get('contact.phone', '0998742410');
+    $contactPhone = $siteSettings->get('contact.phone', '');
     $hoursLabel = $siteSettings->get('contact.hours_label', 'Horario');
-    $contactHours = $siteSettings->get('contact.hours', 'Lunes a Viernes, 08:00 - 18:00');
+    $contactHours = $siteSettings->get('contact.hours', '');
 
     $formSectionBadge = $siteSettings->get('contact.form_section_badge', 'Escríbenos');
     $formTitle = $siteSettings->get('contact.form_title', 'Formulario de contacto');
@@ -29,8 +29,8 @@
     $messagePlaceholder = $siteSettings->get('contact.form_message_placeholder', 'Escribe el motivo de tu contacto y los detalles necesarios.');
     $messageHelp = $siteSettings->get('contact.form_message_help', 'Describe el motivo de tu contacto. Max. 1000 caracteres.');
 
-    $mapTitle = $siteSettings->get('contact.map_title', 'Ubicación Clínica Don Bosco');
-    $mapEmbed = $siteSettings->get('contact.map_embed', 'https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d207.47773878695978!2d-78.47943247794669!3d-0.1385355730076882!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x91d5855715695e7b%3A0x2f91853277ceb246!2sConsultorio%20De%20Especialidades!5e1!3m2!1ses!2sus!4v1760994198832!5m2!1ses!2sus');
+    $mapTitle = $siteSettings->get('contact.map_title', 'Ubicacion de la clinica');
+    $mapEmbed = $siteSettings->get('contact.map_embed', '');
 
     if (is_string($mapEmbed)) {
       $mapEmbed = trim($mapEmbed);
@@ -48,43 +48,51 @@
       <div class="page-shell grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
         <aside class="card space-y-6 p-6">
           <div>
-            <p class="text-xs uppercase tracking-widest text-slate-500">{{ $infoBadge }}</p>
-            <h2 class="mt-2 text-2xl font-semibold text-slate-900">{{ $contactTitle }}</h2>
-            <p class="mt-2 text-slate-600">{{ $contactSubtitle }}</p>
+            <p class="text-xs uppercase tracking-widest text-gray-500">{{ $infoBadge }}</p>
+            <h2 class="mt-2 text-2xl font-semibold text-gray-900">{{ $contactTitle }}</h2>
+            <p class="mt-2 text-gray-600">{{ $contactSubtitle }}</p>
           </div>
 
-          <div class="space-y-4 text-sm text-slate-600">
-            <div>
-              <p class="text-xs uppercase tracking-wide text-slate-400">{{ $addressLabel }}</p>
-              <p>{{ $contactAddress }}</p>
-            </div>
-            <div>
-              <p class="text-xs uppercase tracking-wide text-slate-400">{{ $phoneLabel }}</p>
-              <p>{{ $contactPhone }}</p>
-            </div>
-            <div>
-              <p class="text-xs uppercase tracking-wide text-slate-400">{{ $hoursLabel }}</p>
-              <p>{{ $contactHours }}</p>
-            </div>
+          <div class="space-y-4 text-sm text-gray-600">
+            @if(filled($contactAddress))
+              <div>
+                <p class="text-xs uppercase tracking-wide text-gray-400">{{ $addressLabel }}</p>
+                <p>{{ $contactAddress }}</p>
+              </div>
+            @endif
+            @if(filled($contactPhone))
+              <div>
+                <p class="text-xs uppercase tracking-wide text-gray-400">{{ $phoneLabel }}</p>
+                <p>{{ $contactPhone }}</p>
+              </div>
+            @endif
+            @if(filled($contactHours))
+              <div>
+                <p class="text-xs uppercase tracking-wide text-gray-400">{{ $hoursLabel }}</p>
+                <p>{{ $contactHours }}</p>
+              </div>
+            @endif
           </div>
 
-          <div class="overflow-hidden rounded-2xl border border-slate-200">
-            <iframe
-              title="{{ $mapTitle }}"
-              src="{{ $mapEmbed }}"
-              class="map-embed"
-              loading="lazy"
-              referrerpolicy="no-referrer-when-downgrade"
-              allowfullscreen
-            ></iframe>
-          </div>
+          @if(filled($mapEmbed))
+            <div class="overflow-hidden rounded-2xl border border-gray-200">
+              <iframe
+                title="{{ $mapTitle }}"
+                src="{{ $mapEmbed }}"
+                class="map-embed"
+                loading="lazy"
+                referrerpolicy="no-referrer-when-downgrade"
+                allowfullscreen
+              ></iframe>
+            </div>
+          @endif
         </aside>
 
         <div class="card p-6">
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p class="text-xs uppercase tracking-widest text-slate-500">{{ $formSectionBadge }}</p>
-              <h1 class="mt-2 text-2xl font-semibold text-slate-900">{{ $formTitle }}</h1>
+              <p class="text-xs uppercase tracking-widest text-gray-500">{{ $formSectionBadge }}</p>
+              <h1 class="mt-2 text-2xl font-semibold text-gray-900">{{ $formTitle }}</h1>
             </div>
             <span class="badge info">{{ $formBadge }}</span>
           </div>
@@ -184,7 +192,7 @@
                   aria-describedby="help-mensaje{{ $errors->has('mensaje') ? ' err-mensaje' : '' }}"
                   class="form-textarea"
                 >{{ old('mensaje') }}</textarea>
-                <small id="help-mensaje" class="hint text-xs text-slate-500">{{ $messageHelp }}</small>
+                <small id="help-mensaje" class="hint text-xs text-gray-500">{{ $messageHelp }}</small>
                 @error('mensaje')<small id="err-mensaje" class="err text-xs text-rose-600">{{ $message }}</small>@enderror
               </div>
             </div>

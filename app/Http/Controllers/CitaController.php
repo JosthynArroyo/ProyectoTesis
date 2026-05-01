@@ -16,6 +16,7 @@ use App\Services\CitaNoShowService;
 use App\Services\PagoService;
 use App\Services\PriorityEvaluator;
 use App\Services\ProfessionalScheduleService;
+use App\Services\SlotHoldService;
 use App\Support\ValidationRules;
 use Carbon\Carbon;
 use Dompdf\Dompdf;
@@ -246,7 +247,12 @@ class CitaController extends Controller
         return view('paciente.crear-cita', compact('doctores', 'especialidades', 'prefEspecialidad', 'laboratorioId', 'labExamenes'));
     }
 
-    public function store(Request $request, PriorityEvaluator $priorityEvaluator, ProfessionalScheduleService $scheduleService)
+    public function store(
+        Request $request,
+        PriorityEvaluator $priorityEvaluator,
+        ProfessionalScheduleService $scheduleService,
+        SlotHoldService $slotHoldService
+    )
     {
         if (app(PagoService::class)->pacienteTieneBloqueo((int) Auth::id())) {
             return back()->withErrors(['error' => PagoService::MENSAJE_BLOQUEO])->withInput();
@@ -258,6 +264,7 @@ class CitaController extends Controller
                 'especialidad_id' => 'required|exists:especialidades,id',
                 'fecha' => 'required|date',
                 'hora' => 'required|date_format:H:i',
+                'hold_token' => 'nullable|string|max:80',
                 'motivo_consulta' => ValidationRules::motivoConsulta(),
             ],
             [
@@ -325,7 +332,8 @@ class CitaController extends Controller
                 'misaligned' => 'La hora seleccionada no coincide con un bloque disponible del horario configurado.',
                 'lead_time' => 'Debes agendar con al menos 1 hora de anticipacion.',
                 'conflict' => 'El profesional ya tiene una cita en ese horario o en un bloque inmediato del horario configurado.',
-            ]
+            ],
+            exceptHoldToken: $request->input('hold_token')
         );
 
         if ($validationError) {
@@ -362,9 +370,22 @@ class CitaController extends Controller
                 ]);
             }
 
+            $slotHoldService->completeByToken(
+                token: $request->input('hold_token'),
+                professionalId: (int) $request->doctor_id,
+                date: (string) $request->fecha,
+                time: $slot->format('H:i:00')
+            );
+
             DB::commit();
         } catch (QueryException $e) {
             DB::rollBack();
+            $slotHoldService->releaseByToken(
+                token: $request->input('hold_token'),
+                professionalId: (int) $request->doctor_id,
+                date: (string) $request->fecha,
+                time: $slot->format('H:i:00')
+            );
             $msg = $isLab
                 ? 'El laboratorio ya tiene una cita exactamente a esa hora.'
                 : 'El doctor ya tiene una cita exactamente a esa hora.';
@@ -384,25 +405,34 @@ class CitaController extends Controller
 
     public function cancelar($id)
     {
-        $cita = Cita::findOrFail($id);
+        $transition = DB::transaction(function () use ($id) {
+            $cita = Cita::query()->whereKey($id)->lockForUpdate()->firstOrFail();
 
-        if ($cita->paciente_id != Auth::id()) {
-            return back()->with('error', 'No puedes cancelar esta cita.');
+            if ($cita->paciente_id != Auth::id()) {
+                return ['ok' => false, 'message' => 'No puedes cancelar esta cita.', 'cita' => $cita];
+            }
+
+            if (app(CitaNoShowService::class)->marcarSiVencio($cita)) {
+                return ['ok' => false, 'message' => 'La cita ya vencio y se marco como no se presento.', 'cita' => $cita->refresh()];
+            }
+
+            if (in_array($cita->estado, [Cita::ESTADO_CANCELADA, Cita::ESTADO_REALIZADA, Cita::ESTADO_NO_SE_PRESENTO])) {
+                return ['ok' => false, 'message' => 'Esta cita ya no puede ser cancelada.', 'cita' => $cita];
+            }
+
+            $cita->estado = Cita::ESTADO_CANCELADA;
+            $cita->activo = false;
+            $cita->save();
+
+            return ['ok' => true, 'message' => null, 'cita' => $cita->refresh()];
+        });
+
+        if (! $transition['ok']) {
+            return back()->with('error', $transition['message']);
         }
 
-        if (app(CitaNoShowService::class)->marcarSiVencio($cita)) {
-            return back()->with('error', 'La cita ya vencio y se marco como no se presento.');
-        }
-
-        if (in_array($cita->estado, [Cita::ESTADO_CANCELADA, Cita::ESTADO_REALIZADA, Cita::ESTADO_NO_SE_PRESENTO])) {
-            return back()->with('error', 'Esta cita ya no puede ser cancelada.');
-        }
-
-        $cita->estado = Cita::ESTADO_CANCELADA;
-        $cita->activo = false;
-        $cita->save();
+        $cita = $transition['cita'];
         app(CitaComprobanteService::class)->sincronizarComprobante($cita);
-
         NotificarCambioEstadoCitaJob::dispatch($cita, 'cancelada', 'paciente');
 
         return back()
@@ -676,25 +706,34 @@ class CitaController extends Controller
 
     public function aceptar($id)
     {
-        $cita = Cita::findOrFail($id);
+        $transition = DB::transaction(function () use ($id) {
+            $cita = Cita::query()->whereKey($id)->lockForUpdate()->firstOrFail();
 
-        if ($cita->doctor_id != Auth::id()) {
-            return back()->with('error', 'No puedes aceptar esta cita.');
+            if ($cita->doctor_id != Auth::id()) {
+                return ['ok' => false, 'message' => 'No puedes aceptar esta cita.', 'cita' => $cita];
+            }
+
+            if (app(CitaNoShowService::class)->marcarSiVencio($cita)) {
+                return ['ok' => false, 'message' => 'La cita ya vencio y se marco como no se presento.', 'cita' => $cita->refresh()];
+            }
+
+            if ($cita->estado !== Cita::ESTADO_PENDIENTE) {
+                return ['ok' => false, 'message' => 'Solo puedes aceptar citas pendientes.', 'cita' => $cita];
+            }
+
+            $cita->estado = Cita::ESTADO_CONFIRMADA;
+            $cita->activo = true;
+            $cita->save();
+
+            return ['ok' => true, 'message' => null, 'cita' => $cita->refresh()];
+        });
+
+        if (! $transition['ok']) {
+            return back()->with('error', $transition['message']);
         }
 
-        if (app(CitaNoShowService::class)->marcarSiVencio($cita)) {
-            return back()->with('error', 'La cita ya vencio y se marco como no se presento.');
-        }
-
-        if ($cita->estado !== Cita::ESTADO_PENDIENTE) {
-            return back()->with('error', 'Solo puedes aceptar citas pendientes.');
-        }
-
-        $cita->estado = Cita::ESTADO_CONFIRMADA;
-        $cita->activo = true;
-        $cita->save();
+        $cita = $transition['cita'];
         app(CitaComprobanteService::class)->sincronizarComprobante($cita);
-
         NotificarCambioEstadoCitaJob::dispatch($cita, 'aceptada', 'doctor');
 
         return back()->with('success', 'Cita confirmada.');
@@ -702,25 +741,34 @@ class CitaController extends Controller
 
     public function rechazar($id)
     {
-        $cita = Cita::findOrFail($id);
+        $transition = DB::transaction(function () use ($id) {
+            $cita = Cita::query()->whereKey($id)->lockForUpdate()->firstOrFail();
 
-        if ($cita->doctor_id != Auth::id()) {
-            return back()->with('error', 'No puedes rechazar esta cita.');
+            if ($cita->doctor_id != Auth::id()) {
+                return ['ok' => false, 'message' => 'No puedes rechazar esta cita.', 'cita' => $cita];
+            }
+
+            if (app(CitaNoShowService::class)->marcarSiVencio($cita)) {
+                return ['ok' => false, 'message' => 'La cita ya vencio y se marco como no se presento.', 'cita' => $cita->refresh()];
+            }
+
+            if ($cita->estado !== Cita::ESTADO_PENDIENTE) {
+                return ['ok' => false, 'message' => 'Solo puedes rechazar citas pendientes.', 'cita' => $cita];
+            }
+
+            $cita->estado = Cita::ESTADO_CANCELADA;
+            $cita->activo = false;
+            $cita->save();
+
+            return ['ok' => true, 'message' => null, 'cita' => $cita->refresh()];
+        });
+
+        if (! $transition['ok']) {
+            return back()->with('error', $transition['message']);
         }
 
-        if (app(CitaNoShowService::class)->marcarSiVencio($cita)) {
-            return back()->with('error', 'La cita ya vencio y se marco como no se presento.');
-        }
-
-        if ($cita->estado !== Cita::ESTADO_PENDIENTE) {
-            return back()->with('error', 'Solo puedes rechazar citas pendientes.');
-        }
-
-        $cita->estado = Cita::ESTADO_CANCELADA;
-        $cita->activo = false;
-        $cita->save();
+        $cita = $transition['cita'];
         app(CitaComprobanteService::class)->sincronizarComprobante($cita);
-
         NotificarCambioEstadoCitaJob::dispatch($cita, 'cancelada', 'doctor');
 
         return back()->with('success', 'Cita rechazada.');
@@ -728,30 +776,47 @@ class CitaController extends Controller
 
     public function realizar($id)
     {
-        $cita = Cita::with('notaSoap')->findOrFail($id);
+        $transition = DB::transaction(function () use ($id) {
+            $cita = Cita::query()->with('notaSoap')->whereKey($id)->lockForUpdate()->firstOrFail();
 
-        if ($cita->doctor_id != Auth::id()) {
-            return back()->with('error', 'No puedes marcar esta cita.');
+            if ($cita->doctor_id != Auth::id()) {
+                return ['ok' => false, 'message' => 'No puedes marcar esta cita.', 'redirect' => null, 'cita' => $cita];
+            }
+
+            if (app(CitaNoShowService::class)->marcarSiVencio($cita)) {
+                return ['ok' => false, 'message' => 'La cita ya vencio y se marco como no se presento.', 'redirect' => null, 'cita' => $cita->refresh()];
+            }
+
+            if ($cita->estado !== Cita::ESTADO_CONFIRMADA) {
+                return ['ok' => false, 'message' => 'Solo puedes marcar como realizada citas confirmadas.', 'redirect' => null, 'cita' => $cita];
+            }
+
+            if (! $cita->notaSoap || $cita->notaSoap->estado !== \App\Models\NotaSoap::ESTADO_FIRMADA) {
+                return [
+                    'ok' => false,
+                    'message' => 'Debes firmar la nota clinica antes de marcar la cita como realizada.',
+                    'redirect' => route('doctor.citas.soap', $cita->id),
+                    'cita' => $cita,
+                ];
+            }
+
+            $cita->estado = Cita::ESTADO_REALIZADA;
+            $cita->activo = true;
+            $cita->save();
+
+            return ['ok' => true, 'message' => null, 'redirect' => null, 'cita' => $cita->refresh()];
+        });
+
+        if (! $transition['ok']) {
+            if ($transition['redirect']) {
+                return redirect($transition['redirect'])->with('error', $transition['message']);
+            }
+
+            return back()->with('error', $transition['message']);
         }
 
-        if (app(CitaNoShowService::class)->marcarSiVencio($cita)) {
-            return back()->with('error', 'La cita ya vencio y se marco como no se presento.');
-        }
-
-        if ($cita->estado !== Cita::ESTADO_CONFIRMADA) {
-            return back()->with('error', 'Solo puedes marcar como realizada citas confirmadas.');
-        }
-
-        if (! $cita->notaSoap || $cita->notaSoap->estado !== \App\Models\NotaSoap::ESTADO_FIRMADA) {
-            return redirect()->route('doctor.citas.soap', $cita->id)
-                ->with('error', 'Debes firmar la nota clinica antes de marcar la cita como realizada.');
-        }
-
-        $cita->estado = Cita::ESTADO_REALIZADA;
-        $cita->activo = true;
-        $cita->save();
+        $cita = $transition['cita'];
         app(CitaComprobanteService::class)->sincronizarComprobante($cita);
-
         event(new CitaAtendida($cita));
 
         return back()->with('success', 'Cita marcada como realizada.');
@@ -912,17 +977,29 @@ class CitaController extends Controller
             abort(404);
         }
 
-        if (app(CitaNoShowService::class)->marcarSiVencio($control)) {
-            return back()->with('error', 'El control ya vencio y se marco como no se presento.');
+        $transition = DB::transaction(function () use ($control) {
+            $control = Cita::query()->whereKey($control->id)->lockForUpdate()->firstOrFail();
+
+            if (app(CitaNoShowService::class)->marcarSiVencio($control)) {
+                return ['ok' => false, 'message' => 'El control ya vencio y se marco como no se presento.', 'control' => $control->refresh()];
+            }
+
+            if (in_array($control->estado, [Cita::ESTADO_CANCELADA, Cita::ESTADO_REALIZADA, Cita::ESTADO_NO_SE_PRESENTO], true)) {
+                return ['ok' => false, 'message' => 'Este control ya no puede cancelarse.', 'control' => $control];
+            }
+
+            $control->estado = Cita::ESTADO_CANCELADA;
+            $control->activo = false;
+            $control->save();
+
+            return ['ok' => true, 'message' => null, 'control' => $control->refresh()];
+        });
+
+        if (! $transition['ok']) {
+            return back()->with('error', $transition['message']);
         }
 
-        if (in_array($control->estado, [Cita::ESTADO_CANCELADA, Cita::ESTADO_REALIZADA, Cita::ESTADO_NO_SE_PRESENTO], true)) {
-            return back()->with('error', 'Este control ya no puede cancelarse.');
-        }
-
-        $control->estado = Cita::ESTADO_CANCELADA;
-        $control->activo = false;
-        $control->save();
+        $control = $transition['control'];
         app(CitaComprobanteService::class)->sincronizarComprobante($control);
         NotificarCambioEstadoCitaJob::dispatch($control, 'cancelada', 'doctor');
 
@@ -979,13 +1056,18 @@ class CitaController extends Controller
             return response()->json(['ok' => false, 'msg' => $validationError['message']], 422);
         }
 
-        $control = DB::transaction(function () use ($cita, $request, $slot, $priorityEvaluator, $controlExistente) {
-            $control = $controlExistente ?? new Cita([
-                'paciente_id' => $cita->paciente_id,
-                'doctor_id' => $cita->doctor_id,
-                'especialidad_id' => $cita->especialidad_id,
-                'motivo_consulta' => $cita->motivo_consulta ?: 'Seguimiento medico',
-            ]);
+        $result = DB::transaction(function () use ($cita, $request, $slot, $priorityEvaluator) {
+            $cita = Cita::query()->whereKey($cita->id)->lockForUpdate()->firstOrFail();
+            $controlExistente = $this->controlPosteriorActivo($cita);
+
+            $control = $controlExistente
+                ? Cita::query()->whereKey($controlExistente->id)->lockForUpdate()->firstOrFail()
+                : new Cita([
+                    'paciente_id' => $cita->paciente_id,
+                    'doctor_id' => $cita->doctor_id,
+                    'especialidad_id' => $cita->especialidad_id,
+                    'motivo_consulta' => $cita->motivo_consulta ?: 'Seguimiento medico',
+                ]);
 
             $esNuevo = ! $control->exists;
             $control->fill([
@@ -1006,12 +1088,17 @@ class CitaController extends Controller
                 NotificarCambioEstadoCitaJob::dispatch($control, 'reagendada', 'doctor');
             }
 
-            return $control;
+            return [
+                'control' => $control->refresh(),
+                'existed' => ! $esNuevo,
+            ];
         });
+
+        $control = $result['control'];
 
         return response()->json([
             'ok' => true,
-            'msg' => $controlExistente ? 'Control reagendado correctamente.' : 'Control agendado correctamente.',
+            'msg' => $result['existed'] ? 'Control reagendado correctamente.' : 'Control agendado correctamente.',
             'redirect' => route('doctor.citas.soap', $cita).'#plan-control-box',
             'cita' => [
                 'id' => $control->id,

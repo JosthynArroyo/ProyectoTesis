@@ -30,10 +30,12 @@ class CertificadoMedicoPdfService
             'clinicalRecord',
         ]);
 
+        $identity = app(ClinicIdentityService::class);
+
         $html = view('pdf.certificado-medico', [
             'certificado' => $certificado,
-            'clinica' => 'Clinica Don Bosco',
-            'logoBase64' => $this->logoBase64(),
+            'clinica' => $identity->institutionalName(),
+            'logoBase64' => $identity->logoBase64(),
             'pdfCss' => $this->loadPdfCss('certificado-medico-pdf.css'),
         ])->render();
 
@@ -72,15 +74,7 @@ class CertificadoMedicoPdfService
 
     protected function logoBase64(): ?string
     {
-        $path = public_path('img/logopdf.jpg');
-        if (! is_file($path)) {
-            return null;
-        }
-
-        $mime = mime_content_type($path) ?: 'image/jpeg';
-        $data = base64_encode(file_get_contents($path) ?: '');
-
-        return $data === '' ? null : "data:{$mime};base64,{$data}";
+        return app(ClinicIdentityService::class)->logoBase64();
     }
 
     protected function loadPdfCss(string $relativePath): string

@@ -6,9 +6,9 @@
       <div class="grid gap-8 lg:grid-cols-[1fr_0.9fr]">
         <div class="card p-8">
           <div class="mb-6">
-            <p class="text-xs uppercase tracking-widest text-slate-500">Acceso</p>
-            <h1 class="mt-2 text-2xl font-semibold text-slate-900">Iniciar sesion</h1>
-            <p class="text-slate-600">Ingresa con tu correo y contrasena para gestionar tus citas.</p>
+            <p class="text-xs uppercase tracking-widest text-gray-500">Acceso</p>
+            <h1 class="mt-2 text-2xl font-semibold text-gray-900">Iniciar sesion</h1>
+            <p class="text-gray-600">Ingresa con tu correo y contrasena para gestionar tus citas.</p>
           </div>
 
           @if($errors->any())
@@ -26,7 +26,7 @@
 
             <div>
               <label class="form-label" for="login_password">Contrasena</label>
-              <div class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2">
+              <div class="flex items-center gap-2 rounded-xl border border-gray-200 bg-white/90 px-3 py-2">
                 <input type="password" name="password" id="login_password" placeholder="Contrasena" required class="flex-1 bg-transparent text-sm">
                 <button type="button" class="toggle-eye" data-target="login_password" aria-label="Mostrar u ocultar contrasena">
                   <i class="ri-eye-line"></i>
@@ -34,8 +34,8 @@
               </div>
             </div>
 
-            <label class="inline-flex cursor-pointer items-center gap-2 text-sm text-slate-500">
-              <input type="checkbox" name="remember" value="1" class="h-4 w-4 rounded border-slate-300" data-remember-login-checkbox @checked(old('remember'))>
+            <label class="inline-flex cursor-pointer items-center gap-2 text-sm text-gray-500">
+              <input type="checkbox" name="remember" value="1" class="h-4 w-4 rounded border-gray-300" data-remember-login-checkbox @checked(old('remember'))>
               Recuerdame
             </label>
 
@@ -49,32 +49,32 @@
             </x-ui.form-actions>
           </form>
 
-          <div class="mt-5 flex flex-wrap gap-3 text-sm text-slate-500">
-            <button type="button" class="cursor-pointer hover:text-slate-800" data-legal-open="privacy-policy-modal">
+          <div class="mt-5 flex flex-wrap gap-3 text-sm text-gray-500">
+            <button type="button" class="cursor-pointer hover:text-gray-800" data-legal-open="privacy-policy-modal">
               Políticas de privacidad
             </button>
-            <button type="button" class="cursor-pointer hover:text-slate-800" data-legal-open="terms-service-modal">
+            <button type="button" class="cursor-pointer hover:text-gray-800" data-legal-open="terms-service-modal">
               Términos de servicio
             </button>
           </div>
         </div>
 
         <div class="glass-panel p-8">
-          <p class="text-xs uppercase tracking-widest text-slate-500">Bienvenida</p>
-          <h2 class="mt-2 text-2xl font-semibold text-slate-900">Bienvenido a tu panel clinico</h2>
-          <p class="mt-2 text-slate-600">Accede para agendar citas, revisar resultados y consultar documentos medicos registrados en tu cuenta.</p>
+          <p class="text-xs uppercase tracking-widest text-gray-500">Bienvenida</p>
+          <h2 class="mt-2 text-2xl font-semibold text-gray-900">Bienvenido a tu panel clinico</h2>
+          <p class="mt-2 text-gray-600">Accede para agendar citas, revisar resultados y consultar documentos medicos registrados en tu cuenta.</p>
           <div class="mt-6 grid gap-3">
             <div class="card p-4">
-              <p class="text-sm font-semibold text-slate-900">Citas disponibles</p>
-              <p class="text-sm text-slate-500">Selecciona especialidad, profesional y horario registrado.</p>
+              <p class="text-sm font-semibold text-gray-900">Citas disponibles</p>
+              <p class="text-sm text-gray-500">Selecciona especialidad, profesional y horario registrado.</p>
             </div>
             <div class="card p-4">
-              <p class="text-sm font-semibold text-slate-900">Recordatorios de citas</p>
-              <p class="text-sm text-slate-500">Recibe avisos sobre tus proximas atenciones.</p>
+              <p class="text-sm font-semibold text-gray-900">Recordatorios de citas</p>
+              <p class="text-sm text-gray-500">Recibe avisos sobre tus proximas atenciones.</p>
             </div>
             <div class="card p-4">
-              <p class="text-sm font-semibold text-slate-900">Documentos medicos</p>
-              <p class="text-sm text-slate-500">Accede a tus resultados y recetas.</p>
+              <p class="text-sm font-semibold text-gray-900">Documentos medicos</p>
+              <p class="text-sm text-gray-500">Accede a tus resultados y recetas.</p>
             </div>
           </div>
         </div>

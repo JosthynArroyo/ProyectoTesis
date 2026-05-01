@@ -4,18 +4,21 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>@yield('title', $siteSettings->get('branding.name','Clínica Don Bosco'))</title>
+  <title>@yield('title', $clinicIdentity->name())</title>
   @include('layouts.partials.favicon')
   @include('layouts.partials.fonts')
   @php
-    $brandName = $siteSettings->get('branding.name','Clínica Don Bosco');
-    $brandLogo = $siteSettings->get('branding.logo','img/logo-welcomeBlanco.jpg');
+    $brandName = $clinicIdentity->name();
+    $brandLogo = $clinicIdentity->logoPath();
+    $navbarText = $siteSettings->get('branding.navbar_text', $clinicIdentity->slogan());
     $accent = $siteSettings->get('branding.accent','#0f766e');
     $accentStrong = $siteSettings->get('branding.accent_strong','#14b8a6');
     $accentSoft = $siteSettings->get('branding.accent_soft','#ccfbf1');
     $headerName = $landingWelcome->get('header_name', $brandName);
     $headerLogo = $landingWelcome->get('header_logo', $brandLogo);
+    $headerLoginText = $landingWelcome->get('header_login_text', 'Ingresar');
     $headerShowSocials = $landingWelcome->getBool('header_show_socials', true);
+    $stickyHeader = $siteSettings->getBool('header.sticky_enabled', true);
   @endphp
   <style>
     :root {
@@ -24,88 +27,116 @@
       --accent-soft: {{ $accentSoft }};
     }
   </style>
-  @vite(['resources/css/app.css','resources/js/app.js'])
+  @vite(['resources/css/app.css','resources/css/modal.css','resources/js/app.js'])
   @stack('head')
   @stack('styles')
 </head>
-<body class="min-h-screen text-slate-900 m-0 p-0">
+<body class="min-h-screen text-gray-900 m-0 p-0">
 @php
   use Illuminate\Support\Facades\Route as R;
   $errors = $errors ?? new \Illuminate\Support\ViewErrorBag();
   $loginModalUrl = url('/') . '?login=1';
+  $navigationOrder = array_values(array_filter(array_map('trim', explode(',', (string) $siteSettings->get('header.navigation_order', 'home,services,contact')))));
+  $navigationOrder = empty($navigationOrder) ? ['home', 'services', 'contact'] : $navigationOrder;
+  $publicNavItems = collect([
+    [
+      'key' => 'home',
+      'label' => 'Inicio',
+      'icon' => 'ri-home-4-line',
+      'visible' => $siteSettings->getBool('header.show_home', true),
+      'url' => url('/'),
+      'active' => request()->is('/'),
+    ],
+    [
+      'key' => 'services',
+      'label' => 'Servicios',
+      'icon' => 'ri-stethoscope-line',
+      'visible' => $siteSettings->getBool('header.show_services', true) && R::has('servicios.index'),
+      'url' => R::has('servicios.index') ? route('servicios.index') : '#',
+      'active' => request()->routeIs('servicios.*'),
+    ],
+    [
+      'key' => 'contact',
+      'label' => 'Contacto',
+      'icon' => 'ri-contacts-book-2-line',
+      'visible' => $siteSettings->getBool('header.show_contact', true) && R::has('contacto.form'),
+      'url' => R::has('contacto.form') ? route('contacto.form') : '#',
+      'active' => request()->routeIs('contacto.*'),
+    ],
+    [
+      'key' => 'demo',
+      'label' => 'Explorar demo',
+      'icon' => 'ri-eye-line',
+      'visible' => R::has('demo.index'),
+      'url' => R::has('demo.index') ? route('demo.index') : '#',
+      'active' => request()->routeIs('demo.*'),
+    ],
+  ])->keyBy('key');
+  $orderedNavItems = collect($navigationOrder)
+    ->map(fn ($key) => $publicNavItems->get($key))
+    ->filter()
+    ->merge($publicNavItems->except($navigationOrder)->values())
+    ->filter(fn ($item) => ! empty($item['visible']))
+    ->values();
 @endphp
 
-<header class="fixed inset-x-0 top-0 z-50 border-b border-slate-200/70 bg-white" id="cnav-header">
+<header class="{{ $stickyHeader ? 'fixed inset-x-0 top-0 z-50' : 'relative' }} border-b border-gray-200/70 bg-white" id="cnav-header">
   <nav class="page-shell" aria-label="Barra de navegación principal">
       <div class="flex min-w-0 items-center justify-between gap-3 py-4 sm:gap-4">
        <a href="{{ url('/') }}" class="flex min-w-0 items-center gap-3" aria-label="Inicio">
         @php
-          $logoImage = $imageUrl->variants($headerLogo, entity: 'banner');
+          $logoImage = $headerLogo ? $imageUrl->variants($headerLogo, entity: 'banner') : null;
         @endphp
-        <img
-          src="{{ $logoImage['thumb'] }}"
-          @if($logoImage['srcset']) srcset="{{ $logoImage['srcset'] }}" sizes="160px" @endif
-          alt="{{ $headerName }}"
-          class="h-10 w-auto"
-          loading="eager"
-          decoding="async"
-        >
-        <span class="hidden min-w-0 truncate text-sm font-semibold uppercase tracking-wide text-slate-500 sm:inline">{{ $headerName }}</span>
+        @if($logoImage)
+          <img
+            src="{{ $logoImage['thumb'] }}"
+            @if($logoImage['srcset']) srcset="{{ $logoImage['srcset'] }}" sizes="160px" @endif
+            alt="{{ $headerName }}"
+            class="h-10 w-auto"
+            loading="eager"
+            decoding="async"
+          >
+        @else
+          <span class="flex h-10 w-10 items-center justify-center rounded-2xl border border-gray-200 bg-gray-50 text-gray-500">
+            <i class="ri-hospital-line text-lg"></i>
+          </span>
+        @endif
+        <span class="hidden min-w-0 sm:inline">
+          <span class="block truncate text-sm font-semibold uppercase tracking-wide text-gray-500">{{ $headerName }}</span>
+          @if(filled($navbarText))
+            <span class="block truncate text-xs text-gray-400">{{ $navbarText }}</span>
+          @endif
+        </span>
       </a>
 
-      <div id="cnav-menu" class="cnav__menu fixed inset-0 z-50 hidden flex-col bg-white text-slate-700 lg:static lg:flex lg:flex-row lg:items-center lg:gap-4 lg:bg-transparent lg:p-0">
-        <div class="flex items-center justify-between border-b border-slate-200 px-5 py-4 lg:hidden">
-          <span class="text-base font-semibold text-slate-700">Menú</span>
-          <button class="flex h-11 w-11 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 active:bg-slate-200" id="cnav-close" aria-label="Cerrar menú">
+      <div id="cnav-menu" class="cnav__menu fixed inset-0 z-50 hidden flex-col bg-white text-gray-700 lg:static lg:flex lg:flex-row lg:items-center lg:gap-4 lg:bg-transparent lg:p-0">
+        <div class="flex items-center justify-between border-b border-gray-200 px-5 py-4 lg:hidden">
+          <span class="text-base font-semibold text-gray-700">Menú</span>
+          <button class="flex h-11 w-11 items-center justify-center rounded-xl text-gray-500 hover:bg-gray-100 active:bg-gray-200" id="cnav-close" aria-label="Cerrar menú">
             <i class="ri-close-line text-xl"></i>
           </button>
         </div>
 
         <ul class="flex flex-col gap-1 px-4 py-4 text-base font-semibold lg:flex-row lg:items-center lg:gap-4 lg:px-0 lg:py-0 lg:text-sm" role="menubar">
-          <li role="none">
-            <a role="menuitem" href="{{ url('/') }}" class="flex min-h-[48px] items-center gap-3 rounded-xl px-4 py-3 transition-colors lg:min-h-0 lg:rounded-full lg:px-4 lg:py-2 {{ request()->is('/') ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-50 active:bg-slate-100' }}">
-              <i class="ri-home-4-line text-lg"></i>Inicio
-            </a>
-          </li>
-
-          @if(R::has('servicios.index'))
-          <li role="none">
-            <a role="menuitem" href="{{ route('servicios.index') }}" class="flex min-h-[48px] items-center gap-3 rounded-xl px-4 py-3 transition-colors lg:min-h-0 lg:rounded-full lg:px-4 lg:py-2 {{ request()->routeIs('servicios.*') ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-50 active:bg-slate-100' }}">
-              <i class="ri-stethoscope-line text-lg"></i>Servicios
-            </a>
-          </li>
-          @endif
-
-          @if(R::has('contacto.form'))
-          <li role="none">
-            <a role="menuitem" href="{{ route('contacto.form') }}" class="flex min-h-[48px] items-center gap-3 rounded-xl px-4 py-3 transition-colors lg:min-h-0 lg:rounded-full lg:px-4 lg:py-2 {{ request()->routeIs('contacto.*') ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-50 active:bg-slate-100' }}">
-              <i class="ri-contacts-book-2-line text-lg"></i>Contacto
-            </a>
-          </li>
-          @endif
+          @foreach($orderedNavItems as $item)
+            <li role="none">
+              <a role="menuitem" href="{{ $item['url'] }}" class="{{ $item['key'] === 'demo' ? 'btn cnav-demo-link flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-base lg:min-h-0 lg:w-auto lg:rounded-full lg:px-4 lg:py-2 lg:text-sm' : 'flex min-h-[48px] items-center gap-3 rounded-xl px-4 py-3 transition-colors lg:min-h-0 lg:rounded-full lg:px-4 lg:py-2' }} {{ $item['key'] === 'demo' ? ($item['active'] ? 'is-active' : '') : ($item['active'] ? 'bg-gray-100 text-gray-900 font-medium' : 'text-gray-600 hover:bg-gray-50 active:bg-gray-100') }}">
+                <i class="{{ $item['icon'] }} text-lg"></i>{{ $item['label'] }}
+              </a>
+            </li>
+          @endforeach
 
           @auth
             <li role="none">
               @php
                 $user = Auth::user();
-                $panel = route('home');
-                if ($user && $user->hasRole('superadmin') && R::has('superadmin.dashboard')) {
-                  $panel = route('superadmin.dashboard');
-                } elseif ($user && $user->hasRole('administrador') && R::has('admin.dashboard')) {
-                  $panel = route('admin.dashboard');
-                } elseif ($user && $user->hasRole('paciente') && R::has('paciente.dashboard')) {
-                  $panel = route('paciente.dashboard');
-                } elseif ($user && $user->hasRole('doctor') && R::has('doctor.dashboard')) {
-                  $panel = route('doctor.dashboard');
-                } elseif ($user && $user->hasRole('laboratorio') && R::has('laboratorio.dashboard')) {
-                  $panel = route('laboratorio.dashboard');
-                }
+                $panel = $user?->dashboardPath() ?? route('home');
               @endphp
-              <a role="menuitem" href="{{ $panel }}" class="flex min-h-[48px] items-center gap-3 rounded-xl px-4 py-3 transition-colors lg:min-h-0 lg:rounded-full lg:px-4 lg:py-2 {{ request()->routeIs('home') ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-50 active:bg-slate-100' }}">
+              <a role="menuitem" href="{{ $panel }}" class="flex min-h-[48px] items-center gap-3 rounded-xl px-4 py-3 transition-colors lg:min-h-0 lg:rounded-full lg:px-4 lg:py-2 {{ request()->routeIs('home') ? 'bg-gray-100 text-gray-900 font-medium' : 'text-gray-600 hover:bg-gray-50 active:bg-gray-100' }}">
                 <i class="ri-dashboard-line text-lg"></i>Mi panel
               </a>
             </li>
-            <li role="none" class="mt-2 border-t border-slate-100 pt-2 lg:mt-0 lg:border-0 lg:pt-0">
+            <li role="none" class="mt-2 border-t border-gray-100 pt-2 lg:mt-0 lg:border-0 lg:pt-0">
               <form method="POST" action="{{ route('salir') }}">
                 @csrf
                 <button type="submit" class="flex min-h-[48px] w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-rose-600 transition-colors hover:bg-rose-50 active:bg-rose-100 lg:min-h-0 lg:w-auto lg:rounded-full lg:px-4 lg:py-2">
@@ -117,7 +148,7 @@
             @if(R::has('login'))
             <li role="none" class="mt-3 lg:mt-0">
               <a role="menuitem" href="{{ $loginModalUrl }}" class="btn btn-primary flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl text-base lg:min-h-0 lg:w-auto lg:rounded-full lg:text-sm" data-login-trigger>
-                <i class="ri-login-box-line text-lg"></i>Ingresar
+                <i class="ri-login-box-line text-lg"></i>{{ $headerLoginText }}
               </a>
             </li>
             @endif
@@ -125,11 +156,7 @@
         </ul>
 
         @if($headerShowSocials)
-          <div class="mt-auto flex items-center gap-2 border-t border-slate-100 px-5 py-4 text-xl text-slate-400 lg:mt-0 lg:border-0 lg:px-0 lg:py-0">
-            <a href="https://www.instagram.com/" target="_blank" aria-label="Instagram" class="flex h-11 w-11 items-center justify-center rounded-xl hover:bg-slate-50 hover:text-slate-600 active:bg-slate-100 lg:h-auto lg:w-auto lg:rounded-full"><i class="ri-instagram-line"></i></a>
-            <a href="https://wa.me/593998740927" target="_blank" aria-label="WhatsApp" class="flex h-11 w-11 items-center justify-center rounded-xl hover:bg-slate-50 hover:text-slate-600 active:bg-slate-100 lg:h-auto lg:w-auto lg:rounded-full"><i class="ri-whatsapp-line"></i></a>
-            <a href="https://www.facebook.com/" target="_blank" aria-label="Facebook" class="flex h-11 w-11 items-center justify-center rounded-xl hover:bg-slate-50 hover:text-slate-600 active:bg-slate-100 lg:h-auto lg:w-auto lg:rounded-full"><i class="ri-facebook-circle-line"></i></a>
-            <a href="https://twitter.com/" target="_blank" aria-label="Twitter" class="flex h-11 w-11 items-center justify-center rounded-xl hover:bg-slate-50 hover:text-slate-600 active:bg-slate-100 lg:h-auto lg:w-auto lg:rounded-full"><i class="ri-twitter-x-line"></i></a>
+          <div class="mt-auto flex items-center gap-2 border-t border-gray-100 px-5 py-4 text-xl text-gray-400 lg:mt-0 lg:border-0 lg:px-0 lg:py-0">
           </div>
         @endif
       </div>
@@ -144,115 +171,225 @@
 @guest
 @php($errorsBag = $errors ?? null)
 @php($maintenanceEnabled = $siteSettings->getBool('maintenance.enabled', false))
-<div id="loginModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="loginTitle" aria-hidden="true" data-face-tab-disabled="{{ $maintenanceEnabled ? '1' : '0' }}">
+
+{{-- ════════════════════════════════════════════════
+     MODAL LOGIN — Premium 2-Column Design
+     Verde institucional: var(--accent) #0f766e
+     ════════════════════════════════════════════════ --}}
+<div id="loginModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="loginTitle" aria-hidden="true">
+
+  {{-- Backdrop blur --}}
   <div class="modal-backdrop" data-close-login></div>
+
+  {{-- Dialog --}}
   <div class="modal-dialog" role="document" tabindex="-1">
-    <div class="card mx-auto w-full max-w-xl">
-      <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-        <h3 id="loginTitle" class="text-lg font-semibold">Iniciar sesión</h3>
-        <button id="closeLoginModal" class="btn btn-ghost px-2" aria-label="Cerrar modal" data-close-login>
-          <i class="ri-close-line text-lg"></i>
-        </button>
-      </div>
-      <div class="p-6">
-        @if(session('status')) <div class="alert success">{{ session('status') }}</div> @endif
-        @if(session('auth_error') || ($errorsBag && $errorsBag->any())) <span data-open-login-onload hidden></span> @endif
-        @if(session('auth_error'))
-          <div class="alert error">{{ session('auth_error') }}</div>
-        @elseif($errorsBag && $errorsBag->has('email'))
-          <div class="alert error">{{ $errorsBag->first('email') }}</div>
-        @elseif($errorsBag && $errorsBag->any())
-          <div class="alert error">Revisa tus datos e inténtalo nuevamente.</div>
-        @endif
+    <div class="lm-panel">
 
-        <div class="mt-4 flex gap-2" role="tablist">
-          <button type="button" class="btn btn-outline px-4 py-2 text-xs is-active" data-login-tab="password">Correo y contraseña</button>
-          <button type="button"
-                  class="btn btn-outline px-4 py-2 text-xs {{ $maintenanceEnabled ? 'cursor-not-allowed opacity-60' : '' }}"
-                  data-login-tab="face"
-                  @disabled($maintenanceEnabled)
-                  aria-disabled="{{ $maintenanceEnabled ? 'true' : 'false' }}">
-            Reconocimiento facial
-          </button>
-        </div>
+      {{-- Two-column grid --}}
+      <div class="lm-grid">
 
-        <div class="mt-4">
-          <div class="login-panel is-active" data-login-panel="password">
-            <form method="POST" action="{{ route('login') }}" id="loginForm" class="space-y-4" data-remember-login-form>
-              @csrf
-              <input type="hidden" name="remember" value="0">
-              <div>
-                <label class="form-label">Correo</label>
-                <input type="email" name="email" autocomplete="email" required value="{{ old('email') }}" placeholder="correo@ejemplo.com" inputmode="email" class="form-input" data-remember-login-email>
-              </div>
-              <div>
-                <label class="form-label">Contraseña</label>
-                <div class="relative">
-                  <input type="password" name="password" id="loginPassword" autocomplete="current-password" required placeholder="********" class="form-input pr-10">
-                  <button type="button" class="btn-eye absolute right-3 top-1/2 inline-flex -translate-y-1/2 items-center justify-center text-slate-500 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-200" data-target="#loginPassword" aria-label="Mostrar u ocultar contraseña">
-                    <i class="ri-eye-line text-lg leading-none" aria-hidden="true"></i>
-                  </button>
-                </div>
-              </div>
-              <div class="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500">
-                <label class="inline-flex cursor-pointer items-center gap-2">
-                  <input type="checkbox" name="remember" value="1" class="h-4 w-4 rounded border-slate-300" data-remember-login-checkbox @checked(old('remember'))>
-                  Recuérdame
-                </label>
-                @if (R::has('password.request'))
-                  <a href="{{ route('password.request') }}" class="text-teal-600 hover:underline">Olvidaste tu contraseña</a>
-                @endif
-              </div>
-              <button type="submit" class="btn btn-primary w-full">Entrar</button>
-            </form>
+        {{-- ────────────────────────────────────
+             LEFT — Decorative / Informative
+        ──────────────────────────────────── --}}
+        <aside class="lm-left" aria-hidden="true">
+
+          {{-- Heading --}}
+          <div>
+            <h2 class="lm-left-title">Bienvenido de nuevo</h2>
+            <p class="lm-left-desc" style="margin-top:0.5rem;">
+              Ingresa a tu cuenta para continuar gestionando tus citas y servicios de forma rápida y segura.
+            </p>
           </div>
 
-          <div class="login-panel" data-login-panel="face" hidden>
-            <form id="faceLoginForm"
-                  data-endpoint="{{ route('face.login') }}"
-                  data-csrf="{{ csrf_token() }}"
-                  data-models-url="{{ asset('models') }}"
-                  data-face-state="initial"
-                  class="space-y-4">
-              <div class="relative overflow-hidden rounded-lg border border-slate-200 bg-slate-950">
-                <video id="faceLoginVideo" autoplay muted playsinline class="h-56 w-full object-cover"></video>
-                <div class="absolute inset-x-3 bottom-3 rounded-lg bg-slate-950/75 px-3 py-2 text-xs font-semibold text-white shadow-sm backdrop-blur">
-                  <span data-face-overlay>Cámara lista para activar.</span>
-                </div>
-              </div>
+          {{-- Medical SVG illustration --}}
+          <div class="lm-illustration">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 220" fill="none" aria-hidden="true">
+              <!-- Shield -->
+              <path d="M140 18 L196 42 L196 100 C196 138 140 166 140 166 C140 166 84 138 84 100 L84 42 Z"
+                    fill="url(#shieldGrad)" opacity="0.92"/>
+              <path d="M140 30 L184 50 L184 100 C184 130 140 154 140 154 C140 154 96 130 96 100 L96 50 Z"
+                    fill="white" opacity="0.55"/>
+              <!-- Checkmark -->
+              <path d="M118 100 L133 115 L164 82" stroke="#0f766e" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+              <!-- Calendar -->
+              <rect x="48" y="120" width="58" height="52" rx="8" fill="white" stroke="#14b8a6" stroke-width="1.5" opacity="0.9"/>
+              <rect x="48" y="120" width="58" height="14" rx="8" fill="#14b8a6" opacity="0.75"/>
+              <line x1="64" y1="147" x2="64" y2="147" stroke="#0f766e" stroke-width="4" stroke-linecap="round"/>
+              <line x1="76" y1="147" x2="76" y2="147" stroke="#0f766e" stroke-width="4" stroke-linecap="round"/>
+              <line x1="88" y1="147" x2="88" y2="147" stroke="#0f766e" stroke-width="4" stroke-linecap="round"/>
+              <line x1="64" y1="160" x2="64" y2="160" stroke="#94a3b8" stroke-width="4" stroke-linecap="round"/>
+              <line x1="76" y1="160" x2="76" y2="160" stroke="#94a3b8" stroke-width="4" stroke-linecap="round"/>
+              <!-- Clock -->
+              <circle cx="208" cy="152" r="30" fill="white" stroke="#14b8a6" stroke-width="1.5" opacity="0.9"/>
+              <circle cx="208" cy="152" r="3" fill="#0f766e"/>
+              <line x1="208" y1="152" x2="208" y2="138" stroke="#0f766e" stroke-width="2.5" stroke-linecap="round"/>
+              <line x1="208" y1="152" x2="218" y2="158" stroke="#14b8a6" stroke-width="2" stroke-linecap="round"/>
+              <!-- Person -->
+              <circle cx="210" cy="86" r="18" fill="white" stroke="#14b8a6" stroke-width="1.5" opacity="0.9"/>
+              <circle cx="210" cy="82" r="6" fill="#14b8a6" opacity="0.7"/>
+              <path d="M198 104 Q210 96 222 104" fill="#14b8a6" opacity="0.5"/>
+              <!-- Defs -->
+              <defs>
+                <linearGradient id="shieldGrad" x1="140" y1="18" x2="140" y2="166" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stop-color="#14b8a6"/>
+                  <stop offset="100%" stop-color="#0f766e"/>
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
 
-              <div class="rounded-lg border border-slate-200 bg-slate-50 p-4" data-face-status role="status" aria-live="polite">
-                <div class="flex items-start gap-3">
-                  <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-teal-50 text-teal-700" data-face-state-icon>
-                    <i class="ri-scan-2-line text-lg" aria-hidden="true"></i>
-                  </span>
-                  <div class="min-w-0">
-                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Reconocimiento facial</p>
-                    <p class="text-sm font-semibold text-slate-900" data-face-state-title>Listo para escanear</p>
+          {{-- Mini indicators --}}
+          <div class="lm-indicators">
+            <div class="lm-indicator">
+              <span class="lm-indicator-icon"><i class="ri-shield-check-line"></i></span>
+              <span class="lm-indicator-label">Seguridad<br>total</span>
+            </div>
+            <div class="lm-indicator">
+              <span class="lm-indicator-icon"><i class="ri-speed-line"></i></span>
+              <span class="lm-indicator-label">Acceso<br>rápido</span>
+            </div>
+            <div class="lm-indicator">
+              <span class="lm-indicator-icon"><i class="ri-lock-password-line"></i></span>
+              <span class="lm-indicator-label">Tus datos<br>protegidos</span>
+            </div>
+          </div>
+        </aside>
+
+        {{-- ────────────────────────────────────
+             RIGHT — Login Form
+        ──────────────────────────────────── --}}
+        <section class="lm-right">
+
+          {{-- Close button --}}
+          <button id="closeLoginModal" class="lm-close" aria-label="Cerrar modal" data-close-login>
+            <i class="ri-close-line"></i>
+          </button>
+
+          {{-- Heading --}}
+          <h3 id="loginTitle" class="lm-form-title">Iniciar sesión</h3>
+          <p class="lm-form-subtitle">Elige tu método de acceso</p>
+
+          {{-- Alerts --}}
+          @if(session('status'))
+            <div class="lm-alert success">
+              <i class="ri-checkbox-circle-line" style="flex-shrink:0"></i>
+              {{ session('status') }}
+            </div>
+          @endif
+          @if(session('auth_error') || ($errorsBag && $errorsBag->any()))
+            <span data-open-login-onload hidden></span>
+          @endif
+          @if(session('auth_error'))
+            <div class="lm-alert error">
+              <i class="ri-error-warning-line" style="flex-shrink:0"></i>
+              {{ session('auth_error') }}
+            </div>
+          @elseif($errorsBag && $errorsBag->has('email'))
+            <div class="lm-alert error">
+              <i class="ri-error-warning-line" style="flex-shrink:0"></i>
+              {{ $errorsBag->first('email') }}
+            </div>
+          @elseif($errorsBag && $errorsBag->any())
+            <div class="lm-alert error">
+              <i class="ri-error-warning-line" style="flex-shrink:0"></i>
+              Revisa tus datos e inténtalo nuevamente.
+            </div>
+          @endif
+
+
+          {{-- ── PANELS ── --}}
+          <div class="lm-panels">
+
+            {{-- Password panel --}}
+            <div id="lm-panel-password" class="lm-tabpanel" role="tabpanel" data-login-panel="password">
+              <form method="POST" action="{{ route('login') }}" id="loginForm" class="space-y-0" data-remember-login-form>
+                @csrf
+                <input type="hidden" name="remember" value="0">
+
+                {{-- Email --}}
+                <div class="lm-field">
+                  <label class="lm-label" for="loginEmail">Correo electrónico</label>
+                  <div class="lm-input-wrap">
+                    <i class="ri-mail-line lm-input-icon"></i>
+                    <input
+                      type="email"
+                      id="loginEmail"
+                      name="email"
+                      autocomplete="email"
+                      required
+                      value="{{ old('email') }}"
+                      placeholder="correo@ejemplo.com"
+                      inputmode="email"
+                      class="lm-input"
+                      data-remember-login-email>
                   </div>
                 </div>
-                <p class="mt-3 text-sm text-slate-600" data-face-state-message>
-                  Mantén tu rostro dentro del recuadro y presiona el botón para iniciar.
-                </p>
-                <p class="mt-2 text-xs text-slate-500" data-face-state-hint>
-                  Este acceso solo funciona si ya registraste tu rostro desde tu perfil.
-                </p>
-              </div>
 
-              <div class="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
-                <button type="submit" class="btn btn-primary w-full" id="faceLoginSubmit">Escanear rostro</button>
-                <button type="button" class="btn btn-outline w-full sm:w-auto" data-face-password-tab>Usar contraseña</button>
-              </div>
-            </form>
-          </div>
-        </div>
+                {{-- Password --}}
+                <div class="lm-field">
+                  <label class="lm-label" for="loginPassword">Contraseña</label>
+                  <div class="lm-input-wrap">
+                    <i class="ri-lock-line lm-input-icon"></i>
+                    <input
+                      type="password"
+                      id="loginPassword"
+                      name="password"
+                      autocomplete="current-password"
+                      required
+                      placeholder="••••••••"
+                      class="lm-input">
+                    <button
+                      type="button"
+                      class="lm-eye-btn btn-eye"
+                      data-target="#loginPassword"
+                      aria-label="Mostrar u ocultar contraseña">
+                      <i class="ri-eye-line" aria-hidden="true"></i>
+                    </button>
+                  </div>
+                </div>
+
+                {{-- Remember + forgot --}}
+                <div class="lm-row">
+                  <label class="lm-remember">
+                    <input
+                      type="checkbox"
+                      name="remember"
+                      value="1"
+                      data-remember-login-checkbox
+                      @checked(old('remember'))>
+                    Recuérdame
+                  </label>
+                  @if(R::has('password.request'))
+                    <a href="{{ route('password.request') }}" class="lm-forgot">¿Olvidaste tu contraseña?</a>
+                  @endif
+                </div>
+
+                {{-- Submit --}}
+                <button type="submit" class="lm-submit">
+                  Entrar <i class="ri-arrow-right-line"></i>
+                </button>
+              </form>
+            </div>{{-- /password panel --}}
+
+
+
+          </div>{{-- /lm-panels --}}
+        </section>{{-- /lm-right --}}
+
+      </div>{{-- /lm-grid --}}
+
+      {{-- Footer stripe --}}
+      <div class="lm-footer">
+        <i class="ri-shield-check-line"></i>
+        <span>Protegemos tu información con los más altos estándares de seguridad.</span>
       </div>
-    </div>
-  </div>
-</div>
+
+    </div>{{-- /lm-panel --}}
+  </div>{{-- /modal-dialog --}}
+</div>{{-- /#loginModal --}}
 @endguest
 
-<main class="min-h-screen pt-[4.5rem]">@yield('main')</main>
+<main class="min-h-screen {{ $stickyHeader ? 'pt-[4.5rem]' : '' }}">@yield('main')</main>
 
 @guest
   @unless($siteSettings->getBool('maintenance.enabled', false))

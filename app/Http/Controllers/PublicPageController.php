@@ -33,23 +33,7 @@ class PublicPageController extends Controller
             return redirect('/');
         }
 
-        if ($user->hasRole('superadmin')) {
-            return redirect()->route('superadmin.dashboard');
-        }
-        if ($user->hasRole('administrador')) {
-            return redirect()->route('admin.dashboard');
-        }
-        if ($user->hasRole('paciente')) {
-            return redirect()->route('paciente.dashboard');
-        }
-        if ($user->hasRole('doctor')) {
-            return redirect()->route('doctor.dashboard');
-        }
-        if ($user->hasRole('laboratorio')) {
-            return redirect()->route('laboratorio.dashboard');
-        }
-
-        return redirect('/');
+        return redirect($user->dashboardPath());
     }
 
     public function servicios(Request $request): View

@@ -1,5 +1,6 @@
 import '../css/app.css';
 import './bootstrap';
+import './action-lock';
 
 const hasElement = (selector) => document.querySelector(selector) !== null;
 
@@ -29,15 +30,7 @@ const loadFlowbite = () => {
     });
 };
 
-const loadFaceLoginModal = () => {
-  if (!document.getElementById('loginModal')) {
-    return;
-  }
 
-  import('./face-login-modal').catch((error) => {
-    console.warn('No se pudo inicializar el reconocimiento facial del modal.', error);
-  });
-};
 
 const loadDatepickers = () => {
   if (!document.querySelector('[data-enhanced-date]')) {
@@ -157,7 +150,7 @@ const bootDeferredModules = () => {
   );
   loadDatepickers();
   loadNativeDatePickers();
-  loadFaceLoginModal();
+
 };
 
 if (document.readyState === 'loading') {

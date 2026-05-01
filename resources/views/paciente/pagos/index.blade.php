@@ -1,6 +1,6 @@
-﻿@extends('layouts.paciente')
-@section('title', 'Mis pagos')
-@section('header-title', 'Mis pagos')
+@extends('layouts.paciente')
+@section('title', 'Órdenes de cobro')
+@section('header-title', 'Órdenes de cobro')
 @section('header-subtitle', 'Control y estado de cobros por cita')
 
 @section('main')
@@ -11,7 +11,7 @@
 
   @if($bloqueoActivo)
     <x-ui.alert tone="warning">
-      Tienes órdenes de pago vencidas de citas concluidas. Regulariza tu cuenta para agendar una nueva cita.
+      Tienes órdenes de cobro vencidas de citas concluidas. Regulariza tu cuenta para agendar una nueva cita.
     </x-ui.alert>
   @endif
 
@@ -63,20 +63,20 @@
       <article id="pago-{{ $pago->id }}" class="card p-5">
         <div class="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h3 class="text-base font-semibold text-slate-900">Cita #{{ $pago->cita_id }}</h3>
-            <p class="text-sm text-slate-500">
+            <h3 class="text-base font-semibold text-gray-900">Cita #{{ $pago->cita_id }}</h3>
+            <p class="text-sm text-gray-500">
               {{ optional($pago->cita?->doctor)->name ?? 'Doctor no disponible' }}
               · {{ optional($pago->cita?->especialidad)->nombre ?? 'Especialidad' }}
             </p>
-            <p class="text-xs text-slate-500">
+            <p class="text-xs text-gray-500">
               {{ optional($pago->cita?->fecha)->format('Y-m-d') }} {{ $pago->cita?->hora ? substr((string)$pago->cita->hora, 0, 5) : '' }}
             </p>
-            <p class="mt-1 text-xs text-slate-500">
+            <p class="mt-1 text-xs text-gray-500">
               Folio orden: {{ $pago->folio_unico ?: 'Sin generar' }}
             </p>
           </div>
           <div class="text-right">
-            <p class="text-sm font-semibold text-slate-900">{{ number_format((float)$pago->monto, 2) }} {{ $pago->moneda }}</p>
+            <p class="text-sm font-semibold text-gray-900">{{ number_format((float)$pago->monto, 2) }} {{ $pago->moneda }}</p>
             <span class="badge {{ $estadoTone }}">{{ $estadoLabel }}</span>
           </div>
         </div>
@@ -105,7 +105,7 @@
         @endif
 
         @if(!$ordenDisponible)
-          <p class="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
+          <p class="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600">
             La orden de cobro aún no está disponible. Solo se genera cuando la cita queda en estado realizada.
           </p>
         @elseif($pago->esEditablePorPaciente())
@@ -131,10 +131,10 @@
               <label class="form-label" for="comprobante_{{ $pago->id }}">Comprobante (JPG, PNG, WEBP, PDF · max. 5MB)</label>
               <input id="comprobante_{{ $pago->id }}" type="file" name="comprobante" class="form-input" accept=".jpg,.jpeg,.png,.webp,.pdf" data-comprobante-input @if(!$esTransferencia) disabled @endif>
               @error('comprobante')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
-              <p class="mt-1 text-xs text-slate-500">Para transferencia se requiere comprobante para enviar a verificación.</p>
+              <p class="mt-1 text-xs text-gray-500">Para transferencia se requiere comprobante para enviar a verificación.</p>
             </div>
 
-            <div class="md:col-span-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700 {{ $esEfectivo ? '' : 'hidden' }}" data-efectivo-msg>
+            <div class="md:col-span-2 rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700 {{ $esEfectivo ? '' : 'hidden' }}" data-efectivo-msg>
               Pago en clí­nica: este pago será confirmado por recepción al momento de su atención.
             </div>
 
@@ -145,11 +145,11 @@
             </div>
           </form>
         @else
-          <p class="mt-4 text-sm text-slate-500">Este pago no admite cambios en su estado actual.</p>
+          <p class="mt-4 text-sm text-gray-500">Este pago no admite cambios en su estado actual.</p>
         @endif
       </article>
     @empty
-      <x-ui.empty-state title="No hay pagos para mostrar." message="Las citas futuras y sus comprobantes de agendamiento no aparecen aquí. Solo se listan órdenes de pago reales.">
+      <x-ui.empty-state title="No hay órdenes de cobro para mostrar." message="Las citas futuras y sus comprobantes de agendamiento no aparecen aquí. Solo se listan órdenes de cobro reales.">
         <div class="mt-4 flex flex-wrap justify-center gap-3">
           <a class="btn btn-primary" href="{{ route('paciente.citas') }}">Ver mis citas</a>
           <a class="btn btn-outline" href="{{ route('paciente.crear-cita') }}">Agendar cita</a>

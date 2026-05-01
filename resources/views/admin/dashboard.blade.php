@@ -1,6 +1,6 @@
 ﻿@extends('layouts.admin')
 
-@section('title','Panel administrativo - Clínica Don Bosco')
+@section('title', 'Panel administrativo - '.$clinicIdentity->name())
 @section('header-title','Panel administrativo')
 @section('header-subtitle','Visión general de la operación')
 
@@ -13,7 +13,7 @@
             <div>
               Hay <strong>{{ $recordatoriosPendientes }}</strong> cita{{ $recordatoriosPendientes === 1 ? '' : 's' }} con recordatorio pendiente.
               @if(($recordatoriosSinTelefono ?? 0) > 0)
-                <span class="block text-xs text-slate-600">{{ $recordatoriosSinTelefono }} requiere{{ $recordatoriosSinTelefono === 1 ? '' : 'n' }} revisión porque no tiene{{ $recordatoriosSinTelefono === 1 ? '' : 'n' }} teléfono válido.</span>
+                <span class="block text-xs text-gray-600">{{ $recordatoriosSinTelefono }} requiere{{ $recordatoriosSinTelefono === 1 ? '' : 'n' }} revisión porque no tiene{{ $recordatoriosSinTelefono === 1 ? '' : 'n' }} teléfono válido.</span>
               @endif
             </div>
             <a href="{{ route('admin.recordatorios.index') }}" class="btn btn-primary btn-sm">
@@ -167,22 +167,22 @@
       </section>
 
       <aside class="card p-6">
-        <h3 class="text-lg font-semibold text-slate-900">Resumen de citas</h3>
+        <h3 class="text-lg font-semibold text-gray-900">Resumen de citas</h3>
         <div class="mt-4 space-y-4">
           <div>
-            <p class="text-xs uppercase tracking-widest text-slate-500">Agendadas</p>
-            <p id="kpi-agendadas" class="text-2xl font-semibold text-slate-900">{{ $totalCitas }}</p>
+            <p class="text-xs uppercase tracking-widest text-gray-500">Agendadas</p>
+            <p id="kpi-agendadas" class="text-2xl font-semibold text-gray-900">{{ $totalCitas }}</p>
           </div>
           <div>
-            <p class="text-xs uppercase tracking-widest text-slate-500">Completadas</p>
-            <p id="kpi-completadas" class="text-2xl font-semibold text-slate-900">{{ $totalCitasRealizadas }}</p>
+            <p class="text-xs uppercase tracking-widest text-gray-500">Completadas</p>
+            <p id="kpi-completadas" class="text-2xl font-semibold text-gray-900">{{ $totalCitasRealizadas }}</p>
           </div>
           <div>
-            <p class="text-xs uppercase tracking-widest text-slate-500">Canceladas</p>
-            <p id="kpi-canceladas" class="text-2xl font-semibold text-slate-900">{{ $totalCitasCanceladas }}</p>
+            <p class="text-xs uppercase tracking-widest text-gray-500">Canceladas</p>
+            <p id="kpi-canceladas" class="text-2xl font-semibold text-gray-900">{{ $totalCitasCanceladas }}</p>
           </div>
         </div>
-        <p class="mt-4 text-xs text-slate-500">Actualización en tiempo real.</p>
+        <p class="mt-4 text-xs text-gray-500">Actualización en tiempo real.</p>
       </aside>
     </div>
   </div>

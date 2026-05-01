@@ -21,7 +21,7 @@
       <div>
         <label for="diagnostico" class="form-label">Diagnóstico</label>
         <textarea id="diagnostico" name="diagnostico" required class="form-textarea">{{ old('diagnostico', $diagnosticoSugerido ?? '') }}</textarea>
-        <p class="mt-2 text-xs text-slate-500">Tomado de los diagnosticos de la nota clinica firmada.</p>
+        <p class="mt-2 text-xs text-gray-500">Tomado de los diagnosticos de la nota clinica firmada.</p>
         @error('diagnostico')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
 

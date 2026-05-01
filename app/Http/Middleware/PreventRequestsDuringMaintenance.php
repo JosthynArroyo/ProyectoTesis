@@ -13,8 +13,9 @@ class PreventRequestsDuringMaintenance
     public function handle(Request $request, Closure $next): Response
     {
         $settings = app(SiteSettingsService::class);
+        $maintenance = $settings->maintenanceSnapshot();
 
-        if (! $settings->getBool('maintenance.enabled', false)) {
+        if (! ($maintenance['enabled'] ?? false)) {
             return $next($request);
         }
 
@@ -31,8 +32,8 @@ class PreventRequestsDuringMaintenance
             return $next($request);
         }
 
-        $message = $settings->get('maintenance.message');
-        $until = $settings->get('maintenance.until');
+        $message = $maintenance['message'] ?? $settings->get('maintenance.message');
+        $until = $maintenance['until'] ?? $settings->get('maintenance.until');
 
         if ($request->expectsJson()) {
             return response()->json(['message' => $message], 503);

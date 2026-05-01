@@ -25,15 +25,15 @@
 
             <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 <div class="card p-4">
-                    <div class="text-xs uppercase tracking-widest text-slate-400">Doctor</div>
-                    <div class="text-sm font-semibold text-slate-900">{{ optional($cita->doctor)->name ?? 'Sin asignar' }}</div>
+                    <div class="text-xs uppercase tracking-widest text-gray-400">Doctor</div>
+                    <div class="text-sm font-semibold text-gray-900">{{ optional($cita->doctor)->name ?? 'Sin asignar' }}</div>
                 </div>
                 <div class="card p-4">
-                    <div class="text-xs uppercase tracking-widest text-slate-400">Especialidad</div>
-                    <div class="text-sm font-semibold text-slate-900">{{ optional($cita->especialidad)->nombre ?? '-' }}</div>
+                    <div class="text-xs uppercase tracking-widest text-gray-400">Especialidad</div>
+                    <div class="text-sm font-semibold text-gray-900">{{ optional($cita->especialidad)->nombre ?? '-' }}</div>
                 </div>
                 <div class="card p-4">
-                    <div class="text-xs uppercase tracking-widest text-slate-400">Estado</div>
+                    <div class="text-xs uppercase tracking-widest text-gray-400">Estado</div>
                     <div class="text-sm">
                         <span class="badge {{ $cita->estado === 'pendiente' ? 'warning' : ($cita->estado === 'confirmada' ? 'info' : ($cita->estado === 'realizada' ? 'success' : 'danger')) }}">
                             {{ $cita->estado === 'pendiente' ? 'En revision' : ($cita->estado === 'no_se_presento' ? 'No se presento' : ucfirst($cita->estado)) }}
@@ -77,7 +77,7 @@
                                 </button>
                             </div>
                             @error('fecha')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
-                            <div class="text-xs text-slate-500">Solo fechas futuras o la actual.</div>
+                            <div class="text-xs text-gray-500">Solo fechas futuras o la actual.</div>
                         </div>
 
                         <div>
@@ -89,7 +89,7 @@
                                 </option>
                             </select>
                             @error('hora')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
-                            <div class="text-xs text-slate-500" id="horaHelp">Se muestran solo horarios disponibles en formato de 24 horas.</div>
+                            <div class="text-xs text-gray-500" id="horaHelp">Se muestran solo horarios disponibles en formato de 24 horas.</div>
                         </div>
                     </div>
                 </section>
@@ -117,7 +117,7 @@
                                class="form-input"
                                placeholder="Ej: dolor de garganta">
                         @error('motivo_consulta')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
-                        <div class="mt-1 text-xs text-slate-500">Campo obligatorio, breve y en una sola linea (3-80 caracteres).</div>
+                        <div class="mt-1 text-xs text-gray-500">Campo obligatorio, breve y en una sola linea (3-80 caracteres).</div>
                         <div class="mt-2 flex flex-wrap gap-2" data-motivo-chip-group data-target="#motivo_consulta">
                             @foreach(['Fiebre','Dolor de garganta','Dolor abdominal','Tos','Dolor de cabeza','Nauseas','Diarrea','Malestar general'] as $chip)
                                 <button type="button" class="chip" data-motivo-chip="{{ $chip }}">{{ $chip }}</button>

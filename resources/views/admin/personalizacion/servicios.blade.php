@@ -11,7 +11,7 @@
     <x-ui.alert tone="success">{{ session('success') }}</x-ui.alert>
   @endif
 
-  <form class="form space-y-6" method="POST" action="{{ route('admin.personalizacion.servicios.update') }}">
+  <form class="form space-y-6" method="POST" action="{{ route('admin.personalizacion.servicios.update') }}" enctype="multipart/form-data">
     @csrf
     @method('PUT')
     @include('shared.personalizacion-servicios-form', ['especialidades' => $especialidades])

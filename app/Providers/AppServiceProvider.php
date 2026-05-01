@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Models\Cita;
 use App\Observers\CitaObserver;
+use App\Services\ClinicIdentityService;
 use App\Services\LandingWelcomeService;
 use App\Services\LayoutMetricsService;
 use App\Services\SiteSettingsService;
@@ -21,7 +22,11 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        //
+        $this->app->singleton(SiteSettingsService::class);
+        $this->app->singleton(LandingWelcomeService::class);
+        $this->app->singleton(ImageUrl::class);
+        $this->app->singleton(ClinicIdentityService::class);
+        $this->app->singleton(LayoutMetricsService::class);
     }
 
     public function boot(): void
@@ -63,9 +68,7 @@ class AppServiceProvider extends ServiceProvider
             Cita::observe(CitaObserver::class);
         }
 
-        View::share('siteSettings', app(SiteSettingsService::class));
-        View::share('landingWelcome', app(LandingWelcomeService::class));
-        View::share('imageUrl', app(ImageUrl::class));
+        $this->registerSharedViewContext();
 
         View::composer('components.layout.dashboard-header', function ($view): void {
             $view->with(
@@ -77,7 +80,7 @@ class AppServiceProvider extends ServiceProvider
         View::composer('components.email.layout', function ($view): void {
             $view->with(
                 'emailBranding',
-                app(SiteSettingsService::class)->emailBranding()
+                app(ClinicIdentityService::class)->emailBranding()
             );
         });
 
@@ -120,6 +123,41 @@ class AppServiceProvider extends ServiceProvider
             $key = $userId ? "user:{$userId}" : $request->ip();
 
             return Limit::perMinute(6)->by($key);
+        });
+    }
+
+    private function registerSharedViewContext(): void
+    {
+        View::composer([
+            'welcome',
+            'home',
+            'servicios',
+            'contacto',
+            'layouts.*',
+            'partials.*',
+            'admin.*',
+            'doctor.*',
+            'paciente.*',
+            'laboratorio.*',
+            'superadmin.*',
+            'shared.*',
+            'components.layout.*',
+            'emails.*',
+            'pdf.*',
+            'citas.*',
+        ], function ($view): void {
+            static $payload = null;
+
+            if ($payload === null) {
+                $payload = [
+                    'siteSettings' => app(SiteSettingsService::class),
+                    'landingWelcome' => app(LandingWelcomeService::class),
+                    'imageUrl' => app(ImageUrl::class),
+                    'clinicIdentity' => app(ClinicIdentityService::class),
+                ];
+            }
+
+            $view->with($payload);
         });
     }
 }

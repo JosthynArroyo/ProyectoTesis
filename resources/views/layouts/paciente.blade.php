@@ -24,15 +24,15 @@
     $panelBackFallbackUrl = trim($__env->yieldContent('back-url')) ?: $panelBackDefaultUrl;
     $sidebarRoutes = ['paciente.dashboard', 'paciente.perfil.edit', 'paciente.citas', 'paciente.pagos.index', 'paciente.historial', 'paciente.laboratorio.index', 'paciente.mensajes'];
 @endphp
-<body class="min-h-screen text-slate-900 dashboard-shell @yield('body-class')">
+<body class="min-h-screen text-gray-900 dashboard-shell @yield('body-class')">
     <div class="min-h-screen lg:flex dashboard-layout">
         @include('paciente.partials.sidebar')
-        <div class="fixed inset-0 z-30 hidden bg-slate-900/50 backdrop-blur-sm lg:hidden" data-sidebar-overlay></div>
+        <div class="fixed inset-0 z-30 hidden bg-gray-900/50 backdrop-blur-sm lg:hidden" data-sidebar-overlay></div>
 
         <div class="flex min-h-screen flex-1 flex-col">
             <x-layout.dashboard-header :title="$headerTitle" :subtitle="$headerSubtitle" role="Paciente" :profile-route="route('paciente.perfil.edit')" />
 
-            <div class="dashboard-content flex-1 pb-10">
+            <div class="dashboard-content dashboard-content--with-sidebar flex-1 pb-10">
                 <div class="page-shell min-w-0">
                     @if($hasRight)
                         <div class="grid gap-6 lg:grid-cols-[1fr_320px]">

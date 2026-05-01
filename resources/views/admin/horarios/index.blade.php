@@ -38,8 +38,8 @@
       <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <div>
           <label class="form-label" for="doctor_id">Doctor</label>
-          <div class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2">
-            <i class="ri-stethoscope-line text-slate-400"></i>
+          <div class="flex items-center gap-2 rounded-xl border border-gray-200 bg-white/90 px-3 py-2">
+            <i class="ri-stethoscope-line text-gray-400"></i>
             <select id="doctor_id" name="doctor_id" class="w-full bg-transparent text-sm">
               <option value="all" {{ $showAllDoctors ? 'selected' : '' }}>Todos los doctores</option>
               @foreach($doctores as $doctor)
@@ -53,8 +53,8 @@
 
         <div>
           <label class="form-label" for="week">Semana</label>
-          <div class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2">
-            <i class="ri-calendar-line text-slate-400"></i>
+          <div class="flex items-center gap-2 rounded-xl border border-gray-200 bg-white/90 px-3 py-2">
+            <i class="ri-calendar-line text-gray-400"></i>
             <input id="week" class="w-full bg-transparent text-sm" type="date" name="week" value="{{ request('week', $weekStart->toDateString()) }}" required>
           </div>
         </div>

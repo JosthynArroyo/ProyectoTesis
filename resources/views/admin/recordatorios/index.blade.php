@@ -74,27 +74,27 @@
                 @endphp
                 <tr id="recordatorio-{{ $recordatorio->id }}">
                   <td data-label="Paciente">
-                    <div class="text-sm font-semibold text-slate-900">{{ $cita?->paciente?->name ?? 'Paciente no disponible' }}</div>
+                    <div class="text-sm font-semibold text-gray-900">{{ $cita?->paciente?->name ?? 'Paciente no disponible' }}</div>
                   </td>
                   <td data-label="Doctor">
-                    <div class="text-sm font-semibold text-slate-900">{{ $cita?->doctor?->name ?? 'Sin doctor asignado' }}</div>
+                    <div class="text-sm font-semibold text-gray-900">{{ $cita?->doctor?->name ?? 'Sin doctor asignado' }}</div>
                   </td>
                   <td data-label="Especialidad">
-                    <div class="text-sm text-slate-700">{{ $cita?->especialidad?->nombre ?? 'Sin especialidad' }}</div>
+                    <div class="text-sm text-gray-700">{{ $cita?->especialidad?->nombre ?? 'Sin especialidad' }}</div>
                   </td>
                   <td data-label="Fecha">
-                    <div class="text-sm text-slate-700">{{ optional($cita?->fecha)->format('d/m/Y') ?? '-' }}</div>
+                    <div class="text-sm text-gray-700">{{ optional($cita?->fecha)->format('d/m/Y') ?? '-' }}</div>
                   </td>
                   <td data-label="Hora">
-                    <div class="text-sm text-slate-700">{{ $recordatorio->cita_inicio_at?->format('H:i') ?? '-' }}</div>
+                    <div class="text-sm text-gray-700">{{ $recordatorio->cita_inicio_at?->format('H:i') ?? '-' }}</div>
                   </td>
                   <td data-label="Estado de la cita">
                     <x-ui.badge :tone="$estadoCitaTone">{{ $estadoCitaLabel }}</x-ui.badge>
                   </td>
                   <td data-label="Telefono">
-                    <div class="text-sm font-semibold text-slate-900">{{ $cita?->paciente?->telefono ?? 'No registrado' }}</div>
+                    <div class="text-sm font-semibold text-gray-900">{{ $cita?->paciente?->telefono ?? 'No registrado' }}</div>
                     @if($recordatorio->telefono_normalizado)
-                      <div class="mt-1 text-xs text-slate-500">WhatsApp: {{ $recordatorio->telefono_normalizado }}</div>
+                      <div class="mt-1 text-xs text-gray-500">WhatsApp: {{ $recordatorio->telefono_normalizado }}</div>
                     @else
                       <div class="mt-1">
                         <x-ui.badge tone="neutral">Sin telefono valido</x-ui.badge>
@@ -103,7 +103,7 @@
                   </td>
                   <td data-label="Estado del recordatorio">
                     <x-ui.badge tone="warning">Pendiente</x-ui.badge>
-                    <div class="mt-1 text-xs text-slate-500">Objetivo: {{ $recordatorio->recordar_en?->format('d/m/Y H:i') ?? '-' }}</div>
+                    <div class="mt-1 text-xs text-gray-500">Objetivo: {{ $recordatorio->recordar_en?->format('d/m/Y H:i') ?? '-' }}</div>
                     @if(! $puedeGestionar)
                       <div class="mt-1 text-xs text-amber-600">Se habilita desde el dia anterior segun la regla activa.</div>
                     @endif
@@ -179,7 +179,7 @@
                       @endif
                     </div>
 
-                    <p class="mt-2 text-left text-xs text-slate-500">
+                    <p class="mt-2 text-left text-xs text-gray-500">
                       {{ $puedeGestionar
                           ? 'El recordatorio ya puede gestionarse.'
                           : 'La cita permanece visible como pendiente, pero su envio se habilita solo cuando entra en la ventana del dia anterior.' }}
@@ -192,7 +192,7 @@
           </table>
         </div>
 
-        <div class="mt-6 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500">
+        <div class="mt-6 flex flex-wrap items-center justify-between gap-3 text-sm text-gray-500">
           <div>Pagina {{ $recordatorios->currentPage() }} de {{ $recordatorios->lastPage() }}</div>
           {!! $recordatorios->withQueryString()->links() !!}
         </div>

@@ -231,13 +231,17 @@ class HorarioController extends Controller
                 if ($this->overlapExists((int) $data['doctor_id'], $fecha, $hi, $hf)) {
                     $omitidos++;
                 } else {
-                    Horario::create([
+                    $horario = Horario::firstOrCreate([
                         'doctor_id' => (int) $data['doctor_id'],
                         'fecha' => $fecha,          // idealmente columna DATE
                         'hora_inicio' => $hi,
                         'hora_fin' => $hf,
                     ]);
-                    $creados++;
+                    if ($horario->wasRecentlyCreated) {
+                        $creados++;
+                    } else {
+                        $omitidos++;
+                    }
                 }
 
                 $cursor->addDay();

@@ -10,10 +10,12 @@ use App\Http\Controllers\Admin\PersonalizacionController as AdminPersonalizacion
 use App\Http\Controllers\Admin\RecordatorioController as AdminRecordatorioController;
 use App\Http\Controllers\Admin\UserStatusController as AdminUserStatusController;
 use App\Http\Controllers\Api\DoctorSlotController;
+use App\Http\Controllers\Api\SlotHoldController;
 use App\Http\Controllers\Api\TarifaController;
 use App\Http\Controllers\ChatBotController;
 use App\Http\Controllers\CitaComprobanteController;
 use App\Http\Controllers\CitaController;
+use App\Http\Controllers\DemoDashboardController;
 use App\Http\Controllers\CitaPrioridadController;
 use App\Http\Controllers\ContactoController;
 use App\Http\Controllers\Doctor\AdminController as DoctorDashboardController;
@@ -25,7 +27,7 @@ use App\Http\Controllers\Doctor\RecetaController;
 use App\Http\Controllers\Doctor\SoapController as DoctorSoapController;
 use App\Http\Controllers\EmailCitaActionController;
 use App\Http\Controllers\ExportCitasController;
-use App\Http\Controllers\FaceAuthController;
+
 use App\Http\Controllers\Laboratorio\AdminController as LaboratorioDashboardController;
 use App\Http\Controllers\Laboratorio\HorarioController as LaboratorioHorarioController;
 use App\Http\Controllers\Laboratorio\OrdenController as LaboratorioOrdenController;
@@ -54,6 +56,9 @@ Route::get('/api/doctor/{doctor}/fecha/{fecha}/slots', DoctorSlotController::cla
     ->whereNumber('doctor')->where('fecha', '\d{4}-\d{2}-\d{2}')
     ->name('api.doctor.slots');
 
+Route::post('/api/slot-holds', [SlotHoldController::class, 'store'])
+    ->name('api.slot-holds.store');
+
 // Página principal
 Route::get('/', [PublicPageController::class, 'welcome'])->name('home.index');
 
@@ -80,6 +85,67 @@ Route::get('/servicios', [PublicPageController::class, 'servicios'])->name('serv
 Route::middleware('signed')->get('/email/cita/{cita}/{rol}/{accion}', EmailCitaActionController::class)
     ->where('rol', '^(paciente|doctor)$')->where('accion', '^(aceptar|cancelar)$')
     ->name('email.cita.action');
+
+// =========================== DEMO (Pública) ===========================
+Route::prefix('demo')->name('demo.')->group(function () {
+    Route::get('/', [DemoDashboardController::class, 'index'])->name('index');
+    
+    // Superadmin
+    Route::prefix('superadmin')->name('superadmin.')->group(function () {
+        Route::get('/', [DemoDashboardController::class, 'superadminDashboard'])->name('dashboard');
+        Route::get('/administradores', [DemoDashboardController::class, 'superadminAdministradores'])->name('administradores');
+        Route::get('/usuarios', [DemoDashboardController::class, 'superadminUsuarios'])->name('usuarios');
+        Route::get('/solicitudes', [DemoDashboardController::class, 'superadminSolicitudes'])->name('solicitudes');
+        Route::get('/personalizacion', [DemoDashboardController::class, 'superadminPersonalizacion'])->name('personalizacion');
+        Route::get('/mantenimiento', [DemoDashboardController::class, 'superadminMantenimiento'])->name('mantenimiento');
+    });
+
+    // Admin
+    Route::prefix('admin')->name('admin.')->group(function () {
+        Route::get('/', [DemoDashboardController::class, 'adminDashboard'])->name('dashboard');
+        Route::get('/usuarios', [DemoDashboardController::class, 'adminUsuarios'])->name('usuarios');
+        Route::get('/registrar-usuario', [DemoDashboardController::class, 'adminRegistrarUsuario'])->name('registrar-usuario');
+        Route::get('/personalizacion', [DemoDashboardController::class, 'adminPersonalizacion'])->name('personalizacion');
+        Route::get('/historial-clinico', [DemoDashboardController::class, 'adminHistorialClinico'])->name('historial-clinico');
+        Route::get('/horarios', [DemoDashboardController::class, 'adminHorarios'])->name('horarios');
+        Route::get('/recordatorios', [DemoDashboardController::class, 'adminRecordatorios'])->name('recordatorios');
+        Route::get('/agendar-manualmente', [DemoDashboardController::class, 'adminAgendarManualmente'])->name('agendar-manualmente');
+        Route::get('/cambios-citas', [DemoDashboardController::class, 'adminCambiosCitas'])->name('cambios-citas');
+        Route::get('/gestion-pagos', [DemoDashboardController::class, 'adminGestionPagos'])->name('gestion-pagos');
+        Route::get('/perfil', [DemoDashboardController::class, 'adminPerfil'])->name('perfil');
+        Route::get('/notificaciones-contacto', [DemoDashboardController::class, 'adminNotificacionesContacto'])->name('notificaciones-contacto');
+    });
+
+    // Paciente
+    Route::prefix('paciente')->name('paciente.')->group(function () {
+        Route::get('/', [DemoDashboardController::class, 'pacienteDashboard'])->name('dashboard');
+        Route::get('/citas', [DemoDashboardController::class, 'pacienteCitas'])->name('citas');
+        Route::get('/pagos', [DemoDashboardController::class, 'pacientePagos'])->name('pagos');
+        Route::get('/historial-clinico', [DemoDashboardController::class, 'pacienteHistorialClinico'])->name('historial-clinico');
+        Route::get('/resultados', [DemoDashboardController::class, 'pacienteResultados'])->name('resultados');
+        Route::get('/solicitar-examen', [DemoDashboardController::class, 'pacienteSolicitarExamen'])->name('solicitar-examen');
+        Route::get('/agendar-cita', [DemoDashboardController::class, 'pacienteAgendarCita'])->name('agendar-cita');
+        Route::get('/perfil', [DemoDashboardController::class, 'pacientePerfil'])->name('perfil');
+    });
+
+    // Doctor
+    Route::prefix('doctor')->name('doctor.')->group(function () {
+        Route::get('/', [DemoDashboardController::class, 'doctorDashboard'])->name('dashboard');
+        Route::get('/citas', [DemoDashboardController::class, 'doctorCitas'])->name('citas');
+        Route::get('/pacientes', [DemoDashboardController::class, 'doctorPacientes'])->name('pacientes');
+        Route::get('/historial-recetas', [DemoDashboardController::class, 'doctorHistorialRecetas'])->name('historial-recetas');
+        Route::get('/agenda-semanal', [DemoDashboardController::class, 'doctorAgendaSemanal'])->name('agenda-semanal');
+        Route::get('/mi-horario', [DemoDashboardController::class, 'doctorMiHorario'])->name('mi-horario');
+        Route::get('/perfil', [DemoDashboardController::class, 'doctorPerfil'])->name('perfil');
+    });
+
+    // Laboratorio
+    Route::prefix('laboratorio')->name('laboratorio.')->group(function () {
+        Route::get('/', [DemoDashboardController::class, 'laboratorioDashboard'])->name('dashboard');
+        Route::get('/citas-resultados', [DemoDashboardController::class, 'laboratorioCitasResultados'])->name('citas-resultados');
+        Route::get('/horarios', [DemoDashboardController::class, 'laboratorioHorarios'])->name('horarios');
+    });
+});
 
 Route::middleware('auth')
     ->get('/cita/comprobante/{token}', [CitaComprobanteController::class, 'showByToken'])
@@ -394,16 +460,11 @@ Route::middleware('throttle:chatbot')->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
-    Route::get('/face/enroll', [FaceAuthController::class, 'showEnrollment'])->name('face.enroll');
-    Route::post('/face/enroll', [FaceAuthController::class, 'storeEnrollment'])
-        ->middleware('throttle:face-enroll')
-        ->name('face.enroll.store');
+
     Route::patch('/panel/theme', [PanelThemeController::class, 'update'])->name('panel.theme.update');
 });
 
-Route::middleware('guest')->group(function () {
-    Route::post('/face/login', [FaceAuthController::class, 'verifyLogin'])->name('face.login');
-});
+
 
 Route::middleware('auth')->group(function () {
     Route::get('/cobro/{token}', [PagoLookupController::class, 'showByToken'])->name('pagos.token.show');

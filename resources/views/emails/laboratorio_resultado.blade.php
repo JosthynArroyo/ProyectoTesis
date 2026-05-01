@@ -19,7 +19,7 @@
     title="Tus resultados ya están disponibles"
     intro="Adjuntamos el informe en PDF para que puedas revisarlo y también consultarlo desde tu panel cuando lo necesites."
     badge="Resultado listo para descargar"
-    preheader="Tus resultados de laboratorio ya están disponibles en Clínica Don Bosco."
+    :preheader="'Tus resultados de laboratorio ya están disponibles en '.$clinicIdentity->name().'.'"
     footer-note="Si tienes dudas sobre tus resultados, agenda una cita con tu profesional tratante para su interpretación."
 >
     <p style="margin:0 0 22px; font-size:15px; line-height:1.7; color:#334155;">

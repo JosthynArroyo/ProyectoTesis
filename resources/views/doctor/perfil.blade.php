@@ -21,14 +21,14 @@
               src="{{ $avatarImage['thumb'] }}"
               @if($avatarImage['srcset']) srcset="{{ $avatarImage['srcset'] }}" sizes="128px" @endif
               alt="Avatar"
-              class="doctor-avatar-photo h-32 w-32 rounded-lg border border-slate-200"
+              class="doctor-avatar-photo h-32 w-32 rounded-lg border border-gray-200"
               loading="eager"
               decoding="async"
             >
             <button type="button" class="btn btn-primary btn-sm absolute inset-x-2 bottom-2" id="changePhoto">Cambiar foto</button>
           </div>
-          <h2 class="mt-4 text-lg font-semibold text-slate-900">{{ $user->name }}</h2>
-          <span class="text-sm text-slate-500">{{ $user->email }}</span>
+          <h2 class="mt-4 text-lg font-semibold text-gray-900">{{ $user->name }}</h2>
+          <span class="text-sm text-gray-500">{{ $user->email }}</span>
         </div>
         @php $especialidades = collect($user->especialidades ?? [])->pluck('nombre')->all(); @endphp
         @if(count($especialidades))
@@ -38,7 +38,7 @@
             @endforeach
           </div>
         @endif
-        <div class="mt-6 space-y-2 text-sm text-slate-600">
+        <div class="mt-6 space-y-2 text-sm text-gray-600">
           @if($user->telefono)
             <div class="flex items-center gap-2"><i class="ri-phone-line"></i>{{ $user->telefono }}</div>
           @endif
@@ -53,8 +53,8 @@
 
       <section class="card p-6">
         <div>
-          <h3 class="text-lg font-semibold text-slate-900">Datos personales y profesionales</h3>
-          <span class="text-sm text-slate-500">Todos los campos pueden editarse en cualquier momento.</span>
+          <h3 class="text-lg font-semibold text-gray-900">Datos personales y profesionales</h3>
+          <span class="text-sm text-gray-500">Todos los campos pueden editarse en cualquier momento.</span>
         </div>
 
         @if(session('success'))
@@ -66,7 +66,7 @@
           <input id="avatarInput" class="hidden" type="file" name="avatar" accept="image/png,image/jpeg,image/jpg,image/webp,image/svg+xml">
 
           <section>
-            <h4 class="text-sm font-semibold text-slate-700">Identidad</h4>
+            <h4 class="text-sm font-semibold text-gray-700">Identidad</h4>
             <div class="mt-4 grid gap-4 md:grid-cols-2">
               <div>
                 <label class="form-label">Nombre</label>
@@ -82,8 +82,8 @@
                 <label class="form-label">Teléfono</label>
                 <input class="form-input" type="tel" name="telefono" value="{{ old('telefono', $user->telefono) }}"
                        inputmode="numeric" pattern="\d{10}" minlength="10" maxlength="10" data-digits="10"
-                       placeholder="0998740927" title="Debe contener exactamente 10 dígitos" required>
-                <div class="text-xs text-slate-500">Formato: 10 dígitos.</div>
+                       placeholder="0991234567" title="Debe contener exactamente 10 dígitos" required>
+                <div class="text-xs text-gray-500">Formato: 10 dígitos.</div>
                 @error('telefono')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
               </div>
               <div>
@@ -91,14 +91,14 @@
                 <input class="form-input" type="text" name="dni" value="{{ old('dni', $user->dni) }}"
                        inputmode="numeric" pattern="\d{10}" minlength="10" maxlength="10" data-digits="10"
                        placeholder="1723456789" title="Debe contener exactamente 10 dígitos" required>
-                <div class="text-xs text-slate-500">Exactamente 10 dígitos.</div>
+                <div class="text-xs text-gray-500">Exactamente 10 dígitos.</div>
                 @error('dni')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
               </div>
             </div>
           </section>
 
           <section>
-            <h4 class="text-sm font-semibold text-slate-700">Información adicional</h4>
+            <h4 class="text-sm font-semibold text-gray-700">Información adicional</h4>
             <div class="mt-4 grid gap-4 md:grid-cols-2">
               <div>
                 <label class="form-label">Dirección</label>
@@ -127,7 +127,7 @@
                 <input class="form-input" type="number" name="precio_consulta" step="0.01" min="0"
                        value="{{ old('precio_consulta', $user->precio_consulta) }}"
                        placeholder="Ej: 25.00" required>
-                <div class="text-xs text-slate-500">Moneda fija: USD.</div>
+                <div class="text-xs text-gray-500">Moneda fija: USD.</div>
                 @error('precio_consulta')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
               </div>
               <input type="hidden" name="moneda" value="USD">
@@ -135,35 +135,35 @@
           </section>
 
           <section>
-            <h4 class="text-sm font-semibold text-slate-700">Seguridad</h4>
+            <h4 class="text-sm font-semibold text-gray-700">Seguridad</h4>
             <div class="mt-4 grid gap-4 md:grid-cols-2">
               <div>
                 <label class="form-label">Contraseña actual</label>
-                <div class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2">
+                <div class="flex items-center gap-2 rounded-xl border border-gray-200 bg-white/90 px-3 py-2">
                   <input class="flex-1 bg-transparent text-sm" type="password" name="current_password" id="current_password" autocomplete="current-password" placeholder="••••••••">
                   <button type="button" class="btn-eye" data-target="#current_password" aria-label="Mostrar u ocultar">
                     <i class="ri-eye-line"></i>
                   </button>
                 </div>
-                <div class="text-xs text-slate-500">Necesaria para confirmar el cambio.</div>
+                <div class="text-xs text-gray-500">Necesaria para confirmar el cambio.</div>
                 @error('current_password')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
               </div>
 
               <div>
                 <label class="form-label">Nueva contraseña</label>
-                <div class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2">
+                <div class="flex items-center gap-2 rounded-xl border border-gray-200 bg-white/90 px-3 py-2">
                   <input class="flex-1 bg-transparent text-sm" type="password" name="password" id="password" autocomplete="new-password" minlength="8" placeholder="Mín. 8 caracteres">
                   <button type="button" class="btn-eye" data-target="#password" aria-label="Mostrar u ocultar">
                     <i class="ri-eye-line"></i>
                   </button>
                 </div>
-                <div class="text-xs text-slate-500">Mínimo 8 caracteres. Debe ser distinta a la actual.</div>
+                <div class="text-xs text-gray-500">Mínimo 8 caracteres. Debe ser distinta a la actual.</div>
                 @error('password')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
               </div>
 
               <div>
                 <label class="form-label">Confirmar nueva contraseña</label>
-                <div class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2">
+                <div class="flex items-center gap-2 rounded-xl border border-gray-200 bg-white/90 px-3 py-2">
                   <input class="flex-1 bg-transparent text-sm" type="password" name="password_confirmation" id="password_confirmation" autocomplete="new-password" minlength="8" placeholder="Repite la contraseña">
                   <button type="button" class="btn-eye" data-target="#password_confirmation" aria-label="Mostrar u ocultar">
                     <i class="ri-eye-line"></i>
@@ -174,44 +174,7 @@
             </div>
           </section>
 
-          <section id="perfil-face">
-            <h4 class="text-sm font-semibold text-slate-700">Reconocimiento facial</h4>
-            <p class="text-xs text-slate-500">Registro facial para inicio de sesión. Se requiere acceso a la cámara.</p>
-            <div class="mt-4 grid gap-4 md:grid-cols-[1.2fr_0.8fr]">
-              <div class="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-900">
-                <video id="faceEnrollVideo" autoplay muted playsinline class="h-56 w-full object-cover"></video>
-                <div id="faceEnrollOverlay" class="absolute inset-0 flex items-center justify-center bg-slate-900/60 text-sm text-white">
-                  {{ $user->faceProfile ? 'Rostro registrado.' : 'Cámara lista para captura.' }}
-                </div>
-              </div>
-              <div class="space-y-3">
-                <button
-                  type="button"
-                  class="btn btn-primary w-full"
-                  id="faceEnrollButton"
-                  data-enroll-url="{{ route('face.enroll') }}"
-                  data-csrf="{{ csrf_token() }}"
-                  data-models-url="{{ asset('models') }}"
-                  data-has-face="{{ $user->faceProfile ? '1' : '0' }}"
-                  data-saved-status="{{ $user->faceProfile ? 'Rostro registrado.' : '' }}"
-                  data-return-url="{{ route('doctor.perfil.edit') }}"
-                  data-return-anchor="perfil-face"
-                >
-                  {{ $user->faceProfile ? 'Actualizar rostro' : 'Guardar rostro' }}
-                </button>
-                <div id="faceEnrollProgress" class="h-2 overflow-hidden rounded-full bg-slate-200" aria-hidden="true">
-                  <span class="face-enroll-progress__bar block h-2 w-0 bg-teal-600"></span>
-                </div>
-                <p id="faceEnrollStatus" class="text-xs text-slate-500">
-                  @if(request('face') === 'ok')
-                    Rostro registrado.
-                  @elseif(request('face') === 'error')
-                    No se pudo completar la captura, intenta de nuevo.
-                  @endif
-                </p>
-              </div>
-            </div>
-          </section>
+
 
           <x-ui.form-actions>
             <button type="submit" class="btn btn-primary">Guardar cambios</button>

@@ -12,7 +12,7 @@
     :title="$titulo"
     :intro="'Adjuntamos el documento en PDF para que lo conserves y lo consultes cuando lo necesites.'"
     badge="Documento adjunto"
-    preheader="Tu receta médica ya está disponible en Clínica Don Bosco."
+    :preheader="'Tu receta médica ya está disponible en '.$clinicIdentity->name().'.'"
     footer-note="Sigue únicamente las indicaciones emitidas por tu profesional de salud. Si presentas molestias o dudas sobre la medicación, agenda una revisión médica."
 >
     <p style="margin:0 0 22px; font-size:15px; line-height:1.7; color:#334155;">

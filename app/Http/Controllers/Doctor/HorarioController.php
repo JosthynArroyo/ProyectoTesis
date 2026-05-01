@@ -34,11 +34,12 @@ class HorarioController extends Controller
             'intervalo_minutos' => ['required', 'integer', 'in:10,15,20,30,45,60'],
         ]);
 
-        Horario::create([
+        Horario::firstOrCreate([
             'doctor_id' => Auth::id(),
             'fecha' => $data['fecha'],
             'hora_inicio' => $data['hora_inicio'],
             'hora_fin' => $data['hora_fin'],
+        ], [
             'intervalo_minutos' => $data['intervalo_minutos'],
         ]);
 

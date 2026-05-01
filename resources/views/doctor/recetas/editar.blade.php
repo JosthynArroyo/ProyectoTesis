@@ -58,7 +58,7 @@
       </div>
     </div>
 
-    <div class="flex flex-wrap items-center gap-4 text-sm text-slate-600">
+    <div class="flex flex-wrap items-center gap-4 text-sm text-gray-600">
       <label class="flex items-center gap-2">
         <input type="hidden" name="regenerar_pdf" value="0">
         <input type="checkbox" name="regenerar_pdf" value="1" {{ old('regenerar_pdf') ? 'checked' : '' }}>
@@ -72,10 +72,10 @@
       @error('regenerar_pdf')<small class="text-xs text-rose-600">{{ $message }}</small>@enderror
       @error('reenviar')<small class="text-xs text-rose-600">{{ $message }}</small>@enderror
       @if($receta->pdf_path)
-        <small class="text-xs text-slate-500">Archivo actual: {{ $receta->pdf_path }}</small>
+        <small class="text-xs text-gray-500">Archivo actual: {{ $receta->pdf_path }}</small>
       @endif
     </div>
-    <div id="reenviar-note" class="text-xs text-slate-500">Al guardar, se enviará la <strong>receta actualizada</strong> al paciente.</div>
+    <div id="reenviar-note" class="text-xs text-gray-500">Al guardar, se enviará la <strong>receta actualizada</strong> al paciente.</div>
 
     <x-ui.form-actions>
       <x-slot:left>

@@ -30,6 +30,7 @@ class PagoController extends Controller
                 'receipt:id,pago_id,folio_recibo,emitido_en,pdf_path',
             ])
             ->where('paciente_id', $user->id)
+            ->conOrdenCobroReal()
             ->when(in_array($estado, Pago::ESTADOS, true), function ($query) use ($estado) {
                 $query->where('estado', $estado);
             })

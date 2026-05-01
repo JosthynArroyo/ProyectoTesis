@@ -35,8 +35,8 @@
     <section class="card p-6">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 class="text-lg font-semibold text-slate-900">Solicitud de examen</h2>
-          <p class="text-sm text-slate-500">El paciente solo confirma. El sistema gestiona preparacion e indicaciones.</p>
+          <h2 class="text-lg font-semibold text-gray-900">Solicitud de examen</h2>
+          <p class="text-sm text-gray-500">El paciente solo confirma. El sistema gestiona preparacion e indicaciones.</p>
         </div>
         <span class="badge info" data-origin-badge>Con orden medica</span>
       </div>
@@ -45,13 +45,13 @@
         @csrf
 
         <div class="flex flex-wrap gap-3">
-          <label class="flex items-center gap-2 rounded-full border border-slate-200 px-3 py-2 text-sm">
+          <label class="flex items-center gap-2 rounded-full border border-gray-200 px-3 py-2 text-sm">
             <input type="radio" name="source" value="{{ \App\Models\LabOrder::SOURCE_MEDICAL_ORDER }}"
               {{ $selectedSource === \App\Models\LabOrder::SOURCE_MEDICAL_ORDER ? 'checked' : '' }}
               {{ $medicalOrders->isEmpty() || !($laboratorioDisponible ?? false) ? 'disabled' : '' }} required>
             <span>Con orden medica</span>
           </label>
-          <label class="flex items-center gap-2 rounded-full border border-slate-200 px-3 py-2 text-sm">
+          <label class="flex items-center gap-2 rounded-full border border-gray-200 px-3 py-2 text-sm">
             <input type="radio" name="source" value="{{ \App\Models\LabOrder::SOURCE_ROUTINE }}"
               {{ $selectedSource === \App\Models\LabOrder::SOURCE_ROUTINE ? 'checked' : '' }}
               {{ !($laboratorioDisponible ?? false) ? 'disabled' : '' }} required>
@@ -60,7 +60,7 @@
         </div>
         @error('source')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
 
-        <div class="text-xs text-slate-500">
+        <div class="text-xs text-gray-500">
           @if($medicalOrders->isEmpty())
             <span>Sin ordenes medicas disponibles. Puedes solicitar examenes de rutina.</span>
           @endif
@@ -118,36 +118,36 @@
             @error('priority')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
           </div>
 
-          <div class="rounded-2xl border border-slate-200 bg-white/90 p-4">
+          <div class="rounded-2xl border border-gray-200 bg-white/90 p-4">
             <div class="info-head">
-              <h4 class="text-sm font-semibold text-slate-900">Preparacion del examen</h4>
-              <p class="text-xs text-slate-500">Generada automaticamente segun el examen.</p>
+              <h4 class="text-sm font-semibold text-gray-900">Preparacion del examen</h4>
+              <p class="text-xs text-gray-500">Generada automaticamente segun el examen.</p>
             </div>
-            <p class="mt-2 text-xs text-slate-600" data-prep-text>Selecciona un examen para ver la preparacion.</p>
+            <p class="mt-2 text-xs text-gray-600" data-prep-text>Selecciona un examen para ver la preparacion.</p>
           </div>
 
-          <div class="rounded-2xl border border-slate-200 bg-white/90 p-4">
+          <div class="rounded-2xl border border-gray-200 bg-white/90 p-4">
             <div class="info-head">
-              <h4 class="text-sm font-semibold text-slate-900">Indicaciones del examen</h4>
-              <p class="text-xs text-slate-500">Indicaciones estandar del laboratorio.</p>
+              <h4 class="text-sm font-semibold text-gray-900">Indicaciones del examen</h4>
+              <p class="text-xs text-gray-500">Indicaciones estandar del laboratorio.</p>
             </div>
-            <p class="mt-2 text-xs text-slate-600" data-exam-indications>Selecciona un examen para ver las indicaciones.</p>
+            <p class="mt-2 text-xs text-gray-600" data-exam-indications>Selecciona un examen para ver las indicaciones.</p>
           </div>
 
-          <div class="rounded-2xl border border-slate-200 bg-white/90 p-4" data-origin-section="MEDICAL_ORDER">
+          <div class="rounded-2xl border border-gray-200 bg-white/90 p-4" data-origin-section="MEDICAL_ORDER">
             <div class="info-head">
-              <h4 class="text-sm font-semibold text-slate-900">Indicaciones medicas</h4>
-              <p class="text-xs text-slate-500">Definidas por tu doctor.</p>
+              <h4 class="text-sm font-semibold text-gray-900">Indicaciones medicas</h4>
+              <p class="text-xs text-gray-500">Definidas por tu doctor.</p>
             </div>
-            <p class="mt-2 text-xs text-slate-600" data-doctor-notes>Sin indicaciones adicionales.</p>
+            <p class="mt-2 text-xs text-gray-600" data-doctor-notes>Sin indicaciones adicionales.</p>
           </div>
 
-          <div class="rounded-2xl border border-slate-200 bg-white/90 p-4" data-origin-section="ROUTINE">
+          <div class="rounded-2xl border border-gray-200 bg-white/90 p-4" data-origin-section="ROUTINE">
             <div class="info-head">
-              <h4 class="text-sm font-semibold text-slate-900">Indicaciones medicas</h4>
-              <p class="text-xs text-slate-500">Examen de rutina (sin orden medica).</p>
+              <h4 class="text-sm font-semibold text-gray-900">Indicaciones medicas</h4>
+              <p class="text-xs text-gray-500">Examen de rutina (sin orden medica).</p>
             </div>
-            <p class="mt-2 text-xs text-slate-600">No hay indicaciones medicas personalizadas para esta solicitud.</p>
+            <p class="mt-2 text-xs text-gray-600">No hay indicaciones medicas personalizadas para esta solicitud.</p>
           </div>
         </div>
 

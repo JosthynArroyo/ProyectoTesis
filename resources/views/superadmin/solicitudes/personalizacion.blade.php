@@ -48,9 +48,9 @@
           <tr>
             <td class="text-center align-middle" data-label="Admin">
               <div class="mx-auto text-center">
-                <p class="font-semibold text-slate-900">{{ optional($req->user)->name ?? '-' }}</p>
-                <p class="text-xs text-slate-500">{{ optional($req->user)->email ?? '' }}</p>
-                <p class="text-xs text-slate-400">Solicitado: {{ $req->created_at->format('Y-m-d H:i') }}</p>
+                <p class="font-semibold text-gray-900">{{ optional($req->user)->name ?? '-' }}</p>
+                <p class="text-xs text-gray-500">{{ optional($req->user)->email ?? '' }}</p>
+                <p class="text-xs text-gray-400">Solicitado: {{ $req->created_at->format('Y-m-d H:i') }}</p>
               </div>
             </td>
             <td class="text-center align-middle" data-label="Estado">
@@ -66,11 +66,11 @@
                 <span class="badge info">Pendiente</span>
               @endif
               @if($req->notes)
-                <div class="mt-2 text-center text-xs text-slate-500">Nota: {{ $req->notes }}</div>
+                <div class="mt-2 text-center text-xs text-gray-500">Nota: {{ $req->notes }}</div>
               @endif
             </td>
             <td class="text-center align-middle" data-label="Expira">
-              <span class="text-sm text-slate-600">{{ $expira ?? 'Sin vencimiento' }}</span>
+              <span class="text-sm text-gray-600">{{ $expira ?? 'Sin vencimiento' }}</span>
             </td>
             <td class="text-center align-middle" data-label="Acciones">
               <div class="table-actions flex-col items-center justify-center min-w-0">
@@ -83,7 +83,7 @@
                     @if($rowError)
                       @error('duration_hours')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
                     @endif
-                    <label class="flex items-center justify-center gap-2 text-xs text-slate-500">
+                    <label class="flex items-center justify-center gap-2 text-xs text-gray-500">
                       <input type="hidden" name="no_expire" value="0">
                       <input type="checkbox" name="no_expire" value="1"> Sin vencimiento
                     </label>
@@ -113,7 +113,7 @@
                 @elseif($isExpired)
                   <span class="text-xs font-medium text-amber-600">Acceso expirado</span>
                 @else
-                  <span class="text-xs text-slate-400">Sin acciones disponibles</span>
+                  <span class="text-xs text-gray-400">Sin acciones disponibles</span>
                 @endif
               </div>
             </td>
@@ -121,14 +121,14 @@
         @empty
           <tr>
             <td colspan="4">
-              <div class="p-6 text-center text-sm text-slate-500">No hay solicitudes registradas.</div>
+              <div class="p-6 text-center text-sm text-gray-500">No hay solicitudes registradas.</div>
             </td>
           </tr>
         @endforelse
         </tbody>
       </table>
     </div>
-    <div class="flex flex-wrap items-center justify-between gap-4 px-6 py-4 text-sm text-slate-500">
+    <div class="flex flex-wrap items-center justify-between gap-4 px-6 py-4 text-sm text-gray-500">
       <div>
         @if ($requests->hasPages())
           Página {{ $requests->currentPage() }} de {{ $requests->lastPage() }}

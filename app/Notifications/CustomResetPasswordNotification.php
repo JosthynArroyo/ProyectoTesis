@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Services\ClinicIdentityService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
@@ -30,7 +31,7 @@ class CustomResetPasswordNotification extends Notification
         ], false));
 
         return (new MailMessage)
-            ->subject('Recuperación de contraseña - Clínica Don Bosco')
+            ->subject(app(ClinicIdentityService::class)->subject('Recuperacion de contrasena'))
             ->view('emails.auth.password_reset', [
                 'user' => $notifiable,
                 'resetUrl' => $resetUrl,

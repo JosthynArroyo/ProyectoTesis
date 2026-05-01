@@ -4,9 +4,9 @@
 <div class="space-y-6">
   <section class="card p-6">
     <div>
-      <p class="text-xs uppercase tracking-widest text-slate-500">Cuenta</p>
-      <h3 class="mt-2 text-lg font-semibold text-slate-900">Datos de acceso</h3>
-      <p class="text-sm text-slate-500">Credenciales del administrador.</p>
+      <p class="text-xs uppercase tracking-widest text-gray-500">Cuenta</p>
+      <h3 class="mt-2 text-lg font-semibold text-gray-900">Datos de acceso</h3>
+      <p class="text-sm text-gray-500">Credenciales del administrador.</p>
     </div>
     <div class="mt-4 grid gap-4 md:grid-cols-2">
       <div>
@@ -22,18 +22,18 @@
 
       <div>
         <label for="password" class="form-label">Contraseña</label>
-        <div class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2" data-password-wrap>
+        <div class="flex items-center gap-2 rounded-xl border border-gray-200 bg-white/90 px-3 py-2" data-password-wrap>
           <input class="flex-1 bg-transparent text-sm" id="password" name="password" type="password" autocomplete="new-password" minlength="8" @required(! $isEditing)>
           <button type="button" class="btn-eye" data-target="#password" aria-label="Mostrar u ocultar"><i class="ri-eye-line"></i></button>
         </div>
         @if($isEditing)
-          <p class="mt-1 text-xs text-slate-500">Déjala vacía si no vas a cambiar la contraseña.</p>
+          <p class="mt-1 text-xs text-gray-500">Déjala vacía si no vas a cambiar la contraseña.</p>
         @endif
         @error('password')<small class="text-xs text-rose-600">{{ $message }}</small>@enderror
       </div>
       <div>
         <label for="password_confirmation" class="form-label">Confirmación</label>
-        <div class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2" data-password-wrap>
+        <div class="flex items-center gap-2 rounded-xl border border-gray-200 bg-white/90 px-3 py-2" data-password-wrap>
           <input class="flex-1 bg-transparent text-sm" id="password_confirmation" name="password_confirmation" type="password" autocomplete="new-password" minlength="8" @required(! $isEditing)>
           <button type="button" class="btn-eye" data-target="#password_confirmation" aria-label="Mostrar u ocultar"><i class="ri-eye-line"></i></button>
         </div>
@@ -44,9 +44,9 @@
 
   <section class="card p-6">
     <div>
-      <p class="text-xs uppercase tracking-widest text-slate-500">Contacto</p>
-      <h3 class="mt-2 text-lg font-semibold text-slate-900">Datos personales</h3>
-      <p class="text-sm text-slate-500">Información básica del administrador.</p>
+      <p class="text-xs uppercase tracking-widest text-gray-500">Contacto</p>
+      <h3 class="mt-2 text-lg font-semibold text-gray-900">Datos personales</h3>
+      <p class="text-sm text-gray-500">Información básica del administrador.</p>
     </div>
     <div class="mt-4 grid gap-4 md:grid-cols-2">
       <div>

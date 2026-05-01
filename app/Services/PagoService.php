@@ -260,7 +260,10 @@ class PagoService
         }
 
         $actualizado = DB::transaction(function () use ($pago, $nuevoEstado, $actor, $motivo, $extra): Pago {
-            $pago->refresh();
+            $pago = Pago::query()
+                ->whereKey($pago->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
 
             $estadoAnterior = $pago->estado;
             $payload = array_merge($extra, ['estado' => $nuevoEstado]);

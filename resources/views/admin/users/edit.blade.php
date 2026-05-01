@@ -23,13 +23,13 @@
       <div class="md:hidden space-y-4">
         <div class="card p-4">
           <div class="flex items-center gap-3">
-            <i class="ri-user-line text-slate-400"></i>
+            <i class="ri-user-line text-gray-400"></i>
             <div>
-              <p class="text-xs uppercase tracking-widest text-slate-500">Resumen</p>
-              <h3 class="text-base font-semibold text-slate-900">{{ $user->name }}</h3>
+              <p class="text-xs uppercase tracking-widest text-gray-500">Resumen</p>
+              <h3 class="text-base font-semibold text-gray-900">{{ $user->name }}</h3>
             </div>
           </div>
-          <ul class="mt-3 space-y-1 text-sm text-slate-600">
+          <ul class="mt-3 space-y-1 text-sm text-gray-600">
             <li>ID: <strong>#{{ $user->id }}</strong></li>
             <li>Creado: <strong>{{ optional($user->created_at)->format('Y-m-d H:i') ?? '-' }}</strong></li>
             <li>Último acceso: <strong>{{ optional($user->last_login_at)->format('Y-m-d H:i') ?? '-' }}</strong></li>
@@ -38,13 +38,13 @@
         </div>
         <div class="card p-4">
           <div class="flex items-center gap-3">
-            <i class="ri-cake-2-line text-slate-400"></i>
+            <i class="ri-cake-2-line text-gray-400"></i>
             <div>
-              <p class="text-xs uppercase tracking-widest text-slate-500">Edad</p>
-              <h3 class="js-age-badge text-base font-semibold text-slate-900">--</h3>
+              <p class="text-xs uppercase tracking-widest text-gray-500">Edad</p>
+              <h3 class="js-age-badge text-base font-semibold text-gray-900">--</h3>
             </div>
           </div>
-          <p class="mt-2 text-xs text-slate-500">Calculada según la fecha de nacimiento.</p>
+          <p class="mt-2 text-xs text-gray-500">Calculada según la fecha de nacimiento.</p>
         </div>
       </div>
 
@@ -63,13 +63,13 @@
     <aside class="hidden space-y-4 lg:block">
       <div class="card p-4">
         <div class="flex items-center gap-3">
-          <i class="ri-user-line text-slate-400"></i>
+          <i class="ri-user-line text-gray-400"></i>
           <div>
-            <p class="text-xs uppercase tracking-widest text-slate-500">Resumen</p>
-            <h3 class="text-base font-semibold text-slate-900">{{ $user->name }}</h3>
+            <p class="text-xs uppercase tracking-widest text-gray-500">Resumen</p>
+            <h3 class="text-base font-semibold text-gray-900">{{ $user->name }}</h3>
           </div>
         </div>
-        <ul class="mt-3 space-y-1 text-sm text-slate-600">
+        <ul class="mt-3 space-y-1 text-sm text-gray-600">
           <li>ID: <strong>#{{ $user->id }}</strong></li>
           <li>Creado: <strong>{{ optional($user->created_at)->format('Y-m-d H:i') ?? '-' }}</strong></li>
           <li>Último acceso: <strong>{{ optional($user->last_login_at)->format('Y-m-d H:i') ?? '-' }}</strong></li>
@@ -79,13 +79,13 @@
 
       <div class="card p-4">
         <div class="flex items-center gap-3">
-          <i class="ri-cake-2-line text-slate-400"></i>
+          <i class="ri-cake-2-line text-gray-400"></i>
           <div>
-            <p class="text-xs uppercase tracking-widest text-slate-500">Edad</p>
-            <h3 class="js-age-badge text-base font-semibold text-slate-900">--</h3>
+            <p class="text-xs uppercase tracking-widest text-gray-500">Edad</p>
+            <h3 class="js-age-badge text-base font-semibold text-gray-900">--</h3>
           </div>
         </div>
-        <p class="mt-2 text-xs text-slate-500">Calculada según la fecha de nacimiento.</p>
+        <p class="mt-2 text-xs text-gray-500">Calculada según la fecha de nacimiento.</p>
       </div>
     </aside>
   </div>

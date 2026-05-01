@@ -30,7 +30,7 @@
         class="{{ $inputClass }}"
     >
     @if($hint)
-        <p class="text-xs text-slate-500">{{ $hint }}</p>
+        <p class="text-xs text-gray-500">{{ $hint }}</p>
     @endif
     @if($error)
         <p class="text-xs text-rose-600">{{ $error }}</p>

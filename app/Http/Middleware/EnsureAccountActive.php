@@ -9,13 +9,17 @@ use Symfony\Component\HttpFoundation\Response;
 
 class EnsureAccountActive
 {
+    private const LAST_ACTIVITY_SESSION_KEY = 'auth.last_activity_write_at';
+
+    private const LAST_ACTIVITY_WRITE_INTERVAL_SECONDS = 300;
+
     public function handle(Request $request, Closure $next): Response
     {
         if (Auth::check()) {
             $u = $request->user();
 
             if (! $u->isBlocked() && ! $u->isSuspended()) {
-                $u->forceFill(['last_activity_at' => now()])->saveQuietly();
+                $this->touchLastActivityIfDue($request);
             }
 
             if (! $u->isActive()) {
@@ -29,5 +33,19 @@ class EnsureAccountActive
         }
 
         return $next($request);
+    }
+
+    private function touchLastActivityIfDue(Request $request): void
+    {
+        $session = $request->session();
+        $now = now();
+        $lastWriteAt = (int) $session->get(self::LAST_ACTIVITY_SESSION_KEY, 0);
+
+        if ($lastWriteAt > 0 && ($now->timestamp - $lastWriteAt) < self::LAST_ACTIVITY_WRITE_INTERVAL_SECONDS) {
+            return;
+        }
+
+        $request->user()?->forceFill(['last_activity_at' => $now])->saveQuietly();
+        $session->put(self::LAST_ACTIVITY_SESSION_KEY, $now->timestamp);
     }
 }

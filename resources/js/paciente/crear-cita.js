@@ -10,6 +10,7 @@
 
   const tarifaPanel = document.getElementById('tarifaPanel');
   const tarifaLabel = document.getElementById('tarifaLabel');
+  const holdInput = form.querySelector('input[name="hold_token"]');
   const labSection = document.getElementById('labSection');
   const labId = form.dataset.laboratorioId || '';
   const labRequired = labSection ? Array.from(labSection.querySelectorAll('[data-lab-required]')) : [];
@@ -33,18 +34,124 @@
   const doctorsUrlTpl = form.dataset.endpointTemplate;
   const tarifaUrlTpl = form.dataset.tarifaTemplate;
   const slotsUrlTpl = form.dataset.slotsTemplate;
+  const slotHoldUrl = form.dataset.slotHoldUrl || '';
 
   const oldEsp = form.dataset.oldEsp || '';
   const oldDoc = form.dataset.oldDoc || '';
+  const oldHoldToken = form.dataset.oldHoldToken || '';
   let preferredHour = form.dataset.oldHora || '';
+  let holdToken = holdInput?.value || oldHoldToken || '';
   let slotsRequestId = 0;
+  let holdRequestId = 0;
   let slotsAbortController = null;
 
   const tarifaUrlFrom = (doctorId) => (tarifaUrlTpl || '').replace('DOC_ID', String(doctorId));
-  const slotsUrlFrom = (doctorId, fecha) =>
-    (slotsUrlTpl || '').replace('DOC_ID', String(doctorId)).replace('FECHA', encodeURIComponent(fecha));
+  const slotsUrlFrom = (doctorId, fecha) => {
+    const raw = (slotsUrlTpl || '').replace('DOC_ID', String(doctorId)).replace('FECHA', encodeURIComponent(fecha));
+    const resolved = new URL(raw, window.location.origin);
+    const token = holdInput?.value || holdToken;
+    if (token) {
+      resolved.searchParams.set('hold_token', token);
+    }
+    return resolved.toString();
+  };
   let doctorOptions = [];
   let lastFocusedBeforeDoctorModal = null;
+
+  function issueHoldToken() {
+    if (window.crypto?.randomUUID) {
+      return window.crypto.randomUUID();
+    }
+
+    return `hold-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  }
+
+  function ensureHoldToken() {
+    if (!holdToken) {
+      holdToken = issueHoldToken();
+    }
+    if (holdInput && !holdInput.value) {
+      holdInput.value = holdToken;
+    }
+    return holdToken;
+  }
+
+  async function acquireHold() {
+    const doctorId = docSel?.value || '';
+    const fecha = fechaInp?.value || '';
+    const hora = horaSel?.value || '';
+
+    if (!slotHoldUrl || !doctorId || !fecha || !hora) {
+      return true;
+    }
+
+    const requestId = ++holdRequestId;
+    const token = ensureHoldToken();
+    horaSel.disabled = true;
+    if (horaHelp) {
+      horaHelp.textContent = 'Reservando horario por 10 minutos...';
+    }
+
+    try {
+      const response = await fetch(slotHoldUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          doctor_id: Number(doctorId),
+          fecha,
+          hora,
+          token,
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (requestId !== holdRequestId) {
+        return false;
+      }
+
+      if (!response.ok || data.ok === false) {
+        preferredHour = '';
+        horaSel.value = '';
+        if (horaHelp) {
+          horaHelp.textContent = data.message || 'Ese horario ya no esta disponible. Elige otro.';
+        }
+        await loadSlots();
+        return false;
+      }
+
+      if (data.hold_token) {
+        holdToken = data.hold_token;
+        if (holdInput) {
+          holdInput.value = data.hold_token;
+        }
+      }
+
+      if (horaHelp) {
+        horaHelp.textContent = 'Horario reservado temporalmente por 10 minutos mientras completas la cita.';
+      }
+
+      return true;
+    } catch {
+      if (requestId === holdRequestId) {
+        preferredHour = '';
+        horaSel.value = '';
+        if (horaHelp) {
+          horaHelp.textContent = 'No pudimos reservar el horario. Intenta nuevamente.';
+        }
+        await loadSlots();
+      }
+
+      return false;
+    } finally {
+      if (requestId === holdRequestId && horaSel.value) {
+        horaSel.disabled = false;
+      }
+    }
+  }
 
   function replaceSelectMessage(select, message) {
     if (!select) return;
@@ -80,7 +187,7 @@
 
     if (values.length === 0) {
       const empty = document.createElement('span');
-      empty.className = 'text-sm text-slate-500';
+      empty.className = 'text-sm text-gray-500';
       empty.textContent = 'Sin especialidades registradas';
       doctorProfileSpecialties.append(empty);
       return;
@@ -184,28 +291,28 @@
     if (!node) return;
 
     node.classList.remove(
-      'border-teal-200',
-      'bg-teal-50',
+      'border-gray-200',
+      'bg-gray-100',
       'text-teal-700',
-      'border-emerald-200',
-      'bg-emerald-50',
+      'border-gray-200',
+      'bg-gray-100',
       'text-emerald-700',
-      'border-slate-200',
+      'border-gray-200',
       'bg-white',
-      'text-slate-500'
+      'text-gray-500'
     );
 
     if (completed) {
-      node.classList.add('border-emerald-200', 'bg-emerald-50', 'text-emerald-700');
+      node.classList.add('border-gray-200', 'bg-gray-100', 'text-emerald-700');
       return;
     }
 
     if (active) {
-      node.classList.add('border-teal-200', 'bg-teal-50', 'text-teal-700');
+      node.classList.add('border-gray-200', 'bg-gray-100', 'text-teal-700');
       return;
     }
 
-    node.classList.add('border-slate-200', 'bg-white', 'text-slate-500');
+    node.classList.add('border-gray-200', 'bg-white', 'text-gray-500');
   }
 
   function updateStepper() {
@@ -482,8 +589,14 @@
 
   fechaInp?.addEventListener('change', handleFechaChange);
   fechaInp?.addEventListener('enhanced-date:change', handleFechaChange);
-  horaSel?.addEventListener('change', () => {
+  horaSel?.addEventListener('change', async () => {
     preferredHour = horaSel.value || '';
+    if (horaSel.value) {
+      const reserved = await acquireHold();
+      if (!reserved) {
+        preferredHour = '';
+      }
+    }
     updateStepper();
   });
   document.getElementById('motivo_consulta')?.addEventListener('input', updateStepper);
@@ -504,6 +617,7 @@
   });
 
   (async function init() {
+    ensureHoldToken();
     if (oldEsp) {
       toggleLabFields(oldEsp);
       await loadDoctors(oldEsp, oldDoc || null);

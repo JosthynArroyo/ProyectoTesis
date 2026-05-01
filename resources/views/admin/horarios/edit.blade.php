@@ -31,8 +31,8 @@
       <div class="grid gap-4 md:grid-cols-2">
         <div class="md:col-span-2">
           <label class="form-label" for="doctor_id">Doctor</label>
-          <div class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2">
-            <i class="ri-stethoscope-line text-slate-400"></i>
+          <div class="flex items-center gap-2 rounded-xl border border-gray-200 bg-white/90 px-3 py-2">
+            <i class="ri-stethoscope-line text-gray-400"></i>
             <select class="w-full bg-transparent text-sm" id="doctor_id" name="doctor_id" required>
               @foreach($doctores as $d)
                 <option value="{{ $d->id }}" {{ old('doctor_id', $horario->doctor_id) == $d->id ? 'selected' : '' }}>{{ $d->name }}</option>
@@ -55,8 +55,8 @@
 
         <div>
           <label class="form-label" for="hora_inicio">Hora inicio</label>
-          <div class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2">
-            <i class="ri-time-line text-slate-400"></i>
+          <div class="flex items-center gap-2 rounded-xl border border-gray-200 bg-white/90 px-3 py-2">
+            <i class="ri-time-line text-gray-400"></i>
             <input class="w-full bg-transparent text-sm" type="time" id="hora_inicio" name="hora_inicio" step="1800" value="{{ old('hora_inicio', \Carbon\Carbon::parse($horario->hora_inicio)->format('H:i')) }}" required>
           </div>
           @error('hora_inicio')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
@@ -64,8 +64,8 @@
 
         <div>
           <label class="form-label" for="hora_fin">Hora fin</label>
-          <div class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2">
-            <i class="ri-time-line text-slate-400"></i>
+          <div class="flex items-center gap-2 rounded-xl border border-gray-200 bg-white/90 px-3 py-2">
+            <i class="ri-time-line text-gray-400"></i>
             <input class="w-full bg-transparent text-sm" type="time" id="hora_fin" name="hora_fin" step="1800" value="{{ old('hora_fin', \Carbon\Carbon::parse($horario->hora_fin)->format('H:i')) }}" required>
           </div>
           @error('hora_fin')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror

@@ -114,7 +114,7 @@
               </button>
             </div>
             @error('fecha')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
-            <div class="text-xs text-slate-500">Solo se permiten fechas desde hoy.</div>
+            <div class="text-xs text-gray-500">Solo se permiten fechas desde hoy.</div>
           </div>
 
           <div>
@@ -123,7 +123,7 @@
               <option value="">{{ old('doctor_id') && old('fecha') ? 'Cargando horarios...' : 'Seleccione profesional y fecha' }}</option>
             </select>
             @error('hora')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
-            <div id="horaHelp" class="text-xs text-slate-500">Se muestran solo los horarios realmente disponibles.</div>
+            <div id="horaHelp" class="text-xs text-gray-500">Se muestran solo los horarios realmente disponibles.</div>
           </div>
 
           <div class="md:col-span-2">
@@ -140,7 +140,7 @@
               placeholder="Ej: dolor de garganta"
             >
             @error('motivo_consulta')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
-            <div class="mt-1 text-xs text-slate-500">Campo obligatorio, breve y en una sola linea (3-80 caracteres).</div>
+            <div class="mt-1 text-xs text-gray-500">Campo obligatorio, breve y en una sola linea (3-80 caracteres).</div>
             <div class="mt-2 flex flex-wrap gap-2" data-motivo-chip-group data-target="#motivo_consulta">
               @foreach(['Fiebre','Dolor de garganta','Dolor abdominal','Tos','Dolor de cabeza','Nauseas','Diarrea','Malestar general'] as $chip)
                 <button type="button" class="chip" data-motivo-chip="{{ $chip }}">{{ $chip }}</button>

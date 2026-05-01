@@ -8,9 +8,9 @@
       <div class="card p-8">
         <div class="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p class="text-xs uppercase tracking-widest text-slate-500">Recuperación</p>
-            <h1 class="mt-2 text-2xl font-semibold text-slate-900">Recuperar acceso</h1>
-            <p class="text-slate-600">Ingresa tu correo para enviarte un enlace de restablecimiento.</p>
+            <p class="text-xs uppercase tracking-widest text-gray-500">Recuperación</p>
+            <h1 class="mt-2 text-2xl font-semibold text-gray-900">Recuperar acceso</h1>
+            <p class="text-gray-600">Ingresa tu correo para enviarte un enlace de restablecimiento.</p>
           </div>
           <span class="badge info">Cuenta registrada</span>
         </div>
@@ -30,7 +30,7 @@
             @error('email')
               <div class="text-xs text-rose-600">{{ $message }}</div>
             @else
-              <div class="text-xs text-slate-500">Debe ser un correo registrado en el sistema.</div>
+              <div class="text-xs text-gray-500">Debe ser un correo registrado en el sistema.</div>
             @enderror
           </div>
 

@@ -7,6 +7,7 @@ use App\Mail\RecetaMedicaMail;
 use App\Models\Cita;
 use App\Models\NotaSoap;
 use App\Models\Receta;
+use App\Services\ClinicIdentityService;
 use App\Services\ClinicalRecordService;
 use Dompdf\Dompdf;
 use Dompdf\Options;
@@ -331,19 +332,11 @@ class RecetaController extends Controller
     }
 
     /**
-     * Devuelve el logo /public/img/logopdf.jpg en data-URI base64.
+     * Devuelve el logo institucional en data URI base64.
      */
-    private function logoBase64(): string
+    private function logoBase64(): ?string
     {
-        $path = public_path('img/logopdf.jpg');
-        if (! is_file($path)) {
-            return null;
-        }
-
-        $mime = mime_content_type($path) ?: 'image/jpeg';
-        $data = base64_encode(file_get_contents($path));
-
-        return "data:{$mime};base64,{$data}";
+        return app(ClinicIdentityService::class)->logoBase64();
     }
 
     private function loadPdfCss(string $relativePath): string

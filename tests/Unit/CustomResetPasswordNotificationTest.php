@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\Models\User;
 use App\Notifications\CustomResetPasswordNotification;
+use App\Services\ClinicIdentityService;
 use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
@@ -14,7 +15,7 @@ class CustomResetPasswordNotificationTest extends TestCase
         Notification::fake();
 
         $user = new User([
-            'name' => 'Ana Pérez',
+            'name' => 'Ana Perez',
             'email' => 'ana@example.com',
         ]);
 
@@ -25,7 +26,10 @@ class CustomResetPasswordNotificationTest extends TestCase
             $html = (string) $mail->render();
 
             $this->assertSame(['mail'], $channels);
-            $this->assertSame('Recuperación de contraseña - Clínica Don Bosco', $mail->subject);
+            $this->assertSame(
+                app(ClinicIdentityService::class)->subject('Recuperacion de contrasena'),
+                $mail->subject
+            );
             $this->assertSame('emails.auth.password_reset', $mail->view);
             $this->assertSame(60, $mail->viewData['expireMinutes']);
             $this->assertStringContainsString('token-seguro-123', $mail->viewData['resetUrl']);

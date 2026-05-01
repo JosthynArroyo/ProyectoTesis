@@ -20,7 +20,7 @@
       <div class="header avoid-break">
         <div class="brand-block">
           @if(!empty($logoBase64))
-            <img class="logo" src="{{ $logoBase64 }}" alt="Logo Clinica">
+            <img class="logo" src="{{ $logoBase64 }}" alt="Logo de la clínica">
           @else
             <div class="logo" aria-hidden="true"></div>
           @endif
@@ -30,8 +30,8 @@
           </div>
         </div>
         <div class="small soft" style="text-align:right">
-          <div><b>Codigo:</b> {{ $certificado->codigo }}</div>
-          <div><b>Fecha emision:</b> {{ $certificado->fecha_emision?->format('d/m/Y H:i') }}</div>
+          <div><b>Código:</b> {{ $certificado->codigo }}</div>
+          <div><b>Fecha de emisión:</b> {{ $certificado->fecha_emision?->format('d/m/Y H:i') }}</div>
           <div><b>Cita:</b> #{{ $cita?->id ?? '-' }}</div>
         </div>
       </div>
@@ -54,7 +54,7 @@
 
       <div class="rest-grid avoid-break">
         <div>
-          <span>Dias de reposo</span>
+          <span>Días de reposo</span>
           <strong>{{ $certificado->dias_reposo }}</strong>
         </div>
         <div>
@@ -85,7 +85,7 @@
 
       <div class="footer small">
         <span>Documento generado por {{ $clinica }}.</span>
-        <span class="badge">Codigo {{ $certificado->codigo }}</span>
+        <span class="badge">Código {{ $certificado->codigo }}</span>
       </div>
     </div>
   </div>

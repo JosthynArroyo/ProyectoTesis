@@ -63,15 +63,7 @@ class RegisterController extends Controller
 
     protected function registered(Request $request, $user)
     {
-        if ($user->hasRole('administrador')) {
-            return redirect('admin/dashboard');
-        } elseif ($user->hasRole('paciente')) {
-            return redirect('paciente/dashboard');
-        } elseif ($user->hasRole('doctor')) {
-            return redirect('doctor/dashboard');
-        }
-
-        return redirect('/');
+        return redirect($user->dashboardPath());
     }
 
     protected function redirectTo()
@@ -80,14 +72,6 @@ class RegisterController extends Controller
         if (! $user) {
             return '/';
         }
-        if ($user->hasRole('administrador')) {
-            return 'admin/dashboard';
-        } elseif ($user->hasRole('paciente')) {
-            return 'paciente/dashboard';
-        } elseif ($user->hasRole('doctor')) {
-            return 'doctor/dashboard';
-        }
-
-        return '/';
+        return $user->dashboardPath();
     }
 }

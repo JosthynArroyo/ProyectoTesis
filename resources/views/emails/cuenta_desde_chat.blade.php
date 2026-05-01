@@ -11,7 +11,7 @@
     footer-note="Por seguridad, cambia esta contraseña inicial apenas completes tu primer ingreso."
 >
     <p style="margin:0 0 22px; font-size:15px; line-height:1.7; color:#334155;">
-        Hola {{ $user->name }}, desde ahora puedes gestionar citas, revisar resultados y dar seguimiento a tu atención médica desde el portal de Clínica Don Bosco.
+        Hola {{ $user->name }}, desde ahora puedes gestionar citas, revisar resultados y dar seguimiento a tu atención médica desde el portal de {{ $clinicIdentity->name() }}.
         Tu usuario será el correo que registraste y tu contraseña inicial será tu número de cédula.
     </p>
 

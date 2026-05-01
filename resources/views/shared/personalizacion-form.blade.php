@@ -4,9 +4,9 @@
 <div class="space-y-6">
   <section class="card p-6">
     <div>
-      <p class="text-xs uppercase tracking-widest text-slate-500">Branding</p>
-      <h3 class="mt-2 text-lg font-semibold text-slate-900">Identidad de marca</h3>
-      <p class="text-sm text-slate-500">Nombre, logo y colores base.</p>
+      <p class="text-xs uppercase tracking-widest text-gray-500">Branding</p>
+      <h3 class="mt-2 text-lg font-semibold text-gray-900">Identidad de marca</h3>
+      <p class="text-sm text-gray-500">Nombre, logo y colores base.</p>
     </div>
     <div class="mt-4 grid gap-4 md:grid-cols-2">
       <div>
@@ -24,7 +24,7 @@
         <input class="form-input" id="branding_logo" name="branding_logo" type="file" accept="image/png,image/jpeg,image/webp" @if(!$logo) required @endif>
         @error('branding_logo')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
         @if($logo)
-          <div class="mt-2 text-xs text-slate-500">Actual: {{ $logo }}</div>
+          <div class="mt-2 text-xs text-gray-500">Actual: {{ $logo }}</div>
         @endif
       </div>
       <div class="grid gap-3 sm:grid-cols-3">
@@ -49,9 +49,9 @@
 
   <section class="card p-6">
     <div>
-      <p class="text-xs uppercase tracking-widest text-slate-500">Inicio</p>
-      <h3 class="mt-2 text-lg font-semibold text-slate-900">Sección hero</h3>
-      <p class="text-sm text-slate-500">Títulos y botones principales.</p>
+      <p class="text-xs uppercase tracking-widest text-gray-500">Inicio</p>
+      <h3 class="mt-2 text-lg font-semibold text-gray-900">Sección hero</h3>
+      <p class="text-sm text-gray-500">Títulos y botones principales.</p>
     </div>
     <div class="mt-4 grid gap-4 md:grid-cols-2">
       <div>
@@ -84,8 +84,8 @@
 
   <section class="card p-6">
     <div>
-      <p class="text-xs uppercase tracking-widest text-slate-500">Home</p>
-      <h3 class="mt-2 text-lg font-semibold text-slate-900">Estadisticas destacadas</h3>
+      <p class="text-xs uppercase tracking-widest text-gray-500">Home</p>
+      <h3 class="mt-2 text-lg font-semibold text-gray-900">Estadisticas destacadas</h3>
     </div>
     <div class="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
       <div>
@@ -120,8 +120,8 @@
 
   <section class="card p-6">
     <div>
-      <p class="text-xs uppercase tracking-widest text-slate-500">Home</p>
-      <h3 class="mt-2 text-lg font-semibold text-slate-900">Sobre nosotros</h3>
+      <p class="text-xs uppercase tracking-widest text-gray-500">Home</p>
+      <h3 class="mt-2 text-lg font-semibold text-gray-900">Sobre nosotros</h3>
     </div>
     <div class="mt-4 grid gap-4 md:grid-cols-2">
       <div>
@@ -144,8 +144,8 @@
 
   <section class="card p-6">
     <div>
-      <p class="text-xs uppercase tracking-widest text-slate-500">Home</p>
-      <h3 class="mt-2 text-lg font-semibold text-slate-900">Bloque de servicios</h3>
+      <p class="text-xs uppercase tracking-widest text-gray-500">Home</p>
+      <h3 class="mt-2 text-lg font-semibold text-gray-900">Bloque de servicios</h3>
     </div>
     <div class="mt-4 grid gap-4 md:grid-cols-2">
       <div>
@@ -173,8 +173,8 @@
 
   <section class="card p-6">
     <div>
-      <p class="text-xs uppercase tracking-widest text-slate-500">Home</p>
-      <h3 class="mt-2 text-lg font-semibold text-slate-900">Equipo</h3>
+      <p class="text-xs uppercase tracking-widest text-gray-500">Home</p>
+      <h3 class="mt-2 text-lg font-semibold text-gray-900">Equipo</h3>
     </div>
     <div class="mt-4 grid gap-4 md:grid-cols-2">
       <div>
@@ -202,8 +202,8 @@
 
   <section class="card p-6">
     <div>
-      <p class="text-xs uppercase tracking-widest text-slate-500">Servicios</p>
-      <h3 class="mt-2 text-lg font-semibold text-slate-900">Página de servicios</h3>
+      <p class="text-xs uppercase tracking-widest text-gray-500">Servicios</p>
+      <h3 class="mt-2 text-lg font-semibold text-gray-900">Página de servicios</h3>
     </div>
     <div class="mt-4 grid gap-4 md:grid-cols-2">
       <div>
@@ -226,8 +226,8 @@
 
   <section class="card p-6">
     <div>
-      <p class="text-xs uppercase tracking-widest text-slate-500">Contacto</p>
-      <h3 class="mt-2 text-lg font-semibold text-slate-900">Página de contacto</h3>
+      <p class="text-xs uppercase tracking-widest text-gray-500">Contacto</p>
+      <h3 class="mt-2 text-lg font-semibold text-gray-900">Página de contacto</h3>
     </div>
     <div class="mt-4 grid gap-4 md:grid-cols-2">
       <div>

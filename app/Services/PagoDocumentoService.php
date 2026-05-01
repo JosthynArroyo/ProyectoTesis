@@ -111,14 +111,6 @@ class PagoDocumentoService
 
     protected function logoBase64(): ?string
     {
-        $path = public_path('img/logopdf.jpg');
-        if (! is_file($path)) {
-            return null;
-        }
-
-        $mime = mime_content_type($path) ?: 'image/jpeg';
-        $data = base64_encode(file_get_contents($path) ?: '');
-
-        return $data === '' ? null : "data:{$mime};base64,{$data}";
+        return app(ClinicIdentityService::class)->logoBase64();
     }
 }

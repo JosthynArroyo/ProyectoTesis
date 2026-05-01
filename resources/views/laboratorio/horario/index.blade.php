@@ -130,7 +130,7 @@
           <input type="hidden" name="intervalo_minutos" value="30">
           <div>
             <label class="form-label">Intervalo</label>
-            <div class="mt-2 inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">30 min</div>
+            <div class="mt-2 inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600">30 min</div>
           </div>
           <div class="md:col-span-4">
             <button class="btn btn-primary" type="submit">
@@ -183,8 +183,8 @@
             @php($dias=[1=>'Lun',2=>'Mar',3=>'Mie',4=>'Jue',5=>'Vie',6=>'Sab',7=>'Dom'])
             <div class="mt-2 flex flex-wrap gap-2">
               @foreach($dias as $k => $v)
-                <label class="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600">
-                  <input type="checkbox" name="dias[]" value="{{ $k }}" class="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500" {{ $k <= 5 ? 'checked' : '' }}>
+                <label class="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-600">
+                  <input type="checkbox" name="dias[]" value="{{ $k }}" class="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500" {{ $k <= 5 ? 'checked' : '' }}>
                   <span>{{ $v }}</span>
                 </label>
               @endforeach
@@ -202,12 +202,12 @@
           <input type="hidden" name="intervalo_minutos" value="30">
           <div>
             <label class="form-label">Intervalo</label>
-            <div class="mt-2 inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">30 min</div>
+            <div class="mt-2 inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600">30 min</div>
           </div>
           <div class="md:col-span-4">
-            <label class="flex items-center gap-2 text-sm text-slate-600">
+            <label class="flex items-center gap-2 text-sm text-gray-600">
               <input type="hidden" name="sobrescribir" value="0">
-              <input type="checkbox" name="sobrescribir" value="1" class="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500">
+              <input type="checkbox" name="sobrescribir" value="1" class="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500">
               <span>Sobrescribir días existentes</span>
             </label>
           </div>

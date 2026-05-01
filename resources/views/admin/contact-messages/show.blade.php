@@ -32,26 +32,26 @@
 
     <div class="grid gap-4 md:grid-cols-2">
       <div>
-        <p class="text-xs uppercase tracking-wide text-slate-400">Nombre</p>
-        <p class="mt-1 font-semibold text-slate-900">{{ $contactMessage->nombre }}</p>
+        <p class="text-xs uppercase tracking-wide text-gray-400">Nombre</p>
+        <p class="mt-1 font-semibold text-gray-900">{{ $contactMessage->nombre }}</p>
       </div>
       <div>
-        <p class="text-xs uppercase tracking-wide text-slate-400">Correo</p>
+        <p class="text-xs uppercase tracking-wide text-gray-400">Correo</p>
         <a href="mailto:{{ $contactMessage->correo }}" class="mt-1 inline-flex font-semibold text-teal-700 hover:underline">{{ $contactMessage->correo }}</a>
       </div>
       <div>
-        <p class="text-xs uppercase tracking-wide text-slate-400">Telefono</p>
-        <p class="mt-1 font-semibold text-slate-900">{{ $contactMessage->telefono ?: '-' }}</p>
+        <p class="text-xs uppercase tracking-wide text-gray-400">Telefono</p>
+        <p class="mt-1 font-semibold text-gray-900">{{ $contactMessage->telefono ?: '-' }}</p>
       </div>
       <div>
-        <p class="text-xs uppercase tracking-wide text-slate-400">Estado</p>
+        <p class="text-xs uppercase tracking-wide text-gray-400">Estado</p>
         <span class="mt-2 badge {{ $estadoTone }}">{{ $estadoLabel }}</span>
       </div>
     </div>
 
-    <div class="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-5">
-      <p class="text-xs uppercase tracking-wide text-slate-400">Mensaje</p>
-      <p class="mt-3 whitespace-pre-wrap text-slate-700">{{ $contactMessage->mensaje }}</p>
+    <div class="mt-6 rounded-xl border border-gray-200 bg-gray-50 p-5">
+      <p class="text-xs uppercase tracking-wide text-gray-400">Mensaje</p>
+      <p class="mt-3 whitespace-pre-wrap text-gray-700">{{ $contactMessage->mensaje }}</p>
     </div>
 
     <div class="mt-6 flex flex-wrap gap-3">

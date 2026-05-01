@@ -13,6 +13,22 @@ class User extends Authenticatable
 {
     use HasFactory, Notifiable;
 
+    private const DASHBOARD_PATHS_BY_ROLE = [
+        'superadmin' => '/superadmin/dashboard',
+        'administrador' => '/admin/dashboard',
+        'doctor' => '/doctor/dashboard',
+        'laboratorio' => '/laboratorio/dashboard',
+        'paciente' => '/paciente/dashboard',
+    ];
+
+    private const DASHBOARD_ROUTE_NAMES_BY_ROLE = [
+        'superadmin' => 'superadmin.dashboard',
+        'administrador' => 'admin.dashboard',
+        'doctor' => 'doctor.dashboard',
+        'laboratorio' => 'laboratorio.dashboard',
+        'paciente' => 'paciente.dashboard',
+    ];
+
     public const STATUS_ACTIVE = 'active';
 
     public const STATUS_INACTIVE = 'inactive';
@@ -139,6 +155,33 @@ class User extends Authenticatable
         return $this->roles->contains('name', $roleName);
     }
 
+    public function primaryRoleName(): ?string
+    {
+        $this->loadMissing('roles');
+
+        foreach (array_keys(self::DASHBOARD_PATHS_BY_ROLE) as $roleName) {
+            if ($this->roles->contains('name', $roleName)) {
+                return $roleName;
+            }
+        }
+
+        return null;
+    }
+
+    public function dashboardPath(): string
+    {
+        $primaryRole = $this->primaryRoleName();
+
+        return $primaryRole ? self::DASHBOARD_PATHS_BY_ROLE[$primaryRole] : '/';
+    }
+
+    public function dashboardRouteName(): ?string
+    {
+        $primaryRole = $this->primaryRoleName();
+
+        return $primaryRole ? self::DASHBOARD_ROUTE_NAMES_BY_ROLE[$primaryRole] : null;
+    }
+
     public function hasPendingPaymentBlocks(): bool
     {
         return $this->pagos()->conBloqueoAgendamiento()->exists();
@@ -213,10 +256,7 @@ class User extends Authenticatable
         });
     }
 
-    public function faceProfile(): HasOne
-    {
-        return $this->hasOne(FaceProfile::class);
-    }
+
 
     public function patientFlag(): HasOne
     {

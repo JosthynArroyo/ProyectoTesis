@@ -23,17 +23,17 @@
     @if(! $sinCertificados)
       <section class="grid gap-4">
         <div>
-          <p class="text-xs uppercase tracking-widest text-slate-500">Certificados</p>
-          <h2 class="mt-1 text-xl font-semibold text-slate-900">Certificados medicos emitidos</h2>
+          <p class="text-xs uppercase tracking-widest text-gray-500">Certificados</p>
+          <h2 class="mt-1 text-xl font-semibold text-gray-900">Certificados medicos emitidos</h2>
         </div>
         @foreach($certificados as $certificado)
           <article class="card p-5">
             <div class="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <div class="text-xs uppercase tracking-widest text-slate-400">Certificado medico</div>
-                <h3 class="text-lg font-semibold text-slate-900">{{ $certificado->codigo }}</h3>
-                <p class="text-sm text-slate-600">Doctor: {{ optional($certificado->doctor ?? $certificado->cita?->doctor)->name ?? '-' }}</p>
-                <p class="text-sm text-slate-600">Cita: {{ optional($certificado->cita?->especialidad)->nombre ?? 'Consulta' }}</p>
+                <div class="text-xs uppercase tracking-widest text-gray-400">Certificado medico</div>
+                <h3 class="text-lg font-semibold text-gray-900">{{ $certificado->codigo }}</h3>
+                <p class="text-sm text-gray-600">Doctor: {{ optional($certificado->doctor ?? $certificado->cita?->doctor)->name ?? '-' }}</p>
+                <p class="text-sm text-gray-600">Cita: {{ optional($certificado->cita?->especialidad)->nombre ?? 'Consulta' }}</p>
               </div>
               <span class="chip">
                 {{ $certificado->fecha_emision ? $certificado->fecha_emision->format('d/m/Y') : '-' }}
@@ -51,16 +51,16 @@
     @if(! $sinNotas)
       <section class="grid gap-4">
         <div>
-          <p class="text-xs uppercase tracking-widest text-slate-500">Notas medicas</p>
-          <h2 class="mt-1 text-xl font-semibold text-slate-900">Notas clinicas firmadas</h2>
+          <p class="text-xs uppercase tracking-widest text-gray-500">Notas medicas</p>
+          <h2 class="mt-1 text-xl font-semibold text-gray-900">Notas clinicas firmadas</h2>
         </div>
         @foreach($notas as $nota)
           <article class="card p-5">
             <div class="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <div class="text-xs uppercase tracking-widest text-slate-400">Atencion</div>
-                <h3 class="text-lg font-semibold text-slate-900">{{ optional($nota->cita->especialidad)->nombre ?? 'Consulta' }}</h3>
-                <p class="text-sm text-slate-600">Doctor: {{ optional($nota->cita->doctor)->name ?? '-' }}</p>
+                <div class="text-xs uppercase tracking-widest text-gray-400">Atencion</div>
+                <h3 class="text-lg font-semibold text-gray-900">{{ optional($nota->cita->especialidad)->nombre ?? 'Consulta' }}</h3>
+                <p class="text-sm text-gray-600">Doctor: {{ optional($nota->cita->doctor)->name ?? '-' }}</p>
               </div>
               <span class="chip">
                 {{ $nota->cita->fecha ? \Carbon\Carbon::parse($nota->cita->fecha)->format('d/m/Y') : '-' }}

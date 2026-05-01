@@ -8,7 +8,7 @@
   <form class="card p-5" method="GET" action="{{ route('superadmin.users.index') }}">
     <div class="flex flex-wrap gap-3">
       <div class="inline-control-shell flex-1">
-        <i class="ri-search-line text-slate-400"></i>
+        <i class="ri-search-line text-gray-400"></i>
         <input type="search" name="buscar" value="{{ $search }}" placeholder="Buscar usuario">
       </div>
       <select class="form-select" name="role">

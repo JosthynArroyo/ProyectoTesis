@@ -2,6 +2,7 @@
 
 namespace App\Mail;
 
+use App\Services\ClinicIdentityService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
@@ -19,7 +20,7 @@ class ContactoRecibido extends Mailable
 
     public function build()
     {
-        return $this->subject('Nuevo mensaje de contacto - Clínica Don Bosco')
+        return $this->subject(app(ClinicIdentityService::class)->subject('Nuevo mensaje de contacto'))
             ->view('emails.contacto_recibido');
     }
 }

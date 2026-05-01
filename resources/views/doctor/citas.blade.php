@@ -23,8 +23,8 @@
 
   <div class="card p-6">
     <div class="flex items-center gap-2">
-      <i class="ri-calendar-line text-slate-400"></i>
-      <h2 class="text-lg font-semibold text-slate-900">Listado</h2>
+      <i class="ri-calendar-line text-gray-400"></i>
+      <h2 class="text-lg font-semibold text-gray-900">Listado</h2>
     </div>
 
     <div class="mt-4 flex flex-wrap items-center justify-between gap-4">
@@ -287,7 +287,7 @@
     <div class="field">
       <label>Horas disponibles</label>
       <div id="tp-slots" class="slots flex flex-wrap gap-2"></div>
-      <small id="tp-help" class="text-xs text-slate-500"></small>
+      <small id="tp-help" class="text-xs text-gray-500"></small>
     </div>
   </div>
   <div class="toast-f">

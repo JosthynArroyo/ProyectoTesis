@@ -25,25 +25,25 @@ function initSoapStepper() {
       return;
     }
     node.classList.remove(
-      'border-teal-200',
-      'bg-teal-50',
+      'border-gray-200',
+      'bg-gray-100',
       'text-teal-700',
-      'border-emerald-200',
-      'bg-emerald-50',
+      'border-gray-200',
+      'bg-gray-100',
       'text-emerald-700',
-      'border-slate-200',
+      'border-gray-200',
       'bg-white',
-      'text-slate-500'
+      'text-gray-500'
     );
     if (completed) {
-      node.classList.add('border-emerald-200', 'bg-emerald-50', 'text-emerald-700');
+      node.classList.add('border-gray-200', 'bg-gray-100', 'text-emerald-700');
       return;
     }
     if (active) {
-      node.classList.add('border-teal-200', 'bg-teal-50', 'text-teal-700');
+      node.classList.add('border-gray-200', 'bg-gray-100', 'text-teal-700');
       return;
     }
-    node.classList.add('border-slate-200', 'bg-white', 'text-slate-500');
+    node.classList.add('border-gray-200', 'bg-white', 'text-gray-500');
   };
 
   const showSection = (step, scroll = false) => {
@@ -179,7 +179,7 @@ function initSoapAutosave() {
       return;
     }
     status.textContent = message;
-    status.classList.remove('text-slate-500', 'text-emerald-700', 'text-rose-600');
+    status.classList.remove('text-gray-500', 'text-emerald-700', 'text-rose-600');
     if (tone === 'success') {
       status.classList.add('text-emerald-700');
       return;
@@ -188,7 +188,7 @@ function initSoapAutosave() {
       status.classList.add('text-rose-600');
       return;
     }
-    status.classList.add('text-slate-500');
+    status.classList.add('text-gray-500');
   };
 
   const autosave = async () => {

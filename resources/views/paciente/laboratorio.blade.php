@@ -41,16 +41,16 @@
         @foreach($ordenes as $orden)
           <article
             id="lab-item-{{ $orden->uid }}"
-            class="rounded-3xl border border-slate-200 bg-white/95 p-5 shadow-sm {{ $highlightItem === $orden->uid ? 'record-highlight' : '' }}"
+            class="rounded-3xl border border-gray-200 bg-white/95 p-5 shadow-sm {{ $highlightItem === $orden->uid ? 'record-highlight' : '' }}"
           >
             <div class="flex flex-wrap items-start justify-between gap-4">
               <div class="space-y-2">
                 <div class="flex flex-wrap items-center gap-2">
-                  <h3 class="text-base font-semibold text-slate-900">{{ $orden->title }}</h3>
+                  <h3 class="text-base font-semibold text-gray-900">{{ $orden->title }}</h3>
                   <span class="badge {{ $orden->status_tone }}">{{ $orden->status_label }}</span>
                 </div>
-                <p class="text-sm text-slate-500">{{ $orden->subtitle }}</p>
-                <div class="flex flex-wrap gap-4 text-sm text-slate-600">
+                <p class="text-sm text-gray-500">{{ $orden->subtitle }}</p>
+                <div class="flex flex-wrap gap-4 text-sm text-gray-600">
                   <span><strong>Fecha:</strong> {{ $orden->date_label }}</span>
                 </div>
               </div>
@@ -82,21 +82,21 @@
             @if($orden->summary || $orden->preparation || $orden->notes)
               <div class="mt-4 grid gap-3 md:grid-cols-3">
                 @if($orden->summary)
-                  <div class="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
-                    <p class="text-xs uppercase tracking-widest text-slate-500">Resumen</p>
-                    <p class="mt-2 text-sm text-slate-700">{{ $orden->summary }}</p>
+                  <div class="rounded-2xl border border-gray-200 bg-gray-50/80 p-4">
+                    <p class="text-xs uppercase tracking-widest text-gray-500">Resumen</p>
+                    <p class="mt-2 text-sm text-gray-700">{{ $orden->summary }}</p>
                   </div>
                 @endif
                 @if($orden->preparation)
-                  <div class="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
-                    <p class="text-xs uppercase tracking-widest text-slate-500">Preparación</p>
-                    <p class="mt-2 text-sm text-slate-700">{{ $orden->preparation }}</p>
+                  <div class="rounded-2xl border border-gray-200 bg-gray-50/80 p-4">
+                    <p class="text-xs uppercase tracking-widest text-gray-500">Preparación</p>
+                    <p class="mt-2 text-sm text-gray-700">{{ $orden->preparation }}</p>
                   </div>
                 @endif
                 @if($orden->notes)
-                  <div class="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
-                    <p class="text-xs uppercase tracking-widest text-slate-500">Indicaciones</p>
-                    <p class="mt-2 text-sm text-slate-700">{{ $orden->notes }}</p>
+                  <div class="rounded-2xl border border-gray-200 bg-gray-50/80 p-4">
+                    <p class="text-xs uppercase tracking-widest text-gray-500">Indicaciones</p>
+                    <p class="mt-2 text-sm text-gray-700">{{ $orden->notes }}</p>
                   </div>
                 @endif
               </div>

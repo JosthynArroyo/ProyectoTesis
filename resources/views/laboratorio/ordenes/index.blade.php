@@ -43,21 +43,21 @@
         <div class="flex flex-wrap items-start justify-between gap-3">
           <div>
             <div class="flex flex-wrap items-center gap-2">
-              <h2 class="text-lg font-semibold text-slate-900">{{ $orden->title }}</h2>
+              <h2 class="text-lg font-semibold text-gray-900">{{ $orden->title }}</h2>
               <x-ui.badge :tone="$orden->badge_tone">{{ $orden->status_label }}</x-ui.badge>
             </div>
-            <p class="mt-1 text-sm text-slate-500">Paciente: {{ $orden->patient_name }}</p>
-            <p class="text-xs uppercase tracking-widest text-slate-400">{{ $orden->source_label }}</p>
+            <p class="mt-1 text-sm text-gray-500">Paciente: {{ $orden->patient_name }}</p>
+            <p class="text-xs uppercase tracking-widest text-gray-400">{{ $orden->source_label }}</p>
           </div>
         </div>
 
-        <div class="mt-4 grid gap-3 text-sm text-slate-600 sm:grid-cols-2">
+        <div class="mt-4 grid gap-3 text-sm text-gray-600 sm:grid-cols-2">
           <div>
-            <span class="text-slate-500">Fecha:</span>
+            <span class="text-gray-500">Fecha:</span>
             {{ $orden->date_label }}
           </div>
           <div>
-            <span class="text-slate-500">Prioridad:</span>
+            <span class="text-gray-500">Prioridad:</span>
             {{ $orden->priority_label }}
           </div>
         </div>
@@ -68,12 +68,12 @@
           </div>
         @endif
         @if($orden->notes)
-          <div class="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+          <div class="mt-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
             <strong>Indicaciones:</strong> {{ $orden->notes }}
           </div>
         @endif
         @if($orden->result_summary)
-          <div class="mt-3 rounded-xl border border-emerald-100 bg-emerald-50/80 px-3 py-2 text-sm text-emerald-800">
+          <div class="mt-3 rounded-xl border border-gray-200 bg-gray-100/80 px-3 py-2 text-sm text-gray-800">
             <strong>Resumen:</strong> {{ $orden->result_summary }}
           </div>
         @endif
@@ -100,7 +100,7 @@
             @csrf
             <div>
               <label for="resultado_pdf_{{ $orden->uid }}" class="form-label">Resultado PDF</label>
-              <label class="mt-1 block rounded-xl border-2 border-dashed border-slate-300 bg-slate-50/70 px-3 py-4 text-center text-sm text-slate-500 hover:border-teal-300 hover:text-slate-700" data-dropzone>
+              <label class="mt-1 block rounded-xl border-2 border-dashed border-gray-300 bg-gray-50/70 px-3 py-4 text-center text-sm text-gray-500 hover:border-gray-300 hover:text-gray-700" data-dropzone>
                 <span data-dropzone-text>Arrastra el PDF aqui o haz clic para seleccionar.</span>
                 <input id="resultado_pdf_{{ $orden->uid }}" type="file" name="resultado_pdf" accept="application/pdf" required class="sr-only" data-dropzone-input>
               </label>

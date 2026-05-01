@@ -85,14 +85,15 @@ class CitaComprobanteService
 
         $qrUrl = route('citas.comprobante.show', ['token' => $cita->token_validacion], true);
         $qrDataUri = $this->generarQrDataUri($qrUrl);
+        $identity = app(ClinicIdentityService::class);
 
         $html = view('pdf.comprobante-cita', [
             'cita' => $cita,
             'qrUrl' => $qrUrl,
             'qrDataUri' => $qrDataUri,
             'fechaPdf' => now('America/Guayaquil'),
-            'logoBase64' => $this->logoBase64(),
-            'clinica' => 'Clínica Don Bosco',
+            'logoBase64' => $identity->logoBase64(),
+            'clinica' => $identity->institutionalName(),
         ])->render();
 
         $pdfOutput = $this->renderizarPdf($html);
@@ -173,14 +174,6 @@ class CitaComprobanteService
 
     protected function logoBase64(): ?string
     {
-        $path = public_path('img/logopdf.jpg');
-        if (! is_file($path)) {
-            return null;
-        }
-
-        $mime = mime_content_type($path) ?: 'image/jpeg';
-        $data = base64_encode(file_get_contents($path) ?: '');
-
-        return $data === '' ? null : "data:{$mime};base64,{$data}";
+        return app(ClinicIdentityService::class)->logoBase64();
     }
 }

@@ -4,10 +4,10 @@
   <main class="section-pad">
     <div class="page-shell max-w-2xl">
       <div class="card p-6">
-        <h2 class="text-xl font-semibold text-slate-900">Reagendar cita</h2>
+        <h2 class="text-xl font-semibold text-gray-900">Reagendar cita</h2>
 
 
-        <div class="mt-4 text-sm text-slate-600">
+        <div class="mt-4 text-sm text-gray-600">
           <p><strong>Doctor:</strong> {{ optional($cita->doctor)->name ?? 'Sin asignar' }}</p>
           <p><strong>Especialidad:</strong> {{ optional($cita->especialidad)->nombre ?? '—' }}</p>
         </div>

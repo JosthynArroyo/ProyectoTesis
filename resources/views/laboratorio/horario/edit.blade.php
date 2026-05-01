@@ -13,15 +13,15 @@
     @php($indicadores = $indicadores ?? [])
     <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
       <x-ui.stat label="Atendidos" :value="data_get($indicadores, 'atendidos', 0)" tone="teal">
-        <p class="text-xs text-slate-500">Atenciones completadas</p>
+        <p class="text-xs text-gray-500">Atenciones completadas</p>
         <x-slot:icon><i class="ri-checkbox-circle-line"></i></x-slot:icon>
       </x-ui.stat>
       <x-ui.stat label="Pendientes" :value="data_get($indicadores, 'pendientes', 0)" tone="amber">
-        <p class="text-xs text-slate-500">En espera</p>
+        <p class="text-xs text-gray-500">En espera</p>
         <x-slot:icon><i class="ri-timer-line"></i></x-slot:icon>
       </x-ui.stat>
       <x-ui.stat label="Retraso acumulado" :value="data_get($indicadores, 'retraso', '0 min')" tone="sky">
-        <p class="text-xs text-slate-500">Duración estimada</p>
+        <p class="text-xs text-gray-500">Duración estimada</p>
         <x-slot:icon><i class="ri-time-line"></i></x-slot:icon>
       </x-ui.stat>
     </section>
@@ -30,8 +30,8 @@
     <section class="card p-6">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 class="text-lg font-semibold text-slate-900">Acción rápida</h2>
-          <p class="text-sm text-slate-500">Bloques de 5 min en cola continua.</p>
+          <h2 class="text-lg font-semibold text-gray-900">Acción rápida</h2>
+          <p class="text-sm text-gray-500">Bloques de 5 min en cola continua.</p>
         </div>
         <x-ui.badge tone="info">Bloques 5 min</x-ui.badge>
       </div>
@@ -51,11 +51,11 @@
           'no_presento' => 'danger',
         ][$estadoActual] ?? 'neutral')
 
-        <div class="mt-4 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
+        <div class="mt-4 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-gray-200 bg-gray-50/60 p-4">
           <div>
-            <p class="text-xs uppercase tracking-widest text-slate-500">{{ data_get($siguiente, 'hora', '--:--') }}</p>
-            <p class="mt-2 text-lg font-semibold text-slate-900">{{ data_get($siguiente, 'paciente', 'Paciente sin nombre') }}</p>
-            <p class="text-sm text-slate-500">{{ data_get($siguiente, 'examen', 'Examen asignado') }}</p>
+            <p class="text-xs uppercase tracking-widest text-gray-500">{{ data_get($siguiente, 'hora', '--:--') }}</p>
+            <p class="mt-2 text-lg font-semibold text-gray-900">{{ data_get($siguiente, 'paciente', 'Paciente sin nombre') }}</p>
+            <p class="text-sm text-gray-500">{{ data_get($siguiente, 'examen', 'Examen asignado') }}</p>
           </div>
           <x-ui.badge :tone="$estadoTone">{{ $estadoActualLabel }}</x-ui.badge>
         </div>
@@ -65,11 +65,11 @@
             <button type="button" class="btn btn-primary">Tomar muestra</button>
             <button type="button" class="btn btn-ghost">No se presentó</button>
           </div>
-          <p class="mt-2 text-xs text-slate-500">La hora real se registra automáticamente. "No se presentó" libera el bloque.</p>
+          <p class="mt-2 text-xs text-gray-500">La hora real se registra automáticamente. "No se presentó" libera el bloque.</p>
         @elseif($estadoActual === 'en_toma')
-          <p class="mt-3 text-xs text-slate-500">En toma. El sistema registra el cierre real al finalizar.</p>
+          <p class="mt-3 text-xs text-gray-500">En toma. El sistema registra el cierre real al finalizar.</p>
         @else
-          <p class="mt-3 text-xs text-slate-500">Estado cerrado. El flujo pasa al siguiente paciente.</p>
+          <p class="mt-3 text-xs text-gray-500">Estado cerrado. El flujo pasa al siguiente paciente.</p>
         @endif
       @else
         <x-ui.empty-state
@@ -84,8 +84,8 @@
     <section class="card p-6">
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 class="text-lg font-semibold text-slate-900">Cola en tiempo real</h2>
-          <p class="text-sm text-slate-500">Ordenada por hora de llegada.</p>
+          <h2 class="text-lg font-semibold text-gray-900">Cola en tiempo real</h2>
+          <p class="text-sm text-gray-500">Ordenada por hora de llegada.</p>
         </div>
       </div>
 
@@ -105,11 +105,11 @@
               'tomado' => 'success',
               'no_presento' => 'danger',
             ][$estado] ?? 'neutral')
-            <div class="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-3">
+            <div class="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-gray-200 bg-white px-4 py-3">
               <div>
-                <p class="text-xs uppercase tracking-widest text-slate-500">{{ data_get($item, 'hora', '--:--') }}</p>
-                <p class="mt-1 font-semibold text-slate-900">{{ data_get($item, 'paciente', 'Paciente sin nombre') }}</p>
-                <p class="text-sm text-slate-500">{{ data_get($item, 'examen', 'Examen asignado') }}</p>
+                <p class="text-xs uppercase tracking-widest text-gray-500">{{ data_get($item, 'hora', '--:--') }}</p>
+                <p class="mt-1 font-semibold text-gray-900">{{ data_get($item, 'paciente', 'Paciente sin nombre') }}</p>
+                <p class="text-sm text-gray-500">{{ data_get($item, 'examen', 'Examen asignado') }}</p>
               </div>
               <x-ui.badge :tone="$estadoTone">{{ $estadoLabel }}</x-ui.badge>
             </div>

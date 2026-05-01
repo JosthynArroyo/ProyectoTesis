@@ -28,19 +28,7 @@ class MaintenanceModeTest extends TestCase
         $response->assertStatus(503);
     }
 
-    public function test_maintenance_page_keeps_face_tab_visible_but_disabled(): void
-    {
-        $this->enableMaintenance();
 
-        $response = $this->get('/');
-
-        $response->assertStatus(503);
-        $response->assertSee('data-face-tab-disabled="1"', false);
-        $response->assertSee('data-login-tab="face"', false);
-        $response->assertSee('disabled', false);
-        $response->assertDontSee('id="chatbot-widget"', false);
-        $response->assertCookie(config('session.cookie'));
-    }
 
     public function test_superadmin_can_bypass_maintenance(): void
     {
@@ -58,6 +46,44 @@ class MaintenanceModeTest extends TestCase
         $response = $this->actingAs($user)->get('/');
 
         $response->assertOk();
+    }
+
+    public function test_superadmin_can_save_maintenance_without_allowlisted_ips(): void
+    {
+        $role = Role::create(['name' => 'superadmin']);
+        $user = User::factory()->create(['status' => 'active']);
+        $user->roles()->attach($role->id);
+
+        $this->actingAs($user)
+            ->get(route('superadmin.maintenance.edit'))
+            ->assertOk()
+            ->assertSee('id="maintenance_allow_ips"', false)
+            ->assertDontSee('placeholder="Ej: 127.0.0.1, 190.0.0.10" required', false);
+
+        $response = $this
+            ->actingAs($user)
+            ->from(route('superadmin.maintenance.edit'))
+            ->put(route('superadmin.maintenance.update'), [
+                'maintenance_enabled' => '1',
+                'maintenance_message' => 'Ventana de mantenimiento',
+                'maintenance_until' => now()->addHour()->format('Y-m-d\TH:i'),
+                'maintenance_allow_ips' => '',
+            ]);
+
+        $response
+            ->assertRedirect(route('superadmin.maintenance.edit'))
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('success', 'Configuracion de mantenimiento actualizada.');
+
+        $this->assertDatabaseHas('site_settings', [
+            'key' => 'maintenance.message',
+            'value' => 'Ventana de mantenimiento',
+        ]);
+
+        $this->assertDatabaseHas('site_settings', [
+            'key' => 'maintenance.allow_ips',
+            'value' => null,
+        ]);
     }
 
     public function test_allowlisted_remote_ip_can_bypass_maintenance(): void
@@ -157,34 +183,7 @@ class MaintenanceModeTest extends TestCase
         $this->assertAuthenticatedAs($user);
     }
 
-    public function test_allowlisted_ip_can_reach_face_login_during_maintenance(): void
-    {
-        $this->enableMaintenance('192.168.18.42');
 
-        $response = $this
-            ->withServerVariables(['REMOTE_ADDR' => '192.168.18.42'])
-            ->postJson(route('face.login'), [
-                'descriptor' => array_fill(0, 128, 0.1),
-            ]);
-
-        $response->assertStatus(422);
-        $response->assertJsonValidationErrors(['descriptor']);
-    }
-
-    public function test_maintenance_rejects_face_login_with_same_generic_message(): void
-    {
-        $this->enableMaintenance();
-
-        $response = $this->postJson(route('face.login'), [
-            'descriptor' => array_fill(0, 128, 0.1),
-        ]);
-
-        $response
-            ->assertStatus(503)
-            ->assertJson([
-                'message' => self::GENERIC_MAINTENANCE_MESSAGE,
-            ]);
-    }
 
     private function enableMaintenance(?string $allowIps = null): void
     {

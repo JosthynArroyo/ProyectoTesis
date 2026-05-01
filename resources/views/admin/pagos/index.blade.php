@@ -111,20 +111,20 @@
             <tr>
               <td data-label="Pago">#{{ $pago->id }}</td>
               <td data-label="Folio">
-                <div class="text-xs font-semibold text-slate-900">{{ $pago->folio_unico ?: 'SIN FOLIO' }}</div>
+                <div class="text-xs font-semibold text-gray-900">{{ $pago->folio_unico ?: 'SIN FOLIO' }}</div>
                 @if($pago->token_publico)
-                  <a href="{{ route('pagos.token.show', $pago->token_publico) }}" class="inline-flex items-center gap-1 text-xs text-sky-700 hover:underline">
+                  <a href="{{ route('pagos.token.show', $pago->token_publico) }}" class="inline-flex items-center gap-1 text-xs text-gray-700 hover:underline">
                     <i class="ri-external-link-line"></i> Abrir por token
                   </a>
                 @endif
               </td>
               <td data-label="Paciente">
-                <div class="text-sm font-semibold text-slate-900">{{ $pago->paciente?->name ?? 'N/D' }}</div>
-                <div class="text-xs text-slate-500">{{ $pago->paciente?->dni }} · {{ $pago->paciente?->email }}</div>
+                <div class="text-sm font-semibold text-gray-900">{{ $pago->paciente?->name ?? 'N/D' }}</div>
+                <div class="text-xs text-gray-500">{{ $pago->paciente?->dni }} · {{ $pago->paciente?->email }}</div>
               </td>
               <td data-label="Cita">
                 #{{ $pago->cita_id }}<br>
-                <span class="text-xs text-slate-500">
+                <span class="text-xs text-gray-500">
                   {{ optional($pago->cita?->fecha)->format('d/m/Y') }} {{ $pago->cita?->hora ? substr((string)$pago->cita->hora, 0, 5) : '' }}
                 </span>
               </td>

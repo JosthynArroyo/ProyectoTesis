@@ -21,19 +21,19 @@
 
   <section class="grid gap-4 lg:grid-cols-3">
     <article class="card p-5">
-      <p class="text-xs uppercase tracking-widest text-slate-500">Paciente</p>
-      <p class="mt-2 font-semibold text-slate-900">{{ $cita->paciente?->name ?? '-' }}</p>
-      <p class="text-sm text-slate-600">{{ $cita->paciente?->dni ?: 'Documento no registrado' }}</p>
+      <p class="text-xs uppercase tracking-widest text-gray-500">Paciente</p>
+      <p class="mt-2 font-semibold text-gray-900">{{ $cita->paciente?->name ?? '-' }}</p>
+      <p class="text-sm text-gray-600">{{ $cita->paciente?->dni ?: 'Documento no registrado' }}</p>
     </article>
     <article class="card p-5">
-      <p class="text-xs uppercase tracking-widest text-slate-500">Doctor</p>
-      <p class="mt-2 font-semibold text-slate-900">{{ $cita->doctor?->name ?? '-' }}</p>
-      <p class="text-sm text-slate-600">{{ $cita->especialidad?->nombre ?? 'Especialidad no registrada' }}</p>
+      <p class="text-xs uppercase tracking-widest text-gray-500">Doctor</p>
+      <p class="mt-2 font-semibold text-gray-900">{{ $cita->doctor?->name ?? '-' }}</p>
+      <p class="text-sm text-gray-600">{{ $cita->especialidad?->nombre ?? 'Especialidad no registrada' }}</p>
     </article>
     <article class="card p-5">
-      <p class="text-xs uppercase tracking-widest text-slate-500">Cita</p>
-      <p class="mt-2 font-semibold text-slate-900">#{{ $cita->id }}</p>
-      <p class="text-sm text-slate-600">Estado: {{ $cita->estado }}</p>
+      <p class="text-xs uppercase tracking-widest text-gray-500">Cita</p>
+      <p class="mt-2 font-semibold text-gray-900">#{{ $cita->id }}</p>
+      <p class="text-sm text-gray-600">Estado: {{ $cita->estado }}</p>
     </article>
   </section>
 
@@ -43,7 +43,7 @@
     <div>
       <label for="texto_constancia" class="form-label">Texto clinico o constancia medica</label>
       <textarea id="texto_constancia" name="texto_constancia" required class="form-textarea min-h-40">{{ old('texto_constancia', $textoSugerido) }}</textarea>
-      <p class="mt-2 text-xs text-slate-500">Este texto quedara como documento emitido y no se editara libremente despues de guardar.</p>
+      <p class="mt-2 text-xs text-gray-500">Este texto quedara como documento emitido y no se editara libremente despues de guardar.</p>
       @error('texto_constancia')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
     </div>
 

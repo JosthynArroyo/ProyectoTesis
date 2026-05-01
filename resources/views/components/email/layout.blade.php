@@ -9,21 +9,40 @@
 
 @php
     $emailBranding = is_array($emailBranding ?? null) ? $emailBranding : [];
-    $brandName = $emailBranding['brand_name'] ?? 'Clínica Don Bosco';
-    $brandLogo = $emailBranding['brand_logo'] ?? 'img/logo-welcomeBlanco.jpg';
+    $brandName = $emailBranding['brand_name'] ?? 'Nombre de la clínica';
+    $brandLogo = $emailBranding['brand_logo'] ?? null;
     $accent = $emailBranding['accent'] ?? '#0f766e';
     $accentStrong = $emailBranding['accent_strong'] ?? '#14b8a6';
     $accentSoft = $emailBranding['accent_soft'] ?? '#ccfbf1';
     $contactPhone = $emailBranding['contact_phone'] ?? '';
+    $contactEmail = $emailBranding['contact_email'] ?? '';
     $contactHours = $emailBranding['contact_hours'] ?? '';
-    $footerText = $emailBranding['footer_text'] ?? ('Clínica Don Bosco (c) '.date('Y').' - Todos los derechos reservados.');
+    $footerText = $emailBranding['footer_text'] ?? ('© '.date('Y').' - Todos los derechos reservados.');
 
-    $logoPath = public_path($brandLogo);
-    $fallbackLogo = public_path('img/logo-welcomeBlanco.jpg');
-    $resolvedLogo = is_file($logoPath) ? $logoPath : $fallbackLogo;
-    $logoSrc = (isset($message) && is_object($message) && is_file($resolvedLogo))
-        ? $message->embed($resolvedLogo)
-        : asset(is_file($logoPath) ? $brandLogo : 'img/logo-welcomeBlanco.jpg');
+    $logoSrc = null;
+    if ($brandLogo) {
+        $logoPath = app(\App\Services\ClinicIdentityService::class)->logoPath();
+        $resolvedLogo = app(\App\Services\ClinicIdentityService::class)->logoBase64();
+        if (isset($message) && is_object($message) && $logoPath) {
+            $absolute = null;
+            $candidate = ltrim(str_replace('\\', '/', $logoPath), '/');
+            if (str_starts_with($candidate, 'storage/')) {
+                $storagePath = substr($candidate, 8);
+                if (\Illuminate\Support\Facades\Storage::disk('public')->exists($storagePath)) {
+                    $absolute = \Illuminate\Support\Facades\Storage::disk('public')->path($storagePath);
+                }
+            } elseif (\Illuminate\Support\Facades\Storage::disk('public')->exists($candidate)) {
+                $absolute = \Illuminate\Support\Facades\Storage::disk('public')->path($candidate);
+            } elseif (is_file(public_path($candidate))) {
+                $absolute = public_path($candidate);
+            }
+            $logoSrc = $absolute && is_file($absolute) ? $message->embed($absolute) : null;
+        }
+
+        if (! $logoSrc && $brandLogo) {
+            $logoSrc = app(\App\Services\ClinicIdentityService::class)->logoUrl('medium');
+        }
+    }
 
     $previewText = \Illuminate\Support\Str::limit(
         trim((string) ($preheader ?? $intro ?? $title ?? $brandName)),
@@ -52,7 +71,13 @@
                             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%; border-collapse:collapse; background-color:{{ $accent }}; background-image:linear-gradient(135deg, {{ $accent }} 0%, {{ $accentStrong }} 100%);">
                                 <tr>
                                     <td style="padding:32px 32px 28px;">
-                                        <img src="{{ $logoSrc }}" alt="{{ $brandName }}" width="170" style="display:block; max-width:170px; border:0; outline:none; text-decoration:none;">
+                                        @if ($logoSrc)
+                                            <img src="{{ $logoSrc }}" alt="{{ $brandName }}" width="170" style="display:block; max-width:170px; border:0; outline:none; text-decoration:none;">
+                                        @else
+                                            <div style="display:inline-block; padding:10px 14px; border-radius:14px; background:rgba(255,255,255,0.14); color:#ffffff; font-size:20px; font-weight:800;">
+                                                {{ $brandName }}
+                                            </div>
+                                        @endif
 
                                         @if ($eyebrow)
                                             <div style="margin-top:22px;">
@@ -111,7 +136,7 @@
                             <div style="margin-top:8px; font-size:12px; line-height:1.7; color:#cbd5e1;">
                                 {{ $footerText }}
                             </div>
-                            @if ($contactPhone || $contactHours)
+                            @if ($contactPhone || $contactHours || $contactEmail)
                                 <div style="margin-top:8px; font-size:12px; line-height:1.7; color:#94a3b8;">
                                     @if ($contactPhone)
                                         Tel. {{ $contactPhone }}
@@ -121,6 +146,12 @@
                                     @endif
                                     @if ($contactHours)
                                         Horario: {{ $contactHours }}
+                                    @endif
+                                    @if (($contactPhone || $contactHours) && $contactEmail)
+                                        ·
+                                    @endif
+                                    @if ($contactEmail)
+                                        {{ $contactEmail }}
                                     @endif
                                 </div>
                             @endif
@@ -135,3 +166,4 @@
     </table>
 </body>
 </html>
+

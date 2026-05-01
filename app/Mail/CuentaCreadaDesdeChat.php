@@ -3,6 +3,7 @@
 namespace App\Mail;
 
 use App\Models\User;
+use App\Services\ClinicIdentityService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
@@ -23,7 +24,7 @@ class CuentaCreadaDesdeChat extends Mailable
 
     public function build()
     {
-        return $this->subject('Tu cuenta ya está lista - Clínica Don Bosco')
+        return $this->subject(app(ClinicIdentityService::class)->subject('Tu cuenta ya esta lista'))
             ->view('emails.cuenta_desde_chat');
     }
 }

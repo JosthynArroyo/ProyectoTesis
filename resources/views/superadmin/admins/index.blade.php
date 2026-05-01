@@ -21,7 +21,7 @@
   <form class="card p-5" method="GET" action="{{ route('superadmin.admins.index') }}">
     <div class="flex flex-wrap gap-4">
       <div class="inline-control-shell flex-1">
-        <i class="ri-search-line text-slate-400"></i>
+        <i class="ri-search-line text-gray-400"></i>
         <input type="search" name="buscar" value="{{ $buscar ?? '' }}" placeholder="Buscar por nombre, correo o cédula">
       </div>
       @error('buscar')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
@@ -76,18 +76,18 @@
           <tr data-user-row>
             <td data-label="Administrador">
               <div class="flex items-center gap-3">
-                <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-sm font-semibold text-slate-600">{{ \Illuminate\Support\Str::substr($admin->name,0,1) }}</div>
+                <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-gray-100 text-sm font-semibold text-gray-600">{{ \Illuminate\Support\Str::substr($admin->name,0,1) }}</div>
                 <div>
-                  <p class="font-semibold text-slate-900">{{ $admin->name }}</p>
-                  <p class="text-xs text-slate-500">ID #{{ $admin->id }}</p>
+                  <p class="font-semibold text-gray-900">{{ $admin->name }}</p>
+                  <p class="text-xs text-gray-500">ID #{{ $admin->id }}</p>
                 </div>
               </div>
             </td>
             <td data-label="Contacto">
               <div class="space-y-1">
-                <div class="text-sm text-slate-700">{{ $admin->email }}</div>
+                <div class="text-sm text-gray-700">{{ $admin->email }}</div>
                 @if(!empty($admin->telefono))
-                  <span class="text-xs text-slate-500">Tel: {{ $admin->telefono }}</span>
+                  <span class="text-xs text-gray-500">Tel: {{ $admin->telefono }}</span>
                 @endif
               </div>
             </td>
@@ -102,7 +102,7 @@
                 @else
                   <span class="badge success">Activo</span>
                 @endif
-                <span class="text-xs text-slate-500">Último acceso: {{ $admin->last_login_at?->diffForHumans() ?? 'N/D' }}</span>
+                <span class="text-xs text-gray-500">Último acceso: {{ $admin->last_login_at?->diffForHumans() ?? 'N/D' }}</span>
               </div>
             </td>
             <td data-label="Acciones">
@@ -188,7 +188,7 @@
       </table>
     </div>
 
-    <div class="flex flex-wrap items-center justify-between gap-4 px-6 py-4 text-sm text-slate-500">
+    <div class="flex flex-wrap items-center justify-between gap-4 px-6 py-4 text-sm text-gray-500">
       <div>
         @if ($admins->hasPages())
           Página {{ $admins->currentPage() }} de {{ $admins->lastPage() }}
@@ -205,16 +205,16 @@
   <div class="modal-backdrop" data-sheet-close></div>
   <div class="modal-dialog modal-dialog--sheet" role="document" tabindex="-1">
     <div class="card modal-sheet p-6">
-      <div class="flex items-center justify-between gap-3 border-b border-slate-100 pb-4">
+      <div class="flex items-center justify-between gap-3 border-b border-gray-100 pb-4">
         <div>
-          <p class="text-xs uppercase tracking-widest text-slate-500">Confirmación</p>
-          <h3 class="mt-2 text-lg font-semibold text-slate-900" data-confirm-title>Confirmar acción</h3>
+          <p class="text-xs uppercase tracking-widest text-gray-500">Confirmación</p>
+          <h3 class="mt-2 text-lg font-semibold text-gray-900" data-confirm-title>Confirmar acción</h3>
         </div>
         <button type="button" class="btn btn-ghost px-2" data-sheet-close aria-label="Cerrar">
           <i class="ri-close-line"></i>
         </button>
       </div>
-      <p class="mt-4 text-sm text-slate-600" data-confirm-message>Confirma para continuar.</p>
+      <p class="mt-4 text-sm text-gray-600" data-confirm-message>Confirma para continuar.</p>
       <div class="mt-6 flex flex-wrap justify-end gap-3">
         <button type="button" class="btn btn-outline" data-sheet-close>Cancelar</button>
         <button type="button" class="btn btn-primary" data-confirm-submit>Confirmar</button>
@@ -227,11 +227,11 @@
   <div class="modal-backdrop" data-sheet-close></div>
   <div class="modal-dialog modal-dialog--sheet" role="document" tabindex="-1">
     <div class="card modal-sheet p-6">
-      <div class="flex items-center justify-between gap-3 border-b border-slate-100 pb-4">
+      <div class="flex items-center justify-between gap-3 border-b border-gray-100 pb-4">
         <div>
-          <p class="text-xs uppercase tracking-widest text-slate-500">Suspensión</p>
-          <h3 class="mt-2 text-lg font-semibold text-slate-900" data-suspend-title>Suspender administrador</h3>
-          <p class="text-sm text-slate-500">Cuenta: <span data-suspend-name>{{ $suspendTarget?->name ?? 'Administrador' }}</span></p>
+          <p class="text-xs uppercase tracking-widest text-gray-500">Suspensión</p>
+          <h3 class="mt-2 text-lg font-semibold text-gray-900" data-suspend-title>Suspender administrador</h3>
+          <p class="text-sm text-gray-500">Cuenta: <span data-suspend-name>{{ $suspendTarget?->name ?? 'Administrador' }}</span></p>
         </div>
         <button type="button" class="btn btn-ghost px-2" data-sheet-close aria-label="Cerrar">
           <i class="ri-close-line"></i>

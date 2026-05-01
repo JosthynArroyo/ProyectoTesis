@@ -39,7 +39,7 @@
   <form class="card p-5" method="GET" action="{{ route('admin.usuarios.index') }}">
     <div class="flex flex-wrap gap-4">
       <div class="inline-control-shell flex-1">
-        <i class="ri-search-line text-slate-400"></i>
+        <i class="ri-search-line text-gray-400"></i>
         <input type="search" name="buscar" value="{{ old('buscar', $buscar) }}" placeholder="Buscar por nombre, correo, cédula o teléfono">
       </div>
       @error('buscar')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
@@ -68,12 +68,12 @@
     </div>
 
     <div id="filters-wrap" class="mt-4" @unless($filtersOpen) hidden @endunless>
-      <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
-        <p class="text-xs uppercase tracking-widest text-slate-500">Columnas visibles</p>
+      <div class="rounded-2xl border border-gray-200 bg-gray-50/70 p-4">
+        <p class="text-xs uppercase tracking-widest text-gray-500">Columnas visibles</p>
         <div class="mt-3 flex flex-wrap gap-2">
           @foreach($allColumns as $column)
             @php $checked = in_array($column, $cols); @endphp
-            <label class="filter-chip flex items-center gap-2 rounded-full border border-slate-200 px-3 py-2 text-xs font-semibold {{ $checked ? 'is-active bg-teal-50 text-teal-700' : 'text-slate-500' }}" tabindex="0" aria-pressed="{{ $checked ? 'true' : 'false' }}">
+            <label class="filter-chip flex items-center gap-2 rounded-full border border-gray-200 px-3 py-2 text-xs font-semibold {{ $checked ? 'is-active bg-gray-100 text-gray-900 font-medium' : 'text-gray-500' }}" tabindex="0" aria-pressed="{{ $checked ? 'true' : 'false' }}">
               <i class="icon ri-checkbox-blank-circle-line"></i>
               <input type="checkbox" name="cols[]" value="{{ $column }}" {{ $checked ? 'checked' : '' }}>
               {{ ucfirst($column) }}
@@ -145,11 +145,11 @@
             @if(in_array('usuario',$cols))
               <td data-label="Usuario">
                 <div class="flex items-start gap-3">
-                  <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 text-sm font-semibold text-slate-600">{{ \Illuminate\Support\Str::substr($u->name,0,1) }}</div>
+                  <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-gray-100 text-sm font-semibold text-gray-600">{{ \Illuminate\Support\Str::substr($u->name,0,1) }}</div>
                   <div class="min-w-0 flex-1">
-                    <p class="truncate text-sm font-semibold text-slate-900">{{ $u->name }}</p>
+                    <p class="truncate text-sm font-semibold text-gray-900">{{ $u->name }}</p>
                     <div class="mt-2 flex flex-wrap items-center gap-3">
-                      <p class="text-xs text-slate-500">ID #{{ $u->id }}</p>
+                      <p class="text-xs text-gray-500">ID #{{ $u->id }}</p>
                       <button
                         type="button"
                         class="btn btn-ghost btn-sm md:hidden"
@@ -169,9 +169,9 @@
             @if(in_array('contacto',$cols))
               <td data-label="Contacto" class="user-detail-cell">
                 <div class="space-y-1">
-                  <p class="break-all text-sm text-slate-700">{{ $u->email }}</p>
+                  <p class="break-all text-sm text-gray-700">{{ $u->email }}</p>
                   @if(!empty($u->telefono))
-                    <span class="text-xs text-slate-500">Tel: {{ $u->telefono }}</span>
+                    <span class="text-xs text-gray-500">Tel: {{ $u->telefono }}</span>
                   @endif
                 </div>
               </td>
@@ -196,7 +196,7 @@
                     <span class="badge success">Activo</span>
                   @endif
                   @unless($esAdmin)
-                    <span class="text-xs text-slate-500">Último acceso: {{ optional($u->last_login_at)->diffForHumans() ?? 'N/D' }}</span>
+                    <span class="text-xs text-gray-500">Último acceso: {{ optional($u->last_login_at)->diffForHumans() ?? 'N/D' }}</span>
                   @endunless
                 </div>
               </td>
@@ -205,9 +205,9 @@
             @if(in_array('especialidades',$cols))
               <td data-label="Especialidad" class="user-detail-cell">
                 @if(count($espNombres))
-                  <span class="text-xs text-slate-500">{{ implode(', ', $espNombres) }}</span>
+                  <span class="text-xs text-gray-500">{{ implode(', ', $espNombres) }}</span>
                 @else
-                  <span class="text-xs text-slate-500">Sin especialidad</span>
+                  <span class="text-xs text-gray-500">Sin especialidad</span>
                 @endif
               </td>
             @endif
@@ -304,7 +304,7 @@
       </table>
     </div>
 
-    <div class="flex flex-wrap items-center justify-between gap-4 px-6 py-4 text-sm text-slate-500">
+    <div class="flex flex-wrap items-center justify-between gap-4 px-6 py-4 text-sm text-gray-500">
       <div>
         @if ($users->hasPages())
           Página {{ $users->currentPage() }} de {{ $users->lastPage() }}
@@ -321,16 +321,16 @@
   <div class="modal-backdrop" data-sheet-close></div>
   <div class="modal-dialog modal-dialog--sheet" role="document" tabindex="-1">
     <div class="card modal-sheet p-6">
-      <div class="flex items-center justify-between gap-3 border-b border-slate-100 pb-4">
+      <div class="flex items-center justify-between gap-3 border-b border-gray-100 pb-4">
         <div>
-          <p class="text-xs uppercase tracking-widest text-slate-500">Confirmación</p>
-          <h3 class="mt-2 text-lg font-semibold text-slate-900" data-confirm-title>Confirmar acción</h3>
+          <p class="text-xs uppercase tracking-widest text-gray-500">Confirmación</p>
+          <h3 class="mt-2 text-lg font-semibold text-gray-900" data-confirm-title>Confirmar acción</h3>
         </div>
         <button type="button" class="btn btn-ghost px-2" data-sheet-close aria-label="Cerrar">
           <i class="ri-close-line"></i>
         </button>
       </div>
-      <p class="mt-4 text-sm text-slate-600" data-confirm-message>Confirma para continuar.</p>
+      <p class="mt-4 text-sm text-gray-600" data-confirm-message>Confirma para continuar.</p>
       <div class="mt-6 flex flex-wrap justify-end gap-3">
         <button type="button" class="btn btn-outline" data-sheet-close>Cancelar</button>
         <button type="button" class="btn btn-primary" data-confirm-submit>Confirmar</button>
@@ -343,11 +343,11 @@
   <div class="modal-backdrop" data-sheet-close></div>
   <div class="modal-dialog modal-dialog--sheet" role="document" tabindex="-1">
     <div class="card modal-sheet p-6">
-      <div class="flex items-center justify-between gap-3 border-b border-slate-100 pb-4">
+      <div class="flex items-center justify-between gap-3 border-b border-gray-100 pb-4">
         <div>
-          <p class="text-xs uppercase tracking-widest text-slate-500">Suspensión</p>
-          <h3 class="mt-2 text-lg font-semibold text-slate-900" data-suspend-title>Suspender usuario</h3>
-          <p class="text-sm text-slate-500">Cuenta: <span data-suspend-name>{{ $suspendTarget?->name ?? 'Usuario' }}</span></p>
+          <p class="text-xs uppercase tracking-widest text-gray-500">Suspensión</p>
+          <h3 class="mt-2 text-lg font-semibold text-gray-900" data-suspend-title>Suspender usuario</h3>
+          <p class="text-sm text-gray-500">Cuenta: <span data-suspend-name>{{ $suspendTarget?->name ?? 'Usuario' }}</span></p>
         </div>
         <button type="button" class="btn btn-ghost px-2" data-sheet-close aria-label="Cerrar">
           <i class="ri-close-line"></i>

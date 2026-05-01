@@ -30,19 +30,19 @@
     </button>
   </div>
 
-  <div class="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)] 2xl:grid-cols-[360px_minmax(0,1fr)]">
-    <form method="GET" action="{{ url()->current() }}" class="card min-w-0 p-6 xl:sticky xl:top-24" data-filter-panel>
+  <div class="grid gap-6 xl:grid-cols-1">
+    <form method="GET" action="{{ url()->current() }}" class="card min-w-0 p-6" data-filter-panel>
       <div>
-        <p class="text-xs uppercase tracking-widest text-slate-500">Panel de filtros</p>
-        <h3 class="mt-2 text-lg font-semibold text-slate-900">Filtra eventos</h3>
-        <p class="text-sm text-slate-500">Combina evento, estado, doctor, paciente y fechas.</p>
+        <p class="text-xs uppercase tracking-widest text-gray-500">Panel de filtros</p>
+        <h3 class="mt-2 text-lg font-semibold text-gray-900">Filtra eventos</h3>
+        <p class="text-sm text-gray-500">Combina evento, estado, doctor, paciente y fechas.</p>
       </div>
 
-      <div class="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+      <div class="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-6">
         <div>
           <label class="form-label">Evento</label>
-          <div class="flex min-w-0 items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2">
-            <i class="ri-calendar-event-line text-slate-400"></i>
+          <div class="flex min-w-0 items-center gap-2 rounded-xl border border-gray-200 bg-white/90 px-3 py-2">
+            <i class="ri-calendar-event-line text-gray-400"></i>
             <select class="w-full bg-transparent text-sm" name="tipo">
               <option value="all" @selected(($tipo ?? '') === '' || ($tipo ?? '') === 'all')>Todos los eventos</option>
               @foreach(['agendada','confirmada','cancelada','realizada','no_se_presento','reprogramada','prioridad_manual'] as $t)
@@ -55,8 +55,8 @@
 
         <div>
           <label class="form-label">Estado</label>
-          <div class="flex min-w-0 items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2">
-            <i class="ri-flag-line text-slate-400"></i>
+          <div class="flex min-w-0 items-center gap-2 rounded-xl border border-gray-200 bg-white/90 px-3 py-2">
+            <i class="ri-flag-line text-gray-400"></i>
             <select class="w-full bg-transparent text-sm" name="estado">
               <option value="all" @selected(($estado ?? '') === '' || ($estado ?? '') === 'all')>Todos los estados</option>
               @foreach(['pendiente','confirmada','cancelada','realizada','no_se_presento'] as $e)
@@ -69,8 +69,8 @@
 
         <div>
           <label class="form-label">Doctor</label>
-          <div class="flex min-w-0 items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2">
-            <i class="ri-stethoscope-line text-slate-400"></i>
+          <div class="flex min-w-0 items-center gap-2 rounded-xl border border-gray-200 bg-white/90 px-3 py-2">
+            <i class="ri-stethoscope-line text-gray-400"></i>
             <select class="w-full bg-transparent text-sm" name="doctor_id">
               <option value="all" @selected(($doctorId ?? '') === '' || ($doctorId ?? '') === 'all')>Todos los doctores</option>
               @foreach($doctores as $doctor)
@@ -83,8 +83,8 @@
 
         <div>
           <label class="form-label">Paciente</label>
-          <div class="flex min-w-0 items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2">
-            <i class="ri-user-line text-slate-400"></i>
+          <div class="flex min-w-0 items-center gap-2 rounded-xl border border-gray-200 bg-white/90 px-3 py-2">
+            <i class="ri-user-line text-gray-400"></i>
             <input class="w-full bg-transparent text-sm" type="text" name="paciente" value="{{ $paciente ?? '' }}" placeholder="Nombre del paciente">
           </div>
           @error('paciente')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
@@ -92,8 +92,8 @@
 
         <div>
           <label class="form-label">Desde</label>
-          <div class="flex min-w-0 items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2">
-            <i class="ri-calendar-line text-slate-400"></i>
+          <div class="flex min-w-0 items-center gap-2 rounded-xl border border-gray-200 bg-white/90 px-3 py-2">
+            <i class="ri-calendar-line text-gray-400"></i>
             <input class="w-full bg-transparent text-sm" type="date" name="desde" value="{{ $desde ?? '' }}">
           </div>
           @error('desde')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
@@ -101,8 +101,8 @@
 
         <div>
           <label class="form-label">Hasta</label>
-          <div class="flex min-w-0 items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2">
-            <i class="ri-calendar-line text-slate-400"></i>
+          <div class="flex min-w-0 items-center gap-2 rounded-xl border border-gray-200 bg-white/90 px-3 py-2">
+            <i class="ri-calendar-line text-gray-400"></i>
             <input class="w-full bg-transparent text-sm" type="date" name="hasta" value="{{ $hasta ?? '' }}">
           </div>
           @error('hasta')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
@@ -110,8 +110,8 @@
 
         <div class="sm:col-span-2">
           <label class="form-label">Búsqueda</label>
-          <div class="flex min-w-0 items-center gap-2 rounded-xl border border-slate-200 bg-white/90 px-3 py-2">
-            <i class="ri-search-line text-slate-400"></i>
+          <div class="flex min-w-0 items-center gap-2 rounded-xl border border-gray-200 bg-white/90 px-3 py-2">
+            <i class="ri-search-line text-gray-400"></i>
             <input class="w-full bg-transparent text-sm" type="search" name="q" value="{{ $q ?? '' }}" placeholder="#cita, correo, cédula, doctor">
           </div>
           @error('q')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
@@ -131,9 +131,9 @@
     <div class="card min-w-0 overflow-visible p-6">
       <div class="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p class="text-xs uppercase tracking-widest text-slate-500">Resultados</p>
-          <h3 class="mt-2 text-lg font-semibold text-slate-900">Eventos encontrados</h3>
-          <span class="text-sm text-slate-500">{{ $ev->total() }} eventos</span>
+          <p class="text-xs uppercase tracking-widest text-gray-500">Resultados</p>
+          <h3 class="mt-2 text-lg font-semibold text-gray-900">Eventos encontrados</h3>
+          <span class="text-sm text-gray-500">{{ $ev->total() }} eventos</span>
         </div>
         <div class="relative">
           <button type="button" class="btn btn-outline btn-sm" data-kebab="audit-export-menu">
@@ -178,7 +178,7 @@
               <tr>
                 <td data-label="Fecha / hora" class="whitespace-nowrap">
                   <div>{{ $registro->created_at->format('d/m/Y') }}</div>
-                  <div class="text-xs text-slate-500">{{ $registro->created_at->format('H:i') }}</div>
+                  <div class="text-xs text-gray-500">{{ $registro->created_at->format('H:i') }}</div>
                 </td>
                 <td data-label="Evento">
                   <span class="badge {{ $pillClass }} whitespace-nowrap"><i class="{{ $icon }}"></i> {{ $eventLabels[$registro->tipo] ?? ucfirst($registro->tipo) }}</span>
@@ -189,7 +189,7 @@
                 <td data-label="De">
                   @if($registro->tipo === 'reprogramada' && !blank($registro->de_fecha))
                     <div class="whitespace-nowrap">{{ \Illuminate\Support\Carbon::parse($registro->de_fecha)->format('d/m/Y') }}</div>
-                    <div class="text-xs text-slate-500">{{ $registro->de_hora }}</div>
+                    <div class="text-xs text-gray-500">{{ $registro->de_hora }}</div>
                   @else
                     <span class="badge neutral whitespace-nowrap">{{ $fromStateLabel }}</span>
                   @endif
@@ -197,22 +197,22 @@
                 <td data-label="A">
                   @if($registro->tipo === 'reprogramada' && !blank($registro->a_fecha))
                     <div class="whitespace-nowrap">{{ \Illuminate\Support\Carbon::parse($registro->a_fecha)->format('d/m/Y') }}</div>
-                    <div class="text-xs text-slate-500">{{ $registro->a_hora }}</div>
+                    <div class="text-xs text-gray-500">{{ $registro->a_hora }}</div>
                   @else
                     <span class="badge neutral whitespace-nowrap">{{ $toStateLabel }}</span>
                   @endif
                 </td>
-                <td data-label="Detalle" class="max-w-[18rem] break-words text-sm text-slate-600">
+                <td data-label="Detalle" class="max-w-[18rem] break-words text-sm text-gray-600">
                   @if($registro->tipo === 'prioridad_manual')
                     <div><strong>{{ $registro->valor_anterior ?? '-' }}</strong></div>
-                    <div class="mt-1 text-xs text-slate-500">-> {{ $registro->valor_nuevo ?? '-' }}</div>
+                    <div class="mt-1 text-xs text-gray-500">-> {{ $registro->valor_nuevo ?? '-' }}</div>
                     @if(!blank($registro->comentario))
-                      <div class="mt-1 text-xs text-slate-500">{{ $registro->comentario }}</div>
+                      <div class="mt-1 text-xs text-gray-500">{{ $registro->comentario }}</div>
                     @endif
                   @elseif(!blank($registro->comentario))
-                    <span class="text-xs text-slate-500">{{ $registro->comentario }}</span>
+                    <span class="text-xs text-gray-500">{{ $registro->comentario }}</span>
                   @else
-                    <span class="text-xs text-slate-400">Sin comentario adicional.</span>
+                    <span class="text-xs text-gray-400">Sin comentario adicional.</span>
                   @endif
                 </td>
               </tr>
@@ -230,7 +230,7 @@
         </div>
       @endif
 
-      <div class="mt-6 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-500">
+      <div class="mt-6 flex flex-wrap items-center justify-between gap-3 text-sm text-gray-500">
         <div>Página {{ $ev->currentPage() }} de {{ $ev->lastPage() }}</div>
         {!! $ev->withQueryString()->links() !!}
       </div>

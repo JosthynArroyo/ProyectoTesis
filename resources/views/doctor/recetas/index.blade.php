@@ -31,7 +31,7 @@
                     <i class="ri-download-2-line"></i> Descargar
                   </a>
                 @else
-                  <span class="text-xs text-slate-500">Sin PDF</span>
+                  <span class="text-xs text-gray-500">Sin PDF</span>
                 @endif
               </td>
             </tr>
