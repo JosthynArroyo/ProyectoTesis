@@ -31,12 +31,17 @@ class CertificadoMedicoPdfService
         ]);
 
         $identity = app(ClinicIdentityService::class);
+        $csvService = app(DocumentoCsvService::class);
+        $csv = $csvService->ensureCsv($certificado);
 
         $html = view('pdf.certificado-medico', [
             'certificado' => $certificado,
             'clinica' => $identity->institutionalName(),
-            'logoBase64' => $identity->logoBase64(),
+            'logoBase64' => $identity->logoBase64ForPdf(),
             'pdfCss' => $this->loadPdfCss('certificado-medico-pdf.css'),
+            'csv' => $csv,
+            'verificationUrl' => $csvService->verificationUrl($csv),
+            'qrDataUri' => $csvService->qrDataUri($csv),
         ])->render();
 
         $pdfOutput = $this->renderizarPdf($html);
@@ -74,13 +79,17 @@ class CertificadoMedicoPdfService
 
     protected function logoBase64(): ?string
     {
-        return app(ClinicIdentityService::class)->logoBase64();
+        return app(ClinicIdentityService::class)->logoBase64ForPdf();
     }
 
     protected function loadPdfCss(string $relativePath): string
     {
-        $path = resource_path('css/'.$relativePath);
+        $basePath = resource_path('css/pdf/base.css');
+        $specificPath = resource_path('css/'.$relativePath);
 
-        return is_file($path) ? (file_get_contents($path) ?: '') : '';
+        $css = is_file($basePath) ? (file_get_contents($basePath) ?: '') : '';
+        $css .= is_file($specificPath) ? "\n".(file_get_contents($specificPath) ?: '') : '';
+
+        return $css;
     }
 }

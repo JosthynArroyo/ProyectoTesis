@@ -1,0 +1,215 @@
+/* resources/css/doctor/pedido-laboratorio-pdf.css */
+body {
+    font-family: 'DejaVu Sans', sans-serif;
+    font-size: 10px;
+    color: #1e293b;
+    margin: 0;
+    padding: 0;
+}
+
+.header {
+    margin-bottom: 15px;
+    border-bottom: 2px solid #0f766e;
+    padding-bottom: 10px;
+}
+
+.logo {
+    max-height: 50px;
+    margin-bottom: 5px;
+}
+
+.logo-placeholder {
+    font-size: 20px;
+    font-weight: bold;
+    color: #0f766e;
+    border: 2px dashed #0f766e;
+    padding: 10px;
+    width: 100px;
+    text-align: center;
+    margin-bottom: 5px;
+}
+
+.clinic-name {
+    font-size: 16px;
+    font-weight: bold;
+    color: #0f766e;
+    margin: 0;
+}
+
+.clinic-slogan {
+    font-size: 9px;
+    color: #64748b;
+    margin: 2px 0 0 0;
+}
+
+.order-badge {
+    background-color: #0f766e;
+    color: white;
+    font-weight: bold;
+    padding: 5px 10px;
+    font-size: 11px;
+    display: inline-block;
+    border-radius: 4px;
+}
+
+.order-number {
+    font-size: 11px;
+    margin: 5px 0 2px 0;
+}
+
+.order-date {
+    font-size: 9px;
+    color: #64748b;
+    margin: 0;
+}
+
+.patient-card {
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-bottom: 15px;
+}
+
+.patient-card h3 {
+    margin-top: 0;
+    margin-bottom: 5px;
+    color: #0f766e;
+    font-size: 11px;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 3px;
+}
+
+.patient-card table td {
+    padding: 2px 0;
+    font-size: 9px;
+}
+
+.exams-container h3 {
+    color: #0f766e;
+    font-size: 11px;
+    margin-top: 0;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 3px;
+}
+
+.exams-grid-table {
+    border-collapse: collapse;
+}
+
+.category-cell {
+    padding: 0 10px 10px 10px;
+}
+
+.category-header {
+    background-color: #f1f5f9;
+    font-weight: bold;
+    color: #334155;
+    padding: 3px 6px;
+    border-left: 3px solid #0f766e;
+    margin-bottom: 5px;
+    font-size: 9px;
+}
+
+.exam-list {
+    list-style: none;
+    padding-left: 0;
+    margin: 0;
+}
+
+.exam-item {
+    padding: 2px 0;
+    font-size: 8.5px;
+    line-height: 1.2;
+}
+
+.checkbox {
+    font-family: 'DejaVu Sans', monospace;
+    font-size: 10px;
+    margin-right: 4px;
+}
+
+.exam-label.bold {
+    font-weight: bold;
+    color: #0f172a;
+}
+
+.signature-section {
+    margin-top: 20px;
+    border-top: 1px solid #e2e8f0;
+    padding-top: 15px;
+}
+
+.doctor-details {
+    font-size: 9px;
+    line-height: 1.4;
+    margin: 0;
+}
+
+.signature-line {
+    border-bottom: 1px solid #94a3b8;
+    width: 200px;
+    margin: 0 auto 5px auto;
+}
+
+.signature-label {
+    font-weight: bold;
+    font-size: 9px;
+    margin: 0;
+}
+
+.signature-note {
+    font-size: 8px;
+    color: #10b981;
+    margin: 2px 0 0 0;
+}
+
+.text-right {
+    text-align: right;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.verification-panel {
+    margin-top: 20px;
+    padding: 12px 14px;
+    border: 1px solid #dbe4ee;
+    border-radius: 8px;
+    background: #f8fafc;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 14px;
+}
+
+.verification-label {
+    font-size: 9px;
+    font-weight: bold;
+    color: #0f766e;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.verification-code {
+    margin-top: 4px;
+    font-size: 10px;
+    font-weight: bold;
+    color: #0f172a;
+}
+
+.verification-url {
+    margin-top: 4px;
+    font-size: 9px;
+    color: #64748b;
+    word-break: break-all;
+}
+
+.verification-qr {
+    width: 88px;
+    height: 88px;
+    object-fit: contain;
+    flex: 0 0 auto;
+}

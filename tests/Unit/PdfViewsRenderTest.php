@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\Models\Cita;
 use App\Models\Especialidad;
+use App\Models\PedidoLaboratorio;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -135,5 +136,48 @@ class PdfViewsRenderTest extends TestCase
         $this->assertStringNotContainsString('@php', $html);
         $this->assertStringNotContainsString('{!!', $html);
         $this->assertStringNotContainsString('file_exists($cssPath)', $html);
+        $this->assertStringNotContainsString('Firma y sello del medico', $html);
+        $this->assertStringNotContainsString('Firma del paciente o responsable', $html);
+    }
+
+    public function test_renderiza_pdf_de_pedido_laboratorio_con_checks_por_categoria(): void
+    {
+        $paciente = new User(['name' => 'Paciente Demo', 'dni' => '0999999999', 'telefono' => '0987654321']);
+        $doctor = new User(['name' => 'Dra. Sofia Paz', 'dni' => '0101010101']);
+        $cita = new Cita([
+            'id' => 24,
+            'fecha' => '2026-04-09',
+            'hora' => '08:30:00',
+            'motivo_consulta' => 'Control y chequeo general',
+        ]);
+        $cita->setRelation('paciente', $paciente);
+        $cita->setRelation('doctor', $doctor);
+        $cita->setRelation('especialidad', new Especialidad(['nombre' => 'Medicina General']));
+        $cita->setRelation('notaSoap', null);
+
+        $pedido = new PedidoLaboratorio([
+            'id' => 9,
+            'examenes' => ['biometria_hematica', 'glucosa'],
+        ]);
+        $pedido->setRelation('cita', $cita);
+        $pedido->setRelation('paciente', $paciente);
+        $pedido->setRelation('doctor', $doctor);
+
+        $html = view('pdf.pedido-laboratorio', [
+            'pedido' => $pedido,
+            'clinica' => 'Clinica Demo',
+            'slogan' => 'Atencion integral',
+            'logoBase64' => null,
+            'pdfCss' => 'body{color:#000;}',
+            'csv' => 'CSV123',
+            'verificationUrl' => 'https://example.test/verificar/CSV123',
+            'qrDataUri' => null,
+        ])->render();
+
+        $this->assertStringContainsString('ORDEN DE LABORATORIO', $html);
+        $this->assertStringContainsString('Biometria hematica completa', $html);
+        $this->assertStringContainsString('No seleccionado en esta orden', $html);
+        $this->assertStringContainsString('Control y chequeo general', $html);
+        $this->assertStringNotContainsString('@php', $html);
     }
 }

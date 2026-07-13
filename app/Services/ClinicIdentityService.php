@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Support\ImageUrl;
 use Illuminate\Support\Facades\Storage;
+use Throwable;
 
 class ClinicIdentityService
 {
@@ -111,10 +112,76 @@ class ClinicIdentityService
             return null;
         }
 
-        $mime = mime_content_type($path) ?: 'image/png';
-        $data = base64_encode(file_get_contents($path) ?: '');
+        return $this->buildDataUri($path);
+    }
+
+    public function logoBase64ForPdf(): ?string
+    {
+        $path = $this->absolutePath($this->logoPath()) ?: public_path('img/placeholders/default.svg');
+
+        if (! is_file($path)) {
+            return null;
+        }
+
+        $mime = strtolower((string) (mime_content_type($path) ?: ''));
+        $extension = strtolower((string) pathinfo($path, PATHINFO_EXTENSION));
+
+        if ($mime === 'image/webp' || $extension === 'webp') {
+            if (function_exists('imagecreatefromwebp')) {
+                return $this->buildDataUri($path, 'image/webp');
+            }
+
+            return $this->convertWebpToPngDataUri($path);
+        }
+
+        return $this->buildDataUri($path, $mime !== '' ? $mime : null);
+    }
+
+    private function buildDataUri(string $path, ?string $mime = null): ?string
+    {
+        $mime = $mime ?: (mime_content_type($path) ?: 'image/png');
+        $contents = file_get_contents($path);
+        if ($contents === false || $contents === '') {
+            return null;
+        }
+
+        $data = base64_encode($contents);
 
         return $data === '' ? null : "data:{$mime};base64,{$data}";
+    }
+
+    private function convertWebpToPngDataUri(string $path): ?string
+    {
+        if (extension_loaded('imagick') && class_exists(\Imagick::class)) {
+            try {
+                $image = new \Imagick();
+                $image->readImage($path);
+                $image->setImageFormat('png');
+                $blob = $image->getImageBlob();
+                $image->clear();
+                $image->destroy();
+
+                return $blob !== '' ? 'data:image/png;base64,'.base64_encode($blob) : null;
+            } catch (Throwable) {
+                return null;
+            }
+        }
+
+        if (! function_exists('imagecreatefromwebp') || ! function_exists('imagepng')) {
+            return null;
+        }
+
+        $resource = @imagecreatefromwebp($path);
+        if (! $resource) {
+            return null;
+        }
+
+        ob_start();
+        imagepng($resource);
+        $png = (string) ob_get_clean();
+        imagedestroy($resource);
+
+        return $png !== '' ? 'data:image/png;base64,'.base64_encode($png) : null;
     }
 
     public function emailBranding(): array

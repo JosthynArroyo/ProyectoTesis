@@ -7,6 +7,7 @@ use App\Models\Cita;
 use App\Models\Horario;
 use App\Models\User;
 use App\Services\CitaNoShowService;
+use App\Services\DashboardAnalyticsService;
 use App\Services\ProfileAvatarService;
 use App\Support\DateField;
 use App\Support\ValidationRules;
@@ -19,23 +20,26 @@ use Illuminate\Support\Str;
 
 class AdminController extends Controller
 {
-    public function dashboard()
+    public function dashboard(Request $request, DashboardAnalyticsService $analytics)
     {
         app(CitaNoShowService::class)->marcarVencidas();
         $user = Auth::user();
+        $dashboard = $analytics->buildDoctorDashboard($user, $request->all());
 
         return view('doctor.dashboard', [
             'user' => $user,
+            'dashboard' => $dashboard,
             ...$this->dashboardSnapshot($user),
         ]);
     }
 
-    public function dashboardData(Request $request)
+    public function dashboardData(Request $request, DashboardAnalyticsService $analytics)
     {
         app(CitaNoShowService::class)->marcarVencidas();
         $snapshot = $this->dashboardSnapshot($request->user());
+        $dashboard = $analytics->buildDoctorDashboard($request->user(), $request->all());
 
-        return response()->json([
+        return response()->json($dashboard + [
             'kpis' => [
                 'hoy' => $snapshot['citasHoy'],
                 'realizadas' => $snapshot['citasRealizadas'],

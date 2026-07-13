@@ -6,6 +6,8 @@ use App\Jobs\NotificarCambioEstadoCitaJob;
 use App\Models\Cita;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class CitaNoShowService
 {
@@ -34,7 +36,7 @@ class CitaNoShowService
                     $cita->estado = Cita::ESTADO_NO_SE_PRESENTO;
                     $cita->activo = false;
                     $cita->save();
-                    app(CitaComprobanteService::class)->sincronizarComprobante($cita);
+                    $this->sincronizarComprobanteSinInterrumpir($cita);
 
                     NotificarCambioEstadoCitaJob::dispatch($cita, 'no_se_presento', 'sistema');
                     $citas->push($cita);
@@ -57,10 +59,23 @@ class CitaNoShowService
         $cita->estado = Cita::ESTADO_NO_SE_PRESENTO;
         $cita->activo = false;
         $cita->save();
-        app(CitaComprobanteService::class)->sincronizarComprobante($cita);
+        $this->sincronizarComprobanteSinInterrumpir($cita);
 
         NotificarCambioEstadoCitaJob::dispatch($cita, 'no_se_presento', 'sistema');
 
         return true;
+    }
+
+    private function sincronizarComprobanteSinInterrumpir(Cita $cita): void
+    {
+        try {
+            app(CitaComprobanteService::class)->sincronizarComprobante($cita);
+        } catch (Throwable $exception) {
+            Log::error('No se pudo regenerar el comprobante al marcar cita vencida.', [
+                'cita_id' => $cita->id,
+                'estado' => $cita->estado,
+                'exception' => $exception,
+            ]);
+        }
     }
 }

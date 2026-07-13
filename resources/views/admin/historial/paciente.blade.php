@@ -1,6 +1,6 @@
 @extends('layouts.admin')
 @section('title', 'Notas del paciente')
-@section('header-title', $paciente->name)
+@section('header-title', isset($dependiente) && $dependiente ? $dependiente->nombre : $paciente->name)
 @section('header-subtitle','Notas clínicas firmadas por consulta')
 
 @section('main')

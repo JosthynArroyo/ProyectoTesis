@@ -1,11 +1,24 @@
-﻿@extends('layouts.admin')
+@extends('layouts.admin')
 
 @section('title', 'Panel administrativo - '.$clinicIdentity->name())
 @section('header-title','Panel administrativo')
-@section('header-subtitle','Visión general de la operación')
+@section('header-subtitle','Vision general de la operacion')
+
+@php
+  $period = data_get($dashboard, 'filters.period', '30d');
+  $options = app(\App\Services\DashboardAnalyticsService::class)->periodOptions();
+@endphp
 
 @section('main')
-  <div class="space-y-6">
+  <div
+    class="space-y-6"
+    data-dashboard-page
+    data-dashboard-endpoint="{{ route('admin.dashboard.data') }}"
+    data-dashboard-resumen="{{ route('admin.dashboard.resumen') }}"
+    data-dashboard-role="admin"
+  >
+    <script type="application/json" data-dashboard-state>@json($dashboard)</script>
+
     @if(($recordatoriosPendientes ?? 0) > 0)
       <section>
         <x-ui.alert tone="warning" title="Tienes recordatorios por enviar">
@@ -13,7 +26,7 @@
             <div>
               Hay <strong>{{ $recordatoriosPendientes }}</strong> cita{{ $recordatoriosPendientes === 1 ? '' : 's' }} con recordatorio pendiente.
               @if(($recordatoriosSinTelefono ?? 0) > 0)
-                <span class="block text-xs text-gray-600">{{ $recordatoriosSinTelefono }} requiere{{ $recordatoriosSinTelefono === 1 ? '' : 'n' }} revisión porque no tiene{{ $recordatoriosSinTelefono === 1 ? '' : 'n' }} teléfono válido.</span>
+                <span class="block text-xs text-gray-600">{{ $recordatoriosSinTelefono }} requiere{{ $recordatoriosSinTelefono === 1 ? '' : 'n' }} revision porque no tiene{{ $recordatoriosSinTelefono === 1 ? '' : 'n' }} telefono valido.</span>
               @endif
             </div>
             <a href="{{ route('admin.recordatorios.index') }}" class="btn btn-primary btn-sm">
@@ -24,61 +37,61 @@
       </section>
     @endif
 
-    {{-- Stats row 1 --}}
-    <section class="stat-grid">
-      <a class="block" href="{{ route('admin.usuarios.index', ['role' => 'paciente']) }}">
-        <x-ui.stat label="Total de pacientes" :value="$totalPacientes" tone="teal">
-          <x-slot:icon><i class="ri-group-line"></i></x-slot:icon>
-        </x-ui.stat>
-      </a>
-      <a class="block" href="{{ route('admin.usuarios.index', ['role' => 'doctor']) }}">
-        <x-ui.stat label="Total de doctores" :value="$totalDoctores" tone="sky">
-          <x-slot:icon><i class="ri-stethoscope-line"></i></x-slot:icon>
-        </x-ui.stat>
-      </a>
-      <a class="block" href="{{ route('admin.usuarios.index') }}">
-        <x-ui.stat label="Usuarios activos hoy" :value="$usuariosActivosHoy" tone="amber">
-          <x-slot:icon><i class="ri-flashlight-line"></i></x-slot:icon>
-        </x-ui.stat>
-      </a>
+    <section class="card p-5">
+      <form method="GET" action="{{ route('admin.dashboard') }}" class="flex flex-col gap-3 lg:flex-row lg:items-end lg:gap-4" data-dashboard-filters-form>
+        <div class="min-w-0 lg:w-56">
+          <label class="form-label" for="period">Periodo</label>
+          <select id="period" name="period" class="form-select">
+            @foreach($options as $value => $label)
+              <option value="{{ $value }}" @selected($period === $value)>{{ $label }}</option>
+            @endforeach
+          </select>
+        </div>
+        <div class="lg:ml-auto">
+          <button class="btn btn-primary w-full lg:w-auto" type="submit">
+            <i class="ri-refresh-line"></i> Actualizar
+          </button>
+        </div>
+      </form>
     </section>
 
-    {{-- Stats row 2 --}}
-    <section class="stat-grid">
-      <a class="block" href="{{ route('admin.dashboard') }}">
-        <x-ui.stat label="Citas totales" :value="$totalCitas" tone="sky">
-          <x-slot:icon><i class="ri-calendar-event-line"></i></x-slot:icon>
-        </x-ui.stat>
-      </a>
-      <a class="block" href="{{ route('admin.dashboard', ['prioridad' => 'all']) }}">
-        <x-ui.stat label="Citas pendientes" :value="$totalCitasPendientes" tone="amber">
-          <x-slot:icon><i class="ri-hourglass-line"></i></x-slot:icon>
-        </x-ui.stat>
-      </a>
-      <a class="block" href="{{ route('admin.dashboard', ['prioridad' => 'ALTA']) }}">
-        <x-ui.stat label="Pendientes alta prioridad" :value="$totalCitasPendientesAlta" tone="rose">
-          <x-slot:icon><i class="ri-error-warning-line"></i></x-slot:icon>
-        </x-ui.stat>
-      </a>
-      <a class="block" href="{{ route('admin.dashboard') }}">
-        <x-ui.stat label="Citas realizadas" :value="$totalCitasRealizadas" tone="teal">
-          <x-slot:icon><i class="ri-checkbox-circle-line"></i></x-slot:icon>
-        </x-ui.stat>
-      </a>
-      <a class="block" href="{{ route('admin.dashboard') }}">
-        <x-ui.stat label="Citas canceladas" :value="$totalCitasCanceladas" tone="rose">
-          <x-slot:icon><i class="ri-close-circle-line"></i></x-slot:icon>
-        </x-ui.stat>
-      </a>
+    <section class="grid gap-6 lg:grid-cols-2">
+      <x-dashboard.chart-card
+        class="lg:col-span-1"
+        chart-key="citas_estado"
+        chart-type="donut"
+        title="Citas por estado"
+        subtitle="Estados reales de las citas del sistema."
+      />
+      <x-dashboard.chart-card
+        class="lg:col-span-1"
+        chart-key="citas_doctor"
+        chart-type="bar"
+        title="Citas por doctor"
+        subtitle="Comparación apilada de carga operativa entre doctores."
+      />
+      <x-dashboard.chart-card
+        class="lg:col-span-2"
+        chart-key="citas_por_dia_estado"
+        chart-type="bar"
+        title="Agenda de citas por día y estado"
+        subtitle="Citas programadas por día y su estado de atención."
+      />
+      <x-dashboard.chart-card
+        class="lg:col-span-2"
+        chart-key="pacientes_nuevos_atendidos"
+        chart-type="bar"
+        title="Pacientes nuevos y atendidos"
+        subtitle="Evolución de pacientes registrados frente a atendidos."
+      />
     </section>
 
-    {{-- Table + Sidebar --}}
-    <div class="grid gap-6 lg:grid-cols-[1.5fr_0.5fr]">
+    <div class="grid gap-6 lg:grid-cols-[1.4fr_0.6fr]">
       <section class="card p-6">
         <div class="page-header">
           <div class="page-header__info">
             <h2>Citas recientes</h2>
-            <p>Últimas 50 citas registradas.</p>
+            <p>Ultimas 50 citas registradas.</p>
           </div>
           <div class="page-header__actions">
             <form method="GET" action="{{ route('admin.dashboard') }}" class="flex items-center gap-2">
@@ -155,35 +168,21 @@
             </tbody>
           </table>
         </div>
-
-        <div class="mt-4 flex flex-wrap gap-2">
-          <button type="button" id="btnShowLess" class="btn btn-ghost btn-sm" style="display:none;">
-            <i class="ri-arrow-up-s-line"></i> Mostrar menos
-          </button>
-          <button type="button" id="btnShowMore" class="btn btn-ghost btn-sm">
-            <i class="ri-arrow-down-s-line"></i> Mostrar mas
-          </button>
-        </div>
       </section>
 
-      <aside class="card p-6">
-        <h3 class="text-lg font-semibold text-gray-900">Resumen de citas</h3>
-        <div class="mt-4 space-y-4">
-          <div>
-            <p class="text-xs uppercase tracking-widest text-gray-500">Agendadas</p>
-            <p id="kpi-agendadas" class="text-2xl font-semibold text-gray-900">{{ $totalCitas }}</p>
-          </div>
-          <div>
-            <p class="text-xs uppercase tracking-widest text-gray-500">Completadas</p>
-            <p id="kpi-completadas" class="text-2xl font-semibold text-gray-900">{{ $totalCitasRealizadas }}</p>
-          </div>
-          <div>
-            <p class="text-xs uppercase tracking-widest text-gray-500">Canceladas</p>
-            <p id="kpi-canceladas" class="text-2xl font-semibold text-gray-900">{{ $totalCitasCanceladas }}</p>
-          </div>
-        </div>
-        <p class="mt-4 text-xs text-gray-500">Actualización en tiempo real.</p>
+      <aside class="space-y-4">
+        <section class="card p-6">
+          <h3 class="text-lg font-semibold text-gray-900">Interpretación del período</h3>
+          <p class="mt-2 text-sm text-gray-600">
+            {{ data_get($dashboard, 'filters.label', 'Ultimos 30 dias') }}.
+            Agrupacion: {{ ucfirst(data_get($dashboard, 'filters.grouping', 'dia')) }}.
+          </p>
+        </section>
       </aside>
     </div>
   </div>
 @endsection
+
+@push('scripts')
+    @vite(['resources/js/dashboard-admin.js'])
+@endpush

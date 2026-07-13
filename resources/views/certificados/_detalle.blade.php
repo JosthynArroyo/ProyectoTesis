@@ -5,6 +5,9 @@
   $especialidad = $cita?->especialidad?->nombre
       ?? $doctor?->especialidades?->first()?->nombre
       ?? 'Especialidad no registrada';
+
+  $nombreReal = $cita ? $cita->nombrePacienteReal() : ($certificado->dependiente_id && $certificado->dependiente ? $certificado->dependiente->nombre : ($paciente?->name ?? '-'));
+  $dniReal = $cita ? $cita->dniPacienteReal() : ($certificado->dependiente_id && $certificado->dependiente ? $certificado->dependiente->dni : ($paciente?->dni ?? 'Sin registro'));
 @endphp
 
 <section class="card p-6">
@@ -22,8 +25,8 @@
   <div class="mt-6 grid gap-4 md:grid-cols-2">
     <div class="rounded-lg border border-gray-200 bg-gray-50 p-4">
       <p class="text-xs uppercase tracking-widest text-gray-500">Paciente</p>
-      <p class="mt-2 font-semibold text-gray-900">{{ $paciente?->name ?? '-' }}</p>
-      <p class="text-sm text-gray-600">Documento: {{ $paciente?->dni ?: 'Sin registro' }}</p>
+      <p class="mt-2 font-semibold text-gray-900">{{ $nombreReal }}</p>
+      <p class="text-sm text-gray-600">Documento: {{ $dniReal }}</p>
       <p class="text-sm text-gray-600">Correo: {{ $paciente?->email ?: 'Sin registro' }}</p>
     </div>
 
@@ -49,9 +52,9 @@
     </p>
   </div>
 
-  <div class="mt-6 rounded-lg border border-gray-200 bg-gray-100/60 p-5">
-    <p class="text-xs uppercase tracking-widest text-gray-700">Constancia medica</p>
-    <div class="mt-3 whitespace-pre-line text-sm leading-7 text-gray-800">{{ $certificado->texto_constancia }}</div>
+  <div class="mt-6 rounded-lg border border-gray-200 bg-gray-100/60 p-5 constancia-medica-box">
+    <p class="text-xs uppercase tracking-widest text-gray-700 constancia-title">Constancia medica</p>
+    <div class="mt-3 whitespace-pre-line text-sm leading-7 text-gray-800 constancia-text">{{ $certificado->texto_constancia }}</div>
   </div>
 
   <div class="mt-4 grid gap-4 md:grid-cols-3">
@@ -79,5 +82,18 @@
   <div class="mt-6 rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
     <p class="font-semibold text-gray-900">Validacion interna</p>
     <p>Emitido por {{ $doctor?->name ?? 'doctor registrado' }} desde el sistema, usuario #{{ $doctor?->id ?? '-' }}, codigo {{ $certificado->codigo }}.</p>
+    <p class="mt-1">
+      Envio:
+      <strong>{{ strtoupper((string) ($certificado->envio_estado ?? 'pendiente')) }}</strong>
+      @if($certificado->enviado_a)
+        | Destinatario: {{ $certificado->enviado_a }}
+      @endif
+      @if($certificado->enviado_en)
+        | Enviado: {{ $certificado->enviado_en->format('d/m/Y H:i') }}
+      @endif
+    </p>
+    @if($certificado->envio_error)
+      <p class="mt-1 text-rose-600">Ultimo error: {{ $certificado->envio_error }}</p>
+    @endif
   </div>
 </section>

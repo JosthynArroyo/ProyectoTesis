@@ -20,7 +20,8 @@ class PagoDocumentoService
     {
         $pago->loadMissing([
             'paciente:id,name,dni,telefono',
-            'cita:id,doctor_id,especialidad_id,fecha,hora,estado',
+            'cita:id,doctor_id,especialidad_id,fecha,hora,estado,dependiente_id',
+            'cita.dependiente',
             'cita.doctor:id,name',
             'cita.especialidad:id,nombre',
         ]);
@@ -111,6 +112,6 @@ class PagoDocumentoService
 
     protected function logoBase64(): ?string
     {
-        return app(ClinicIdentityService::class)->logoBase64();
+        return app(ClinicIdentityService::class)->logoBase64ForPdf();
     }
 }

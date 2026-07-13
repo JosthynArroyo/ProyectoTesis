@@ -16,6 +16,15 @@
     'peso' => 'Peso',
     'talla' => 'Talla',
   ];
+  $signosUnits = [
+    'ta' => 'mmHg',
+    'fc' => 'lpm',
+    'fr' => 'rpm',
+    'temp' => '°C',
+    'spo2' => '%',
+    'peso' => 'kg',
+    'talla' => 'cm',
+  ];
 @endphp
 
 <section class="card p-6 space-y-5">
@@ -29,7 +38,7 @@
   </div>
 
   <div class="grid gap-3 md:grid-cols-2">
-    <div class="card p-4"><div class="text-xs uppercase tracking-widest text-gray-400">Paciente</div><div class="text-sm font-semibold text-gray-900">{{ $cita?->paciente?->name ?? 'Paciente' }}</div></div>
+    <div class="card p-4"><div class="text-xs uppercase tracking-widest text-gray-400">Paciente</div><div class="text-sm font-semibold text-gray-900">{{ $cita?->nombrePacienteReal() }}</div></div>
     <div class="card p-4"><div class="text-xs uppercase tracking-widest text-gray-400">Doctor</div><div class="text-sm font-semibold text-gray-900">{{ $cita?->doctor?->name ?? 'Doctor/a' }}</div></div>
     <div class="card p-4"><div class="text-xs uppercase tracking-widest text-gray-400">Especialidad</div><div class="text-sm font-semibold text-gray-900">{{ $cita?->especialidad?->nombre ?? '-' }}</div></div>
     <div class="card p-4"><div class="text-xs uppercase tracking-widest text-gray-400">Fecha y hora</div><div class="text-sm font-semibold text-gray-900">{{ $cita?->fecha ? \Carbon\Carbon::parse($cita->fecha)->format('d/m/Y') : '-' }} {{ $cita?->hora ? \Carbon\Carbon::parse($cita->hora)->format('H:i') : '' }}</div></div>
@@ -51,11 +60,27 @@
       @if(!empty($signos))
         <div class="grid gap-2 sm:grid-cols-2 text-sm text-gray-700">
           @foreach($signos as $label => $valor)
+            @php
+              // For talla: display as integer cm to avoid float artifacts (e.g. 162.98 → 163)
+              $displayValor = ($label === 'talla' && is_numeric($valor)) ? (string)(int)round((float)$valor) : $valor;
+            @endphp
             <div class="rounded-xl border border-gray-200 bg-white/80 px-3 py-2">
               <span class="text-xs uppercase tracking-widest text-gray-400">{{ $signosLabels[$label] ?? ucfirst((string) $label) }}</span>
-              <div class="font-semibold text-gray-900">{{ $valor }}</div>
+              <div class="font-semibold text-gray-900">{{ $displayValor }} <span class="text-xs text-gray-500">{{ $signosUnits[$label] ?? '' }}</span></div>
             </div>
           @endforeach
+          @php
+            $notaPeso = isset($signos['peso']) && is_numeric($signos['peso']) ? (float) $signos['peso'] : null;
+            $rawTalla = isset($signos['talla']) && is_numeric($signos['talla']) ? (float) $signos['talla'] : null;
+            $notaTalla = $rawTalla !== null ? (float) round($rawTalla) : null;
+            $notaImc = ($notaPeso > 0 && $notaTalla > 0) ? round($notaPeso / (($notaTalla / 100) ** 2), 1) : null;
+          @endphp
+          @if($notaImc !== null)
+            <div class="rounded-xl border border-gray-200 bg-white/80 px-3 py-2">
+              <span class="text-xs uppercase tracking-widest text-gray-400">IMC</span>
+              <div class="font-semibold text-gray-900">{{ $notaImc }} <span class="text-xs text-gray-500">kg/m²</span></div>
+            </div>
+          @endif
         </div>
       @else
         <p class="text-sm text-gray-700">Sin signos vitales registrados.</p>

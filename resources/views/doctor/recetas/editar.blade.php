@@ -47,13 +47,14 @@
 
       <div>
         <label for="medicamentos" class="form-label">Medicamentos (dosis y frecuencia)</label>
-        <textarea id="medicamentos" name="medicamentos" required class="form-textarea">{{ old('medicamentos', $receta->medicamentos) }}</textarea>
+        <textarea id="medicamentos" name="medicamentos" required class="form-textarea">{{ old('medicamentos', $receta->medicamentos ?: ($medicamentosSugeridos ?? '')) }}</textarea>
+        <p class="mt-2 text-xs text-gray-500">La receta conserva lo registrado y solo usa la sugerencia del expediente cuando el campo está vacío.</p>
         @error('medicamentos')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
 
       <div>
         <label for="indicaciones" class="form-label">Indicaciones adicionales</label>
-        <textarea id="indicaciones" name="indicaciones" required class="form-textarea">{{ old('indicaciones', $receta->indicaciones) }}</textarea>
+        <textarea id="indicaciones" name="indicaciones" class="form-textarea" placeholder="Opcional">{{ old('indicaciones', $receta->indicaciones) }}</textarea>
         @error('indicaciones')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
     </div>

@@ -20,6 +20,14 @@
       <x-slot:left>
         <a href="{{ route('doctor.citas') }}" class="btn btn-ghost">Volver a citas</a>
       </x-slot>
+      @if(in_array($certificado->envio_estado, ['failed', 'queued', 'sending'], true))
+        <form method="POST" action="{{ route('doctor.certificados.resend', $certificado) }}">
+          @csrf
+          <button type="submit" class="btn btn-outline">
+            <i class="ri-mail-send-line"></i> Reenviar por correo
+          </button>
+        </form>
+      @endif
       <a href="{{ route('doctor.certificados.download', $certificado) }}" class="btn btn-primary">
         <i class="ri-download-2-line"></i> Descargar certificado
       </a>

@@ -458,9 +458,16 @@ class ChatBotController extends Controller
             throw $e;
         }
 
-        event(new CitaAgendada($cita));
-        $cita->refresh();
-        EnviarConfirmacionCitaJob::dispatch($cita);
+        try {
+            event(new CitaAgendada($cita));
+            $cita->refresh();
+            EnviarConfirmacionCitaJob::dispatch($cita);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Error al notificar cita agendada en chatbot: ' . $e->getMessage(), [
+                'cita_id' => $cita->id,
+                'exception' => $e
+            ]);
+        }
 
         if ($passwordPlanoCredenciales && $user->email) {
             ['sent' => $credencialesEnviadas, 'error' => $credencialesError] = $this->enviarCredencialesChatbot($user, $passwordPlanoCredenciales);

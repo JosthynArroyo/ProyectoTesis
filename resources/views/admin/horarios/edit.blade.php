@@ -28,6 +28,31 @@
         </div>
       </div>
 
+      <input type="hidden" id="intervalo_minutos" value="{{ $horario->intervalo_minutos ?? 30 }}">
+
+      <script id="clinica-horarios-config" type="application/json">
+        {!! json_encode(collect(range(1, 7))->mapWithKeys(function($day) {
+            return [$day => app(App\Services\ProfessionalScheduleService::class)->getClinicHours($day)];
+        })) !!}
+      </script>
+
+      @if (session('horario_conflicts'))
+        <div class="card p-4 border-2 border-amber-500 bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-200 mb-6 space-y-3 col-span-2">
+          <div class="flex items-start gap-3">
+            <i class="ri-alert-line text-lg text-amber-600 dark:text-amber-400"></i>
+            <div>
+              <h4 class="font-semibold">Confirmación requerida</h4>
+              <p class="text-sm mt-1">Este cambio dejará <strong>{{ session('horario_conflicts') }} cita(s) futura(s) activa(s)</strong> sin cobertura horaria para este doctor.</p>
+            </div>
+          </div>
+          <label class="flex items-center gap-2 text-sm font-semibold cursor-pointer">
+            <input type="hidden" name="confirmar_conflictos" value="0">
+            <input type="checkbox" name="confirmar_conflictos" value="1" required class="rounded border-gray-300 text-teal-650 focus:ring-teal-550 dark:border-gray-700 dark:bg-gray-800">
+            Confirmar que deseo proceder y guardar los cambios.
+          </label>
+        </div>
+      @endif
+
       <div class="grid gap-4 md:grid-cols-2">
         <div class="md:col-span-2">
           <label class="form-label" for="doctor_id">Doctor</label>
@@ -57,7 +82,7 @@
           <label class="form-label" for="hora_inicio">Hora inicio</label>
           <div class="flex items-center gap-2 rounded-xl border border-gray-200 bg-white/90 px-3 py-2">
             <i class="ri-time-line text-gray-400"></i>
-            <input class="w-full bg-transparent text-sm" type="time" id="hora_inicio" name="hora_inicio" step="1800" value="{{ old('hora_inicio', \Carbon\Carbon::parse($horario->hora_inicio)->format('H:i')) }}" required>
+            <select class="w-full bg-transparent text-sm" id="hora_inicio" name="hora_inicio" data-old="{{ old('hora_inicio', \Carbon\Carbon::parse($horario->hora_inicio)->format('H:i')) }}" required></select>
           </div>
           @error('hora_inicio')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
         </div>
@@ -66,9 +91,13 @@
           <label class="form-label" for="hora_fin">Hora fin</label>
           <div class="flex items-center gap-2 rounded-xl border border-gray-200 bg-white/90 px-3 py-2">
             <i class="ri-time-line text-gray-400"></i>
-            <input class="w-full bg-transparent text-sm" type="time" id="hora_fin" name="hora_fin" step="1800" value="{{ old('hora_fin', \Carbon\Carbon::parse($horario->hora_fin)->format('H:i')) }}" required>
+            <select class="w-full bg-transparent text-sm" id="hora_fin" name="hora_fin" data-old="{{ old('hora_fin', \Carbon\Carbon::parse($horario->hora_fin)->format('H:i')) }}" required></select>
           </div>
           @error('hora_fin')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
+        </div>
+
+        <div class="md:col-span-2">
+          <p class="text-xs text-teal-650 dark:text-teal-400 font-semibold" id="clinic-hours-info"></p>
         </div>
       </div>
     </section>

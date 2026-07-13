@@ -17,14 +17,15 @@ use App\Http\Controllers\CitaComprobanteController;
 use App\Http\Controllers\CitaController;
 use App\Http\Controllers\DemoDashboardController;
 use App\Http\Controllers\CitaPrioridadController;
+use App\Http\Controllers\DocumentoVerificacionController;
 use App\Http\Controllers\ContactoController;
 use App\Http\Controllers\Doctor\AdminController as DoctorDashboardController;
 use App\Http\Controllers\Doctor\CertificadoMedicoController as DoctorCertificadoMedicoController;
 use App\Http\Controllers\Doctor\HistorialController as DoctorHistorialController;
 use App\Http\Controllers\Doctor\HorarioController as DoctorHorarioController;
-use App\Http\Controllers\Doctor\LaboratorioController as DoctorLaboratorioController;
 use App\Http\Controllers\Doctor\RecetaController;
 use App\Http\Controllers\Doctor\SoapController as DoctorSoapController;
+use App\Http\Controllers\Doctor\PedidoLaboratorioController;
 use App\Http\Controllers\EmailCitaActionController;
 use App\Http\Controllers\ExportCitasController;
 
@@ -35,8 +36,8 @@ use App\Http\Controllers\Paciente\AdminController as PacienteDashboardController
 use App\Http\Controllers\Paciente\CertificadoMedicoController as PacienteCertificadoMedicoController;
 use App\Http\Controllers\Paciente\HistorialController as PacienteHistorialController;
 use App\Http\Controllers\Paciente\LaboratorioController as PacienteLaboratorioController;
-use App\Http\Controllers\Paciente\LabOrderController as PacienteLabOrderController;
 use App\Http\Controllers\Paciente\PagoController as PacientePagoController;
+use App\Http\Controllers\DependienteController;
 use App\Http\Controllers\PagoLookupController;
 use App\Http\Controllers\PanelThemeController;
 use App\Http\Controllers\PublicPageController;
@@ -81,6 +82,14 @@ Route::post('/contacto', [ContactoController::class, 'storeContacto'])
 // Servicios
 Route::get('/servicios', [PublicPageController::class, 'servicios'])->name('servicios.index');
 
+Route::get('/verificar-documento', [DocumentoVerificacionController::class, 'create'])
+    ->name('documentos.verificar.form');
+Route::post('/verificar-documento', [DocumentoVerificacionController::class, 'search'])
+    ->name('documentos.verificar.search');
+Route::get('/verificar/{csv}', [DocumentoVerificacionController::class, 'show'])
+    ->where('csv', '[A-Za-z0-9\-]+')
+    ->name('documentos.verificar.show');
+
 // Rutas firmadas por email
 Route::middleware('signed')->get('/email/cita/{cita}/{rol}/{accion}', EmailCitaActionController::class)
     ->where('rol', '^(paciente|doctor)$')->where('accion', '^(aceptar|cancelar)$')
@@ -123,7 +132,6 @@ Route::prefix('demo')->name('demo.')->group(function () {
         Route::get('/pagos', [DemoDashboardController::class, 'pacientePagos'])->name('pagos');
         Route::get('/historial-clinico', [DemoDashboardController::class, 'pacienteHistorialClinico'])->name('historial-clinico');
         Route::get('/resultados', [DemoDashboardController::class, 'pacienteResultados'])->name('resultados');
-        Route::get('/solicitar-examen', [DemoDashboardController::class, 'pacienteSolicitarExamen'])->name('solicitar-examen');
         Route::get('/agendar-cita', [DemoDashboardController::class, 'pacienteAgendarCita'])->name('agendar-cita');
         Route::get('/perfil', [DemoDashboardController::class, 'pacientePerfil'])->name('perfil');
     });
@@ -157,7 +165,9 @@ Route::middleware(['auth', 'role:administrador'])
 
         // Dashboard
         Route::get('/dashboard', [AdminDashboardController::class, 'dashboard'])->name('dashboard');
+        Route::get('/dashboard/data', [AdminDashboardController::class, 'dashboardData'])->name('dashboard.data');
         Route::get('/dashboard/resumen', [AdminDashboardController::class, 'resumenGlobal'])->name('dashboard.resumen');
+        Route::get('/dashboard/export-pdf', [AdminDashboardController::class, 'exportPdf'])->name('dashboard.export-pdf');
 
         // Perfil
         Route::get('/perfil', [AdminDashboardController::class, 'editarPerfil'])->name('perfil.edit');
@@ -233,6 +243,7 @@ Route::middleware(['auth', 'role:administrador'])
         Route::get('/historial/paciente/{paciente}', [AdminHistorialController::class, 'paciente'])->name('historial.paciente');
         Route::get('/historial/nota/{nota}', [AdminHistorialController::class, 'showNote'])->name('historial.nota');
         Route::get('/historial/{nota}', [AdminHistorialController::class, 'show'])->name('historial.show');
+        Route::get('/historial/paciente/{paciente}/exportar-pdf', [AdminHistorialController::class, 'exportPdf'])->name('historial.pdf');
 
         // Gestión de pagos
         Route::get('/pagos', [AdminPagoController::class, 'index'])->name('pagos.index');
@@ -261,6 +272,8 @@ Route::middleware(['auth', 'role:superadmin'])
     ->prefix('superadmin')->name('superadmin.')->group(function () {
 
         Route::get('/dashboard', [SuperadminDashboardController::class, 'index'])->name('dashboard');
+        Route::get('/dashboard/data', [SuperadminDashboardController::class, 'dashboardData'])->name('dashboard.data');
+        Route::get('/dashboard/export-pdf', [SuperadminDashboardController::class, 'exportPdf'])->name('dashboard.export-pdf');
         Route::get('/usuarios', [SuperadminDashboardController::class, 'users'])->name('users.index');
 
         // Administradores
@@ -329,10 +342,6 @@ Route::middleware(['auth', 'role:paciente'])->prefix('paciente')->group(function
         ->whereNumber('orden')->name('paciente.laboratorio.download');
     Route::get('/laboratorio/solicitudes/{order}/descargar', [PacienteLaboratorioController::class, 'downloadAutoOrder'])
         ->whereNumber('order')->name('paciente.lab-orders.download');
-    Route::get('/laboratorio/solicitar', [PacienteLabOrderController::class, 'create'])
-        ->name('paciente.laboratorio.solicitar');
-    Route::post('/laboratorio/solicitar', [PacienteLabOrderController::class, 'store'])
-        ->name('paciente.laboratorio.solicitar.store');
     Route::get('/historial', [PacienteHistorialController::class, 'index'])->name('paciente.historial');
     Route::get('/historial/{nota}', [PacienteHistorialController::class, 'show'])->name('paciente.historial.show');
     Route::get('/certificados/{certificado}', [PacienteCertificadoMedicoController::class, 'show'])
@@ -340,6 +349,16 @@ Route::middleware(['auth', 'role:paciente'])->prefix('paciente')->group(function
     Route::get('/certificados/{certificado}/descargar', [PacienteCertificadoMedicoController::class, 'download'])
         ->name('paciente.certificados.download');
     Route::view('/mensajes', 'paciente.mensajes')->name('paciente.mensajes');
+
+    // Dependientes routes
+    Route::get('/dependientes', [DependienteController::class, 'index'])->name('paciente.dependientes.index');
+    Route::get('/dependientes/crear', [DependienteController::class, 'create'])->name('paciente.dependientes.create');
+    Route::post('/dependientes', [DependienteController::class, 'store'])->name('paciente.dependientes.store');
+    Route::get('/dependientes/{dependiente}/editar', [DependienteController::class, 'edit'])->name('paciente.dependientes.edit');
+    Route::put('/dependientes/{dependiente}', [DependienteController::class, 'update'])->name('paciente.dependientes.update');
+    Route::patch('/dependientes/{dependiente}/activar', [DependienteController::class, 'activate'])->name('paciente.dependientes.activate');
+    Route::patch('/dependientes/{dependiente}/desactivar', [DependienteController::class, 'deactivate'])->name('paciente.dependientes.deactivate');
+    Route::delete('/dependientes/{dependiente}', [DependienteController::class, 'destroy'])->name('paciente.dependientes.destroy');
 });
 
 // =========================== DOCTOR ==========================
@@ -384,10 +403,30 @@ Route::middleware(['auth', 'role:doctor'])->prefix('doctor')->group(function () 
         ->name('doctor.certificados.show');
     Route::get('/certificados/{certificado}/descargar', [DoctorCertificadoMedicoController::class, 'download'])
         ->name('doctor.certificados.download');
+    Route::post('/certificados/{certificado}/reenviar', [DoctorCertificadoMedicoController::class, 'resend'])
+        ->name('doctor.certificados.resend');
 
-    // Orden de laboratorio (doctor)
-    Route::get('/laboratorio/ordenar', [DoctorLaboratorioController::class, 'create'])->name('doctor.laboratorio.create');
-    Route::post('/laboratorio', [DoctorLaboratorioController::class, 'store'])->name('doctor.laboratorio.store');
+    Route::get('/pedidos-laboratorio', [PedidoLaboratorioController::class, 'index'])
+        ->name('doctor.pedidos-laboratorio.index');
+    Route::get('/citas/{cita}/pedido-laboratorio/crear', [PedidoLaboratorioController::class, 'create'])
+        ->whereNumber('cita')
+        ->name('doctor.pedidos-laboratorio.create');
+    Route::post('/citas/{cita}/pedido-laboratorio', [PedidoLaboratorioController::class, 'store'])
+        ->whereNumber('cita')
+        ->name('doctor.pedidos-laboratorio.store');
+    Route::get('/citas/{cita}/pedido-laboratorio/editar', [PedidoLaboratorioController::class, 'edit'])
+        ->whereNumber('cita')
+        ->name('doctor.pedidos-laboratorio.edit');
+    Route::post('/citas/{cita}/pedido-laboratorio/editar', [PedidoLaboratorioController::class, 'update'])
+        ->whereNumber('cita')
+        ->name('doctor.pedidos-laboratorio.update');
+
+    Route::get('/pedidos-laboratorio/{pedido}/descargar', [PedidoLaboratorioController::class, 'download'])
+        ->whereNumber('pedido')
+        ->name('doctor.pedidos-laboratorio.download');
+    Route::post('/pedidos-laboratorio/{pedido}/reenviar', [PedidoLaboratorioController::class, 'resend'])
+        ->whereNumber('pedido')
+        ->name('doctor.pedidos-laboratorio.resend');
 
     // Nota clínica SOAP
     Route::get('/citas/{cita}/historial-clinico', [DoctorSoapController::class, 'show'])->name('doctor.citas.soap');
@@ -397,6 +436,7 @@ Route::middleware(['auth', 'role:doctor'])->prefix('doctor')->group(function () 
     Route::get('/pacientes', [DoctorHistorialController::class, 'index'])->name('doctor.pacientes.index');
     Route::get('/pacientes/{paciente}/historial', [DoctorHistorialController::class, 'show'])->name('doctor.pacientes.historial');
     Route::put('/pacientes/{paciente}/historial', [DoctorHistorialController::class, 'update'])->name('doctor.pacientes.historial.update');
+    Route::get('/pacientes/{paciente}/historial/exportar-pdf', [DoctorHistorialController::class, 'exportPdf'])->name('doctor.pacientes.historial.pdf');
 
     // Horarios
     Route::get('/horario', [DoctorHorarioController::class, 'index'])->name('doctor.horario.index');
@@ -410,6 +450,7 @@ Route::middleware(['auth', 'role:doctor'])->prefix('doctor')->group(function () 
 // ======================== LABORATORIO =======================
 Route::middleware(['auth', 'role:laboratorio'])->prefix('laboratorio')->name('laboratorio.')->group(function () {
     Route::get('/dashboard', [LaboratorioDashboardController::class, 'dashboard'])->name('dashboard');
+    Route::get('/dashboard/data', [LaboratorioDashboardController::class, 'dashboardData'])->name('dashboard.data');
 
     Route::get('/horario', [LaboratorioHorarioController::class, 'index'])->name('horario.index');
     Route::post('/horario', [LaboratorioHorarioController::class, 'store'])->name('horario.store');
@@ -431,6 +472,13 @@ Route::middleware(['auth', 'role:laboratorio'])->prefix('laboratorio')->name('la
         ->whereNumber('labOrder')->name('lab-orders.resultado');
     Route::get('/ordenes/solicitudes/{labOrder}/download', [LaboratorioOrdenController::class, 'downloadAutoOrder'])
         ->whereNumber('labOrder')->name('lab-orders.download');
+
+    // Pedidos de Laboratorio MVP
+    Route::get('/pedidos-mvp', [\App\Http\Controllers\Laboratorio\PedidoLaboratorioController::class, 'index'])->name('pedidos.index');
+    Route::post('/pedidos-mvp/{pedido}/muestra', [\App\Http\Controllers\Laboratorio\PedidoLaboratorioController::class, 'marcarMuestra'])->name('pedidos.muestra');
+    Route::post('/pedidos-mvp/{pedido}/resultado', [\App\Http\Controllers\Laboratorio\PedidoLaboratorioController::class, 'subirResultado'])->name('pedidos.resultado');
+    Route::get('/pedidos-mvp/{pedido}/download-orden', [\App\Http\Controllers\Laboratorio\PedidoLaboratorioController::class, 'downloadOrden'])->name('pedidos.download-orden');
+    Route::get('/pedidos-mvp/{pedido}/download-resultado', [\App\Http\Controllers\Laboratorio\PedidoLaboratorioController::class, 'downloadResultado'])->name('pedidos.download-resultado');
 
 });
 

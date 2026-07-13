@@ -11,10 +11,7 @@ class PersonalizacionRequestController extends Controller
 {
     public function index(Request $request)
     {
-        $status = $request->string('status')->lower()->value();
-        if ($status === 'all') {
-            $status = '';
-        }
+        $status = $this->normalizeStatusFilter($request->string('status')->lower()->value());
         $query = FeatureAccessRequest::with(['user', 'reviewer'])
             ->forFeature('personalizacion')
             ->orderByDesc('created_at');
@@ -30,6 +27,16 @@ class PersonalizacionRequestController extends Controller
         $requests = $query->paginate(15)->appends($request->query());
 
         return view('superadmin.solicitudes.personalizacion', compact('requests', 'status'));
+    }
+
+    private function normalizeStatusFilter(string $status): string
+    {
+        $status = trim(strtolower($status));
+        if ($status === 'all') {
+            return '';
+        }
+
+        return in_array($status, ['', 'pending', 'approved', 'expired', 'rejected', 'revoked'], true) ? $status : '';
     }
 
     public function approve(Request $request, FeatureAccessRequest $accessRequest)

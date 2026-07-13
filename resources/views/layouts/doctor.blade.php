@@ -21,7 +21,7 @@
         request()->routeIs('doctor.horario.*') => route('doctor.horario.index'),
         request()->routeIs('doctor.recetas.*') => route('doctor.citas'),
         request()->routeIs('doctor.certificados.*') => route('doctor.citas'),
-        request()->routeIs('doctor.laboratorio.*') => route('doctor.citas'),
+        request()->routeIs('doctor.pedidos-laboratorio.*') => route('doctor.citas'),
         request()->routeIs('doctor.citas.*') => route('doctor.citas'),
         request()->routeIs('doctor.pacientes.historial') => route('doctor.pacientes.index'),
         default => route('doctor.dashboard'),

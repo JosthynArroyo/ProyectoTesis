@@ -43,5 +43,26 @@ h3{ margin:0 0 8px; font-size:13px; color:#0f172a; }
 .sign .line{ border-top:1px solid #94a3b8; height:0; margin:8px 0 6px; }
 .footer{ margin-top:18px; padding-top:10px; border-top:1px dashed #d8e2e7; display:flex; justify-content:space-between; gap:12px; color:#64748b; }
 .badge{ display:inline-block; border:1px solid #99f6e4; background:#ccfbf1; color:#0f766e; padding:2px 8px; border-radius:999px; font-weight:700; font-size:10.5px; }
+.verification-panel{
+  margin-top:14px;
+  padding:12px 14px;
+  border:1px solid #d8e2e7;
+  border-radius:10px;
+  background:#f8fafc;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:14px;
+}
+.verification-label{
+  font-size:10px;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+  font-weight:700;
+  color:#0f766e;
+}
+.verification-code{ margin-top:4px; font-weight:700; color:#0f172a; }
+.verification-url{ margin-top:4px; font-size:10px; color:#64748b; word-break:break-all; }
+.verification-qr{ width:88px; height:88px; object-fit:contain; flex:0 0 auto; }
 .avoid-break{ page-break-inside:avoid; }
 @page{ margin:24px 28px; }

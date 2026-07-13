@@ -12,7 +12,9 @@ class Kernel extends ConsoleKernel
         $schedule->command('users:deactivate-inactive')->dailyAt('02:30')->withoutOverlapping();
         $schedule->command('citas:marcar-no-show')->everyTenMinutes()->withoutOverlapping();
         $schedule->command('citas:sync-recordatorios')->everyTenMinutes()->withoutOverlapping();
+        $schedule->command('citas:recordatorio-whatsapp')->everyTenMinutes()->withoutOverlapping();
         $schedule->command('citas:expirar-slot-holds')->everyMinute()->withoutOverlapping();
+        $schedule->command('citas:recalcular-prioridad')->everyThirtyMinutes()->withoutOverlapping();
     }
 
     protected function commands(): void

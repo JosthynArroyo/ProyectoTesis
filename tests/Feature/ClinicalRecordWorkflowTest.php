@@ -148,4 +148,51 @@ class ClinicalRecordWorkflowTest extends TestCase
             'title' => 'Riesgo de reaccion alergica',
         ]);
     }
+
+    public function test_soap_encoding_does_not_have_regression(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+
+        $doctorRole = Role::query()->where('name', 'doctor')->firstOrFail();
+        $patientRole = Role::query()->where('name', 'paciente')->firstOrFail();
+        $specialty = Especialidad::query()->orderBy('id')->firstOrFail();
+
+        $patient = User::factory()->create();
+        $patient->roles()->attach($patientRole);
+
+        $doctor = User::factory()->create();
+        $doctor->roles()->attach($doctorRole);
+
+        $cita = Cita::create([
+            'paciente_id' => $patient->id,
+            'doctor_id' => $doctor->id,
+            'especialidad_id' => $specialty->id,
+            'fecha' => '2026-07-13',
+            'hora' => '08:00:00',
+            'motivo_consulta' => 'Dolor de garganta',
+            'estado' => Cita::ESTADO_CONFIRMADA,
+            'activo' => true,
+        ]);
+
+        $response = $this->actingAs($doctor)
+            ->get(route('doctor.citas.soap', $cita));
+
+        $response->assertOk();
+
+        // Must see correct UTF-8 Spanish texts
+        $response->assertSee('Presión arterial', false);
+        $response->assertSee('Respiración', false);
+        $response->assertSee('Temperatura', false);
+        $response->assertSee('°C', false);
+        $response->assertSee('centímetros', false);
+        $response->assertSee('guardará', false);
+
+        // Must not see corrupted encodings
+        $response->assertDontSee('PresiÃ³n', false);
+        $response->assertDontSee('RespiraciÃ³n', false);
+        $response->assertDontSee('Â°C', false);
+        $response->assertDontSee('centÃ', false);
+        $response->assertDontSee('guardarÃ', false);
+        $response->assertDontSee("\u{FFFD}", false);
+    }
 }

@@ -42,17 +42,30 @@
         <tr>
             <td>
                 <div class="label">Paciente</div>
-                <div class="value">{{ $cita->paciente?->name ?? 'N/D' }}</div>
+                <div class="value">
+                    {{ $cita->nombrePacienteReal() }}
+                    @if($cita->dependiente_id && $cita->dependiente)
+                        ({{ ucfirst($cita->dependiente->parentesco) }})
+                    @endif
+                </div>
             </td>
             <td>
                 <div class="label">Cédula</div>
-                <div class="value">{{ $cita->paciente?->dni ?? 'N/D' }}</div>
+                <div class="value">{{ $cita->dniPacienteReal() }}</div>
             </td>
             <td>
                 <div class="label">Teléfono</div>
                 <div class="value">{{ $cita->paciente?->telefono ?? 'N/D' }}</div>
             </td>
         </tr>
+        @if($cita->dependiente_id && $cita->dependiente)
+        <tr>
+            <td colspan="3">
+                <div class="label">Representante</div>
+                <div class="value">{{ $cita->paciente?->name ?? 'N/D' }}</div>
+            </td>
+        </tr>
+        @endif
         <tr>
             <td>
                 <div class="label">Fecha</div>

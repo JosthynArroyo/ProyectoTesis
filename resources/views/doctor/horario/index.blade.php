@@ -70,10 +70,12 @@
 
         <div class="sm:col-span-4">
           <label class="form-label">Días</label>
-          @php($dias=[1=>'Lun',2=>'Mar',3=>'Mié',4=>'Jue',5=>'Vie',6=>'Sáb',7=>'Dom'])
-          <div class="mt-2 flex flex-wrap gap-2">
+          @php
+            $dias=[1=>'Lun',2=>'Mar',3=>'Mié',4=>'Jue',5=>'Vie',6=>'Sáb',7=>'Dom'];
+          @endphp
+          <div class="mt-2 flex flex-wrap gap-2" id="dias-wrap">
             @foreach($dias as $k=>$v)
-              <label class="flex items-center gap-2 rounded-full border border-gray-200 px-3 py-2 text-xs font-semibold">
+              <label class="flex items-center gap-2 rounded-full border border-gray-200 px-3 py-2 text-xs font-semibold cursor-pointer">
                 <input type="checkbox" name="dias[]" value="{{ $k }}" {{ $k <= 5 ? 'checked' : '' }}>
                 <span>{{ $v }}</span>
               </label>
@@ -84,18 +86,22 @@
 
         <div>
           <label class="form-label">Inicio</label>
-          <input class="form-input" type="time" name="hora_inicio" required>
+          <select class="form-input" id="hora_inicio_global" name="hora_inicio" data-old="{{ old('hora_inicio') }}" required></select>
           @error('hora_inicio')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
         </div>
         <div>
           <label class="form-label">Fin</label>
-          <input class="form-input" type="time" name="hora_fin" required>
+          <select class="form-input" id="hora_fin_global" name="hora_fin" data-old="{{ old('hora_fin') }}" required></select>
           @error('hora_fin')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
         </div>
 
-        <input type="hidden" name="intervalo_minutos" value="30">
+        <input type="hidden" id="intervalo_minutos" name="intervalo_minutos" value="30">
         <div class="flex items-end">
           <span class="badge neutral">Intervalo 30 min</span>
+        </div>
+
+        <div class="sm:col-span-4">
+          <p class="text-xs text-teal-650 dark:text-teal-400 font-semibold" id="clinic-hours-info-global"></p>
         </div>
 
         <div class="sm:col-span-4">
@@ -113,15 +119,48 @@
       </form>
     </div>
 
+    @if (session('horario_conflicts'))
+      <div class="card p-4 border-2 border-amber-500 bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-200 space-y-3">
+        <div class="flex items-start gap-3">
+          <i class="ri-alert-line text-lg text-amber-600 dark:text-amber-400"></i>
+          <div>
+            <h4 class="font-semibold">Confirmación requerida</h4>
+            <p class="text-sm mt-1">Este cambio dejará <strong>{{ session('horario_conflicts') }} cita(s) futura(s) activa(s)</strong> sin cobertura horaria para este doctor.</p>
+          </div>
+        </div>
+        <form method="POST" action="{{ session('conflict_target_route') ?? route('doctor.horario.store') }}">
+          @csrf
+          @if(session('conflict_target_method') == 'PUT')
+            @method('PUT')
+          @endif
+          @foreach(session('conflict_payload') ?? [] as $k => $v)
+            @if(is_array($v))
+              @foreach($v as $subk => $subv)
+                <input type="hidden" name="{{ $k }}[{{ $subk }}]" value="{{ $subv }}">
+              @endforeach
+            @else
+              <input type="hidden" name="{{ $k }}" value="{{ $v }}">
+            @endif
+          @endforeach
+          <label class="flex items-center gap-2 text-sm font-semibold cursor-pointer">
+            <input type="hidden" name="confirmar_conflictos" value="0">
+            <input type="checkbox" name="confirmar_conflictos" value="1" required class="rounded border-gray-300 text-teal-650 focus:ring-teal-550 dark:border-gray-700 dark:bg-gray-800">
+            Confirmar que deseo proceder y forzar los cambios.
+          </label>
+          <button type="submit" class="btn btn-primary mt-3">Guardar con confirmación</button>
+        </form>
+      </div>
+    @endif
+
     <div class="card p-6">
       <h3 class="text-lg font-semibold text-gray-900">Crear horario (un día)</h3>
       <form method="POST" action="{{ route('doctor.horario.store') }}" class="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         @csrf
         <div>
-          <label class="form-label" for="doctor-horario-fecha">Fecha</label>
+          <label class="form-label" for="fecha_single">Fecha</label>
           <div class="relative mt-1">
-            <input class="form-input form-input-native-date mt-0 pr-11" id="doctor-horario-fecha" type="date" name="fecha" placeholder="AAAA-MM-DD" autocomplete="off" required>
-            <button id="doctor-horario-fecha-trigger" type="button" class="field-action-button" data-native-date-open="#doctor-horario-fecha" aria-label="Abrir calendario para el bloque de un día">
+            <input class="form-input form-input-native-date mt-0 pr-11" id="fecha_single" type="date" name="fecha" placeholder="AAAA-MM-DD" autocomplete="off" min="{{ now()->toDateString() }}" required>
+            <button id="doctor-horario-fecha-trigger" type="button" class="field-action-button" data-native-date-open="#fecha_single" aria-label="Abrir calendario para el bloque de un día">
               <i class="ri-calendar-line"></i>
             </button>
           </div>
@@ -129,18 +168,21 @@
         </div>
         <div>
           <label class="form-label">Inicio</label>
-          <input class="form-input" type="time" name="hora_inicio" required>
+          <select class="form-input" id="hora_inicio_single" name="hora_inicio" data-old="{{ old('hora_inicio') }}" required></select>
           @error('hora_inicio')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
         </div>
         <div>
           <label class="form-label">Fin</label>
-          <input class="form-input" type="time" name="hora_fin" required>
+          <select class="form-input" id="hora_fin_single" name="hora_fin" data-old="{{ old('hora_fin') }}" required></select>
           @error('hora_fin')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
         </div>
 
-        <input type="hidden" name="intervalo_minutos" value="30">
         <div class="flex items-end">
           <span class="badge neutral">Intervalo 30 min</span>
+        </div>
+
+        <div class="sm:col-span-4">
+          <p class="text-xs text-teal-650 dark:text-teal-400 font-semibold" id="clinic-hours-info-single"></p>
         </div>
 
         <div class="sm:col-span-4">
@@ -148,6 +190,12 @@
         </div>
       </form>
     </div>
+
+    <script id="clinica-horarios-config" type="application/json">
+      {!! json_encode(collect(range(1, 7))->mapWithKeys(function($day) {
+          return [$day => app(App\Services\ProfessionalScheduleService::class)->getClinicHours($day)];
+      })) !!}
+    </script>
 
     <div class="card p-6">
       <div class="flex items-center justify-between">
@@ -162,11 +210,26 @@
           </thead>
           <tbody>
             @forelse($items as $h)
-              <tr>
-                <td data-label="Fecha">{{ $h->fecha }}</td>
+              @php
+                $hDay = \Carbon\Carbon::parse($h->fecha)->isoWeekday();
+                $clinicH = app(App\Services\ProfessionalScheduleService::class)->getClinicHours($hDay);
+                $isOutside = ($clinicH['status'] === 0) 
+                    || (substr($h->hora_inicio, 0, 5) < $clinicH['opening']) 
+                    || (substr($h->hora_fin, 0, 5) > $clinicH['closing']);
+              @endphp
+              <tr class="{{ $isOutside ? 'bg-amber-500/5' : '' }}">
+                <td data-label="Fecha">
+                  {{ $h->fecha->toDateString() }}
+                  @if($isOutside)
+                    <br>
+                    <span class="inline-block mt-1 text-xs font-semibold text-amber-600 dark:text-amber-450">
+                      <i class="ri-alert-line"></i> Fuera del horario institucional: no genera disponibilidad
+                    </span>
+                  @endif
+                </td>
                 <td data-label="Inicio">{{ substr($h->hora_inicio,0,5) }}</td>
                 <td data-label="Fin">{{ substr($h->hora_fin,0,5) }}</td>
-                <td data-label="Intervalo"><span class="badge neutral">30 min</span></td>
+                <td data-label="Intervalo"><span class="badge neutral">{{ $h->intervalo_minutos ?? 30 }} min</span></td>
                 <td data-label="Acciones">
                   <div class="table-actions table-actions--start">
                     <a class="btn btn-outline" href="{{ route('doctor.horario.edit',$h) }}">Editar</a>
@@ -186,3 +249,7 @@
     </div>
   </div>
 @endsection
+
+@push('scripts')
+  @vite('resources/js/doctor/horario.js')
+@endpush

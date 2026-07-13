@@ -37,6 +37,20 @@ class CambioEstadoCitaMail extends Mailable
         $identity = app(ClinicIdentityService::class);
         $esAutor = $this->rolReceptor === $this->quien;
 
+        if ($this->rolReceptor === 'paciente' && $this->cita->dependiente_id && $this->cita->dependiente) {
+            $nombreDep = $this->cita->dependiente->nombre;
+            $parentesco = $this->cita->dependiente->parentesco;
+            return match ($this->evento) {
+                'agendada' => $identity->subject("Agendaste una cita para tu {$parentesco} {$nombreDep}"),
+                'reagendada' => $identity->subject("Reagendaste la cita para tu {$parentesco} {$nombreDep}"),
+                'cancelada' => $identity->subject("Cancelaste la cita para tu {$parentesco} {$nombreDep}"),
+                'aceptada' => $identity->subject("La cita para tu {$parentesco} {$nombreDep} fue aceptada"),
+                'prioridad' => $identity->subject("Actualizaste la prioridad de la cita para tu {$parentesco}"),
+                'no_se_presento' => $identity->subject("La cita para tu {$parentesco} fue marcada como no se presentó"),
+                default => $identity->subject("Actualización de la cita para tu {$parentesco}"),
+            };
+        }
+
         if ($esAutor) {
             return match ($this->evento) {
                 'agendada' => $identity->subject('Agendaste una cita'),
@@ -78,6 +92,20 @@ class CambioEstadoCitaMail extends Mailable
 
     private function resolverMensaje(string $rol, string $evento, bool $esAutor): string
     {
+        if ($rol === 'paciente' && $this->cita->dependiente_id && $this->cita->dependiente) {
+            $nombreDep = $this->cita->dependiente->nombre;
+            $parentesco = $this->cita->dependiente->parentesco;
+            return match ($evento) {
+                'agendada' => "Agendaste una cita para tu {$parentesco} {$nombreDep}.",
+                'reagendada' => "Reagendaste la cita para tu {$parentesco} {$nombreDep}.",
+                'cancelada' => "Cancelaste la cita para tu {$parentesco} {$nombreDep}.",
+                'aceptada' => "La cita para tu {$parentesco} {$nombreDep} fue aceptada.",
+                'prioridad' => "La prioridad de la cita para tu {$parentesco} {$nombreDep} fue actualizada a ".ucfirst(strtolower((string) ($this->cita->prioridad_nivel ?? 'BAJA'))).".",
+                'no_se_presento' => "La cita para tu {$parentesco} {$nombreDep} fue marcada como no se presentó.",
+                default => "La cita para tu {$parentesco} {$nombreDep} fue actualizada.",
+            };
+        }
+
         return match ($evento) {
             'agendada' => $rol === 'doctor'
                 ? 'Se registro una nueva cita en tu agenda.'

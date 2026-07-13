@@ -6,7 +6,6 @@ use App\Models\Cita;
 use App\Models\Especialidad;
 use App\Models\FeatureAccessRequest;
 use App\Models\Horario;
-use App\Models\LabTest;
 use App\Models\LaboratorioOrden;
 use App\Models\Pago;
 use App\Models\Role;
@@ -184,7 +183,9 @@ class AuditFunctionalFlowTest extends TestCase
 
     public function test_full_functional_audit(): void
     {
-        $roles = $this->loadRoleUsers();
+        Carbon::setTestNow(Carbon::parse('2026-07-08 10:00:00', 'America/Guayaquil'));
+        try {
+            $roles = $this->loadRoleUsers();
         $this->context['roles_detectados'] = array_keys($roles);
         $this->context['credenciales'] = [
             'superadmin' => ['email' => $roles['superadmin']->email, 'password' => 'superadmin1234'],
@@ -214,14 +215,23 @@ class AuditFunctionalFlowTest extends TestCase
         $this->testAdminScheduleCrud($tempAdmin, $doctor, $doctorDate, $doctorDate2);
 
         $appointments = $this->testPatientBookingFlows($patient, $doctor, $doctorSpecialty, $doctorDate);
-        $this->testPatientRoutineLabRequest($patient);
 
 
         $followupSchedule = $this->testDoctorHorarioCrud($doctor, $doctorDate3);
         $this->testDoctorCoreFlows($doctor, $appointments, $patient, $followupSchedule);
 
         $this->testLaboratorioHorarioCrud($lab, $labDate, $labDate2);
-        $labOrder = $this->testDoctorCreatesLabOrder($doctor, $patient, $lab, $labDate);
+        $labOrder = LaboratorioOrden::create([
+            'cita_id' => $appointments['principal']->id,
+            'clinical_record_id' => null,
+            'solicitante_id' => $doctor->id,
+            'origen' => 'doctor',
+            'prioridad' => 'normal',
+            'tipo_examen' => 'Hemograma completo',
+            'indicaciones' => 'Traer orden y documento.',
+            'preparacion' => 'Ayuno de 8 horas.',
+            'estado' => LaboratorioOrden::ESTADO_CITA_PROGRAMADA,
+        ]);
         $this->testLaboratorioOrderFlow($lab, $labOrder);
         $this->testPatientSeesLabResults($patient, $labOrder);
 
@@ -236,6 +246,9 @@ class AuditFunctionalFlowTest extends TestCase
 
         $this->writeReport();
         $this->assertTrue(true);
+        } finally {
+            Carbon::setTestNow();
+        }
     }
 
     private function loadRoleUsers(): array
@@ -857,13 +870,13 @@ class AuditFunctionalFlowTest extends TestCase
 
         $dashboard = $this->get('/paciente/dashboard');
         $createPage = $this->get('/paciente/crear-cita');
-        $labPage = $this->get('/paciente/laboratorio/solicitar');
+        $labPage = $this->get('/paciente/laboratorio');
 
         $this->record(
             role: 'paciente',
             module: 'Dashboard',
             function: 'Carga de panel y módulos base',
-            route: 'GET /paciente/dashboard, /paciente/crear-cita, /paciente/laboratorio/solicitar',
+            route: 'GET /paciente/dashboard, /paciente/crear-cita, /paciente/laboratorio',
             data: [],
             steps: ['Abrir dashboard', 'Abrir agenda', 'Abrir laboratorio'],
             expected: 'Vistas accesibles.',
@@ -981,37 +994,6 @@ class AuditFunctionalFlowTest extends TestCase
 
         return ['principal' => $principal, 'cancelada' => $cancel, 'rechazo' => $reject];
     }
-
-    private function testPatientRoutineLabRequest(User $patient): void
-    {
-        $this->actingAs($patient);
-        $test = LabTest::query()->where('activo', true)->where('es_rutina', true)->where('tipo', 'rutina')->firstOrFail();
-        $this->post('/paciente/laboratorio/solicitar', [
-            'source' => \App\Models\LabOrder::SOURCE_ROUTINE,
-            'priority' => 'normal',
-            'lab_test_id' => $test->id,
-        ]);
-        $order = \App\Models\LabOrder::query()
-            ->where('patient_id', $patient->id)
-            ->where('source', \App\Models\LabOrder::SOURCE_ROUTINE)
-            ->latest('id')
-            ->firstOrFail();
-
-        $this->record(
-            role: 'paciente',
-            module: 'Laboratorio',
-            function: 'Solicitar examen de rutina',
-            route: 'POST /paciente/laboratorio/solicitar',
-            data: ['lab_test_id' => $test->id],
-            steps: ['Seleccionar examen de rutina', 'Guardar solicitud'],
-            expected: 'LabOrder con status pendiente_toma.',
-            actual: sprintf('lab_order_id=%s status=%s', $order->id, $order->status),
-            status: $order->status === 'pendiente_toma' ? 'EXITOSA' : 'FALLIDA',
-            evidence: ['controller' => 'app/Http/Controllers/Paciente/LabOrderController.php']
-        );
-    }
-
-
 
     private function testDoctorHorarioCrud(User $doctor, Carbon $date): Horario
     {
@@ -1189,9 +1171,10 @@ class AuditFunctionalFlowTest extends TestCase
             'medicamentos' => 'Paracetamol 500mg',
             'indicaciones' => 'Tomar con alimentos',
         ]);
-        if (!$response->isSuccessful() && !$response->isRedirect()) {
-            dd($response->exception->getMessage(), $response->exception->getTraceAsString());
-        }
+        $this->assertTrue(
+            $response->isSuccessful() || $response->isRedirect(),
+            $response->exception?->getMessage() ?? 'La creacion de la receta devolvio una respuesta inesperada.'
+        );
 
         $recipe = $principal->receta()->firstOrFail();
         $this->post('/doctor/recetas/actualizar', [
@@ -1262,44 +1245,6 @@ class AuditFunctionalFlowTest extends TestCase
             status: $dashboard->getStatusCode() === 200 && ! Horario::query()->whereKey($extra->id)->exists() ? 'EXITOSA' : 'FALLIDA',
             evidence: ['controller' => 'app/Http/Controllers/Laboratorio/HorarioController.php']
         );
-    }
-
-    private function testDoctorCreatesLabOrder(User $doctor, User $patient, User $lab, Carbon $date): LaboratorioOrden
-    {
-        $labSpecialtyId = Especialidad::laboratorioClinicoId();
-        if ($labSpecialtyId && ! $lab->especialidades()->where('especialidad_id', $labSpecialtyId)->exists()) {
-            $lab->especialidades()->syncWithoutDetaching([$labSpecialtyId]);
-        }
-
-        $this->actingAs($doctor);
-        $form = $this->get('/doctor/laboratorio/ordenar?paciente_id='.$patient->id);
-        $this->post('/doctor/laboratorio', [
-            'paciente_id' => $patient->id,
-            'doctor_id' => $lab->id,
-            'fecha' => $date->toDateString(),
-            'hora' => '09:00',
-            'motivo_consulta' => 'Orden de laboratorio por control',
-            'tipo_examen' => 'Hemograma completo',
-            'prioridad' => 'urgente',
-            'indicaciones' => 'Presentarse en ayunas',
-            'preparacion' => 'Ayuno de 8 horas',
-        ]);
-        $order = LaboratorioOrden::query()->where('tipo_examen', 'Hemograma completo')->latest('id')->firstOrFail();
-
-        $this->record(
-            role: 'doctor',
-            module: 'Laboratorio',
-            function: 'Crear orden de laboratorio',
-            route: 'GET /doctor/laboratorio/ordenar + POST /doctor/laboratorio',
-            data: ['paciente_id' => $patient->id, 'laboratorio_id' => $lab->id],
-            steps: ['Abrir formulario', 'Guardar orden'],
-            expected: 'LaboratorioOrden y cita asociada.',
-            actual: sprintf('form=%s order_id=%s estado=%s', $form->getStatusCode(), $order->id, $order->estado),
-            status: $form->getStatusCode() === 200 && $order->estado === 'cita_programada' ? 'EXITOSA' : 'FALLIDA',
-            evidence: ['controller' => 'app/Http/Controllers/Doctor/LaboratorioController.php']
-        );
-
-        return $order;
     }
 
     private function testLaboratorioOrderFlow(User $lab, LaboratorioOrden $order): void

@@ -38,7 +38,7 @@ class PublicPageController extends Controller
 
     public function servicios(Request $request): View
     {
-        $q = trim((string) $request->query('q', ''));
+        $q = $this->normalizeSearchTerm($request->query('q', ''));
         $tipo = strtolower(trim((string) $request->query('tipo', 'all')));
         $allowedTypes = ['all', 'general', 'especialidad', 'diagnostico', 'procedimiento'];
         if (! in_array($tipo, $allowedTypes, true)) {
@@ -76,6 +76,7 @@ class PublicPageController extends Controller
         $nonSpecialtyMatches = ['laboratorio', 'odontolog'];
 
         match ($tipo) {
+            // Keep these raw fragments static and parameterized; no request SQL belongs here.
             'general' => $query->whereRaw('LOWER(nombre) = ?', ['medicina general']),
             'diagnostico' => $query->whereRaw('LOWER(nombre) like ?', ['%laboratorio%']),
             'procedimiento' => $query->whereRaw('LOWER(nombre) like ?', ['%odontolog%']),
@@ -99,5 +100,10 @@ class PublicPageController extends Controller
         }
 
         return redirect('/');
+    }
+
+    private function normalizeSearchTerm(mixed $value, int $maxLength = 100): string
+    {
+        return trim(mb_substr((string) $value, 0, $maxLength));
     }
 }

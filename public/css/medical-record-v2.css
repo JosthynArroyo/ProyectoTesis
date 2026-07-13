@@ -1,0 +1,165 @@
+/* ===== Expediente Clínico v2 – Layout redesign ===== */
+
+/* --- Header block --- */
+.mr-patient-header{display:flex;align-items:center;gap:1.25rem;padding:1.15rem 1.25rem;border-radius:16px;border:1px solid var(--mr-border);background:linear-gradient(135deg,var(--mr-surface),var(--mr-surface-soft));box-shadow:0 6px 18px rgba(15,42,54,.06);flex-wrap:wrap}
+.mr-patient-header__avatar{width:68px;height:68px;border-radius:14px;border:3px solid #d8edf1;background:linear-gradient(135deg,#dff4f7,#eff8fa);color:var(--mr-primary);display:grid;place-items:center;font-weight:800;font-size:1.35rem;flex-shrink:0}
+.mr-patient-header__info{flex:1;min-width:200px}
+.mr-patient-header__name{margin:0;font-size:1.15rem;color:var(--mr-text);font-weight:700}
+.mr-patient-header__meta{display:flex;flex-wrap:wrap;gap:.35rem .9rem;margin-top:.35rem}
+.mr-patient-header__meta-item{display:inline-flex;align-items:center;gap:.3rem;font-size:.8rem;color:var(--mr-muted)}
+.mr-patient-header__meta-item i{font-size:.95rem;color:var(--mr-primary)}
+.mr-patient-header__meta-item strong{color:var(--mr-text);font-weight:600}
+.mr-patient-header__dates{display:flex;gap:.65rem;flex-shrink:0;flex-wrap:wrap}
+.mr-patient-header__date-pill{display:flex;flex-direction:column;align-items:center;border:1px solid var(--mr-border);border-radius:12px;background:#f9fcfd;padding:.55rem .75rem;min-width:110px}
+.mr-patient-header__date-pill i{font-size:1.1rem;color:var(--mr-primary);margin-bottom:.2rem}
+.mr-patient-header__date-pill .label{font-size:.68rem;color:var(--mr-muted);text-transform:uppercase;letter-spacing:.04em;font-weight:600}
+.mr-patient-header__date-pill .value{font-size:.82rem;color:var(--mr-text);font-weight:700;margin-top:.1rem}
+.mr-patient-header__date-pill .sub{font-size:.72rem;color:var(--mr-muted)}
+.mr-patient-header__alerts{flex-shrink:0;max-width:240px;min-width:180px;border:1px solid #f1b4b4;background:#fff6f6;border-radius:12px;padding:.6rem .75rem}
+.mr-patient-header__alerts--ok{border-color:var(--mr-border);background:#f9fcfd}
+.mr-patient-header__alerts .alerts-title{display:flex;align-items:center;gap:.35rem;font-size:.78rem;font-weight:700;color:#cc3b3b;margin-bottom:.25rem}
+.mr-patient-header__alerts--ok .alerts-title{color:var(--mr-muted)}
+.mr-patient-header__alerts .alerts-title i{font-size:1rem}
+.mr-patient-header__alerts .alerts-list{margin:0;padding:0;list-style:none;font-size:.78rem;color:var(--mr-text)}
+.mr-patient-header__alerts .alerts-list li{padding:.1rem 0}
+
+/* --- Quick Stats Row --- */
+.mr-stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-top:.75rem}
+.mr-stat-card{border:1px solid var(--mr-border);border-radius:14px;background:var(--mr-surface);padding:.75rem .85rem;display:flex;align-items:center;gap:.7rem;transition:box-shadow .2s}
+.mr-stat-card:hover{box-shadow:0 4px 12px rgba(15,42,54,.08)}
+.mr-stat-card__icon{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;font-size:1.15rem;flex-shrink:0}
+.mr-stat-card__icon--teal{background:#dff4f7;color:#1e7a87}
+.mr-stat-card__icon--amber{background:#fff6de;color:#b17a07}
+.mr-stat-card__icon--rose{background:#fff1f1;color:#cc3b3b}
+.mr-stat-card__icon--blue{background:#e7f0fb;color:#2f5f9c}
+.mr-stat-card__body{min-width:0}
+.mr-stat-card__value{font-size:1.3rem;font-weight:800;color:var(--mr-text);line-height:1.15}
+.mr-stat-card__label{font-size:.76rem;color:var(--mr-muted);margin-top:.1rem}
+
+/* --- Center Grid (2 columns: main + vitals) --- */
+.mr-center-grid{display:grid;grid-template-columns:1fr minmax(300px,.6fr);gap:1rem;margin-top:1rem;align-items:stretch}
+
+/* --- Clinical summary block --- */
+.mr-clinical-summary{border:1px solid var(--mr-border);border-radius:14px;background:var(--mr-surface);padding:1.25rem;display:flex;flex-direction:column;gap:1rem;height:100%}
+.mr-clinical-summary__title{display:flex;align-items:center;gap:.5rem;margin:0;font-size:1.05rem;color:var(--mr-primary);font-weight:700}
+.mr-clinical-summary__title i{font-size:1.2rem}
+.mr-clinical-summary__text{margin:0;font-size:.88rem;line-height:1.6;color:var(--mr-text)}
+.mr-clinical-note{border:1px solid #d0e7ec;border-radius:12px;background:#f4fbfc;padding:1rem;display:grid;grid-template-columns:1.5fr 2.5fr 1fr;gap:1rem;align-items:center;}
+.mr-clinical-note__title{display:flex;gap:.5rem;align-items:flex-start;margin:0;font-size:.85rem;color:var(--mr-primary);font-weight:700;line-height:1.3}
+.mr-clinical-note__title i{font-size:1.1rem;margin-top:-0.1rem}
+.mr-clinical-note__meta{font-size:.76rem;color:var(--mr-muted);margin:0}
+.mr-clinical-note__body{font-size:.84rem;color:var(--mr-text);line-height:1.5;margin:0}
+.mr-clinical-actions{display:flex;gap:.75rem;flex-wrap:wrap;margin-top:auto;}
+
+/* --- Vitals grid --- */
+.mr-vitals-block{border:1px solid var(--mr-border);border-radius:14px;background:var(--mr-surface);padding:1rem 1.15rem;height:auto !important}
+.mr-vitals-block__title{display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin:0 0 .65rem}
+.mr-vitals-block__title h3{margin:0;font-size:.92rem;color:var(--mr-primary);font-weight:700;display:flex;align-items:center;gap:.4rem}
+.mr-vitals-block__title h3 i{font-size:1.1rem}
+.mr-vitals-block__title span{font-size:.72rem;color:var(--mr-muted)}
+.mr-vitals-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:.55rem}
+.mr-vital-item{border:1px solid var(--mr-border);border-radius:10px;background:#fbfdfe;padding:.55rem .65rem;display:flex;align-items:center;gap:.45rem}
+.mr-vital-item i{font-size:1rem;color:var(--mr-primary);flex-shrink:0}
+.mr-vital-item__body{min-width:0}
+.mr-vital-item__label{font-size:.7rem;color:var(--mr-muted);text-transform:uppercase;letter-spacing:.03em}
+.mr-vital-item__value{font-size:.92rem;font-weight:700;color:var(--mr-text)}
+
+/* --- Antecedentes --- */
+.mr-antecedentes{margin-top:1rem;border:1px solid var(--mr-border);border-radius:14px;background:var(--mr-surface);padding:1rem 1.15rem}
+.mr-antecedentes__title{display:flex;align-items:center;gap:.5rem;margin:0 0 .75rem;font-size:.92rem;color:var(--mr-primary);font-weight:700}
+.mr-antecedentes__title i{font-size:1.1rem}
+.mr-antecedentes__grid{display:grid;grid-template-columns:repeat(5,1fr);gap:.65rem}
+.mr-antecedente-card{border:1px solid var(--mr-border);border-radius:12px;background:#f9fcfd;padding:.7rem .75rem}
+.mr-antecedente-card__title{display:flex;align-items:center;gap:.35rem;font-size:.8rem;font-weight:700;color:var(--mr-text);margin:0 0 .35rem}
+.mr-antecedente-card__title i{font-size:.95rem;color:var(--mr-primary)}
+.mr-antecedente-card__body{font-size:.8rem;color:var(--mr-muted);line-height:1.4}
+.mr-antecedente-card__body .detail{color:var(--mr-text);font-size:.82rem;margin-bottom:.2rem}
+.mr-antecedente-card__body .link{display:inline-flex;align-items:center;gap:.25rem;color:var(--mr-primary);font-weight:600;font-size:.78rem;text-decoration:none;margin-top:.3rem}
+.mr-antecedente-card__body .link:hover{text-decoration:underline}
+
+/* --- Bottom Grid (main + sidebar) --- */
+.mr-bottom-grid{display:grid;grid-template-columns:1fr minmax(280px,.45fr);gap:1rem;margin-top:1rem;align-items:start}
+.mr-bottom-grid > *{align-self:start}
+
+/* Force medical-card inside grids to NOT stretch */
+.mr-bottom-grid .medical-card,
+.mr-center-grid .medical-card{height:auto !important;align-self:start}
+
+/* --- Sidebar cards --- */
+.mr-sidebar-card{border:1px solid var(--mr-border);border-radius:14px;background:var(--mr-surface);padding:.85rem 1rem;margin-bottom:.75rem}
+.mr-sidebar-card:last-child{margin-bottom:0}
+.mr-sidebar-card__header{display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.6rem}
+.mr-sidebar-card__title{display:flex;align-items:center;gap:.4rem;margin:0;font-size:.88rem;color:var(--mr-text);font-weight:700}
+.mr-sidebar-card__title i{font-size:1rem;color:var(--mr-primary)}
+.mr-sidebar-card__count{font-size:.72rem;color:var(--mr-muted)}
+.mr-sidebar-item{border-bottom:1px solid #eef3f5;padding:.45rem 0;display:flex;flex-direction:column;gap:.15rem}
+.mr-sidebar-item:last-child{border-bottom:0}
+.mr-sidebar-item__title{font-size:.82rem;font-weight:600;color:var(--mr-text)}
+.mr-sidebar-item__meta{font-size:.74rem;color:var(--mr-muted)}
+.mr-sidebar-item__actions{display:flex;gap:.35rem;margin-top:.2rem}
+.mr-sidebar-link{display:inline-flex;align-items:center;gap:.25rem;font-size:.76rem;font-weight:600;color:var(--mr-primary);text-decoration:none}
+.mr-sidebar-link:hover{text-decoration:underline}
+.mr-sidebar-link i{font-size:.85rem}
+
+/* --- Toolbar / Export button --- */
+.mr-page-toolbar{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1rem;flex-wrap:wrap}
+.mr-page-toolbar__left{display:flex;flex-direction:column;gap:.15rem}
+.mr-page-toolbar__title{margin:0;font-size:1.15rem;font-weight:700;color:var(--mr-text)}
+.mr-page-toolbar__subtitle{margin:0;font-size:.82rem;color:var(--mr-muted)}
+.mr-page-toolbar__actions{display:flex;gap:.5rem;flex-wrap:wrap}
+
+.btn-export-pdf{display:inline-flex;align-items:center;gap:.4rem;padding:.55rem 1rem;border-radius:10px;border:1.5px solid var(--mr-primary);background:var(--mr-surface);color:var(--mr-primary);font-weight:700;font-size:.82rem;text-decoration:none;transition:all .2s}
+.btn-export-pdf:hover{background:var(--mr-primary);color:#fff}
+.btn-export-pdf i{font-size:1rem}
+
+/* Diagnosis badge */
+.mr-diag-badge{display:inline-block;padding:.1rem .45rem;border-radius:4px;font-size:.68rem;font-weight:700;margin-left:.3rem}
+.mr-diag-badge--active{background:#e6f7ee;color:#2f7b4b;border:1px solid #b4dcc4}
+.mr-diag-badge--resolved{background:#eef5f7;color:#6a808c;border:1px solid #d6e2e8}
+
+/* --- Responsive --- */
+@media(max-width:1320px){
+  .mr-stats-row{grid-template-columns:repeat(2,1fr)}
+  .mr-antecedentes__grid{grid-template-columns:repeat(3,1fr)}
+  .mr-bottom-grid{grid-template-columns:1fr}
+}
+@media(max-width:980px){
+  .mr-center-grid{grid-template-columns:1fr}
+  .mr-antecedentes__grid{grid-template-columns:repeat(2,1fr)}
+  .mr-patient-header{flex-direction:column;align-items:stretch}
+  .mr-patient-header__dates{justify-content:center}
+  .mr-patient-header__alerts{max-width:none}
+}
+@media(max-width:640px){
+  .mr-stats-row{grid-template-columns:1fr}
+  .mr-antecedentes__grid{grid-template-columns:1fr}
+  .mr-vitals-grid{grid-template-columns:1fr}
+  .mr-page-toolbar{flex-direction:column;align-items:stretch}
+  .mr-page-toolbar__actions{justify-content:stretch}
+  .mr-page-toolbar__actions .btn,.mr-page-toolbar__actions .btn-export-pdf{width:100%;justify-content:center}
+  .mr-patient-header__avatar{width:56px;height:56px;font-size:1.1rem}
+}
+
+/* --- Dark mode --- */
+html.dashboard-root.panel-theme-dark .mr-patient-header,
+html.dashboard-root.panel-theme-dark .mr-stat-card,
+html.dashboard-root.panel-theme-dark .mr-clinical-summary,
+html.dashboard-root.panel-theme-dark .mr-vitals-block,
+html.dashboard-root.panel-theme-dark .mr-antecedentes,
+html.dashboard-root.panel-theme-dark .mr-sidebar-card{background:#0f172a;border-color:#334155}
+html.dashboard-root.panel-theme-dark .mr-patient-header__avatar{border-color:rgba(94,234,212,.24);background:linear-gradient(135deg,rgba(45,212,191,.18),rgba(15,23,42,.95))}
+html.dashboard-root.panel-theme-dark .mr-patient-header__date-pill,
+html.dashboard-root.panel-theme-dark .mr-vital-item,
+html.dashboard-root.panel-theme-dark .mr-antecedente-card,
+html.dashboard-root.panel-theme-dark .mr-clinical-note{background:#1e293b;border-color:#334155}
+html.dashboard-root.panel-theme-dark .mr-stat-card__icon--teal{background:rgba(45,212,191,.16);color:#5eead4}
+html.dashboard-root.panel-theme-dark .mr-stat-card__icon--amber{background:rgba(251,191,36,.14);color:#fbbf24}
+html.dashboard-root.panel-theme-dark .mr-stat-card__icon--rose{background:rgba(248,113,113,.14);color:#fca5a5}
+html.dashboard-root.panel-theme-dark .mr-stat-card__icon--blue{background:rgba(96,165,250,.14);color:#93c5fd}
+html.dashboard-root.panel-theme-dark .mr-patient-header__alerts{background:rgba(127,29,29,.24);border-color:rgba(248,113,113,.35)}
+html.dashboard-root.panel-theme-dark .mr-patient-header__alerts--ok{background:#1e293b;border-color:#334155}
+html.dashboard-root.panel-theme-dark .mr-patient-header__alerts .alerts-title{color:#fca5a5}
+html.dashboard-root.panel-theme-dark .mr-patient-header__alerts--ok .alerts-title{color:#94a3b8}
+html.dashboard-root.panel-theme-dark .mr-sidebar-item{border-color:#334155}
+html.dashboard-root.panel-theme-dark .btn-export-pdf{border-color:#5eead4;color:#5eead4}
+html.dashboard-root.panel-theme-dark .btn-export-pdf:hover{background:#5eead4;color:#0f172a}

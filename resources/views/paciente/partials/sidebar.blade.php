@@ -44,8 +44,8 @@
             <i class="ri-wallet-3-line text-lg"></i> Órdenes de cobro
         </a>
 
-        <a href="{{ route('paciente.laboratorio.solicitar') }}" @class(['flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors', 'bg-gray-100 text-gray-900 font-medium' => request()->routeIs('paciente.laboratorio.solicitar*'), 'text-gray-600 hover:bg-gray-50' => !request()->routeIs('paciente.laboratorio.solicitar*')])>
-            <i class="ri-flask-line text-lg"></i> Solicitar examen
+        <a href="{{ route('paciente.dependientes.index') }}" @class(['flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors', 'bg-gray-100 text-gray-900 font-medium' => request()->routeIs('paciente.dependientes.*'), 'text-gray-600 hover:bg-gray-50' => !request()->routeIs('paciente.dependientes.*')])>
+            <i class="ri-parent-line text-lg"></i> Familiares (Dependientes)
         </a>
 
         <a href="{{ route('paciente.perfil.edit') }}" @class(['flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors', 'bg-gray-100 text-gray-900 font-medium' => request()->routeIs('paciente.perfil.*'), 'text-gray-600 hover:bg-gray-50' => !request()->routeIs('paciente.perfil.*')])>

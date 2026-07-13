@@ -7,6 +7,7 @@ use App\Models\CitaRecordatorio;
 use App\Models\Especialidad;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\CitaComprobanteService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -306,6 +307,38 @@ class AdminRecordatoriosTest extends TestCase
         $this->assertDatabaseMissing('cita_recordatorios', [
             'cita_id' => $cita->id,
         ]);
+    }
+
+    public function test_dashboard_admin_sigue_cargando_si_falla_la_regeneracion_del_comprobante_de_una_cita_vencida(): void
+    {
+        $admin = $this->createUserWithRole('administrador');
+        $doctor = $this->createUserWithRole('doctor');
+        $paciente = $this->createUserWithRole('paciente', ['telefono' => '0992223344']);
+        $especialidad = Especialidad::factory()->create();
+
+        $cita = Cita::factory()->create([
+            'paciente_id' => $paciente->id,
+            'doctor_id' => $doctor->id,
+            'especialidad_id' => $especialidad->id,
+            'fecha' => '2026-04-08',
+            'hora' => '10:30:00',
+            'estado' => Cita::ESTADO_CONFIRMADA,
+            'activo' => true,
+        ]);
+
+        $mock = \Mockery::mock(CitaComprobanteService::class);
+        $mock->shouldReceive('sincronizarComprobante')
+            ->once()
+            ->andThrow(new \RuntimeException('dompdf fallo al regenerar logo webp'));
+        $this->app->instance(CitaComprobanteService::class, $mock);
+
+        $response = $this->actingAs($admin)->get(route('admin.dashboard'));
+
+        $response->assertOk();
+
+        $cita->refresh();
+        $this->assertSame(Cita::ESTADO_NO_SE_PRESENTO, $cita->estado);
+        $this->assertFalse($cita->activo);
     }
 
     private function createReminderAppointment(

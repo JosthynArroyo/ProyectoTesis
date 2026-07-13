@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Doctor;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\EnviarCertificadoMedicoJob;
 use App\Http\Requests\StoreCertificadoMedicoRequest;
 use App\Models\CertificadoMedico;
 use App\Models\Cita;
@@ -10,6 +11,7 @@ use App\Models\CitaEvento;
 use App\Models\NotaSoap;
 use App\Services\CertificadoMedicoPdfService;
 use App\Services\ClinicalRecordService;
+use App\Services\DocumentoCsvService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -50,14 +52,17 @@ class CertificadoMedicoController extends Controller
 
         $data = $request->validated();
         $diasReposo = (int) ($data['dias_reposo'] ?? 0);
+        $csv = app(DocumentoCsvService::class)->generateCsv();
 
-        $certificado = DB::transaction(function () use ($cita, $clinicalRecords, $data, $diasReposo): CertificadoMedico {
-            $record = $clinicalRecords->ensureForPatient($cita->paciente_id, Auth::id());
+        $certificado = DB::transaction(function () use ($cita, $clinicalRecords, $data, $diasReposo, $csv): CertificadoMedico {
+            $record = $clinicalRecords->ensureForPatient($cita->paciente_id, Auth::id(), $cita->dependiente_id);
 
             $certificado = CertificadoMedico::create([
                 'codigo' => $this->generarCodigo($cita),
+                'csv' => $csv,
                 'cita_id' => $cita->id,
                 'paciente_id' => $cita->paciente_id,
+                'dependiente_id' => $cita->dependiente_id,
                 'doctor_id' => $cita->doctor_id,
                 'clinical_record_id' => $record->id,
                 'fecha_emision' => now('America/Guayaquil'),
@@ -66,6 +71,8 @@ class CertificadoMedicoController extends Controller
                 'reposo_desde' => $diasReposo > 0 ? ($data['reposo_desde'] ?? null) : null,
                 'reposo_hasta' => $diasReposo > 0 ? ($data['reposo_hasta'] ?? null) : null,
                 'observaciones' => $data['observaciones'] ?? null,
+                'envio_estado' => 'queued',
+                'envio_intentos' => 0,
             ]);
 
             CitaEvento::create([
@@ -79,6 +86,8 @@ class CertificadoMedicoController extends Controller
         });
 
         $pdfs->generarYGuardar($certificado);
+
+        EnviarCertificadoMedicoJob::dispatch($certificado->id);
 
         return redirect()
             ->route('doctor.certificados.show', $certificado)
@@ -105,6 +114,25 @@ class CertificadoMedicoController extends Controller
         return Storage::disk('local')->download($path, $certificado->nombreDescarga(), [
             'Content-Type' => 'application/pdf',
         ]);
+    }
+
+    public function resend(CertificadoMedico $certificado, CertificadoMedicoPdfService $pdfs)
+    {
+        $certificado->loadMissing(['cita.especialidad', 'paciente', 'dependiente.responsable', 'doctor.especialidades']);
+        $this->ensureCanView($certificado);
+
+        if (! $certificado->pdf_path || ! Storage::disk('local')->exists($certificado->pdf_path)) {
+            $pdfs->generarYGuardar($certificado);
+        }
+
+        $certificado->forceFill([
+            'envio_estado' => 'queued',
+            'envio_error' => null,
+        ])->saveQuietly();
+
+        EnviarCertificadoMedicoJob::dispatch($certificado->id);
+
+        return back()->with('success', 'Se reintentara el envio del certificado por correo.');
     }
 
     private function ensureCanIssue(Cita $cita): void

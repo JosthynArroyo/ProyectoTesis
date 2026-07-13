@@ -33,20 +33,43 @@
     </div>
 
     <table class="grid">
-        <tr>
-            <td>
-                <div class="label">Paciente</div>
-                <div class="value">{{ $pago->paciente?->name ?? 'N/D' }}</div>
-            </td>
-            <td>
-                <div class="label">Cédula</div>
-                <div class="value">{{ $pago->paciente?->dni ?? 'N/D' }}</div>
-            </td>
-            <td>
-                <div class="label">Teléfono</div>
-                <div class="value">{{ $pago->paciente?->telefono ?? 'N/D' }}</div>
-            </td>
-        </tr>
+        @if($pago->cita?->dependiente_id && $pago->cita?->dependiente)
+            <tr>
+                <td>
+                    <div class="label">Paciente</div>
+                    <div class="value">{{ $pago->cita->dependiente->nombre }}</div>
+                </td>
+                <td>
+                    <div class="label">Cédula</div>
+                    <div class="value">{{ $pago->cita->dependiente->dni }}</div>
+                </td>
+                <td>
+                    <div class="label">Teléfono</div>
+                    <div class="value">{{ $pago->cita->dependiente->telefono_emergencia ?: 'N/D' }}</div>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="3">
+                    <div class="label">Representante</div>
+                    <div class="value">{{ $pago->paciente?->name ?? 'N/D' }}</div>
+                </td>
+            </tr>
+        @else
+            <tr>
+                <td>
+                    <div class="label">Paciente</div>
+                    <div class="value">{{ $pago->paciente?->name ?? 'N/D' }}</div>
+                </td>
+                <td>
+                    <div class="label">Cédula</div>
+                    <div class="value">{{ $pago->paciente?->dni ?? 'N/D' }}</div>
+                </td>
+                <td>
+                    <div class="label">Teléfono</div>
+                    <div class="value">{{ $pago->paciente?->telefono ?? 'N/D' }}</div>
+                </td>
+            </tr>
+        @endif
         <tr>
             <td>
                 <div class="label">Cita</div>

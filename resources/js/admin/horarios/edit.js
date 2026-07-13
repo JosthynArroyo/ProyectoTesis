@@ -1,9 +1,15 @@
+import { populateHoursSelects, getClinicHoursConfig } from '../../shared/horarios/schedule-common.js';
+
 document.addEventListener('DOMContentLoaded', () => {
   const form = document.getElementById('form-horario-edit');
   const hi = document.getElementById('hora_inicio');
   const hf = document.getElementById('hora_fin');
   const fecha = document.getElementById('fecha');
   const fechaTrigger = document.getElementById('admin-horario-edit-fecha-trigger');
+  const infoText = document.getElementById('clinic-hours-info');
+
+  const clinicConfig = getClinicHoursConfig();
+  const getInterval = () => parseInt(document.getElementById('intervalo_minutos')?.value || '30', 10);
 
   function openNativePicker(input) {
     if (!input) return;
@@ -17,43 +23,28 @@ document.addEventListener('DOMContentLoaded', () => {
     input.click();
   }
 
-  function validRange() {
-    if (!hi.value || !hf.value) {
-      hi.setCustomValidity('');
-      hf.setCustomValidity('');
-      return true;
+  function getIsoDayFromDateString(dateStr) {
+    if (!dateStr) return null;
+    const parts = dateStr.split('-');
+    if (parts.length !== 3) return null;
+    const y = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10);
+    const d = parseInt(parts[2], 10);
+    const date = new Date(y, m - 1, d);
+    const jsDay = date.getDay();
+    return jsDay === 0 ? 7 : jsDay;
+  }
+
+  function updateForDate() {
+    if (!fecha || !hi || !hf) return;
+    const day = getIsoDayFromDateString(fecha.value);
+    if (day) {
+      populateHoursSelects(day, hi, hf, infoText, clinicConfig, hi.dataset.old, hf.dataset.old, getInterval());
     }
-    const a = hi.value;
-    const b = hf.value;
-    const ok = a < b;
-    const msg = ok ? '' : 'La hora fin debe ser mayor a la hora inicio.';
-    hi.setCustomValidity('');
-    hf.setCustomValidity(msg);
-    return ok;
   }
-
-  function clampStep(el) {
-    if (!el.value) return;
-    const [h, m] = el.value.split(':').map(Number);
-    const minutes = Math.round(m / 30) * 30;
-    const safe = String(h).padStart(2, '0') + ':' + String(minutes % 60).padStart(2, '0');
-    if (el.value !== safe) el.value = safe;
-  }
-
-  [hi, hf].forEach(el => {
-    el.addEventListener('change', () => {
-      clampStep(el);
-      validRange();
-      el.reportValidity();
-    });
-    el.addEventListener('input', validRange);
-  });
 
   if (fecha) {
-    fecha.addEventListener('change', () => {
-      fecha.setCustomValidity('');
-      fecha.reportValidity();
-    });
+    fecha.addEventListener('change', updateForDate);
   }
 
   if (fechaTrigger && fecha) {
@@ -63,12 +54,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  form.addEventListener('submit', e => {
-    clampStep(hi);
-    clampStep(hf);
-    if (!validRange()) {
-      e.preventDefault();
-      hf.reportValidity();
-    }
-  });
+  const intervalSelect = document.getElementById('intervalo_minutos');
+  if (intervalSelect) {
+      intervalSelect.addEventListener('change', updateForDate);
+  }
+
+  updateForDate();
 });

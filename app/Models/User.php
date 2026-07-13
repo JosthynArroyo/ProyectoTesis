@@ -143,6 +143,16 @@ class User extends Authenticatable
         return $this->hasMany(PaymentReceipt::class, 'emitido_por');
     }
 
+    public function pedidosLaboratorioComoPaciente(): HasMany
+    {
+        return $this->hasMany(PedidoLaboratorio::class, 'paciente_id');
+    }
+
+    public function pedidosLaboratorioComoDoctor(): HasMany
+    {
+        return $this->hasMany(PedidoLaboratorio::class, 'doctor_id');
+    }
+
     public function hasRole(string $roleName): bool
     {
         $roleName = trim($roleName);
@@ -241,7 +251,7 @@ class User extends Authenticatable
 
     public function scopeSearch($q, string $term)
     {
-        $term = trim((string) $term);
+        $term = trim(mb_substr((string) $term, 0, 100));
         if ($term === '') {
             return $q;
         }
@@ -256,8 +266,6 @@ class User extends Authenticatable
         });
     }
 
-
-
     public function patientFlag(): HasOne
     {
         return $this->hasOne(PatientFlag::class);
@@ -266,6 +274,13 @@ class User extends Authenticatable
     public function clinicalRecord(): HasOne
     {
         return $this->hasOne(ClinicalRecord::class, 'patient_id');
+    }
+
+    public function dependientes(): HasMany
+    {
+        return $this->hasMany(Dependiente::class, 'user_id')
+            ->where('activo', true)
+            ->orderBy('nombre');
     }
 
     public function featureAccessRequests()

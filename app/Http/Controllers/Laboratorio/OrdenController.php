@@ -346,8 +346,8 @@ class OrdenController extends Controller
             'priority_label' => ucfirst((string) $order->priority),
             'date_label' => $date?->format('Y/m/d H:i') ?? 'Sin fecha',
             'source_label' => $order->source === LabOrder::SOURCE_MEDICAL_ORDER
-                ? 'Auto-solicitud con orden medica'
-                : 'Auto-solicitud de rutina',
+                ? 'Con orden medica'
+                : 'Rutina',
             'preparation' => $order->preparacion,
             'notes' => $order->indicaciones,
             'result_summary' => $order->resultado_resumen ?: $order->doctor_notes,

@@ -125,11 +125,26 @@
           </thead>
           <tbody>
             @forelse($horarios as $horario)
-              <tr>
+              @php
+                $hDay = \Carbon\Carbon::parse($horario->fecha)->isoWeekday();
+                $clinicH = app(App\Services\ProfessionalScheduleService::class)->getClinicHours($hDay);
+                $isOutside = ($clinicH['status'] === 0) 
+                    || (substr($horario->hora_inicio, 0, 5) < $clinicH['opening']) 
+                    || (substr($horario->hora_fin, 0, 5) > $clinicH['closing']);
+              @endphp
+              <tr class="{{ $isOutside ? 'bg-amber-500/5' : '' }}">
                 @if($showAllDoctors)
                   <td data-label="Doctor">{{ $horario->doctor?->name ?? 'Sin doctor' }}</td>
                 @endif
-                <td data-label="Fecha">{{ optional($horario->fecha)->format('d/m/Y') }}</td>
+                <td data-label="Fecha">
+                  {{ optional($horario->fecha)->format('d/m/Y') }}
+                  @if($isOutside)
+                    <br>
+                    <span class="inline-block mt-1 text-xs font-semibold text-amber-600 dark:text-amber-450">
+                      <i class="ri-alert-line"></i> Fuera del horario institucional: no genera disponibilidad
+                    </span>
+                  @endif
+                </td>
                 <td data-label="Inicio">{{ substr((string) $horario->hora_inicio, 0, 5) }}</td>
                 <td data-label="Fin">{{ substr((string) $horario->hora_fin, 0, 5) }}</td>
                 <td data-label="Acciones">

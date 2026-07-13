@@ -3,11 +3,13 @@
 namespace Tests\Unit;
 
 use App\Mail\CambioEstadoCitaMail;
+use App\Mail\CertificadoMedicoMail;
 use App\Mail\ContactoRecibido;
 use App\Mail\CuentaCreadaDesdeChat;
 use App\Mail\RecetaMedicaMail;
 use App\Mail\ResultadoLaboratorioMail;
 use App\Models\Cita;
+use App\Models\CertificadoMedico;
 use App\Models\Especialidad;
 use App\Models\LaboratorioOrden;
 use App\Models\User;
@@ -38,7 +40,7 @@ class EmailTemplatesRenderTest extends TestCase
         $this->assertStringContainsString('Consulta de horarios', $html);
     }
 
-    public function test_renderiza_correo_de_cuenta_laboratorio_y_receta(): void
+    public function test_renderiza_correo_de_cuenta_laboratorio_receta_y_certificado(): void
     {
         $user = new User([
             'name' => 'Carlos Ruiz',
@@ -58,11 +60,24 @@ class EmailTemplatesRenderTest extends TestCase
         $laboratorioHtml = (new ResultadoLaboratorioMail($orden))->render();
         $recetaHtml = (new RecetaMedicaMail($cita, 'recetas/24.pdf', '', 'receta_24.pdf'))->render();
 
+        $certificado = new CertificadoMedico([
+            'codigo' => 'CM-20260416-000010',
+            'fecha_emision' => now(),
+            'texto_constancia' => 'Constancia de reposo.',
+        ]);
+        $certificado->setRelation('paciente', $user);
+        $certificado->setRelation('doctor', $cita->doctor);
+        $certificado->setRelation('dependiente', null);
+        $certificado->setRelation('cita', $cita);
+
+        $certHtml = (new CertificadoMedicoMail($certificado, 'certificados/10.pdf', 'certificado_10.pdf'))->render();
+
         $this->assertStringContainsString('Credenciales de acceso', $cuentaHtml);
         $this->assertStringContainsString('Usuario (correo)', $cuentaHtml);
         $this->assertStringContainsString('Contraseña inicial', $cuentaHtml);
         $this->assertStringContainsString('Detalles del resultado', $laboratorioHtml);
         $this->assertStringContainsString('Datos de la atención', $recetaHtml);
+        $this->assertStringContainsString('Tu certificado medico fue emitido', $certHtml);
     }
 
     private function makeCita(): Cita

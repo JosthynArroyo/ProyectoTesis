@@ -14,9 +14,11 @@
         "laravel/tinker": "^2.10.1",
         "laravel/ui": "^4.6",
         "phpoffice/phpspreadsheet": "^5.0",
+        "setasign/fpdi": "^2.6",
         "symfony/console": "^7.3 <7.4",
         "symfony/http-foundation": "^7.3.7 <7.4",
         "symfony/process": "^7.3.11 <7.4",
+        "tecnickcom/tcpdf": "^6.5",
         "twilio/sdk": "^8.0"
     },
     "require-dev": {

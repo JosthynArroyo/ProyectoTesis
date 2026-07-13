@@ -43,6 +43,44 @@ class PersonalizacionContactoRequest extends FormRequest
             'contact_form_message_label' => ['nullable', 'string', 'max:60'],
             'contact_form_message_placeholder' => ['nullable', 'string', 'max:180'],
             'contact_form_message_help' => ['nullable', 'string', 'max:180'],
+
+            'clinic_hours' => [
+                'sometimes',
+                'array',
+                'size:7',
+                function ($attribute, $value, $fail) {
+                    $keys = array_keys($value);
+                    sort($keys);
+                    if ($keys !== [1, 2, 3, 4, 5, 6, 7]) {
+                        $fail('Los días configurados deben ser exactamente del 1 al 7.');
+                    }
+                }
+            ],
+            'clinic_hours.*.status' => ['required', 'in:0,1'],
+            'clinic_hours.*.opening' => [
+                'nullable',
+                'required_if:clinic_hours.*.status,1',
+                'date_format:H:i'
+            ],
+            'clinic_hours.*.closing' => [
+                'nullable',
+                'required_if:clinic_hours.*.status,1',
+                'date_format:H:i',
+                function ($attribute, $value, $fail) {
+                    preg_match('/clinic_hours\.(\d+)\.closing/', $attribute, $matches);
+                    if (!empty($matches)) {
+                        $day = $matches[1];
+                        $status = request()->input("clinic_hours.{$day}.status");
+                        if ($status == '1') {
+                            $opening = request()->input("clinic_hours.{$day}.opening");
+                            if ($opening && $value <= $opening) {
+                                $fail('La hora de cierre debe ser posterior a la hora de apertura.');
+                            }
+                        }
+                    }
+                }
+            ],
+            'confirmar_conflictos' => ['nullable', 'in:0,1'],
         ];
     }
 

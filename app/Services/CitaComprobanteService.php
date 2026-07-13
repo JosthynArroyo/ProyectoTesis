@@ -79,6 +79,7 @@ class CitaComprobanteService
     {
         $cita->loadMissing([
             'paciente:id,name,dni,telefono',
+            'dependiente',
             'doctor:id,name',
             'especialidad:id,nombre',
         ]);
@@ -92,7 +93,7 @@ class CitaComprobanteService
             'qrUrl' => $qrUrl,
             'qrDataUri' => $qrDataUri,
             'fechaPdf' => now('America/Guayaquil'),
-            'logoBase64' => $identity->logoBase64(),
+            'logoBase64' => $identity->logoBase64ForPdf(),
             'clinica' => $identity->institutionalName(),
         ])->render();
 
@@ -174,6 +175,6 @@ class CitaComprobanteService
 
     protected function logoBase64(): ?string
     {
-        return app(ClinicIdentityService::class)->logoBase64();
+        return app(ClinicIdentityService::class)->logoBase64ForPdf();
     }
 }

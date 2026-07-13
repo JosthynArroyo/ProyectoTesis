@@ -4,23 +4,23 @@ namespace App\Http\Controllers\Doctor;
 
 use App\Http\Controllers\Controller;
 use App\Mail\RecetaMedicaMail;
+use App\Models\ClinicalRecordMedication;
 use App\Models\Cita;
 use App\Models\NotaSoap;
 use App\Models\Receta;
 use App\Services\ClinicIdentityService;
 use App\Services\ClinicalRecordService;
+use App\Services\DocumentoCsvService;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class RecetaController extends Controller
 {
-    /**
-     * Historial de recetas del doctor autenticado.
-     */
     public function index(Request $request)
     {
         $recetas = Receta::with(['cita.paciente', 'cita.doctor', 'cita.especialidad'])
@@ -35,21 +35,23 @@ class RecetaController extends Controller
 
     public function create($citaId)
     {
-        $cita = Cita::with(['paciente', 'doctor', 'especialidad', 'receta', 'notaSoap.diagnosticos'])->findOrFail($citaId);
+        $cita = Cita::with(['paciente', 'doctor', 'especialidad', 'receta', 'notaSoap.diagnosticos', 'notaSoap.followUpCita', 'notaSoap.clinicalRecord.medications'])->findOrFail($citaId);
 
         if ($cita->doctor_id !== Auth::id()) {
             abort(403);
         }
+
         if ($cita->estado !== Cita::ESTADO_REALIZADA) {
             return back()->with('error', 'Solo se puede generar receta para citas realizadas.');
         }
+
         if ($cita->receta) {
             return redirect()->route('doctor.recetas.edit', $cita->id);
         }
 
-        $diagnosticoSugerido = $this->diagnosticoDesdeNotaClinica($cita);
+        $defaults = $this->buildRecipeDefaults($cita);
 
-        return view('doctor.recetas.crear', compact('cita', 'diagnosticoSugerido'));
+        return view('doctor.recetas.crear', array_merge(compact('cita'), $defaults));
     }
 
     public function store(Request $request)
@@ -58,7 +60,7 @@ class RecetaController extends Controller
             'cita_id' => 'required|exists:citas_medicas,id',
         ]);
 
-        $cita = Cita::with(['paciente', 'doctor', 'especialidad', 'receta', 'notaSoap.diagnosticos'])->findOrFail($citaData['cita_id']);
+        $cita = Cita::with(['paciente', 'doctor', 'especialidad', 'receta', 'notaSoap.diagnosticos', 'notaSoap.clinicalRecord.medications'])->findOrFail($citaData['cita_id']);
 
         if (! filled($request->input('diagnostico'))) {
             $request->merge([
@@ -66,36 +68,54 @@ class RecetaController extends Controller
             ]);
         }
 
+        if (! filled($request->input('medicamentos'))) {
+            $request->merge([
+                'medicamentos' => $this->medicamentosDesdeExpediente($cita),
+            ]);
+        }
+
         $data = $request->validate([
             'cita_id' => 'required|exists:citas_medicas,id',
             'diagnostico' => 'required|string|max:2000',
             'medicamentos' => 'required|string|max:3000',
-            'indicaciones' => 'required|string|max:3000',
+            'indicaciones' => 'nullable|string|max:3000',
         ]);
 
         if ($cita->doctor_id !== Auth::id()) {
             abort(403);
         }
+
         if ($cita->estado !== Cita::ESTADO_REALIZADA) {
             return back()->with('error', 'Solo se puede generar receta para citas realizadas.');
         }
+
         if ($cita->receta) {
             return redirect()->route('doctor.recetas.edit', $cita->id)
                 ->with('info', 'La receta ya existe. Puedes editarla.');
         }
 
+        $csvService = app(DocumentoCsvService::class);
+        $csv = $csvService->generateCsv();
+
         [$relativePath, $pdfOutput, $fileName] = $this->generarPdfYGuardar(
-            $cita, $data['diagnostico'], $data['medicamentos'], $data['indicaciones'] ?? ''
+            $cita,
+            $data['diagnostico'],
+            $data['medicamentos'],
+            $data['indicaciones'] ?? '',
+            $csv,
+            $csvService
         );
 
-        $record = app(ClinicalRecordService::class)->ensureForPatient($cita->paciente_id, Auth::id());
+        $record = app(ClinicalRecordService::class)->ensureForPatient($cita->paciente_id, Auth::id(), $cita->dependiente_id);
 
         $receta = Receta::create([
             'cita_id' => $cita->id,
+            'nota_soap_id' => $cita->notaSoap?->id,
             'clinical_record_id' => $record->id,
             'diagnostico' => $data['diagnostico'],
             'medicamentos' => $data['medicamentos'],
             'indicaciones' => $data['indicaciones'] ?? null,
+            'csv' => $csv,
             'pdf_path' => $relativePath,
             'enviado_en' => now('America/Guayaquil'),
         ]);
@@ -109,24 +129,28 @@ class RecetaController extends Controller
 
     public function edit($citaId)
     {
-        $cita = Cita::with(['paciente', 'doctor', 'especialidad', 'receta'])->findOrFail($citaId);
+        $cita = Cita::with(['paciente', 'doctor', 'especialidad', 'receta', 'notaSoap.clinicalRecord.medications'])->findOrFail($citaId);
 
         if ($cita->doctor_id !== Auth::id()) {
             abort(403);
         }
+
         if ($cita->estado !== Cita::ESTADO_REALIZADA) {
             return back()->with('error', 'Solo se puede editar la receta de citas realizadas.');
         }
+
         if (! $cita->receta) {
             return redirect()->route('doctor.recetas.create', $cita->id)
-                ->with('info', 'Aún no existe receta. Genera la primera.');
+                ->with('info', 'Aun no existe receta. Genera la primera.');
         }
 
         if (! $cita->receta->can_edit) {
-            return back()->with('error', 'El periodo de edición (1 hora) ha expirado.');
+            return back()->with('error', 'El periodo de edicion (1 hora) ha expirado.');
         }
 
-        return view('doctor.recetas.editar', ['cita' => $cita, 'receta' => $cita->receta]);
+        $defaults = $this->buildRecipeDefaults($cita, $cita->receta);
+
+        return view('doctor.recetas.editar', array_merge(['cita' => $cita, 'receta' => $cita->receta], $defaults));
     }
 
     public function update(Request $request)
@@ -135,7 +159,7 @@ class RecetaController extends Controller
             'cita_id' => 'required|exists:citas_medicas,id',
             'diagnostico' => 'required|string|max:2000',
             'medicamentos' => 'required|string|max:3000',
-            'indicaciones' => 'required|string|max:3000',
+            'indicaciones' => 'nullable|string|max:3000',
             'regenerar_pdf' => 'required|boolean',
             'reenviar' => 'required|boolean',
         ]);
@@ -145,27 +169,31 @@ class RecetaController extends Controller
         if ($cita->doctor_id !== Auth::id()) {
             abort(403);
         }
+
         if ($cita->estado !== Cita::ESTADO_REALIZADA) {
             return back()->with('error', 'Solo se puede editar la receta de citas realizadas.');
         }
+
         if (! $cita->receta) {
             return redirect()->route('doctor.recetas.create', $cita->id)
-                ->with('info', 'Aún no existe receta. Genera la primera.');
+                ->with('info', 'Aun no existe receta. Genera la primera.');
         }
+
         if (! $cita->receta->can_edit) {
-            return back()->with('error', 'El periodo de edición (1 hora) ha expirado.');
+            return back()->with('error', 'El periodo de edicion (1 hora) ha expirado.');
         }
 
         $receta = $cita->receta;
-
-        // Guardar primero
         $receta->update([
             'diagnostico' => $data['diagnostico'],
             'medicamentos' => $data['medicamentos'],
             'indicaciones' => $data['indicaciones'] ?? null,
+            'nota_soap_id' => $receta->nota_soap_id ?: $cita->notaSoap?->id,
         ]);
 
-        // ¿Regenerar PDF
+        $csvService = app(DocumentoCsvService::class);
+        $csv = $this->obtenerCsv($receta, $csvService);
+
         $needRegen = $request->boolean('regenerar_pdf')
             || $request->boolean('reenviar')
             || empty($receta->pdf_path)
@@ -177,12 +205,20 @@ class RecetaController extends Controller
 
         if ($needRegen) {
             [$relativePath, $pdfOutput, $fileName] = $this->generarPdfYGuardar(
-                $cita, $receta->diagnostico, $receta->medicamentos, $receta->indicaciones ?? ''
+                $cita,
+                $receta->diagnostico,
+                $receta->medicamentos,
+                $receta->indicaciones ?? '',
+                $csv,
+                $csvService
             );
-            $receta->update(['pdf_path' => $relativePath]);
+
+            $receta->update([
+                'csv' => $csv,
+                'pdf_path' => $relativePath,
+            ]);
         }
 
-        // ¿Reenviar
         if ($request->boolean('reenviar')) {
             if (! $pdfOutput && $relativePath && Storage::exists($relativePath)) {
                 $pdfOutput = Storage::get($relativePath);
@@ -203,24 +239,35 @@ class RecetaController extends Controller
 
     public function resend($citaId)
     {
-        $cita = Cita::with(['paciente', 'doctor', 'especialidad', 'receta'])->findOrFail($citaId);
+        $cita = Cita::with(['paciente', 'doctor', 'especialidad', 'receta', 'notaSoap.clinicalRecord.medications'])->findOrFail($citaId);
+
         if ($cita->doctor_id !== Auth::id()) {
             abort(403);
         }
+
         if ($cita->estado !== Cita::ESTADO_REALIZADA) {
             return back()->with('error', 'Solo se puede reenviar la receta de citas realizadas.');
         }
+
         if (! $cita->receta) {
-            return back()->with('error', 'Aún no existe receta para esta cita.');
+            return back()->with('error', 'Aun no existe receta para esta cita.');
         }
 
         $receta = $cita->receta;
+        $csvService = app(DocumentoCsvService::class);
+        $csv = $this->obtenerCsv($receta, $csvService);
 
-        // Regenerar siempre para garantizar la última versión
         [$relativePath, $pdfOutput, $fileName] = $this->generarPdfYGuardar(
-            $cita, $receta->diagnostico, $receta->medicamentos, $receta->indicaciones ?? ''
+            $cita,
+            $receta->diagnostico,
+            $receta->medicamentos,
+            $receta->indicaciones ?? '',
+            $csv,
+            $csvService
         );
+
         $receta->update([
+            'csv' => $csv,
             'pdf_path' => $relativePath,
             'enviado_en' => now('America/Guayaquil'),
         ]);
@@ -234,7 +281,8 @@ class RecetaController extends Controller
 
     public function download($citaId)
     {
-        $cita = Cita::with(['doctor', 'receta'])->findOrFail($citaId);
+        $cita = Cita::with(['doctor', 'receta', 'notaSoap.clinicalRecord.medications'])->findOrFail($citaId);
+
         if ($cita->doctor_id !== Auth::id()) {
             abort(403);
         }
@@ -244,35 +292,50 @@ class RecetaController extends Controller
         }
 
         $path = $cita->receta->pdf_path;
+        $csvService = app(DocumentoCsvService::class);
+        $csv = $this->obtenerCsv($cita->receta, $csvService);
 
         if (! Storage::exists($path)) {
             [$path] = $this->generarPdfYGuardar(
                 $cita,
                 $cita->receta->diagnostico,
                 $cita->receta->medicamentos,
-                $cita->receta->indicaciones ?? ''
+                $cita->receta->indicaciones ?? '',
+                $csv,
+                $csvService
             );
-            $cita->receta->update(['pdf_path' => $path]);
+
+            $cita->receta->update([
+                'csv' => $csv,
+                'pdf_path' => $path,
+            ]);
         }
 
-        $downloadName = 'receta_'.$cita->id.'.pdf';
-
-        return Storage::download($path, $downloadName);
+        return Storage::download($path, 'receta_'.$cita->id.'.pdf');
     }
 
-    /**
-     * Genera el PDF y lo guarda. Embebe el logo para evitar “type unknown”.
-     */
-    private function generarPdfYGuardar(Cita $cita, string $diagnostico, string $medicamentos, string $indicaciones = ''): array
-    {
+    private function generarPdfYGuardar(
+        Cita $cita,
+        string $diagnostico,
+        string $medicamentos,
+        string $indicaciones = '',
+        ?string $csv = null,
+        ?DocumentoCsvService $csvService = null
+    ): array {
+        $csvService = $csvService ?: app(DocumentoCsvService::class);
+        $csv = $csv ?: $csvService->generateCsv();
+
         $viewData = [
             'cita' => $cita,
             'diagnostico' => $diagnostico,
             'medicamentos' => $medicamentos,
             'indicaciones' => $indicaciones,
             'fechaPdf' => now('America/Guayaquil'),
-            'logoBase64' => $this->logoBase64(), // <- se pasa a la vista
+            'logoBase64' => $this->logoBase64(),
             'pdfCss' => $this->loadPdfCss('doctor/receta-pdf.css'),
+            'csv' => $csv,
+            'verificationUrl' => $csvService->verificationUrl($csv),
+            'qrDataUri' => $csvService->qrDataUri($csv),
         ];
 
         $html = view('pdf.receta', $viewData)->render();
@@ -301,6 +364,20 @@ class RecetaController extends Controller
         return [$relativePath, $pdfOutput, $fileName];
     }
 
+    private function obtenerCsv(Receta $receta, DocumentoCsvService $csvService): string
+    {
+        $csv = trim((string) $receta->csv);
+
+        if ($csv !== '') {
+            return strtoupper($csv);
+        }
+
+        $csv = $csvService->generateCsv();
+        $receta->forceFill(['csv' => $csv])->saveQuietly();
+
+        return $csv;
+    }
+
     private function diagnosticoDesdeNotaClinica(Cita $cita): string
     {
         $nota = $cita->notaSoap;
@@ -325,24 +402,89 @@ class RecetaController extends Controller
                 ->all();
 
             $partes = array_merge($partes, $diagnosticos);
-
         }
 
         return implode("\n", $partes);
     }
 
-    /**
-     * Devuelve el logo institucional en data URI base64.
-     */
+    private function buildRecipeDefaults(Cita $cita, ?Receta $receta = null): array
+    {
+        $diagnostico = $receta?->diagnostico ?: $this->diagnosticoDesdeNotaClinica($cita);
+        $medicamentos = $receta?->medicamentos ?: $this->medicamentosDesdeExpediente($cita);
+
+        return [
+            'diagnosticoSugerido' => $diagnostico,
+            'medicamentosSugeridos' => $medicamentos,
+        ];
+    }
+
+    private function medicamentosDesdeExpediente(Cita $cita): string
+    {
+        $record = $this->clinicalRecordForCita($cita);
+        $medications = $record->medications
+            ->where('status', ClinicalRecordMedication::STATUS_ACTIVE)
+            ->map(function (ClinicalRecordMedication $medication): string {
+                return $this->formatMedicationForRecipe($medication);
+            })
+            ->filter()
+            ->unique()
+            ->values();
+
+        return $medications->implode("\n");
+    }
+
+    private function formatMedicationForRecipe(ClinicalRecordMedication $medication): string
+    {
+        $parts = [trim((string) $medication->name)];
+
+        if (filled($medication->presentation)) {
+            $parts[] = trim((string) $medication->presentation);
+        }
+
+        if (filled($medication->dosage)) {
+            $parts[] = 'Dosis: '.trim((string) $medication->dosage);
+        }
+
+        if (filled($medication->frequency)) {
+            $parts[] = 'Frecuencia: '.trim((string) $medication->frequency);
+        }
+
+        if (filled($medication->route)) {
+            $parts[] = 'Via: '.trim((string) $medication->route);
+        }
+
+        if (filled($medication->instructions)) {
+            $parts[] = trim((string) $medication->instructions);
+        }
+
+        return collect($parts)
+            ->map(fn ($part) => trim((string) $part))
+            ->filter()
+            ->implode(' | ');
+    }
+
+    private function clinicalRecordForCita(Cita $cita)
+    {
+        return app(ClinicalRecordService::class)->ensureForPatient(
+            $cita->paciente_id,
+            Auth::id(),
+            $cita->dependiente_id
+        );
+    }
+
     private function logoBase64(): ?string
     {
-        return app(ClinicIdentityService::class)->logoBase64();
+        return app(ClinicIdentityService::class)->logoBase64ForPdf();
     }
 
     private function loadPdfCss(string $relativePath): string
     {
-        $path = resource_path('css/'.$relativePath);
+        $basePath = resource_path('css/pdf/base.css');
+        $specificPath = resource_path('css/'.$relativePath);
 
-        return is_file($path) ? (file_get_contents($path) ?: '') : '';
+        $css = is_file($basePath) ? (file_get_contents($basePath) ?: '') : '';
+        $css .= is_file($specificPath) ? "\n".(file_get_contents($specificPath) ?: '') : '';
+
+        return $css;
     }
 }

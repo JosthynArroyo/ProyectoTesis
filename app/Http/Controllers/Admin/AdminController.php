@@ -9,6 +9,7 @@ use App\Models\Role;
 use App\Models\User;
 use App\Services\CitaNoShowService;
 use App\Services\CitaRecordatorioService;
+use App\Services\DashboardAnalyticsService;
 use App\Services\ImageOptimizer;
 use App\Services\ProfileAvatarService;
 use App\Support\DateField;
@@ -29,7 +30,7 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 class AdminController extends Controller
 {
     // ===== Dashboard =====
-    public function dashboard(Request $request)
+    public function dashboard(Request $request, DashboardAnalyticsService $analytics)
     {
         app(CitaNoShowService::class)->marcarVencidas();
         $recordatorios = app(CitaRecordatorioService::class);
@@ -57,7 +58,60 @@ class AdminController extends Controller
                 'prioridad_nivel',
                 'prioridad_red_flag',
             ]);
+        $recordatoriosPendientes = $recordatorioStats['pendientes'];
+        $recordatoriosSinTelefono = $recordatorioStats['sin_telefono'];
+        $dashboard = $analytics->buildAdminDashboard($user, $request->all());
+        $metrics = $dashboard['metrics'];
 
+        return view('admin.dashboard', compact(
+            'user',
+            'citas',
+            'recordatoriosPendientes',
+            'recordatoriosSinTelefono',
+            'prioridad',
+            'dashboard',
+            'metrics'
+        ))->with([
+            'totalCitas' => $metrics['appointments_period']['value'] ?? 0,
+            'totalCitasPendientes' => $metrics['appointments_pending']['value'] ?? 0,
+            'totalCitasPendientesAlta' => 0,
+            'totalCitasRealizadas' => $metrics['appointments_completed']['value'] ?? 0,
+            'totalCitasCanceladas' => $metrics['appointments_cancelled']['value'] ?? 0,
+            'totalPacientes' => $metrics['patients_total']['value'] ?? 0,
+            'totalDoctores' => $metrics['doctors_active']['value'] ?? 0,
+            'usuariosActivosHoy' => User::whereDate('last_login_at', now()->toDateString())->count(),
+        ]);
+    }
+
+    public function resumenGlobal(Request $request)
+    {
+        if (! $request->ajax()) {
+            return redirect()->route('admin.dashboard');
+        }
+
+        app(CitaNoShowService::class)->marcarVencidas();
+
+        return response()->json([
+            'agendadas' => Cita::count(),
+            'completadas' => Cita::where('estado', 'realizada')->count(),
+            'canceladas' => Cita::where('estado', 'cancelada')->count(),
+        ]);
+    }
+
+    public function dashboardData(Request $request, DashboardAnalyticsService $analytics)
+    {
+        app(CitaNoShowService::class)->marcarVencidas();
+        $payload = $analytics->buildAdminDashboard($request->user(), $request->all());
+
+        return response()->json($payload);
+    }
+
+    public function exportPdf(Request $request)
+    {
+        app(CitaNoShowService::class)->marcarVencidas();
+        $recordatorios = app(CitaRecordatorioService::class);
+        $recordatorioStats = $recordatorios->pendingDueStats();
+        
         $citasPorEstado = Cita::query()
             ->select('estado', DB::raw('COUNT(*) as total'))
             ->groupBy('estado')
@@ -82,39 +136,69 @@ class AdminController extends Controller
         $totalDoctores = (int) ($usuariosPorRol['doctor'] ?? 0);
         $usuariosActivosHoy = User::whereDate('last_login_at', now()->toDateString())->count();
         $recordatoriosPendientes = $recordatorioStats['pendientes'];
-        $recordatoriosSinTelefono = $recordatorioStats['sin_telefono'];
 
-        return view('admin.dashboard', compact(
-            'user',
-            'citas',
-            'totalCitas',
-            'totalCitasPendientes',
-            'totalCitasPendientesAlta',
-            'totalCitasRealizadas',
-            'totalCitasCanceladas',
-            'totalPacientes',
-            'totalDoctores',
-            'usuariosActivosHoy',
-            'recordatoriosPendientes',
-            'recordatoriosSinTelefono',
-            'prioridad'
-        ));
-    }
+        $start = now()->subDays(6)->startOfDay();
+        $end = now()->endOfDay();
+        $citasPorDia = Cita::query()
+            ->whereBetween('created_at', [$start, $end])
+            ->selectRaw('DATE(created_at) as day, COUNT(*) as total')
+            ->groupBy('day')
+            ->pluck('total', 'day');
+        $usuariosPorDia = User::query()
+            ->whereBetween('created_at', [$start, $end])
+            ->selectRaw('DATE(created_at) as day, COUNT(*) as total')
+            ->groupBy('day')
+            ->pluck('total', 'day');
 
-    public function resumenGlobal(Request $request)
-    {
-        if (! $request->ajax()) {
-            return redirect()->route('admin.dashboard');
-        }
+        $activity = collect(range(6, 0))->map(function (int $offset) use ($citasPorDia, $usuariosPorDia) {
+            $day = now()->subDays($offset);
+            $key = $day->toDateString();
 
-        app(CitaNoShowService::class)->marcarVencidas();
+            return [
+                'date' => $day->format('Y-m-d'),
+                'label' => $day->format('d/m'),
+                'citas' => (int) ($citasPorDia[$key] ?? 0),
+                'usuarios' => (int) ($usuariosPorDia[$key] ?? 0),
+            ];
+        })->values();
 
-        return response()->json([
-            'agendadas' => Cita::count(),
-            'completadas' => Cita::where('estado', 'realizada')->count(),
-            'canceladas' => Cita::where('estado', 'cancelada')->count(),
+        $kpis = [
+            'Total Citas' => $totalCitas,
+            'Citas Pendientes' => $totalCitasPendientes,
+            'Citas de Alta Prioridad' => $totalCitasPendientesAlta,
+            'Citas Realizadas' => $totalCitasRealizadas,
+            'Citas Canceladas' => $totalCitasCanceladas,
+            'Pacientes Registrados' => $totalPacientes,
+            'Doctores Registrados' => $totalDoctores,
+            'Usuarios Activos Hoy' => $usuariosActivosHoy,
+            'Recordatorios Pendientes' => $recordatoriosPendientes,
+        ];
+
+        $html = view('pdf.dashboard-report', [
+            'title' => 'Reporte Operativo y Estadísticas (Administrador)',
+            'role' => 'Administrador',
+            'kpis' => $kpis,
+            'activity' => $activity,
+            'pdfCss' => $this->loadPdfCss('admin/dashboard-pdf.css'),
+        ])->render();
+
+        $opt = new Options;
+        $opt->set('isRemoteEnabled', true);
+        $opt->set('defaultFont', 'DejaVu Sans');
+
+        $pdf = new Dompdf($opt);
+        $pdf->loadHtml($html, 'UTF-8');
+        $pdf->setPaper('A4', 'portrait');
+        $pdf->render();
+
+        $filename = 'reporte_administrador_'.now()->format('Ymd_His').'.pdf';
+
+        return response($pdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
         ]);
     }
+
 
     // ===== Perfil =====
     public function editarPerfil()
@@ -194,12 +278,11 @@ class AdminController extends Controller
     // ===== Usuarios (listado + filtros) =====
     public function usuarios(Request $request)
     {
-        $buscar = trim((string) $request->get('buscar', ''));
-        $perPage = (int) ($request->get('per_page', 12));
-        $role = $request->string('role')->lower()->value();
-        if ($role === 'all') {
-            $role = '';
-        }
+        $buscar = $this->normalizeSearchTerm($request->get('buscar', ''));
+        $perPage = $request->has('per_page')
+            ? $this->normalizePerPage($request->get('per_page', 15))
+            : 12;
+        $role = $this->normalizeUserRoleFilter($request->string('role')->lower()->value());
 
         $allColumns = ['usuario', 'contacto', 'rol', 'estado', 'especialidades', 'acciones'];
         $cols = $request->has('cols')
@@ -483,7 +566,7 @@ class AdminController extends Controller
 
     private function isPrivilegedAccount(User $user): bool
     {
-        return $user->hasRole('administrador') || $user->hasRole('superadmin');
+        return ! auth()->user()->can('manage', $user);
     }
 
     private function isClinicalProfessionalAccount(User $user): bool
@@ -667,8 +750,8 @@ class AdminController extends Controller
     // ===== Exportes (respetan buscar + role) =====
     public function usuariosExportExcel(Request $request)
     {
-        $buscar = trim((string) $request->get('buscar', ''));
-        $role = $request->string('role')->lower()->value();
+        $buscar = $this->normalizeSearchTerm($request->get('buscar', ''));
+        $role = $this->normalizeUserRoleFilter($request->string('role')->lower()->value());
         if (in_array($role, ['administrador', 'superadmin'], true)) {
             return back()->withErrors(['No puedes exportar cuentas Administrador o Superadmin.']);
         }
@@ -721,8 +804,8 @@ class AdminController extends Controller
 
     public function usuariosExportPdf(Request $request)
     {
-        $buscar = trim((string) $request->get('buscar', ''));
-        $role = $request->string('role')->lower()->value();
+        $buscar = $this->normalizeSearchTerm($request->get('buscar', ''));
+        $role = $this->normalizeUserRoleFilter($request->string('role')->lower()->value());
         if (in_array($role, ['administrador', 'superadmin'], true)) {
             return back()->withErrors(['No puedes exportar cuentas Administrador o Superadmin.']);
         }
@@ -767,5 +850,28 @@ class AdminController extends Controller
         $path = resource_path('css/'.$relativePath);
 
         return is_file($path) ? (file_get_contents($path) ?: '') : '';
+    }
+
+    private function normalizeSearchTerm(mixed $value, int $maxLength = 100): string
+    {
+        return trim(mb_substr((string) $value, 0, $maxLength));
+    }
+
+    private function normalizePerPage(mixed $value, int $default = 15): int
+    {
+        $perPage = filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        $allowed = [10, 15, 25, 50];
+
+        return in_array($perPage, $allowed, true) ? $perPage : $default;
+    }
+
+    private function normalizeUserRoleFilter(string $role): string
+    {
+        $role = trim(strtolower($role));
+        if ($role === 'all') {
+            return '';
+        }
+
+        return in_array($role, ['', 'paciente', 'doctor', 'laboratorio', 'administrador', 'superadmin'], true) ? $role : '';
     }
 }

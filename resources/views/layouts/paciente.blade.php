@@ -18,7 +18,7 @@
         request()->routeIs('paciente.crear-cita*', 'paciente.editar-cita*') => route('paciente.citas'),
         request()->routeIs('paciente.pagos.*') => route('paciente.pagos.index'),
         request()->routeIs('paciente.historial.show', 'paciente.certificados.*') => route('paciente.historial'),
-        request()->routeIs('paciente.laboratorio.solicitar*', 'paciente.laboratorio.download', 'paciente.lab-orders.*') => route('paciente.laboratorio.index'),
+        request()->routeIs('paciente.laboratorio.download', 'paciente.lab-orders.*') => route('paciente.laboratorio.index'),
         default => route('paciente.dashboard'),
     };
     $panelBackFallbackUrl = trim($__env->yieldContent('back-url')) ?: $panelBackDefaultUrl;

@@ -41,14 +41,14 @@
             <tbody>
               @foreach($notas as $nota)
                 <tr>
-                  <td data-label="Paciente">{{ optional($nota->cita->paciente)->name ?? 'Paciente' }}</td>
+                  <td data-label="Paciente">{{ $nota->cita->nombrePacienteReal() }}</td>
                   <td data-label="Doctor">{{ optional($nota->cita->doctor)->name ?? 'Doctor/a' }}</td>
                   <td data-label="Especialidad">{{ optional($nota->cita->especialidad)->nombre ?? '-' }}</td>
                   <td data-label="Fecha">{{ $nota->cita->fecha ? \Carbon\Carbon::parse($nota->cita->fecha)->format('d/m/Y') : '-' }} {{ $nota->cita->hora ? \Carbon\Carbon::parse($nota->cita->hora)->format('H:i') : '' }}</td>
                   <td class="text-right" data-label="Acciones">
                     <a href="{{ route('admin.historial.show', $nota->id) }}" class="btn btn-outline">Ver historial</a>
                     @if($nota->cita->paciente_id)
-                      <a href="{{ route('admin.historial.paciente', $nota->cita->paciente_id) }}" class="btn btn-ghost">Notas firmadas</a>
+                      <a href="{{ route('admin.historial.paciente', $nota->cita->paciente_id) }}{{ $nota->cita->dependiente_id ? '?dependiente_id=' . $nota->cita->dependiente_id : '' }}" class="btn btn-ghost">Notas firmadas</a>
                     @endif
                   </td>
                 </tr>

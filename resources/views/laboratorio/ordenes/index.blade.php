@@ -12,7 +12,7 @@
         <label class="form-label" for="estado">Filtrar por estado</label>
         <select id="estado" name="estado" class="form-select">
           <option value="all" @selected(($estado ?? 'all') === 'all')>Todos</option>
-          <option value="orden_creada" @selected(($estado ?? '') === 'orden_creada')>Solo legacy pendiente</option>
+          <option value="orden_creada" @selected(($estado ?? '') === 'orden_creada')>Solo orden creada</option>
           <option value="cita_programada" @selected(($estado ?? '') === 'cita_programada')>Pendiente de toma</option>
           <option value="muestra_tomada" @selected(($estado ?? '') === 'muestra_tomada')>Muestra tomada / analisis</option>
           <option value="resultado_disponible" @selected(($estado ?? '') === 'resultado_disponible')>Resultado listo</option>
@@ -120,9 +120,9 @@
     @empty
       <x-ui.empty-state
         title="No hay ordenes registradas"
-        message="Cuando tengas ordenes asignadas o solicitudes directas disponibles apareceran aqui."
+        message="Cuando tengas ordenes asignadas apareceran aqui."
       />
-    @endforelse
+      @endforelse
   </div>
 
   <x-ui.pagination :paginator="$ordenes" />

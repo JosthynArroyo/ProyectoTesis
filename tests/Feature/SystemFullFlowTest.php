@@ -5,8 +5,6 @@ namespace Tests\Feature;
 use App\Mail\ResultadoLaboratorioMail;
 use App\Models\Cita;
 use App\Models\Especialidad;
-use App\Models\LabOrder;
-use App\Models\LabTest;
 use App\Models\LaboratorioOrden;
 use App\Models\NotaSoap;
 use App\Models\Pago;
@@ -179,7 +177,6 @@ class SystemFullFlowTest extends TestCase
             route('doctor.agenda'),
             route('doctor.perfil.edit'),
             route('doctor.horario.index'),
-            route('doctor.laboratorio.create', ['paciente_id' => $patient->id]),
         ]);
 
         $this->postForm(route('doctor.horario.store'), [
@@ -223,14 +220,6 @@ class SystemFullFlowTest extends TestCase
 
         $this->logoutThroughForm();
 
-        $routineTest = LabTest::query()
-            ->where('activo', true)
-            ->where('es_rutina', true)
-            ->where('requiere_orden', false)
-            ->where('tipo', 'rutina')
-            ->orderBy('id')
-            ->firstOrFail();
-
         $this->loginThroughForm($patient, 'admin1234*');
         $this->assertPagesLoad([
             route('paciente.dashboard'),
@@ -240,20 +229,6 @@ class SystemFullFlowTest extends TestCase
             route('paciente.pagos.index'),
             route('paciente.historial'),
             route('paciente.laboratorio.index'),
-            route('paciente.laboratorio.solicitar'),
-        ]);
-
-        $this->postForm(route('paciente.laboratorio.solicitar.store'), [
-            'source' => LabOrder::SOURCE_ROUTINE,
-            'priority' => 'normal',
-            'lab_test_id' => $routineTest->id,
-        ])->assertRedirect(route('paciente.laboratorio.index'));
-
-        $this->assertDatabaseHas('lab_orders', [
-            'patient_id' => $patient->id,
-            'source' => LabOrder::SOURCE_ROUTINE,
-            'priority' => 'normal',
-            'status' => LabOrder::STATUS_PENDIENTE_TOMA,
         ]);
 
         $this->postForm(route('paciente.crear-cita.store'), [
@@ -298,6 +273,29 @@ class SystemFullFlowTest extends TestCase
         $this->assertPagesLoad([
             route('doctor.citas'),
             route('doctor.pacientes.historial', $patient),
+        ]);
+
+        $labCita = Cita::create([
+            'paciente_id' => $patient->id,
+            'doctor_id' => $lab->id,
+            'especialidad_id' => $labSpecialty->id,
+            'fecha' => $labDate,
+            'hora' => '10:00:00',
+            'motivo_consulta' => 'Examen de laboratorio',
+            'estado' => Cita::ESTADO_PENDIENTE,
+            'activo' => true,
+        ]);
+
+        $labOrder = LaboratorioOrden::create([
+            'cita_id' => $labCita->id,
+            'clinical_record_id' => null,
+            'solicitante_id' => $lab->id,
+            'origen' => 'doctor',
+            'prioridad' => 'normal',
+            'tipo_examen' => 'Hemograma completo',
+            'indicaciones' => 'Traer orden y documento.',
+            'preparacion' => 'Ayuno de 8 horas.',
+            'estado' => LaboratorioOrden::ESTADO_CITA_PROGRAMADA,
         ]);
 
         $this->logoutThroughForm();
@@ -354,24 +352,8 @@ class SystemFullFlowTest extends TestCase
 
         $this->loginThroughForm($doctor, 'admin1234*');
         $this->assertPagesLoad([
-            route('doctor.laboratorio.create', ['paciente_id' => $patient->id]),
+            route('doctor.pedidos-laboratorio.create', $cita),
         ]);
-
-        $this->postForm(route('doctor.laboratorio.store'), [
-            'paciente_id' => $patient->id,
-            'doctor_id' => $lab->id,
-            'fecha' => $labDate,
-            'hora' => '10:00',
-            'motivo_consulta' => 'seguimiento post consulta',
-            'tipo_examen' => 'Hemograma completo',
-            'prioridad' => 'normal',
-            'indicaciones' => 'Traer orden y documento.',
-            'preparacion' => 'Ayuno de 8 horas.',
-        ])->assertRedirect(route('doctor.citas'));
-
-        $labOrder = LaboratorioOrden::query()->latest('id')->firstOrFail();
-        $this->assertSame('doctor', $labOrder->origen);
-        $this->assertSame(LaboratorioOrden::ESTADO_CITA_PROGRAMADA, $labOrder->estado);
 
         $this->logoutThroughForm();
 

@@ -10,7 +10,6 @@
 <div class="space-y-6">
   <div class="panel-action-bar">
     <a class="btn btn-outline btn-full-mobile" href="{{ route('paciente.crear-cita') }}">Agendar cita medica</a>
-    <a class="btn btn-primary btn-full-mobile" href="{{ route('paciente.laboratorio.solicitar') }}">Solicitar examen</a>
   </div>
 
   @if ($errors->any())
@@ -32,7 +31,7 @@
     <div class="page-header">
       <div class="page-header__info">
         <h2>Mis exámenes y resultados</h2>
-        <p>Se integran aquí tanto las órdenes tradicionales como tus auto-solicitudes.</p>
+        <p>Se integran aquí las órdenes tradicionales y los resultados publicados por el laboratorio.</p>
       </div>
     </div>
 
@@ -106,9 +105,8 @@
       </div>
     @else
       <div class="mt-4">
-        <x-ui.empty-state title="Aún no tienes exámenes registrados." message="Cuando solicites un examen o el laboratorio publique un resultado, aparecerá aquí con su estado y las acciones disponibles.">
+        <x-ui.empty-state title="Aún no tienes exámenes registrados." message="Cuando tu doctor solicite un examen o el laboratorio publique un resultado, aparecerá aquí con su estado y las acciones disponibles.">
           <div class="mt-4 flex flex-wrap justify-center gap-3">
-            <a class="btn btn-primary" href="{{ route('paciente.laboratorio.solicitar') }}">Solicitar examen</a>
             <a class="btn btn-outline" href="{{ route('paciente.crear-cita') }}">Agendar cita medica</a>
           </div>
         </x-ui.empty-state>

@@ -20,9 +20,9 @@ class PagoController extends Controller
     public function index(Request $request)
     {
         $estado = (string) $request->query('estado', '');
-        $desde = (string) $request->query('desde', '');
-        $hasta = (string) $request->query('hasta', '');
-        $buscar = trim((string) $request->query('q', ''));
+        $desde = $this->normalizeDateFilter($request->query('desde', ''));
+        $hasta = $this->normalizeDateFilter($request->query('hasta', ''));
+        $buscar = $this->normalizeSearchTerm($request->query('q', ''));
 
         if ($estado === 'all') {
             $estado = '';
@@ -56,6 +56,7 @@ class PagoController extends Controller
                         });
                 });
             })
+            // Static CASE ordering only; never build this fragment from request values.
             ->orderByRaw("
                 CASE estado
                     WHEN 'pendiente' THEN 1
@@ -76,6 +77,23 @@ class PagoController extends Controller
             ->pluck('total', 'estado');
 
         return view('admin.pagos.index', compact('pagos', 'estado', 'desde', 'hasta', 'buscar', 'totales'));
+    }
+
+    private function normalizeSearchTerm(mixed $value, int $maxLength = 100): string
+    {
+        return trim(mb_substr((string) $value, 0, $maxLength));
+    }
+
+    private function normalizeDateFilter(mixed $value): string
+    {
+        $value = trim((string) $value);
+        if ($value === '') {
+            return '';
+        }
+
+        $date = \DateTime::createFromFormat('Y-m-d', $value);
+
+        return $date && $date->format('Y-m-d') === $value ? $value : '';
     }
 
     public function show(Pago $pago)

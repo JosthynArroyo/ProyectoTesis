@@ -70,6 +70,13 @@ class PagoController extends Controller
 
         $data = $request->validated();
         $metodo = $data['metodo_pago'];
+
+        if ($pago->metodo_pago === Pago::METODO_EFECTIVO && $metodo === Pago::METODO_EFECTIVO) {
+            return redirect()
+                ->route('paciente.pagos.index')
+                ->with('success', 'Pago en clínica: este pago será confirmado por recepción al momento de su atención.');
+        }
+
         $comprobantePath = $pago->comprobante_path;
 
         if ($metodo === Pago::METODO_TRANSFERENCIA) {

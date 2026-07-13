@@ -53,8 +53,30 @@ class PriorityEvaluator
      */
     public function evaluate(Cita $cita, ?string $motivoConsulta = null): array
     {
-        $patient = $this->resolvePatient($cita);
-        $vulnerability = $this->resolveVulnerability($patient);
+        if ($cita->dependiente_id) {
+            $dependiente = $cita->relationLoaded('dependiente') ? $cita->dependiente : \App\Models\Dependiente::find($cita->dependiente_id);
+            if ($dependiente) {
+                $adultoMayor = $dependiente->esAdultoMayor();
+                $vulnerability = [
+                    'adulto_mayor' => $adultoMayor,
+                    'embarazo' => false,
+                    'discapacidad' => false,
+                    'cronico' => false,
+                    'es_vulnerable' => $adultoMayor,
+                ];
+            } else {
+                $vulnerability = [
+                    'adulto_mayor' => false,
+                    'embarazo' => false,
+                    'discapacidad' => false,
+                    'cronico' => false,
+                    'es_vulnerable' => false,
+                ];
+            }
+        } else {
+            $patient = $this->resolvePatient($cita);
+            $vulnerability = $this->resolveVulnerability($patient);
+        }
 
         $motivo = $this->sanitizeMotivo($motivoConsulta ?? (string) $cita->motivo_consulta);
         $redFlagType = $this->detectRedFlagType($motivo);

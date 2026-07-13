@@ -1,0 +1,17 @@
+@page { size: A4 portrait; margin: 30px 35px; }
+body { font-family: DejaVu Sans, Arial, sans-serif; font-size: 11px; color: #1e293b; line-height: 1.5; margin: 0; }
+.header { margin-bottom: 15px; }
+.report-title { margin: 0 0 5px 0; font-size: 18px; color: #0f172a; font-weight: bold; }
+.report-meta { margin: 0; font-size: 10px; color: #64748b; }
+.divider { border: 0; border-top: 2px solid #cbd5e1; margin: 15px 0; }
+.section-title { font-size: 13px; font-weight: bold; color: #0f766e; margin-bottom: 10px; border-left: 3px solid #0f766e; padding-left: 8px; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+th, td { border: 1px solid #e2e8f0; padding: 8px 10px; vertical-align: middle; }
+th { background: #f8fafc; font-weight: bold; text-transform: uppercase; font-size: 9px; color: #475569; letter-spacing: 0.05em; }
+.text-right { text-align: right; }
+.text-center { text-align: center; }
+.font-bold { font-weight: bold; }
+.text-teal { color: #0f766e; }
+.text-blue { color: #2563eb; }
+.kpi-table tbody tr:nth-child(even), .activity-table tbody tr:nth-child(even) { background: #f8fafc; }
+.footer { position: fixed; bottom: 0; left: 0; right: 0; text-align: center; font-size: 9px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 8px; }

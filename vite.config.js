@@ -94,12 +94,12 @@ export default defineConfig({
         'resources/js/welcome-login-modal.js',
         'resources/js/welcome-carousel.js',
         'resources/js/dashboard-admin.js',
-        'resources/js/dashboard-admin-extras.js',
         'resources/js/dashboard-doctor.js',
         'resources/js/contacto.js',
         'resources/js/demo/demo-actions.js',
         //Doctor
         'resources/js/doctor/agenda.js',
+        'resources/js/doctor/horario.js',
         'resources/js/doctor/citas.js',
         'resources/js/doctor/laboratorio-create.js',
         'resources/js/doctor/perfil.js',

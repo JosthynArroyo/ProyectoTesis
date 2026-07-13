@@ -49,8 +49,74 @@
                 <div class="panel-form-section__header">
                     <div class="panel-form-section__heading">
                         <h2 class="panel-form-section__title">
+                            <span class="panel-form-section__icon"><i class="ri-user-line"></i></span>
+                            ¿Para quién es la cita?
+                        </h2>
+                        <p class="panel-form-section__hint">Elige si la cita es para ti o para un familiar registrado en tu cuenta.</p>
+                    </div>
+                </div>
+
+                <div class="grid gap-4 md:grid-cols-2 p-4 bg-gray-50/50 rounded-2xl border border-gray-200 para-quien-cita-container">
+                    <div class="flex items-center gap-2">
+                        <input type="radio" name="tipo_paciente" id="paciente_titular" value="titular" checked class="h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300">
+                        <label for="paciente_titular" class="text-sm font-medium text-gray-700 cursor-pointer">Para mí ({{ Auth::user()->name }})</label>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <input type="radio" name="tipo_paciente" id="paciente_dependiente" value="dependiente" class="h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300">
+                        <label for="paciente_dependiente" class="text-sm font-medium text-gray-700 cursor-pointer">Para un familiar (Dependiente)</label>
+                    </div>
+
+                    <div class="md:col-span-2 hidden" id="select_dependiente_container">
+                        <label for="dependiente_id" class="form-label">Seleccionar Familiar</label>
+                        <select name="dependiente_id" id="dependiente_id" class="form-select">
+                            <option value="">-- Selecciona un familiar --</option>
+                            @foreach($dependientes as $dep)
+                                <option value="{{ $dep->id }}" {{ old('dependiente_id') == $dep->id ? 'selected' : '' }}>{{ $dep->nombre }} ({{ ucfirst($dep->parentesco) }})</option>
+                            @endforeach
+                        </select>
+                        @error('dependiente_id')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
+                        <p class="mt-2 text-xs text-gray-500">
+                            ¿No aparece tu familiar? <a href="{{ route('paciente.dependientes.create') }}" class="text-teal-600 font-semibold underline hover:text-teal-700">Registra un nuevo familiar aquí</a>.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const radioTitular = document.getElementById('paciente_titular');
+                const radioDependiente = document.getElementById('paciente_dependiente');
+                const container = document.getElementById('select_dependiente_container');
+                const selectDep = document.getElementById('dependiente_id');
+
+                function toggleContainer() {
+                    if (radioDependiente.checked) {
+                        container.classList.remove('hidden');
+                        selectDep.setAttribute('required', 'required');
+                    } else {
+                        container.classList.add('hidden');
+                        selectDep.removeAttribute('required');
+                        selectDep.value = '';
+                    }
+                }
+
+                radioTitular.addEventListener('change', toggleContainer);
+                radioDependiente.addEventListener('change', toggleContainer);
+
+                // Initialize state in case of redirect/old input
+                if (document.getElementById('dependiente_id').value !== '') {
+                    radioDependiente.checked = true;
+                    toggleContainer();
+                }
+            });
+            </script>
+
+            <section class="panel-form-section">
+                <div class="panel-form-section__header">
+                    <div class="panel-form-section__heading">
+                        <h2 class="panel-form-section__title">
                             <span class="panel-form-section__icon"><i class="ri-stethoscope-line"></i></span>
-                            Seleccion de atencion
+                            Selección de atención
                         </h2>
                         <p class="panel-form-section__hint">Primero elige la especialidad y luego el profesional disponible para esa atencion.</p>
                     </div>

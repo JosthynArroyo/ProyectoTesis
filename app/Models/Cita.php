@@ -15,6 +15,8 @@ class Cita extends Model
 
     protected $fillable = [
         'paciente_id',
+        'dependiente_id',
+        'source_nota_soap_id',
         'doctor_id',
         'especialidad_id',
         'fecha',
@@ -99,6 +101,34 @@ class Cita extends Model
         return $this->belongsTo(User::class, 'paciente_id');
     }
 
+    public function dependiente()
+    {
+        return $this->belongsTo(Dependiente::class, 'dependiente_id');
+    }
+
+    public function sourceNotaSoap()
+    {
+        return $this->belongsTo(NotaSoap::class, 'source_nota_soap_id');
+    }
+
+    public function nombrePacienteReal(): string
+    {
+        if ($this->dependiente_id && $this->dependiente) {
+            return (string) ($this->dependiente->nombre ?: 'N/D');
+        }
+
+        return (string) ($this->paciente?->name ?: 'N/D');
+    }
+
+    public function dniPacienteReal(): string
+    {
+        if ($this->dependiente_id && $this->dependiente) {
+            return (string) ($this->dependiente->dni ?: 'N/D');
+        }
+
+        return (string) ($this->paciente?->dni ?: 'N/D');
+    }
+
     public function doctor()
     {
         return $this->belongsTo(User::class, 'doctor_id');
@@ -130,6 +160,12 @@ class Cita extends Model
     public function notaSoap()
     {
         return $this->hasOne(NotaSoap::class, 'cita_id');
+    }
+
+    /** Relación con Pedido de Laboratorio MVP */
+    public function pedidoLaboratorio()
+    {
+        return $this->hasOne(PedidoLaboratorio::class, 'cita_id');
     }
 
     public function certificadoMedico()

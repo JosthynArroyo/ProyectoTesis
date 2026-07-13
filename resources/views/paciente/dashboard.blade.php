@@ -175,11 +175,6 @@
           <h2>Exámenes de laboratorio</h2>
           <p>Solicitudes activas y recientes.</p>
         </div>
-        <div class="page-header__actions">
-          <a class="btn btn-outline btn-full-mobile" href="{{ route('paciente.laboratorio.solicitar') }}">
-            <i class="ri-flask-line"></i> Solicitar examen
-          </a>
-        </div>
       </div>
 
       @if($labOrders->isNotEmpty())

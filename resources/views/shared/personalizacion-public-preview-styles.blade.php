@@ -46,6 +46,13 @@
       color: #0f172a;
     }
 
+    html.panel-theme-dark .personalizacion-public-preview-dialog {
+      border-color: rgba(75, 85, 99, 0.8);
+      background: #111827;
+      box-shadow: 0 32px 80px rgba(0, 0, 0, 0.6);
+      color: #cbd5e1;
+    }
+
     .personalizacion-public-preview-header {
       display: flex;
       flex-wrap: wrap;
@@ -55,6 +62,11 @@
       padding: 1.25rem 1.5rem;
       border-bottom: 1px solid rgba(226, 232, 240, 0.9);
       background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    }
+
+    html.panel-theme-dark .personalizacion-public-preview-header {
+      border-color: rgba(75, 85, 99, 0.8);
+      background: linear-gradient(180deg, #1f2937 0%, #111827 100%);
     }
 
     .personalizacion-public-preview-header p,
@@ -71,6 +83,13 @@
         radial-gradient(circle at top left, rgba(191, 219, 254, 0.28), transparent 34%),
         radial-gradient(circle at top right, rgba(167, 243, 208, 0.22), transparent 26%),
         linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+    }
+
+    html.panel-theme-dark .personalizacion-public-preview-scroll {
+      background:
+        radial-gradient(circle at top left, rgba(30, 41, 59, 0.4), transparent 32%),
+        radial-gradient(circle at top right, rgba(20, 83, 45, 0.2), transparent 24%),
+        linear-gradient(180deg, #0f172a 0%, #030712 100%);
     }
 
     .personalizacion-public-preview-stage {
@@ -603,31 +622,31 @@
       text-align: center;
     }
 
-    html.dashboard-root.panel-theme-dark .personalizacion-public-editor .personalizacion-public-surface,
-    html.dashboard-root.panel-theme-dark .personalizacion-public-editor .personalizacion-public-surface .card,
-    html.dashboard-root.panel-theme-dark .personalizacion-public-editor .personalizacion-public-surface [data-icon-list],
-    html.dashboard-root.panel-theme-dark .personalizacion-public-editor .personalizacion-public-surface [data-public-preview-trigger-card],
-    html.dashboard-root.panel-theme-dark .personalizacion-public-editor .personalizacion-public-surface [data-public-preview-form-card],
-    html.dashboard-root.panel-theme-dark .personalizacion-public-editor .personalizacion-public-surface [data-public-preview-row-card],
-    html.dashboard-root.panel-theme-dark .personalizacion-public-editor .personalizacion-public-surface [data-public-preview-muted-card] {
+    html.panel-theme-dark .personalizacion-public-editor .personalizacion-public-surface,
+    html.panel-theme-dark .personalizacion-public-editor .personalizacion-public-surface .card,
+    html.panel-theme-dark .personalizacion-public-editor .personalizacion-public-surface [data-icon-list],
+    html.panel-theme-dark .personalizacion-public-editor .personalizacion-public-surface [data-public-preview-trigger-card],
+    html.panel-theme-dark .personalizacion-public-editor .personalizacion-public-surface [data-public-preview-form-card],
+    html.panel-theme-dark .personalizacion-public-editor .personalizacion-public-surface [data-public-preview-row-card],
+    html.panel-theme-dark .personalizacion-public-editor .personalizacion-public-surface [data-public-preview-muted-card] {
       background: rgba(15, 23, 42, 0.88) !important;
       border-color: rgba(71, 85, 105, 0.92) !important;
       color: #e2e8f0 !important;
     }
 
-    html.dashboard-root.panel-theme-dark .personalizacion-public-editor .personalizacion-public-surface [data-public-preview-muted-card],
-    html.dashboard-root.panel-theme-dark .personalizacion-public-editor .personalizacion-public-surface [data-icon-preview],
-    html.dashboard-root.panel-theme-dark .personalizacion-public-editor .personalizacion-public-surface [data-public-preview-inline-image] {
+    html.panel-theme-dark .personalizacion-public-editor .personalizacion-public-surface [data-public-preview-muted-card],
+    html.panel-theme-dark .personalizacion-public-editor .personalizacion-public-surface [data-icon-preview],
+    html.panel-theme-dark .personalizacion-public-editor .personalizacion-public-surface [data-public-preview-inline-image] {
       background: rgba(30, 41, 59, 0.92) !important;
     }
 
-    html.dashboard-root.panel-theme-dark .personalizacion-public-editor .personalizacion-public-surface [data-icon-option] {
+    html.panel-theme-dark .personalizacion-public-editor .personalizacion-public-surface [data-icon-option] {
       background: rgba(15, 23, 42, 0.9) !important;
       border-color: rgba(71, 85, 105, 0.9) !important;
       color: #e2e8f0 !important;
     }
 
-    html.dashboard-root.panel-theme-dark .personalizacion-public-editor .personalizacion-public-surface [data-icon-option] span[class*='bg-gray-50'] {
+    html.panel-theme-dark .personalizacion-public-editor .personalizacion-public-surface [data-icon-option] span[class*='bg-gray-50'] {
       background: rgba(30, 41, 59, 0.9) !important;
       color: #e2e8f0 !important;
     }

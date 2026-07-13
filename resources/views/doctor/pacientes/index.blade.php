@@ -18,13 +18,6 @@
 @endphp
 
 <section class="doctor-patients-page">
-    <div class="panel-action-bar">
-        <a class="btn btn-primary doctor-patients-cta" href="{{ route('doctor.laboratorio.create') }}">
-            <i class="ri-flask-line"></i>
-            Nueva orden de laboratorio
-        </a>
-    </div>
-
     <div class="doctor-patients-overview">
         <article class="doctor-patients-stat">
             <span class="doctor-patients-stat__icon doctor-patients-stat__icon--blue">

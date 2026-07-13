@@ -84,7 +84,7 @@ class UserStatusController extends Controller
 
     private function guardPrivilegedUser(User $user, string $action): ?RedirectResponse
     {
-        if (! $user->hasRole('administrador') && ! $user->hasRole('superadmin')) {
+        if (auth()->user()->can('manage', $user)) {
             return null;
         }
 

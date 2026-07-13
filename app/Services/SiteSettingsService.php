@@ -142,6 +142,29 @@ class SiteSettingsService
         'maintenance.message' => 'Estamos realizando mantenimiento para mejorar tu experiencia. Vuelve en unos minutos.',
         'maintenance.until' => '',
         'maintenance.allow_ips' => '',
+
+        // Clinic hours
+        'clinic_hours.1.status' => '1',
+        'clinic_hours.1.opening' => '08:00',
+        'clinic_hours.1.closing' => '18:00',
+        'clinic_hours.2.status' => '1',
+        'clinic_hours.2.opening' => '08:00',
+        'clinic_hours.2.closing' => '18:00',
+        'clinic_hours.3.status' => '1',
+        'clinic_hours.3.opening' => '08:00',
+        'clinic_hours.3.closing' => '18:00',
+        'clinic_hours.4.status' => '1',
+        'clinic_hours.4.opening' => '08:00',
+        'clinic_hours.4.closing' => '18:00',
+        'clinic_hours.5.status' => '1',
+        'clinic_hours.5.opening' => '08:00',
+        'clinic_hours.5.closing' => '18:00',
+        'clinic_hours.6.status' => '1',
+        'clinic_hours.6.opening' => '08:00',
+        'clinic_hours.6.closing' => '13:00',
+        'clinic_hours.7.status' => '0',
+        'clinic_hours.7.opening' => '08:00',
+        'clinic_hours.7.closing' => '18:00',
     ];
 
     public function get(string $key, mixed $default = null): mixed

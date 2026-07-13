@@ -135,6 +135,23 @@
           </section>
 
           <section>
+            <h4 class="text-sm font-semibold text-gray-700">Firma Electrónica</h4>
+            <div class="mt-4 grid gap-4 md:grid-cols-2">
+              <div>
+                <label class="form-label">Archivo de Firma (.p12)</label>
+                <input class="form-input" type="file" name="p12_file" accept=".p12">
+                <div class="text-xs text-gray-500">Suba su certificado de firma electrónica (.p12) para poder firmar documentos.</div>
+                @if($user->p12_path)
+                  <div class="text-xs text-emerald-600 mt-1.5 flex items-center gap-1 font-semibold">
+                    <i class="ri-checkbox-circle-line text-sm"></i> Firma electrónica cargada y activa
+                  </div>
+                @endif
+                @error('p12_file')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
+              </div>
+            </div>
+          </section>
+
+          <section>
             <h4 class="text-sm font-semibold text-gray-700">Seguridad</h4>
             <div class="mt-4 grid gap-4 md:grid-cols-2">
               <div>

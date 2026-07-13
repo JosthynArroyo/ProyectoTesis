@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <title>Certificado m&eacute;dico</title>
+  <title>Certificado medico</title>
   <style>{{ $pdfCss }}</style>
 </head>
 <body>
@@ -20,18 +20,18 @@
       <div class="header avoid-break">
         <div class="brand-block">
           @if(!empty($logoBase64))
-            <img class="logo" src="{{ $logoBase64 }}" alt="Logo de la clínica">
+            <img class="logo" src="{{ $logoBase64 }}" alt="Logo de la clinica">
           @else
             <div class="logo" aria-hidden="true"></div>
           @endif
           <div>
             <h1 class="clinic-title">{{ $clinica }}</h1>
-            <div class="clinic-sub">Certificado m&eacute;dico</div>
+            <div class="clinic-sub">Certificado medico</div>
           </div>
         </div>
         <div class="small soft" style="text-align:right">
-          <div><b>Código:</b> {{ $certificado->codigo }}</div>
-          <div><b>Fecha de emisión:</b> {{ $certificado->fecha_emision?->format('d/m/Y H:i') }}</div>
+          <div><b>Codigo:</b> {{ $certificado->codigo }}</div>
+          <div><b>Fecha de emision:</b> {{ $certificado->fecha_emision?->format('d/m/Y H:i') }}</div>
           <div><b>Cita:</b> #{{ $cita?->id ?? '-' }}</div>
         </div>
       </div>
@@ -39,8 +39,11 @@
       <div class="divider"></div>
 
       <div class="meta avoid-break">
-        <div><b>Paciente:</b> {{ $paciente?->name ?? '-' }}</div>
-        <div><b>Documento:</b> {{ $paciente?->dni ?: 'Sin registro' }}</div>
+        <div><b>Paciente:</b> {{ $certificado->dependiente_id && $certificado->dependiente ? $certificado->dependiente->nombre : ($paciente?->name ?? '-') }}</div>
+        <div><b>Documento:</b> {{ $certificado->dependiente_id && $certificado->dependiente ? $certificado->dependiente->dni : ($paciente?->dni ?: 'Sin registro') }}</div>
+        @if($certificado->dependiente_id && $certificado->dependiente)
+          <div><b>Representante:</b> {{ $paciente?->name ?? '-' }}</div>
+        @endif
         <div><b>Doctor:</b> {{ $doctor?->name ?? '-' }}</div>
         <div><b>Especialidad:</b> {{ $especialidad }}</div>
         <div><b>Fecha cita:</b> {{ $cita?->fecha?->format('d/m/Y') ?? '-' }} {{ $cita?->hora ? substr((string) $cita->hora, 0, 5) : '' }}</div>
@@ -48,13 +51,13 @@
       </div>
 
       <div class="section certificate-text avoid-break">
-        <h2>Certificado m&eacute;dico</h2>
+        <h2>Certificado medico</h2>
         <div class="preserve">{{ $certificado->texto_constancia }}</div>
       </div>
 
       <div class="rest-grid avoid-break">
         <div>
-          <span>Días de reposo</span>
+          <span>Dias de reposo</span>
           <strong>{{ $certificado->dias_reposo }}</strong>
         </div>
         <div>
@@ -83,9 +86,20 @@
         </div>
       </div>
 
+      <div class="verification-panel avoid-break">
+        <div>
+          <div class="verification-label">Verificacion publica</div>
+          <div class="verification-code">CSV: {{ $csv ?? 'N/D' }}</div>
+          <div class="verification-url">{{ $verificationUrl ?? '' }}</div>
+        </div>
+        @if(!empty($qrDataUri))
+          <img class="verification-qr" src="{{ $qrDataUri }}" alt="Codigo QR de verificacion">
+        @endif
+      </div>
+
       <div class="footer small">
         <span>Documento generado por {{ $clinica }}.</span>
-        <span class="badge">Código {{ $certificado->codigo }}</span>
+        <span class="badge">Codigo {{ $certificado->codigo }}</span>
       </div>
     </div>
   </div>

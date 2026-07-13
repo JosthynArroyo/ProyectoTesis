@@ -8,6 +8,7 @@ use App\Jobs\EnviarConfirmacionCitaJob;
 use App\Jobs\NotificarCambioEstadoCitaJob;
 use App\Models\Cita;
 use App\Models\Especialidad;
+use App\Models\NotaSoap;
 use App\Models\Horario;
 use App\Models\LaboratorioOrden;
 use App\Models\User;
@@ -35,7 +36,7 @@ class CitaController extends Controller
     {
         app(CitaNoShowService::class)->marcarVencidas();
         $userId = Auth::id();
-        $q = trim((string) $request->get('q', ''));
+        $q = $this->normalizeSearchTerm($request->get('q', ''));
         $estado = (string) $request->get('estado', '');
         if ($estado === 'all') {
             $estado = '';
@@ -57,6 +58,7 @@ class CitaController extends Controller
             ->where('paciente_id', $userId)
             ->when($q !== '', function ($query) use ($qNorm) {
                 $query->where(function ($qq) use ($qNorm) {
+                    // Keep raw fragments parameterized; never interpolate request text into SQL.
                     $qq->whereHas('doctor', function ($dq) use ($qNorm) {
                         $dq->whereRaw('LOWER(name) LIKE ?', ['%'.$qNorm.'%']);
                     })->orWhereHas('especialidad', function ($eq) use ($qNorm) {
@@ -243,8 +245,9 @@ class CitaController extends Controller
         $prefEspecialidad = $request->get('especialidad');
         $laboratorioId = $this->laboratorioEspecialidadId();
         $labExamenes = $this->laboratorioCatalogoExamenes();
+        $dependientes = Auth::user()->dependientes;
 
-        return view('paciente.crear-cita', compact('doctores', 'especialidades', 'prefEspecialidad', 'laboratorioId', 'labExamenes'));
+        return view('paciente.crear-cita', compact('doctores', 'especialidades', 'prefEspecialidad', 'laboratorioId', 'labExamenes', 'dependientes'));
     }
 
     public function store(
@@ -252,8 +255,7 @@ class CitaController extends Controller
         PriorityEvaluator $priorityEvaluator,
         ProfessionalScheduleService $scheduleService,
         SlotHoldService $slotHoldService
-    )
-    {
+    ) {
         if (app(PagoService::class)->pacienteTieneBloqueo((int) Auth::id())) {
             return back()->withErrors(['error' => PagoService::MENSAJE_BLOQUEO])->withInput();
         }
@@ -266,6 +268,7 @@ class CitaController extends Controller
                 'hora' => 'required|date_format:H:i',
                 'hold_token' => 'nullable|string|max:80',
                 'motivo_consulta' => ValidationRules::motivoConsulta(),
+                'dependiente_id' => 'nullable|exists:dependientes,id',
             ],
             [
                 'doctor_id.required' => 'Seleccione un doctor.',
@@ -280,8 +283,16 @@ class CitaController extends Controller
                 'motivo_consulta.min' => 'El motivo debe tener al menos 3 caracteres.',
                 'motivo_consulta.max' => 'El motivo no puede superar 80 caracteres.',
                 'motivo_consulta.regex' => 'El motivo debe ir en una sola linea.',
+                'dependiente_id.exists' => 'El dependiente seleccionado no existe.',
             ]
         );
+
+        if ($request->filled('dependiente_id')) {
+            $belongs = Auth::user()->dependientes()->where('id', $request->dependiente_id)->exists();
+            if (!$belongs) {
+                return back()->withErrors(['dependiente_id' => 'El dependiente seleccionado no pertenece a tu cuenta.'])->withInput();
+            }
+        }
 
         $motivoConsulta = $priorityEvaluator->sanitizeMotivo($request->input('motivo_consulta'));
 
@@ -345,6 +356,7 @@ class CitaController extends Controller
 
             $cita = Cita::create([
                 'paciente_id' => Auth::id(),
+                'dependiente_id' => $request->dependiente_id,
                 'doctor_id' => $request->doctor_id,
                 'especialidad_id' => $request->especialidad_id,
                 'fecha' => $request->fecha,
@@ -393,8 +405,15 @@ class CitaController extends Controller
             return back()->withErrors(['error' => $msg])->withInput();
         }
 
-        event(new CitaAgendada($cita));
-        EnviarConfirmacionCitaJob::dispatch($cita);
+        try {
+            event(new CitaAgendada($cita));
+            EnviarConfirmacionCitaJob::dispatch($cita);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Error al notificar cita agendada en store(): ' . $e->getMessage(), [
+                'cita_id' => $cita->id,
+                'exception' => $e
+            ]);
+        }
 
         return redirect()->route('paciente.citas')
             ->with('success', 'Cita creada con éxito. Confirmación enviada y doctor notificado.')
@@ -575,6 +594,7 @@ class CitaController extends Controller
             ->when($prioridad !== '', fn ($query) => $query->where('prioridad_nivel', $prioridad))
             ->with([
                 'paciente:id,name',
+                'dependiente:id,nombre,dni,parentesco',
                 'especialidad:id,nombre',
                 'receta:id,cita_id,created_at,updated_at',
                 'notaSoap:id,cita_id,estado',
@@ -586,6 +606,7 @@ class CitaController extends Controller
             ->paginate(25, [
                 'id',
                 'paciente_id',
+                'dependiente_id',
                 'doctor_id',
                 'especialidad_id',
                 'fecha',
@@ -609,7 +630,7 @@ class CitaController extends Controller
 
             return $d;
         };
-        $pairKey = fn ($p, $d) => $p.'|'.$d;
+        $pairKey = fn ($p, $dep, $d) => $p.'|'.($dep ?? '0').'|'.$d;
         $pacientesConRealizadas = $citasPagina
             ->where('estado', Cita::ESTADO_REALIZADA)
             ->pluck('paciente_id')
@@ -621,9 +642,9 @@ class CitaController extends Controller
         $todasPorPar = Cita::query()
             ->where('doctor_id', $doctorId)
             ->whereIn('paciente_id', $pacientesConRealizadas)
-            ->get(['id', 'paciente_id', 'doctor_id', 'fecha', 'hora', 'estado', 'activo'])
+            ->get(['id', 'paciente_id', 'dependiente_id', 'doctor_id', 'fecha', 'hora', 'estado', 'activo'])
             ->sortBy(fn ($c) => $dt($c->fecha, $c->hora)->format('Y-m-d H:i:s'))
-            ->groupBy(fn ($c) => $pairKey($c->paciente_id, $c->doctor_id));
+            ->groupBy(fn ($c) => $pairKey($c->paciente_id, $c->dependiente_id, $c->doctor_id));
 
         // id_de_realizada -> cita inmediatamente posterior (independiente del estado actual de esa posterior)
         $mapProxima = [];
@@ -687,6 +708,11 @@ class CitaController extends Controller
         }
 
         return in_array($prioridad, Cita::PRIORIDAD_NIVELES, true) ? $prioridad : '';
+    }
+
+    protected function normalizeSearchTerm(mixed $value, int $maxLength = 100): string
+    {
+        return trim(mb_substr((string) $value, 0, $maxLength));
     }
 
     protected function etiquetaEstadoCita(string $estado): string
@@ -933,7 +959,13 @@ class CitaController extends Controller
 
         return Cita::query()
             ->where('id', '<>', $cita->id)
-            ->where('paciente_id', $cita->paciente_id)
+            ->when(
+                $cita->dependiente_id,
+                fn ($query) => $query->where('dependiente_id', $cita->dependiente_id),
+                fn ($query) => $query
+                    ->where('paciente_id', $cita->paciente_id)
+                    ->whereNull('dependiente_id')
+            )
             ->where('doctor_id', $cita->doctor_id)
             ->where('especialidad_id', $cita->especialidad_id)
             ->where('activo', true)
@@ -958,6 +990,7 @@ class CitaController extends Controller
 
         if (
             (int) $control->paciente_id !== (int) $cita->paciente_id
+            || (int) ($control->dependiente_id ?? 0) !== (int) ($cita->dependiente_id ?? 0)
             || (int) $control->doctor_id !== (int) $cita->doctor_id
             || (int) $control->especialidad_id !== (int) $cita->especialidad_id
         ) {
@@ -1034,7 +1067,19 @@ class CitaController extends Controller
             return response()->json(['ok' => false, 'msg' => 'La hora debe ser 00 o 30 minutos.'], 422);
         }
 
-        $controlExistente = $this->controlPosteriorActivo($cita);
+        $nota = NotaSoap::query()
+            ->with(['followUpCita'])
+            ->where('cita_id', $cita->id)
+            ->first();
+
+        if (! $nota || ! $nota->isSigned()) {
+            return response()->json(['ok' => false, 'msg' => 'Debes firmar la nota clinica antes de agendar el control.'], 422);
+        }
+
+        $controlExistente = $nota->followUpCita && $this->controlPerteneceACita($cita, $nota->followUpCita)
+            ? $nota->followUpCita
+            : $this->controlPosteriorActivo($cita);
+
         $validationError = $scheduleService->validateBookingSlot(
             professionalId: (int) $cita->doctor_id,
             date: (string) $request->fecha,
@@ -1056,17 +1101,27 @@ class CitaController extends Controller
             return response()->json(['ok' => false, 'msg' => $validationError['message']], 422);
         }
 
-        $result = DB::transaction(function () use ($cita, $request, $slot, $priorityEvaluator) {
+        $result = DB::transaction(function () use ($cita, $request, $slot, $priorityEvaluator, $nota) {
             $cita = Cita::query()->whereKey($cita->id)->lockForUpdate()->firstOrFail();
-            $controlExistente = $this->controlPosteriorActivo($cita);
+            $nota = NotaSoap::query()
+                ->whereKey($nota->id)
+                ->with(['followUpCita'])
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $controlExistente = $nota->followUpCita && $this->controlPerteneceACita($cita, $nota->followUpCita)
+                ? Cita::query()->whereKey($nota->followUpCita->id)->lockForUpdate()->firstOrFail()
+                : $this->controlPosteriorActivo($cita);
 
             $control = $controlExistente
                 ? Cita::query()->whereKey($controlExistente->id)->lockForUpdate()->firstOrFail()
                 : new Cita([
                     'paciente_id' => $cita->paciente_id,
+                    'dependiente_id' => $cita->dependiente_id,
                     'doctor_id' => $cita->doctor_id,
                     'especialidad_id' => $cita->especialidad_id,
-                    'motivo_consulta' => $cita->motivo_consulta ?: 'Seguimiento medico',
+                    'motivo_consulta' => 'Consulta médica de control',
+                    'source_nota_soap_id' => $nota->id,
                 ]);
 
             $esNuevo = ! $control->exists;
@@ -1075,14 +1130,23 @@ class CitaController extends Controller
                 'hora' => $slot->format('H:i:00'),
                 'estado' => Cita::ESTADO_PENDIENTE,
                 'activo' => true,
+                'source_nota_soap_id' => $nota->id,
             ]);
 
             $priorityEvaluator->apply($control);
             $control->save();
+            $nota->forceFill(['follow_up_cita_id' => $control->id])->saveQuietly();
 
             if ($esNuevo) {
-                event(new CitaAgendada($control));
-                EnviarConfirmacionCitaJob::dispatch($control);
+                try {
+                    event(new CitaAgendada($control));
+                    EnviarConfirmacionCitaJob::dispatch($control);
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::error('Error al notificar cita de control agendada: ' . $e->getMessage(), [
+                        'cita_id' => $control->id,
+                        'exception' => $e
+                    ]);
+                }
             } else {
                 app(CitaComprobanteService::class)->sincronizarComprobante($control);
                 NotificarCambioEstadoCitaJob::dispatch($control, 'reagendada', 'doctor');
@@ -1105,6 +1169,8 @@ class CitaController extends Controller
                 'fecha' => Carbon::parse($control->fecha)->format('d/m/Y'),
                 'hora' => Carbon::parse($control->hora)->format('H:i'),
                 'estado' => $control->estado,
+                'especialidad' => $control->especialidad?->nombre,
+                'doctor' => $control->doctor?->name,
             ],
         ]);
     }

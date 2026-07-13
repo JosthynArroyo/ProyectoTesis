@@ -133,11 +133,6 @@ class DemoDashboardController extends Controller
         return $this->pacienteView('demo.paciente.resultados', 'resultados');
     }
 
-    public function pacienteSolicitarExamen()
-    {
-        return $this->pacienteView('demo.paciente.solicitar-examen', 'solicitar-examen');
-    }
-
     public function pacienteAgendarCita()
     {
         return $this->pacienteView('demo.paciente.agendar-cita', 'agendar-cita');

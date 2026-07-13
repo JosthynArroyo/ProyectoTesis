@@ -109,7 +109,7 @@
             La orden de cobro aún no está disponible. Solo se genera cuando la cita queda en estado realizada.
           </p>
         @elseif($pago->esEditablePorPaciente())
-          <form method="POST" action="{{ route('paciente.pagos.submit', $pago) }}" enctype="multipart/form-data" class="mt-4 grid gap-3 md:grid-cols-2" data-pago-form>
+          <form method="POST" action="{{ route('paciente.pagos.submit', $pago) }}" enctype="multipart/form-data" class="mt-4 grid gap-3 md:grid-cols-2" data-pago-form data-saved-metodo="{{ $pago->metodo_pago }}">
             @csrf
             <div>
               <label class="form-label" for="metodo_pago_{{ $pago->id }}">Método de pago</label>
@@ -134,8 +134,12 @@
               <p class="mt-1 text-xs text-gray-500">Para transferencia se requiere comprobante para enviar a verificación.</p>
             </div>
 
-            <div class="md:col-span-2 rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700 {{ $esEfectivo ? '' : 'hidden' }}" data-efectivo-msg>
-              Pago en clí­nica: este pago será confirmado por recepción al momento de su atención.
+            <div class="md:col-span-2 rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700 hidden" data-efectivo-msg-unconfirmed>
+              Pago en clínica: este pago será confirmado por recepción al momento de su atención.
+            </div>
+
+            <div class="md:col-span-2 rounded-xl border border-green-200 bg-green-50 p-3 text-sm text-green-700 hidden" data-efectivo-msg-confirmed>
+              Pago en efectivo confirmado. El cobro será registrado por recepción al momento de su atención.
             </div>
 
             <div class="md:col-span-2">
@@ -171,7 +175,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const metodoSelect = form.querySelector('[data-metodo-select]');
     const comprobanteWrapper = form.querySelector('[data-comprobante-wrapper]');
     const comprobanteInput = form.querySelector('[data-comprobante-input]');
-    const efectivoMsg = form.querySelector('[data-efectivo-msg]');
+    const unconfirmedMsg = form.querySelector('[data-efectivo-msg-unconfirmed]');
+    const confirmedMsg = form.querySelector('[data-efectivo-msg-confirmed]');
     const submitButton = form.querySelector('[data-submit-label]');
 
     if (!metodoSelect || !submitButton) {
@@ -180,6 +185,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const applyMode = () => {
       const metodo = metodoSelect.value;
+      const savedMetodo = form.getAttribute('data-saved-metodo');
       const isTransferencia = metodo === 'transferencia';
       const isEfectivo = metodo === 'efectivo';
 
@@ -195,8 +201,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
 
-      if (efectivoMsg) {
-        efectivoMsg.classList.toggle('hidden', !isEfectivo);
+      if (unconfirmedMsg) unconfirmedMsg.classList.add('hidden');
+      if (confirmedMsg) confirmedMsg.classList.add('hidden');
+
+      if (isEfectivo) {
+        if (savedMetodo === 'efectivo') {
+          if (confirmedMsg) confirmedMsg.classList.remove('hidden');
+          submitButton.classList.add('hidden');
+        } else {
+          if (unconfirmedMsg) unconfirmedMsg.classList.remove('hidden');
+          submitButton.classList.remove('hidden');
+        }
+      } else {
+        submitButton.classList.remove('hidden');
       }
 
       submitButton.textContent = isTransferencia

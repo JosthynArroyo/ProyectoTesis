@@ -125,11 +125,6 @@ class PublicPersonalizacionPagesTest extends TestCase
 
     private function fakePngUpload(string $name): UploadedFile
     {
-        $png = base64_decode(
-            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4////fwAJ+wP9KobjigAAAABJRU5ErkJggg==',
-            true
-        );
-
-        return UploadedFile::fake()->createWithContent($name, $png ?: '');
+        return UploadedFile::fake()->image($name, 800, 400);
     }
 }

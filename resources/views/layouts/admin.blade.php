@@ -8,7 +8,6 @@
   @include('layouts.partials.panel-theme-head')
   @include('layouts.partials.favicon')
   @include('layouts.partials.fonts')
-  <meta name="dashboard-resumen-url" content="{{ route('admin.dashboard.resumen') }}">
   @vite(['resources/css/app.css','resources/css/panel-theme.css','resources/js/app.js','resources/js/panel-theme.js'])
   @stack('head')
   @stack('styles')

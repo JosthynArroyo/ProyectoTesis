@@ -16,6 +16,7 @@ class CertificadoMedico extends Model
         'codigo',
         'cita_id',
         'paciente_id',
+        'dependiente_id',
         'doctor_id',
         'clinical_record_id',
         'fecha_emision',
@@ -24,14 +25,22 @@ class CertificadoMedico extends Model
         'reposo_desde',
         'reposo_hasta',
         'observaciones',
+        'csv',
         'pdf_path',
+        'enviado_a',
+        'enviado_en',
+        'envio_estado',
+        'envio_error',
+        'envio_intentos',
     ];
 
     protected $casts = [
         'fecha_emision' => 'datetime',
         'reposo_desde' => 'date',
         'reposo_hasta' => 'date',
+        'enviado_en' => 'datetime',
         'dias_reposo' => 'integer',
+        'envio_intentos' => 'integer',
     ];
 
     public function cita(): BelongsTo
@@ -42,6 +51,11 @@ class CertificadoMedico extends Model
     public function paciente(): BelongsTo
     {
         return $this->belongsTo(User::class, 'paciente_id');
+    }
+
+    public function dependiente(): BelongsTo
+    {
+        return $this->belongsTo(Dependiente::class, 'dependiente_id');
     }
 
     public function doctor(): BelongsTo

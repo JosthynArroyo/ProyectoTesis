@@ -10,9 +10,24 @@
     $sinCertificados = $certificados->isEmpty();
   @endphp
   <div class="space-y-6">
+    <section class="card p-4">
+      <form method="GET" action="{{ route('paciente.historial') }}" class="flex flex-wrap items-end gap-3">
+        <div class="w-full md:w-72">
+          <label class="form-label" for="paciente">Filtrar por paciente</label>
+          <select id="paciente" name="paciente" class="form-select" onchange="this.form.submit()">
+            <option value="all" @selected($pacienteFilter === 'all')>Todos</option>
+            <option value="principal" @selected($pacienteFilter === 'principal')>{{ Auth::user()->name }} (cuenta principal)</option>
+            @foreach($dependientes as $dep)
+              <option value="{{ $dep->id }}" @selected($pacienteFilter == $dep->id)>{{ $dep->nombre }} (cuenta dependiente)</option>
+            @endforeach
+          </select>
+        </div>
+      </form>
+    </section>
+
     @if($sinNotas && $sinCertificados)
       <section class="card p-6">
-        <x-ui.empty-state title="Sin documentos clinicos disponibles" message="Cuando tengas atenciones registradas, notas firmadas o certificados emitidos, apareceran aqui.">
+        <x-ui.empty-state title="Sin documentos clínicos" message="No hay notas clínicas ni certificados registrados para este paciente.">
           <div class="mt-4">
             <a href="{{ route('paciente.crear-cita') }}" class="btn btn-primary">Agendar una cita</a>
           </div>

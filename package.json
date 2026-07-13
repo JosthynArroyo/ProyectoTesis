@@ -6,7 +6,7 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite",
-    "dev:full": "concurrently \"php artisan serve\" \"vite\""
+    "dev:full": "concurrently \"php artisan serve --host=127.0.0.1 --port=8000\" \"vite --host 127.0.0.1\""
   },
   "devDependencies": {
     "@popperjs/core": "^2.11.6",
@@ -21,6 +21,7 @@
     "vite": "^6.2.4"
   },
   "dependencies": {
+    "apexcharts": "^5.16.0",
     "flowbite": "^4.0.1"
   }
 }

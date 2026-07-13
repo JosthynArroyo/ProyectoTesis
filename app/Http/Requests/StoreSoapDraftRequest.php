@@ -65,7 +65,7 @@ class StoreSoapDraftRequest extends FormRequest
         $height = (float) $normalized;
 
         return $height > 0 && $height <= 3
-            ? (string) round($height * 100, 2)
+            ? (string) round($height * 100)
             : $normalized;
     }
 

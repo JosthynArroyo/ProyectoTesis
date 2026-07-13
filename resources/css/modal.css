@@ -441,6 +441,26 @@
   transform: translateY(0);
   box-shadow: 0 4px 12px rgba(15, 118, 110, 0.22);
 }
+.lm-submit:disabled,
+.lm-submit[aria-disabled="true"],
+.lm-submit.is-processing {
+  cursor: not-allowed;
+  pointer-events: none;
+  background: #6ea8a2 !important;
+  color: #ffffff !important;
+  border: none !important;
+  opacity: 1;
+  transform: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 6px 14px rgba(15, 118, 110, 0.14) !important;
+}
+.lm-submit:disabled:hover,
+.lm-submit[aria-disabled="true"]:hover,
+.lm-submit.is-processing:hover {
+  background: #6ea8a2 !important;
+  color: #ffffff !important;
+  transform: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 6px 14px rgba(15, 118, 110, 0.14) !important;
+}
 .lm-submit i { font-size: 1.1rem; }
 
 /* ── Login panels ── */

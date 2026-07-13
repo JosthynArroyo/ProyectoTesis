@@ -19,6 +19,7 @@ class ClinicalRecord extends Model
 
     protected $fillable = [
         'patient_id',
+        'dependiente_id',
         'allergies_status',
         'clinical_summary',
         'last_reviewed_at',
@@ -33,6 +34,11 @@ class ClinicalRecord extends Model
     public function patient(): BelongsTo
     {
         return $this->belongsTo(User::class, 'patient_id');
+    }
+
+    public function dependiente(): BelongsTo
+    {
+        return $this->belongsTo(Dependiente::class, 'dependiente_id');
     }
 
     public function creator(): BelongsTo

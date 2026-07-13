@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use Carbon\Carbon;
 use App\Models\AppointmentSlotHold;
 use App\Models\Especialidad;
 use App\Models\Horario;
@@ -14,13 +15,25 @@ class AppointmentSlotHoldTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Carbon::setTestNow(Carbon::parse('2026-05-01 10:00:00', 'America/Guayaquil'));
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+        parent::tearDown();
+    }
+
     public function test_slot_api_hides_active_hold_from_other_users_but_not_for_the_same_token(): void
     {
-        [$doctor] = $this->createDoctorWithSchedule('2026-05-10');
+        [$doctor] = $this->createDoctorWithSchedule('2026-05-11');
 
         AppointmentSlotHold::create([
             'doctor_id' => $doctor->id,
-            'fecha' => '2026-05-10',
+            'fecha' => '2026-05-11',
             'hora' => '09:00:00',
             'session_id' => 'session-1',
             'token' => 'hold-123',
@@ -28,12 +41,12 @@ class AppointmentSlotHoldTest extends TestCase
             'expires_at' => now()->addMinutes(10),
         ]);
 
-        $this->get(route('api.doctor.slots', ['doctor' => $doctor->id, 'fecha' => '2026-05-10']))
+        $this->get(route('api.doctor.slots', ['doctor' => $doctor->id, 'fecha' => '2026-05-11']))
             ->assertOk()
             ->assertJsonFragment(['hora' => '09:00', 'estado' => 'ocupado'])
             ->assertJsonFragment(['hora' => '09:30', 'estado' => 'libre']);
 
-        $this->get(route('api.doctor.slots', ['doctor' => $doctor->id, 'fecha' => '2026-05-10']).'?hold_token=hold-123')
+        $this->get(route('api.doctor.slots', ['doctor' => $doctor->id, 'fecha' => '2026-05-11']).'?hold_token=hold-123')
             ->assertOk()
             ->assertJsonFragment(['hora' => '09:00', 'estado' => 'libre']);
     }

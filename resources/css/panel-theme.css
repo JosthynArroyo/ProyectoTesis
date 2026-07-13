@@ -1,5 +1,17 @@
 /* Scope: solo paneles internos autenticados (html.dashboard-root). */
 
+html.dashboard-root {
+    --dashboard-chart-ink: #1f2937;
+    --dashboard-chart-muted: #6b7280;
+    --dashboard-chart-grid: #e5e7eb;
+    --dashboard-chart-surface: #ffffff;
+    --dashboard-chart-primary: #0f766e;
+    --dashboard-chart-secondary: #3b82f6;
+    --dashboard-chart-accent: #f59e0b;
+    --dashboard-chart-danger: #ef4444;
+    --dashboard-chart-purple: #8b5cf6;
+}
+
 html.dashboard-root .theme-toggler {
     transition: background-color 0.2s ease, border-color 0.2s ease;
 }
@@ -33,6 +45,15 @@ html.dashboard-root.panel-theme-dark {
     --clr-light: rgba(156, 163, 175, 0.14);
     --clr-color-background: #030712;
     --clr-surface-muted: #1f2937;
+    --dashboard-chart-ink: #e5e7eb;
+    --dashboard-chart-muted: #9ca3af;
+    --dashboard-chart-grid: #334155;
+    --dashboard-chart-surface: #111827;
+    --dashboard-chart-primary: #14b8a6;
+    --dashboard-chart-secondary: #60a5fa;
+    --dashboard-chart-accent: #fbbf24;
+    --dashboard-chart-danger: #f87171;
+    --dashboard-chart-purple: #c084fc;
 }
 
 html.dashboard-root.panel-theme-dark body.dashboard-shell {
@@ -173,6 +194,44 @@ html.dashboard-root.panel-theme-dark .table-responsive-cards .table td {
 
 html.dashboard-root.panel-theme-dark .table-responsive-cards .table td::before {
     color: #94a3b8;
+}
+
+html.dashboard-root .dashboard-chart-card {
+    overflow: hidden;
+}
+
+html.dashboard-root .dashboard-chart-shell {
+    position: relative;
+}
+
+html.dashboard-root .dashboard-chart-shell [data-chart-key] {
+    min-height: 340px;
+}
+
+html.dashboard-root .dashboard-chart-empty {
+    min-height: 340px;
+}
+
+html.dashboard-root .dashboard-chart-card .apexcharts-canvas,
+html.dashboard-root .dashboard-chart-card .apexcharts-svg {
+    max-width: 100%;
+}
+
+html.dashboard-root .dashboard-list-card {
+    border-color: rgba(148, 163, 184, 0.35);
+}
+
+html.dashboard-root .dashboard-list-card [data-dashboard-list-body] > a + a {
+    margin-top: 0.75rem;
+}
+
+html.dashboard-root.panel-theme-dark .dashboard-list-card [data-dashboard-list-body] > a {
+    border-color: #334155;
+    background: #0f172a;
+}
+
+html.dashboard-root.panel-theme-dark .dashboard-list-card [data-dashboard-list-body] > a:hover {
+    background: #111827;
 }
 
 html.dashboard-root.panel-theme-dark .form-label {
@@ -700,3 +759,132 @@ html.dashboard-root.panel-theme-dark .hover\:bg-gray-100:hover {
 html.dashboard-root.panel-theme-dark .hover\:bg-rose-50:hover {
     background-color: rgba(225, 29, 72, 0.18) !important;
 }
+
+/* ApexCharts Tooltip Dark Theme Overrides */
+html.dashboard-root.panel-theme-dark .apexcharts-tooltip,
+html.dashboard-root.panel-theme-dark .apexcharts-tooltip.apexcharts-theme-light,
+html.dashboard-root.panel-theme-dark .apexcharts-tooltip.apexcharts-theme-dark,
+html.dashboard-root.panel-theme-dark .apexcharts-xaxistooltip {
+    background: #111827 !important;
+    border: 1px solid #374151 !important;
+    color: #f3f4f6 !important;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5) !important;
+}
+
+html.dashboard-root.panel-theme-dark .apexcharts-tooltip *,
+html.dashboard-root.panel-theme-dark .apexcharts-xaxistooltip * {
+    color: #f3f4f6 !important;
+    fill: #f3f4f6 !important;
+}
+
+html.dashboard-root.panel-theme-dark .apexcharts-tooltip-title {
+    background: #0f172a !important;
+    border-bottom-color: #374151 !important;
+    color: #f3f4f6 !important;
+}
+
+html.dashboard-root.panel-theme-dark .apexcharts-tooltip-text-y-value,
+html.dashboard-root.panel-theme-dark .apexcharts-tooltip-text-y-label,
+html.dashboard-root.panel-theme-dark .apexcharts-tooltip-text-goals-value,
+html.dashboard-root.panel-theme-dark .apexcharts-tooltip-text-z-value {
+    color: #f3f4f6 !important;
+}
+
+/* ==========================================================================
+   Dark Mode System Selectors & Dropdown Overrides
+   ========================================================================== */
+
+/* Ajustar los contenedores envolventes de inputs/selects que tienen clases inline de fondo claro */
+html.panel-theme-dark div[class*="rounded-xl border border-gray-200 bg-white/90"],
+html.panel-theme-dark label[class*="rounded-xl border border-gray-200 bg-white/90"],
+html.dashboard-root.panel-theme-dark div[class*="rounded-xl border border-gray-200 bg-white/90"],
+html.dashboard-root.panel-theme-dark label[class*="rounded-xl border border-gray-200 bg-white/90"] {
+    background: #0f172a !important;
+    border-color: #334155 !important;
+}
+
+/* Forzar que los selects dentro de dichos envoltorios tengan color de texto claro */
+html.panel-theme-dark div[class*="rounded-xl border border-gray-200 bg-white/90"] select,
+html.dashboard-root.panel-theme-dark div[class*="rounded-xl border border-gray-200 bg-white/90"] select {
+    color: #e2e8f0 !important;
+    background-color: transparent !important;
+}
+
+/* Estilos de alto contraste para las opciones (<option>) de menús desplegables */
+html.panel-theme-dark select option,
+html.panel-theme-dark .form-select option,
+html.dashboard-root.panel-theme-dark select option,
+html.dashboard-root.panel-theme-dark .form-select option {
+    background-color: #1e293b !important;
+    color: #ffffff !important;
+}
+
+/* Resaltado del estado seleccionado/activo */
+html.panel-theme-dark select option:checked,
+html.panel-theme-dark select option:hover,
+html.panel-theme-dark .form-select option:checked,
+html.panel-theme-dark .form-select option:hover,
+html.dashboard-root.panel-theme-dark select option:checked,
+html.dashboard-root.panel-theme-dark select option:hover,
+html.dashboard-root.panel-theme-dark .form-select option:checked,
+html.dashboard-root.panel-theme-dark .form-select option:hover {
+    background-color: #0284c7 !important;
+    color: #ffffff !important;
+}
+
+/* Custom visual corrections for Dark Mode */
+html.dashboard-root.panel-theme-dark .para-quien-cita-container {
+    background-color: rgba(31, 41, 55, 0.4) !important;
+    border-color: #374151 !important;
+}
+
+html.dashboard-root.panel-theme-dark .para-quien-cita-container label {
+    color: #e5e7eb !important;
+}
+
+html.dashboard-root.panel-theme-dark .para-quien-cita-container p {
+    color: #9ca3af !important;
+}
+
+html.dashboard-root.panel-theme-dark .para-quien-cita-container select {
+    background-color: #0f172a !important;
+    border-color: #334155 !important;
+    color: #e2e8f0 !important;
+}
+
+html.dashboard-root.panel-theme-dark .para-quien-cita-container a {
+    color: #5eead4 !important;
+}
+
+html.dashboard-root.panel-theme-dark .para-quien-cita-container a:hover {
+    color: #2dd4bf !important;
+    text-decoration: underline;
+}
+
+html.dashboard-root.panel-theme-dark .para-quien-cita-container input[type="radio"] {
+    background-color: #0f172a !important;
+    border-color: #4b5563 !important;
+}
+
+html.dashboard-root.panel-theme-dark .constancia-medica-box {
+    background-color: rgba(31, 41, 55, 0.4) !important;
+    border-color: #374151 !important;
+}
+
+html.dashboard-root.panel-theme-dark .constancia-medica-box .constancia-title {
+    color: #e5e7eb !important;
+}
+
+html.dashboard-root.panel-theme-dark .constancia-medica-box .constancia-text {
+    color: #f3f4f6 !important;
+}
+
+/* ApexCharts Donut/Pie charts center labels and values in dark mode */
+html.dashboard-root.panel-theme-dark .apexcharts-datalabels-group text,
+html.dashboard-root.panel-theme-dark .apexcharts-datalabel-label,
+html.dashboard-root.panel-theme-dark .apexcharts-datalabel-value,
+html.dashboard-root.panel-theme-dark text.apexcharts-datalabel-label,
+html.dashboard-root.panel-theme-dark text.apexcharts-datalabel-value {
+    fill: #e5e7eb !important;
+}
+

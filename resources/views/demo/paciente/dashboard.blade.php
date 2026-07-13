@@ -88,7 +88,6 @@
                 <h3 class="text-lg font-semibold text-gray-900">Acciones rapidas</h3>
                 <div class="mt-4 space-y-3">
                     <a href="{{ route('demo.paciente.agendar-cita') }}" class="btn btn-primary w-full">Agendar cita</a>
-                    <a href="{{ route('demo.paciente.solicitar-examen') }}" class="btn btn-outline w-full">Solicitar examen</a>
                     <a href="{{ route('demo.paciente.resultados') }}" class="btn btn-outline w-full">Ver resultados</a>
                 </div>
             </section>

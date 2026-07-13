@@ -20,6 +20,18 @@ class UxAuditFixesTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Carbon::setTestNow(Carbon::parse('2026-07-08 10:00:00', 'America/Guayaquil'));
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+        parent::tearDown();
+    }
+
     public function test_superadmin_can_update_admin_without_sending_a_new_password(): void
     {
         $superadminRole = Role::firstOrCreate(['name' => 'superadmin']);
@@ -88,7 +100,7 @@ class UxAuditFixesTest extends TestCase
             ->get(route('doctor.horario.index'))
             ->assertOk()
             ->assertSee('type="date"', false)
-            ->assertSee('data-native-date-open="#doctor-horario-fecha"', false)
+            ->assertSee('data-native-date-open="#fecha_single"', false)
             ->assertDontSee('data-enhanced-date', false);
     }
 

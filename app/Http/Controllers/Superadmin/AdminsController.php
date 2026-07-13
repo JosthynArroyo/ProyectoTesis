@@ -15,8 +15,10 @@ class AdminsController extends Controller
 {
     public function index(Request $request)
     {
-        $buscar = trim((string) $request->get('buscar', ''));
-        $perPage = (int) ($request->get('per_page', 12));
+        $buscar = $this->normalizeSearchTerm($request->get('buscar', ''));
+        $perPage = $request->has('per_page')
+            ? $this->normalizePerPage($request->get('per_page', 15))
+            : 12;
 
         $admins = User::with('roles')
             ->orderBy('created_at', 'desc')
@@ -55,9 +57,22 @@ class AdminsController extends Controller
         return redirect()->route('superadmin.admins.index')->with('success', 'Administrador creado correctamente.');
     }
 
+    private function normalizeSearchTerm(mixed $value, int $maxLength = 100): string
+    {
+        return trim(mb_substr((string) $value, 0, $maxLength));
+    }
+
+    private function normalizePerPage(mixed $value, int $default = 15): int
+    {
+        $perPage = filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        $allowed = [10, 15, 25, 50];
+
+        return in_array($perPage, $allowed, true) ? $perPage : $default;
+    }
+
     public function edit(User $admin)
     {
-        if (! $admin->hasRole('administrador')) {
+        if (! auth()->user()->can('manage', $admin)) {
             return redirect()->route('superadmin.admins.index')
                 ->withErrors(['Solo puedes editar cuentas con rol Administrador.']);
         }
@@ -67,7 +82,7 @@ class AdminsController extends Controller
 
     public function update(Request $request, User $admin)
     {
-        if (! $admin->hasRole('administrador')) {
+        if (! auth()->user()->can('manage', $admin)) {
             return redirect()->route('superadmin.admins.index')
                 ->withErrors(['Solo puedes editar cuentas con rol Administrador.']);
         }
@@ -97,7 +112,7 @@ class AdminsController extends Controller
             return back()->withErrors(['No puedes eliminar tu propio usuario.']);
         }
 
-        if (! $admin->hasRole('administrador')) {
+        if (! auth()->user()->can('manage', $admin)) {
             return back()->withErrors(['Solo puedes eliminar cuentas con rol Administrador.']);
         }
 
@@ -198,6 +213,6 @@ class AdminsController extends Controller
             return false;
         }
 
-        return $admin->hasRole('administrador');
+        return auth()->user()->can('manage', $admin);
     }
 }

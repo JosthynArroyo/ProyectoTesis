@@ -1,117 +1,112 @@
 @extends('layouts.superadmin')
 @section('title','Panel superadmin')
 @section('header-title','Panel global')
-@section('header-subtitle','Métricas y control centralizado')
+@section('header-subtitle','Metricas y control centralizado')
+
+@php
+  $period = data_get($dashboard, 'filters.period', '30d');
+  $options = app(\App\Services\DashboardAnalyticsService::class)->periodOptions();
+@endphp
 
 @section('main')
-<div class="space-y-6">
-  <div class="panel-action-bar">
-    <a class="btn btn-outline btn-full-mobile" href="{{ route('superadmin.admins.index') }}">
-      <i class="ri-shield-user-line"></i> Administradores
-    </a>
-    <a class="btn btn-primary btn-full-mobile" href="{{ route('superadmin.personalizacion.bienvenida.edit') }}">
-      <i class="ri-palette-line"></i> Personalización
-    </a>
-  </div>
-  <section class="stat-grid">
-    <a class="block" href="{{ route('superadmin.users.index') }}">
-      <x-ui.stat label="Usuarios totales" :value="$totalUsuarios" tone="slate">
-        <x-slot:icon><i class="ri-group-line"></i></x-slot:icon>
-      </x-ui.stat>
-    </a>
-    <a class="block" href="{{ route('superadmin.users.index', ['role' => 'paciente']) }}">
-      <x-ui.stat label="Pacientes" :value="$totalPacientes" tone="teal">
-        <x-slot:icon><i class="ri-heart-pulse-line"></i></x-slot:icon>
-      </x-ui.stat>
-    </a>
-    <a class="block" href="{{ route('superadmin.users.index', ['role' => 'doctor']) }}">
-      <x-ui.stat label="Doctores" :value="$totalDoctores" tone="sky">
-        <x-slot:icon><i class="ri-stethoscope-line"></i></x-slot:icon>
-      </x-ui.stat>
-    </a>
-    <a class="block" href="{{ route('superadmin.admins.index') }}">
-      <x-ui.stat label="Administradores" :value="$totalAdmins" tone="amber">
-        <x-slot:icon><i class="ri-shield-user-line"></i></x-slot:icon>
-      </x-ui.stat>
-    </a>
-  </section>
+<div
+  class="space-y-6"
+  data-dashboard-page
+  data-dashboard-endpoint="{{ route('superadmin.dashboard.data') }}"
+  data-dashboard-role="superadmin"
+>
+  <script type="application/json" data-dashboard-state>@json($dashboard)</script>
 
-  <section class="stat-grid">
-    <a class="block" href="{{ route('superadmin.users.index', ['role' => 'laboratorio']) }}">
-      <x-ui.stat label="Laboratorio" :value="$totalLabs" tone="rose">
-        <x-slot:icon><i class="ri-test-tube-line"></i></x-slot:icon>
-      </x-ui.stat>
-    </a>
-    <a class="block" href="{{ route('superadmin.dashboard') }}">
-      <x-ui.stat label="Citas totales" :value="$totalCitas" tone="slate">
-        <x-slot:icon><i class="ri-calendar-check-line"></i></x-slot:icon>
-      </x-ui.stat>
-    </a>
-    <a class="block" href="{{ route('superadmin.dashboard') }}">
-      <x-ui.stat label="Citas hoy" :value="$citasHoy" tone="teal">
-        <x-slot:icon><i class="ri-calendar-todo-line"></i></x-slot:icon>
-        <div class="mt-2 text-sm text-gray-500">Pendientes: {{ $pendientes }}</div>
-      </x-ui.stat>
-    </a>
-  </section>
-
-  <section class="card p-6">
-    <div class="page-header">
-      <div class="page-header__info">
-        <p class="text-xs uppercase tracking-widest text-gray-500">Actividad</p>
-        <h2>Citas y usuarios por día</h2>
-        <p>Últimos 7 días de actividad del sistema.</p>
-      </div>
-    </div>
-    @php
-      $maxCitas = max($activity->max('citas') ?: 1, 1);
-    @endphp
-    <div class="activity-strip mt-4">
-      @foreach($activity as $item)
-        @php
-          $height = max(10, (int) round(($item['citas'] / $maxCitas) * 100));
-        @endphp
-        <div class="activity-card">
-          <p class="activity-card__label">{{ $item['label'] }}</p>
-          <div class="activity-card__track">
-            <div class="flex h-full items-end">
-              <div class="activity-card__bar" style="height: {{ $height }}%"></div>
-            </div>
-          </div>
-          <div class="activity-card__stats">
-            <p class="activity-card__stat">
-              <span>Citas</span>
-              <strong>{{ $item['citas'] }}</strong>
-            </p>
-            <p class="activity-card__stat activity-card__stat--muted">
-              <span>Usuarios</span>
-              <strong>{{ $item['usuarios'] }}</strong>
-            </p>
-          </div>
-        </div>
-      @endforeach
-    </div>
-  </section>
-
-  <section class="card p-6">
-    <div class="page-header">
-      <div class="page-header__info">
-        <p class="text-xs uppercase tracking-widest text-gray-500">Solicitudes</p>
-        <h2>Personalización</h2>
-        <p>Revisa permisos pendientes de administradores.</p>
-      </div>
-      <div class="page-header__actions">
-        <div class="text-right">
-          <p class="text-3xl font-semibold text-gray-900">{{ $pendientesPersonalizacion }}</p>
-          <p class="text-xs text-gray-500">Pendientes</p>
-        </div>
-      </div>
-    </div>
-    <div class="mt-4 flex flex-wrap gap-2">
-      <a class="btn btn-outline btn-full-mobile" href="{{ route('superadmin.solicitudes.personalizacion.index') }}">
-        <i class="ri-notification-4-line"></i> Ver solicitudes
+  <div class="panel-action-bar panel-action-bar--between">
+    <div class="panel-action-bar__actions">
+      <a class="btn btn-outline btn-full-mobile" href="{{ route('superadmin.admins.index') }}">
+        <i class="ri-shield-user-line"></i> Administradores
+      </a>
+      <a class="btn btn-primary btn-full-mobile" href="{{ route('superadmin.personalizacion.bienvenida.edit') }}">
+        <i class="ri-palette-line"></i> Personalizacion
       </a>
     </div>
+    <div class="panel-action-bar__actions">
+      <a href="{{ route('superadmin.dashboard.export-pdf') }}" class="btn btn-outline btn-full-mobile">
+        <i class="ri-file-pdf-line"></i> Exportar PDF
+      </a>
+    </div>
+  </div>
+
+  @if(($pendientesPersonalizacion ?? 0) > 0)
+    <x-ui.alert tone="warning" title="Personalizacion pendiente">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          Hay <strong>{{ $pendientesPersonalizacion }}</strong> solicitud{{ $pendientesPersonalizacion === 1 ? '' : 'es' }} pendiente{{ $pendientesPersonalizacion === 1 ? '' : 's' }}.
+        </div>
+        <a class="btn btn-outline btn-sm" href="{{ route('superadmin.solicitudes.personalizacion.index') }}">
+          Ver solicitudes
+        </a>
+      </div>
+    </x-ui.alert>
+  @endif
+
+  <section class="card p-5">
+    <form method="GET" action="{{ route('superadmin.dashboard') }}" class="flex flex-col gap-3 lg:flex-row lg:items-end lg:gap-4" data-dashboard-filters-form>
+      <div class="min-w-0 lg:w-56">
+        <label class="form-label" for="period">Periodo</label>
+        <select id="period" name="period" class="form-select">
+          @foreach($options as $value => $label)
+            <option value="{{ $value }}" @selected($period === $value)>{{ $label }}</option>
+          @endforeach
+        </select>
+      </div>
+      <div class="lg:ml-auto">
+        <button class="btn btn-primary w-full lg:w-auto" type="submit">
+          <i class="ri-refresh-line"></i> Actualizar
+        </button>
+      </div>
+    </form>
+  </section>
+
+  <section class="grid gap-6 lg:grid-cols-2">
+    <x-dashboard.chart-card
+      class="lg:col-span-1"
+      chart-key="usuarios_roles"
+      chart-type="donut"
+      title="Distribución de usuarios por rol"
+      subtitle="Incluye todos los roles reales registrados."
+    />
+    <x-dashboard.chart-card
+      class="lg:col-span-1"
+      chart-key="citas_estado"
+      chart-type="donut"
+      title="Citas por estado"
+      subtitle="Estados reales registrados en el sistema."
+    />
+    <x-dashboard.chart-card
+      class="lg:col-span-2"
+      chart-key="citas_timeline"
+      chart-type="area"
+      title="Evolución de citas"
+      subtitle="Muestra la actividad en el período seleccionado."
+    />
+    <x-dashboard.chart-card
+      class="lg:col-span-1"
+      chart-key="citas_doctor"
+      chart-type="bar"
+      title="Citas por doctor"
+      subtitle="Ranking de carga asistencial en el período."
+    />
+    <x-dashboard.chart-card
+      class="lg:col-span-1"
+      chart-key="documentos_tipo"
+      chart-type="donut"
+      title="Documentos generados"
+      subtitle="Recetas, certificados y pedidos de laboratorio."
+    />
+    <x-dashboard.chart-card
+      class="lg:col-span-2"
+      chart-key="usuarios_timeline"
+      chart-type="area"
+      title="Usuarios registrados"
+      subtitle="Evolución de nuevos registros."
+    />
   </section>
 </div>
 @endsection

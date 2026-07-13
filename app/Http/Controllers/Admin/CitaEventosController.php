@@ -16,44 +16,9 @@ class CitaEventosController extends Controller
 {
     public function index(Request $request)
     {
-        $tipo = $request->string('tipo')->toString();          // agendada|confirmada|cancelada|realizada|reprogramada
-        $estado = $request->string('estado')->toString();        // pendiente|confirmada|cancelada|realizada
-        $doctorId = $request->integer('doctor_id') ?: null;
-        $paciente = trim((string) $request->get('paciente', ''));   // nombre paciente
-        $desde = $request->get('desde');                        // YYYY-MM-DD
-        $hasta = $request->get('hasta');                        // YYYY-MM-DD
-        $q = trim((string) $request->get('q', ''));          // búsqueda libre (#cita, correo, dni)
-        if ($tipo === 'all') {
-            $tipo = '';
-        }
-        if ($estado === 'all') {
-            $estado = '';
-        }
+        ['tipo' => $tipo, 'estado' => $estado, 'doctorId' => $doctorId, 'paciente' => $paciente, 'desde' => $desde, 'hasta' => $hasta, 'q' => $q] = $this->normalizeFilters($request);
 
-        $ev = CitaEvento::with(['cita.paciente', 'cita.doctor'])
-            ->when($tipo !== '', fn ($qq) => $qq->where('tipo', $tipo))
-            ->when($estado !== '', function ($qq) use ($estado) {
-                $qq->where(function ($w) use ($estado) {
-                    $w->where('a_estado', $estado)
-                        ->orWhere('de_estado', $estado);
-                });
-            })
-            ->when($doctorId, fn ($qq) => $qq->whereHas('cita', fn ($w) => $w->where('doctor_id', $doctorId)))
-            ->when($paciente !== '', fn ($qq) => $qq->whereHas('cita.paciente', fn ($w) => $w->where('name', 'like', '%'.$paciente.'%')))
-            ->when($q !== '', function ($qq) use ($q) {
-                $like = '%'.$q.'%';
-                $qq->where(function ($w) use ($like) {
-                    $w->where('valor_anterior', 'like', $like)
-                        ->orWhere('valor_nuevo', 'like', $like)
-                        ->orWhere('comentario', 'like', $like)
-                        ->orWhereHas('cita', fn ($c) => $c->where('id', 'like', $like))
-                        ->orWhereHas('cita.paciente', fn ($c) => $c->where('email', 'like', $like)->orWhere('dni', 'like', $like))
-                        ->orWhereHas('cita.doctor', fn ($c) => $c->where('name', 'like', $like));
-                });
-            })
-            ->when($desde, fn ($qq) => $qq->whereDate('created_at', '>=', $desde))
-            ->when($hasta, fn ($qq) => $qq->whereDate('created_at', '<=', $hasta))
-            ->orderByDesc('created_at')
+        $ev = $this->query($request)
             ->paginate(25)
             ->withQueryString();
 
@@ -141,6 +106,7 @@ class CitaEventosController extends Controller
     public function exportPdf(Request $request)
     {
         $rows = $this->query($request)->get();
+        $filters = $this->normalizeFilters($request);
         $eventLabels = [
             'agendada' => 'Agendada',
             'confirmada' => 'Confirmada',
@@ -153,13 +119,13 @@ class CitaEventosController extends Controller
 
         $html = view('admin.cambios-citas.pdf', [
             'rows' => $rows,
-            'tipo' => $request->get('tipo'),
-            'estado' => $request->get('estado'),
-            'doctorId' => $request->get('doctor_id'),
-            'paciente' => $request->get('paciente'),
-            'desde' => $request->get('desde'),
-            'hasta' => $request->get('hasta'),
-            'q' => $request->get('q'),
+            'tipo' => $filters['tipo'],
+            'estado' => $filters['estado'],
+            'doctorId' => $filters['doctorId'],
+            'paciente' => $filters['paciente'],
+            'desde' => $filters['desde'],
+            'hasta' => $filters['hasta'],
+            'q' => $filters['q'],
             'pdfCss' => $this->loadPdfCss('admin/cambios-citas-pdf.css'),
             'eventLabels' => $eventLabels,
         ])->render();
@@ -176,22 +142,10 @@ class CitaEventosController extends Controller
         exit;
     }
 
-    /** Construcción común de filtros para index/export */
+    /** Construccion comun de filtros para index/export */
     private function query(Request $request)
     {
-        $tipo = $request->string('tipo')->toString();
-        $estado = $request->string('estado')->toString();
-        $doctorId = $request->integer('doctor_id') ?: null;
-        $paciente = trim((string) $request->get('paciente', ''));
-        $desde = $request->get('desde');
-        $hasta = $request->get('hasta');
-        $q = trim((string) $request->get('q', ''));
-        if ($tipo === 'all') {
-            $tipo = '';
-        }
-        if ($estado === 'all') {
-            $estado = '';
-        }
+        ['tipo' => $tipo, 'estado' => $estado, 'doctorId' => $doctorId, 'paciente' => $paciente, 'desde' => $desde, 'hasta' => $hasta, 'q' => $q] = $this->normalizeFilters($request);
 
         return CitaEvento::with(['cita.paciente', 'cita.doctor'])
             ->when($tipo !== '', fn ($qq) => $qq->where('tipo', $tipo))
@@ -217,6 +171,62 @@ class CitaEventosController extends Controller
             ->when($desde, fn ($qq) => $qq->whereDate('created_at', '>=', $desde))
             ->when($hasta, fn ($qq) => $qq->whereDate('created_at', '<=', $hasta))
             ->orderByDesc('created_at');
+    }
+
+    private function normalizeFilters(Request $request): array
+    {
+        $allowedTipos = ['agendada', 'confirmada', 'cancelada', 'realizada', 'no_se_presento', 'reprogramada', 'prioridad_manual'];
+        $allowedEstados = ['pendiente', 'confirmada', 'cancelada', 'realizada', 'no_se_presento'];
+
+        $tipo = trim($request->string('tipo')->toString());
+        if ($tipo === 'all') {
+            $tipo = '';
+        }
+        if (! in_array($tipo, array_merge([''], $allowedTipos), true)) {
+            $tipo = '';
+        }
+
+        $estado = trim($request->string('estado')->toString());
+        if ($estado === 'all') {
+            $estado = '';
+        }
+        if (! in_array($estado, array_merge([''], $allowedEstados), true)) {
+            $estado = '';
+        }
+
+        return [
+            'tipo' => $tipo,
+            'estado' => $estado,
+            'doctorId' => $this->normalizePositiveInt($request->get('doctor_id')),
+            'paciente' => $this->normalizeSearchTerm($request->get('paciente', '')),
+            'desde' => $this->normalizeDateFilter($request->get('desde', '')),
+            'hasta' => $this->normalizeDateFilter($request->get('hasta', '')),
+            'q' => $this->normalizeSearchTerm($request->get('q', '')),
+        ];
+    }
+
+    private function normalizeSearchTerm(mixed $value, int $maxLength = 100): string
+    {
+        return trim(mb_substr((string) $value, 0, $maxLength));
+    }
+
+    private function normalizePositiveInt(mixed $value): ?int
+    {
+        $normalized = filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+
+        return $normalized === false ? null : (int) $normalized;
+    }
+
+    private function normalizeDateFilter(mixed $value): string
+    {
+        $value = trim((string) $value);
+        if ($value === '') {
+            return '';
+        }
+
+        $date = \DateTime::createFromFormat('Y-m-d', $value);
+
+        return $date && $date->format('Y-m-d') === $value ? $value : '';
     }
 
     private function loadPdfCss(string $relativePath): string

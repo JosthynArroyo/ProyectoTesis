@@ -5,9 +5,10 @@ namespace App\Http\Controllers\Doctor;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UpdateClinicalRecordRequest;
 use App\Models\Cita;
-use App\Models\LabOrder;
 use App\Models\LaboratorioOrden;
+use App\Models\LabOrder;
 use App\Models\User;
+use App\Services\ClinicalRecordPdfService;
 use App\Services\ClinicalRecordService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -22,12 +23,35 @@ class HistorialController extends Controller
 
         abort_unless($doctor?->hasRole('doctor'), 403);
 
-        $sort = (string) $request->query('sort', 'recientes');
-        $allowedSorts = ['recientes', 'alfabetico', 'laboratorios'];
-        if (! in_array($sort, $allowedSorts, true)) {
-            $sort = 'recientes';
-        }
+        $sort = $this->normalizeSort($request->query('sort', 'recientes'));
 
+        // 1. Obtener pares únicos de (paciente_id, dependiente_id) de las citas activas del doctor
+        $distinctPairs = Cita::query()
+            ->where('doctor_id', $doctor->id)
+            ->where('activo', true)
+            ->whereNotNull('paciente_id')
+            ->whereNotIn('estado', [Cita::ESTADO_CANCELADA])
+            ->select(['paciente_id', 'dependiente_id'])
+            ->distinct()
+            ->get();
+
+        // 2. Extraer IDs únicos para consultas masivas (bulk load)
+        $pacienteIds = $distinctPairs->pluck('paciente_id')->unique()->all();
+        $dependienteIds = $distinctPairs->pluck('dependiente_id')->filter()->unique()->all();
+
+        // 3. Consultar los titulares y dependientes vinculados
+        $users = User::whereIn('id', $pacienteIds)->get()->keyBy('id');
+        $dependientes = \App\Models\Dependiente::with('responsable')->whereIn('id', $dependienteIds)->get()->keyBy('id');
+
+        // 4. Obtener todas las citas para estos pares en una única consulta
+        $allAppointments = Cita::query()
+            ->where('doctor_id', $doctor->id)
+            ->where('activo', true)
+            ->whereNotIn('estado', [Cita::ESTADO_CANCELADA])
+            ->with('especialidad:id,nombre')
+            ->get(['id', 'paciente_id', 'dependiente_id', 'especialidad_id', 'fecha', 'hora', 'estado']);
+
+        // 5. Obtener órdenes de laboratorio pendientes de forma masiva
         $legacyPendingCounts = LaboratorioOrden::query()
             ->join('citas_medicas', 'citas_medicas.id', '=', 'laboratorio_ordenes.cita_id')
             ->where('citas_medicas.doctor_id', $doctor->id)
@@ -36,8 +60,7 @@ class HistorialController extends Controller
                 LaboratorioOrden::ESTADO_CITA_PROGRAMADA,
                 LaboratorioOrden::ESTADO_MUESTRA_TOMADA,
             ])
-            ->selectRaw('citas_medicas.paciente_id as patient_id, COUNT(*) as total')
-            ->groupBy('citas_medicas.paciente_id');
+            ->get(['citas_medicas.paciente_id', 'citas_medicas.dependiente_id']);
 
         $selfServicePendingCounts = LabOrder::query()
             ->where('doctor_id', $doctor->id)
@@ -46,73 +69,96 @@ class HistorialController extends Controller
                 LabOrder::STATUS_MUESTRA_TOMADA,
                 LabOrder::STATUS_EN_ANALISIS,
             ])
-            ->selectRaw('patient_id, COUNT(*) as total')
-            ->groupBy('patient_id');
+            ->get(['patient_id']);
 
-        $patientsQuery = User::query()
-            ->select([
-                'users.id',
-                'users.name',
-                'users.email',
-                'users.telefono',
-                'users.dni',
-                'users.fecha_nacimiento',
-            ])
-            ->whereIn('users.id', $this->doctorPatientAppointmentQuery((int) $doctor->id)
-                ->select('paciente_id')
-                ->distinct())
-            ->leftJoinSub($legacyPendingCounts, 'legacy_pending_labs', function ($join) {
-                $join->on('legacy_pending_labs.patient_id', '=', 'users.id');
-            })
-            ->leftJoinSub($selfServicePendingCounts, 'self_pending_labs', function ($join) {
-                $join->on('self_pending_labs.patient_id', '=', 'users.id');
-            })
-            ->selectRaw('COALESCE(legacy_pending_labs.total, 0) as legacy_pending_labs_count')
-            ->selectRaw('COALESCE(self_pending_labs.total, 0) as self_pending_labs_count');
+        // Helper para convertir fecha + hora en Carbon datetime
+        $dt = function ($c) {
+            if (!$c) return Carbon::parse('1970-01-01');
+            $d = Carbon::parse($c->fecha, 'America/Guayaquil');
+            if (! empty($c->hora)) {
+                $hhmm = substr($c->hora, 0, 5);
+                [$H,$M] = array_map('intval', explode(':', $hhmm));
+                $d->setTime($H, $M, 0);
+            }
+            return $d;
+        };
 
-        $this->applyPatientSort($patientsQuery, (int) $doctor->id, $sort);
+        // 6. Mapear y construir la lista unificada
+        $allPatients = collect();
 
-        $patients = $patientsQuery
-            ->paginate(12)
-            ->withQueryString();
+        foreach ($distinctPairs as $pair) {
+            $isDependiente = !empty($pair->dependiente_id);
+            
+            if ($isDependiente) {
+                $dep = $dependientes->get($pair->dependiente_id);
+                if (!$dep) continue;
 
-        $patientIds = $patients->getCollection()->pluck('id')->map(fn ($id) => (int) $id)->all();
+                $patientName = $dep->nombre;
+                $patientDni = $dep->dni;
+                $patientDob = $dep->fecha_nacimiento;
+                $patientEmail = $dep->responsable?->email;
+                $patientPhone = $dep->responsable?->telefono;
+                
+                $code = 'DEP-'.str_pad((string) $dep->id, 5, '0', STR_PAD_LEFT);
+                $recordUrl = route('doctor.pacientes.historial', $pair->paciente_id) . '?dependiente_id=' . $dep->id;
+                $initials = $this->initials((string) $patientName);
+                $avatarTone = $this->avatarTone($dep->id);
+                $age = $patientDob ? Carbon::parse($patientDob)->age : null;
+                $avatarId = $dep->id;
+            } else {
+                $user = $users->get($pair->paciente_id);
+                if (!$user) continue;
 
-        $latestVisits = $patientIds === []
-            ? collect()
-            : $this->doctorPatientAppointmentQuery((int) $doctor->id)
-                ->with('especialidad:id,nombre')
-                ->whereIn('paciente_id', $patientIds)
-                ->orderByDesc('fecha')
-                ->orderByDesc('hora')
-                ->get([
-                    'id',
-                    'paciente_id',
-                    'doctor_id',
-                    'especialidad_id',
-                    'fecha',
-                    'hora',
-                    'estado',
-                ])
-                ->groupBy('paciente_id')
-                ->map(fn ($items) => $items->first());
+                $patientName = $user->name;
+                $patientDni = $user->dni;
+                $patientDob = $user->fecha_nacimiento;
+                $patientEmail = $user->email;
+                $patientPhone = $user->telefono;
 
-        $patientRows = $patients->getCollection()->map(function (User $patient) use ($latestVisits) {
-            $lastVisit = $latestVisits->get($patient->id);
-            $pendingLabsCount = (int) $patient->legacy_pending_labs_count + (int) $patient->self_pending_labs_count;
+                $code = 'PAC-'.str_pad((string) $user->id, 5, '0', STR_PAD_LEFT);
+                $recordUrl = route('doctor.pacientes.historial', $user);
+                $initials = $this->initials((string) $patientName);
+                $avatarTone = $this->avatarTone($user->id);
+                $age = $patientDob ? Carbon::parse($patientDob)->age : null;
+                $avatarId = $user->id;
+            }
+
+            // Filtrar citas correspondientes a este paciente/dependiente
+            $appointments = $allAppointments->filter(function ($c) use ($pair) {
+                return $c->paciente_id == $pair->paciente_id && $c->dependiente_id == $pair->dependiente_id;
+            });
+
+            $lastVisit = $appointments
+                ->sortByDesc(fn ($c) => $dt($c)->timestamp)
+                ->first();
+
             $lastVisitAt = $lastVisit?->inicioProgramado(config('app.timezone', 'America/Guayaquil'));
             $lastVisitStatus = $this->mapVisitStatus($lastVisit?->estado);
             $specialtyName = trim((string) optional($lastVisit?->especialidad)->nombre);
 
-            return [
-                'id' => $patient->id,
-                'name' => (string) $patient->name,
-                'code' => 'PAC-'.str_pad((string) $patient->id, 5, '0', STR_PAD_LEFT),
-                'initials' => $this->initials((string) $patient->name),
-                'avatar_tone' => $this->avatarTone($patient->id),
-                'age' => $patient->fecha_nacimiento ? Carbon::parse($patient->fecha_nacimiento)->age : null,
-                'email' => $patient->email,
-                'phone' => $patient->telefono,
+            // Contar laboratorios pendientes
+            $legacyCount = $legacyPendingCounts->filter(function ($lo) use ($pair) {
+                return $lo->paciente_id == $pair->paciente_id && $lo->dependiente_id == $pair->dependiente_id;
+            })->count();
+
+            $selfServiceCount = 0;
+            if (!$isDependiente) {
+                $selfServiceCount = $selfServicePendingCounts->filter(function ($so) use ($pair) {
+                    return $so->patient_id == $pair->paciente_id;
+                })->count();
+            }
+
+            $pendingLabsCount = $legacyCount + $selfServiceCount;
+
+            $allPatients->push([
+                'id' => $avatarId,
+                'name' => (string) $patientName,
+                'code' => $code,
+                'initials' => $initials,
+                'avatar_tone' => $avatarTone,
+                'age' => $age,
+                'email' => $patientEmail,
+                'phone' => $patientPhone,
                 'last_visit_at' => $lastVisitAt,
                 'last_visit_display' => $lastVisitAt?->format('d/m/Y') ?? 'Sin consultas registradas',
                 'last_visit_status_label' => $lastVisitStatus['label'],
@@ -122,14 +168,54 @@ class HistorialController extends Controller
                     : ($specialtyName !== '' ? $specialtyName : 'Seguimiento clínico'),
                 'last_visit_context_tone' => $pendingLabsCount > 0 ? 'warning' : 'neutral',
                 'pending_labs_count' => $pendingLabsCount,
-                'record_url' => route('doctor.pacientes.historial', $patient),
-                'lab_url' => route('doctor.laboratorio.create', ['paciente_id' => $patient->id]),
+                'record_url' => $recordUrl,
                 'last_visit_timestamp' => $lastVisitAt?->timestamp ?? 0,
-            ];
-        });
+                'latest_visit' => $lastVisit,
+            ]);
+        }
 
-        $patients->setCollection($patientRows->values());
+        // 7. Aplicar el ordenamiento sobre la colección mapeada
+        if ($sort === 'alfabetico') {
+            $allPatients = $allPatients->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE);
+        } elseif ($sort === 'laboratorios') {
+            $allPatients = $allPatients->sort(function ($a, $b) use ($dt) {
+                if ($a['pending_labs_count'] != $b['pending_labs_count']) {
+                    return $b['pending_labs_count'] <=> $a['pending_labs_count'];
+                }
+                $dateA = $a['last_visit_timestamp'];
+                $dateB = $b['last_visit_timestamp'];
+                if ($dateA == $dateB) {
+                    return strcasecmp($a['name'], $b['name']);
+                }
+                return $dateB <=> $dateA;
+            });
+        } else {
+            // recientes
+            $allPatients = $allPatients->sort(function ($a, $b) {
+                $dateA = $a['last_visit_timestamp'];
+                $dateB = $b['last_visit_timestamp'];
+                if ($dateA == $dateB) {
+                    return strcasecmp($a['name'], $b['name']);
+                }
+                return $dateB <=> $dateA;
+            });
+        }
 
+        // 8. Paginación manual de la colección
+        $perPage = 12;
+        $currentPage = \Illuminate\Pagination\LengthAwarePaginator::resolveCurrentPage();
+        $currentPageItems = $allPatients->slice(($currentPage - 1) * $perPage, $perPage)->values();
+
+        $patients = new \Illuminate\Pagination\LengthAwarePaginator(
+            $currentPageItems,
+            $allPatients->count(),
+            $perPage,
+            $currentPage,
+            ['path' => \Illuminate\Pagination\LengthAwarePaginator::resolveCurrentPath()]
+        );
+        $patients->withQueryString();
+
+        // 9. Totales para las tarjetas superiores de métricas
         $today = now(config('app.timezone', 'America/Guayaquil'))->toDateString();
         $todayVisits = Cita::query()
             ->where('doctor_id', $doctor->id)
@@ -188,6 +274,7 @@ class HistorialController extends Controller
         match ($sort) {
             'alfabetico' => $query->orderBy('users.name'),
             'laboratorios' => $query
+                // Static SQL fragment only; do not accept sort expressions from request.
                 ->orderByRaw('(COALESCE(legacy_pending_labs.total, 0) + COALESCE(self_pending_labs.total, 0)) DESC')
                 ->orderByDesc($lastDate)
                 ->orderByDesc($lastTime)
@@ -201,7 +288,10 @@ class HistorialController extends Controller
 
     private function latestPatientAppointmentValue(int $doctorId, string $column)
     {
+        $column = in_array($column, ['fecha', 'hora'], true) ? $column : 'fecha';
+
         return $this->doctorPatientAppointmentQuery($doctorId)
+            // Column name is restricted internally; never forward a request value here.
             ->select('citas_medicas.'.$column)
             ->whereColumn('citas_medicas.paciente_id', 'users.id')
             ->orderByDesc('citas_medicas.fecha')
@@ -209,7 +299,15 @@ class HistorialController extends Controller
             ->limit(1);
     }
 
-    public function show(User $paciente, ClinicalRecordService $clinicalRecords)
+    private function normalizeSort(mixed $value): string
+    {
+        $sort = trim((string) $value);
+        $allowedSorts = ['recientes', 'alfabetico', 'laboratorios'];
+
+        return in_array($sort, $allowedSorts, true) ? $sort : 'recientes';
+    }
+
+    public function show(User $paciente, Request $request, ClinicalRecordService $clinicalRecords)
     {
         $doctor = Auth::user();
 
@@ -217,7 +315,8 @@ class HistorialController extends Controller
             abort(403);
         }
 
-        $record = $clinicalRecords->ensureForPatient($paciente, $doctor->id);
+        $dependienteId = $this->resolveDependienteId($paciente, $request);
+        $record = $clinicalRecords->ensureForPatient($paciente, $doctor->id, $dependienteId);
         $viewData = $clinicalRecords->buildRecordViewData($record);
 
         return view('doctor.paciente-historial', [
@@ -233,12 +332,59 @@ class HistorialController extends Controller
             abort(403);
         }
 
-        $record = $clinicalRecords->ensureForPatient($paciente, $doctor->id);
+        $dependienteId = $this->resolveDependienteId($paciente, $request);
+        $record = $clinicalRecords->ensureForPatient($paciente, $doctor->id, $dependienteId);
         $clinicalRecords->syncMasterData($record, $request->validated(), $doctor->id);
 
-        return redirect()
-            ->route('doctor.pacientes.historial', $paciente)
+        $redirectUrl = route('doctor.pacientes.historial', $paciente);
+        if ($dependienteId) {
+            $redirectUrl .= '?dependiente_id=' . $dependienteId;
+        }
+
+        return redirect($redirectUrl)
             ->with('success', 'Expediente clínico actualizado correctamente.');
+    }
+
+    public function exportPdf(User $paciente, Request $request, ClinicalRecordService $clinicalRecords, ClinicalRecordPdfService $pdfService)
+    {
+        $doctor = Auth::user();
+
+        if (! $doctor || ! $clinicalRecords->canView($doctor, $paciente)) {
+            abort(403);
+        }
+
+        $dependienteId = $this->resolveDependienteId($paciente, $request);
+        $record = $clinicalRecords->ensureForPatient($paciente, $doctor->id, $dependienteId);
+        $viewData = $clinicalRecords->buildRecordViewData($record);
+        $pdfContent = $pdfService->generate($record, $viewData);
+
+        $patientName = $dependienteId && $record->dependiente ? $record->dependiente->nombre : $paciente->name;
+        $filename = 'expediente_clinico_' . Str::slug($patientName, '_') . '_' . now()->format('Ymd') . '.pdf';
+
+        return response($pdfContent, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
+    }
+
+    private function resolveDependienteId(User $paciente, Request $request): ?int
+    {
+        $dependienteId = $this->normalizePositiveInt($request->query('dependiente_id'));
+
+        if (! $dependienteId) {
+            return null;
+        }
+
+        abort_unless($paciente->dependientes()->whereKey($dependienteId)->exists(), 404);
+
+        return $dependienteId;
+    }
+
+    private function normalizePositiveInt(mixed $value): ?int
+    {
+        $normalized = filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+
+        return $normalized === false ? null : (int) $normalized;
     }
 
     private function initials(string $name): string

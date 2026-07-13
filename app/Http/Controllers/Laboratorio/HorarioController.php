@@ -136,7 +136,7 @@ class HorarioController extends Controller
                     'title' => $order->patient?->name ?? 'Paciente',
                     'subtitle' => $order->tipo_examen ?? 'Examen de laboratorio',
                     'eyebrow' => $label,
-                    'meta' => 'Auto-solicitud',
+                    'meta' => 'Orden directa',
                     'tone' => $tone,
                 ];
             })->filter()
@@ -159,14 +159,25 @@ class HorarioController extends Controller
             'intervalo_minutos' => ['required', 'integer', 'in:10,15,20,30,45,60'],
         ]);
 
-        Horario::firstOrCreate([
-            'doctor_id' => Auth::id(),
-            'fecha' => $data['fecha'],
-            'hora_inicio' => $data['hora_inicio'],
-            'hora_fin' => $data['hora_fin'],
-        ], [
-            'intervalo_minutos' => $data['intervalo_minutos'],
-        ]);
+        $interval = (int) $data['intervalo_minutos'];
+        if ($interval <= 0) {
+            return back()->withErrors(['intervalo_minutos' => 'El intervalo debe ser un entero positivo.'])->withInput();
+        }
+        $durationMinutes = Carbon::parse($data['hora_inicio'])->diffInMinutes(Carbon::parse($data['hora_fin']));
+        if ($durationMinutes < $interval) {
+            return back()->withErrors(['hora_fin' => "La duración del bloque ({$durationMinutes} min) es menor que el intervalo ({$interval} min)."])->withInput();
+        }
+
+        DB::transaction(function () use ($data) {
+            Horario::firstOrCreate([
+                'doctor_id' => Auth::id(),
+                'fecha' => $data['fecha'],
+                'hora_inicio' => $data['hora_inicio'],
+                'hora_fin' => $data['hora_fin'],
+            ], [
+                'intervalo_minutos' => $data['intervalo_minutos'],
+            ]);
+        });
 
         return back()->with('success', 'Horario creado.');
     }
@@ -189,7 +200,18 @@ class HorarioController extends Controller
             'intervalo_minutos' => ['required', 'integer', 'in:10,15,20,30,45,60'],
         ]);
 
-        $horario->update($data);
+        $interval = (int) $data['intervalo_minutos'];
+        if ($interval <= 0) {
+            return back()->withErrors(['intervalo_minutos' => 'El intervalo debe ser un entero positivo.'])->withInput();
+        }
+        $durationMinutes = Carbon::parse($data['hora_inicio'])->diffInMinutes(Carbon::parse($data['hora_fin']));
+        if ($durationMinutes < $interval) {
+            return back()->withErrors(['hora_fin' => "La duración del bloque ({$durationMinutes} min) es menor que el intervalo ({$interval} min)."])->withInput();
+        }
+
+        DB::transaction(function () use ($horario, $data) {
+            $horario->update($data);
+        });
 
         return redirect()->route('laboratorio.horario.index')->with('success', 'Horario actualizado.');
     }
@@ -197,7 +219,10 @@ class HorarioController extends Controller
     public function destroy(Horario $horario)
     {
         abort_unless($horario->doctor_id === Auth::id(), 403);
-        $horario->delete();
+        
+        DB::transaction(function () use ($horario) {
+            $horario->delete();
+        });
 
         return back()->with('success', 'Horario eliminado.');
     }
@@ -214,6 +239,15 @@ class HorarioController extends Controller
             'intervalo_minutos' => ['required', 'integer', 'in:10,15,20,30,45,60'],
             'sobrescribir' => ['required', 'boolean'],
         ]);
+
+        $interval = (int) $data['intervalo_minutos'];
+        if ($interval <= 0) {
+            return back()->withErrors(['intervalo_minutos' => 'El intervalo debe ser un entero positivo.'])->withInput();
+        }
+        $durationMinutes = Carbon::parse($data['hora_inicio'])->diffInMinutes(Carbon::parse($data['hora_fin']));
+        if ($durationMinutes < $interval) {
+            return back()->withErrors(['hora_fin' => "La duración del bloque ({$durationMinutes} min) es menor que el intervalo ({$interval} min)."])->withInput();
+        }
 
         $labId = Auth::id();
         $ini = Carbon::parse($data['desde']);

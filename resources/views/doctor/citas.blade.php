@@ -1,4 +1,4 @@
-﻿@extends('layouts.doctor')
+@extends('layouts.doctor')
 @section('title', 'Mis citas (doctor)')
 @section('activeSidebar', 'citas')
 @section('header-title','Mis citas')
@@ -21,7 +21,7 @@
     </button>
   </div>
 
-  <div class="card p-6">
+  <div class="card p-6 !overflow-visible">
     <div class="flex items-center gap-2">
       <i class="ri-calendar-line text-gray-400"></i>
       <h2 class="text-lg font-semibold text-gray-900">Listado</h2>
@@ -70,7 +70,7 @@
       </div>
     </div>
 
-    <div class="mt-4 table-shell table-shell--overflow-visible table-responsive-cards">
+    <div class="mt-4 table-shell table-shell--overflow-visible table-responsive-cards !overflow-visible">
       <table class="table appointments-table" id="tabla-citas">
         <thead>
           <tr>
@@ -108,7 +108,7 @@
             @endphp
             <tr class="{{ $estado === 'pendiente' && $priorityLevel === 'ALTA' ? 'priority-row priority-row--alta' : '' }}">
               <td data-label="#" class="col-idx">{{ $loop->iteration }}</td>
-              <td data-label="Paciente">{{ optional($cita->paciente)->name ?? '—' }}</td>
+              <td data-label="Paciente">{{ $cita->nombrePacienteReal() }}</td>
               <td data-label="Especialidad">{{ optional($cita->especialidad)->nombre ?? '—' }}</td>
               <td data-label="Fecha">{{ \Carbon\Carbon::parse($cita->fecha)->format('d/m/Y') }}</td>
               <td data-label="Hora">{{ \Carbon\Carbon::parse($cita->hora)->format('H:i') }}</td>
@@ -162,7 +162,7 @@
                         <a class="btn btn-ghost btn-sm justify-start" href="{{ route('doctor.citas.soap',$cita->id) }}" role="menuitem">
                           <i class="ri-stethoscope-line"></i> Registrar nota clinica
                         </a>
-                        <a class="btn btn-ghost btn-sm justify-start" href="{{ route('doctor.pacientes.historial', $cita->paciente_id) }}" role="menuitem">
+                        <a class="btn btn-ghost btn-sm justify-start" href="{{ route('doctor.pacientes.historial', $cita->paciente_id).($cita->dependiente_id ? '?dependiente_id='.$cita->dependiente_id : '') }}" role="menuitem">
                           <i class="ri-file-list-2-line"></i> Ver expediente del paciente
                         </a>
                         @if($soapEstado === 'signed')
@@ -191,7 +191,7 @@
                         <a class="btn btn-ghost btn-sm justify-start" href="{{ route('doctor.citas.soap',$cita->id) }}" role="menuitem">
                           <i class="ri-stethoscope-line"></i> Ver nota clinica
                         </a>
-                        <a class="btn btn-ghost btn-sm justify-start" href="{{ route('doctor.pacientes.historial', $cita->paciente_id) }}" role="menuitem">
+                        <a class="btn btn-ghost btn-sm justify-start" href="{{ route('doctor.pacientes.historial', $cita->paciente_id).($cita->dependiente_id ? '?dependiente_id='.$cita->dependiente_id : '') }}" role="menuitem">
                           <i class="ri-file-list-2-line"></i> Ver expediente del paciente
                         </a>
 
@@ -244,9 +244,15 @@
                           </a>
                         @endif
 
-                        <a class="btn btn-ghost btn-sm justify-start" href="{{ route('doctor.laboratorio.create', ['paciente_id' => $cita->paciente_id]) }}" role="menuitem">
-                          <i class="ri-flask-line"></i> Orden laboratorio
+                        <a class="btn btn-ghost btn-sm justify-start" href="{{ route('doctor.pedidos-laboratorio.create', $cita) }}" role="menuitem">
+                          <i class="ri-flask-line"></i> Pedido laboratorio
                         </a>
+
+                        @if($cita->pedidoLaboratorio)
+                          <a class="btn btn-ghost btn-sm justify-start" href="{{ route('doctor.pedidos-laboratorio.download', $cita->pedidoLaboratorio) }}" role="menuitem">
+                            <i class="ri-file-shield-line"></i> Descargar Pedido Lab MVP
+                          </a>
+                        @endif
                       @endif
                     </div>
                   </div>

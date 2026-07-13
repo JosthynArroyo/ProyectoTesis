@@ -161,8 +161,15 @@ class CitaOverrideController extends Controller
             ])->withInput();
         }
 
-        event(new CitaAgendada($cita));
-        EnviarConfirmacionCitaJob::dispatch($cita);
+        try {
+            event(new CitaAgendada($cita));
+            EnviarConfirmacionCitaJob::dispatch($cita);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Error al notificar cita agendada en override: ' . $e->getMessage(), [
+                'cita_id' => $cita->id,
+                'exception' => $e
+            ]);
+        }
 
         $msg = $bloqueado && $forzarBloqueo
             ? 'Cita creada con override de pagos pendientes. Accion auditada.'

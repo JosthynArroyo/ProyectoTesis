@@ -11,10 +11,12 @@ class Receta extends Model
 
     protected $fillable = [
         'cita_id',
+        'nota_soap_id',
         'clinical_record_id',
         'diagnostico',
         'medicamentos',
         'indicaciones',
+        'csv',
         'pdf_path',
         'enviado_en',
     ];
@@ -28,6 +30,11 @@ class Receta extends Model
     public function cita()
     {
         return $this->belongsTo(Cita::class, 'cita_id');
+    }
+
+    public function notaSoap()
+    {
+        return $this->belongsTo(NotaSoap::class, 'nota_soap_id');
     }
 
     public function clinicalRecord()

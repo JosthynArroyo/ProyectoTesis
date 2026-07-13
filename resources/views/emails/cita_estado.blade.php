@@ -66,8 +66,14 @@
         </tr>
         <tr>
             <td style="width:38%; padding:14px 20px; border-bottom:1px solid #eef2f7; font-size:13px; font-weight:700; color:#64748b;">Paciente</td>
-            <td style="padding:14px 20px; border-bottom:1px solid #eef2f7; font-size:14px; font-weight:600; color:#0f172a;">{{ $citaObj?->paciente?->name ?? 'Paciente' }}</td>
+            <td style="padding:14px 20px; border-bottom:1px solid #eef2f7; font-size:14px; font-weight:600; color:#0f172a;">{{ $citaObj?->dependiente_id && $citaObj?->dependiente ? $citaObj->dependiente->nombre : ($citaObj?->paciente?->name ?? 'Paciente') }}</td>
         </tr>
+        @if($citaObj?->dependiente_id && $citaObj?->dependiente)
+        <tr>
+            <td style="padding:14px 20px; border-bottom:1px solid #eef2f7; font-size:13px; font-weight:700; color:#64748b;">Representante</td>
+            <td style="padding:14px 20px; border-bottom:1px solid #eef2f7; font-size:14px; font-weight:600; color:#0f172a;">{{ $citaObj?->paciente?->name ?? '-' }}</td>
+        </tr>
+        @endif
         <tr>
             <td style="padding:14px 20px; border-bottom:1px solid #eef2f7; font-size:13px; font-weight:700; color:#64748b;">{{ $labelProfesional }}</td>
             <td style="padding:14px 20px; border-bottom:1px solid #eef2f7; font-size:14px; font-weight:600; color:#0f172a;">{{ $citaObj?->doctor?->name ?? ($isLab ? 'Laboratorio clínico' : 'Doctor/a') }}</td>

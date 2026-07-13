@@ -33,6 +33,7 @@ class NotaSoap extends Model
         'plan_seguimiento',
         'follow_up_date',
         'follow_up_notes',
+        'follow_up_cita_id',
         'plan_notas',
     ];
 
@@ -61,6 +62,11 @@ class NotaSoap extends Model
     public function enmiendas()
     {
         return $this->hasMany(NotaSoapEnmienda::class, 'nota_soap_id');
+    }
+
+    public function followUpCita()
+    {
+        return $this->belongsTo(Cita::class, 'follow_up_cita_id');
     }
 
     public function firmadaPor()

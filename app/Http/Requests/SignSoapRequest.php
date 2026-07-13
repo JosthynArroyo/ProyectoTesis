@@ -90,14 +90,6 @@ class SignSoapRequest extends FormRequest
             if (! $tienePrincipal) {
                 $v->errors()->add('diagnosticos', 'Debes registrar al menos un diagnostico principal.');
             }
-
-            $legacyFollowUp = trim((string) $this->input('plan_seguimiento', ''));
-            $followUpDate = trim((string) $this->input('follow_up_date', ''));
-            $followUpNotes = trim((string) $this->input('follow_up_notes', ''));
-
-            if ($legacyFollowUp === '' && $followUpDate === '' && $followUpNotes === '') {
-                $v->errors()->add('follow_up_date', 'Registra la fecha o el resumen de seguimiento clínico.');
-            }
         });
     }
 
@@ -115,7 +107,7 @@ class SignSoapRequest extends FormRequest
         $height = (float) $normalized;
 
         return $height > 0 && $height <= 3
-            ? (string) round($height * 100, 2)
+            ? (string) round($height * 100)
             : $normalized;
     }
 

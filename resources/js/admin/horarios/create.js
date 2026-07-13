@@ -1,3 +1,5 @@
+import { populateHoursSelects, getClinicHoursConfig } from '../../shared/horarios/schedule-common.js';
+
 (function(){
   const form=document.getElementById('form-horario');
   const wrap=document.getElementById('dias-wrap');
@@ -10,6 +12,9 @@
   const f1Trigger=document.getElementById('admin-horario-fecha-inicio-trigger');
   const f2Trigger=document.getElementById('admin-horario-fecha-fin-trigger');
   const today=f1?.min||'';
+
+  const clinicConfig = getClinicHoursConfig();
+  const getInterval = () => parseInt(document.getElementById('intervalo_minutos')?.value || '30', 10);
 
   function parseLocalDate(s){
     if(!s)return null;
@@ -57,7 +62,9 @@
     wrap.addEventListener('change',e=>{
       if(e.target&&e.target.type==='checkbox'){
         e.target.closest('.day-chip').classList.toggle('active',e.target.checked);
-        toggleRows();updateKPI();
+        toggleRows();
+        updateKPI();
+        syncGlobalSelectors();
       }
     });
   }
@@ -71,7 +78,9 @@
         i.checked=on;
         i.closest('.day-chip').classList.toggle('active',on);
       });
-      toggleRows();updateKPI();
+      toggleRows();
+      updateKPI();
+      syncGlobalSelectors();
     });
   });
 
@@ -88,7 +97,9 @@
     const on=!!same.checked;
     boxGlobal.style.display=on ? '' : 'none';
     boxPerDay.style.display=on ? 'none' : '';
-    toggleRows();updateKPI();
+    toggleRows();
+    updateKPI();
+    syncGlobalSelectors();
   }
 
   function toggleRows(){
@@ -97,9 +108,9 @@
       const d=parseInt(row.dataset.dia,10);
       const show=checked.has(d);
       row.style.opacity=show ? '1' : '.35';
-      row.querySelectorAll('input').forEach(i=>i.disabled=!show);
+      row.querySelectorAll('input, select').forEach(i=>i.disabled=!show);
     });
-    if(same.checked)boxPerDay.querySelectorAll('input').forEach(i=>i.disabled=true);
+    if(same.checked)boxPerDay.querySelectorAll('input, select').forEach(i=>i.disabled=true);
   }
 
   function updateKPI(){
@@ -118,11 +129,81 @@
     kpi.textContent=selDays.length ? `Dias marcados: ${selDays.length}. Fechas afectadas en el rango: ${total}.` : `Selecciona al menos un dia.`;
   }
 
+  function syncGlobalSelectors() {
+    const startSelect = document.getElementById('hora_inicio_global');
+    const endSelect = document.getElementById('hora_fin_global');
+    const infoText = document.getElementById('clinic-hours-info-global');
+    if (!startSelect || !endSelect) return;
+
+    const checkboxes = wrap.querySelectorAll('input[type="checkbox"]');
+    let maxOpening = null;
+    let minClosing = null;
+    let checkedCount = 0;
+    let closedChecked = false;
+
+    checkboxes.forEach(cb => {
+      if (cb.checked) {
+        checkedCount++;
+        const dayNum = parseInt(cb.value, 10);
+        const dayConfig = clinicConfig[dayNum];
+        if (!dayConfig || String(dayConfig.status) !== '1') {
+          closedChecked = true;
+        } else {
+          if (maxOpening === null || dayConfig.opening > maxOpening) {
+            maxOpening = dayConfig.opening;
+          }
+          if (minClosing === null || dayConfig.closing < minClosing) {
+            minClosing = dayConfig.closing;
+          }
+        }
+      }
+    });
+
+    if (checkedCount === 0) {
+      startSelect.innerHTML = '<option value="">Selecciona días</option>';
+      endSelect.innerHTML = '<option value="">Selecciona días</option>';
+      startSelect.disabled = true;
+      endSelect.disabled = true;
+      if (infoText) infoText.textContent = 'Selecciona al menos un día.';
+      return;
+    }
+
+    if (closedChecked) {
+      startSelect.innerHTML = '<option value="">Día cerrado seleccionado</option>';
+      endSelect.innerHTML = '<option value="">Día cerrado seleccionado</option>';
+      startSelect.disabled = true;
+      endSelect.disabled = true;
+      if (infoText) infoText.textContent = 'Has seleccionado un día en que la clínica está cerrada.';
+      return;
+    }
+
+    const mockDayNum = 99;
+    clinicConfig[mockDayNum] = {
+      status: '1',
+      opening: maxOpening,
+      closing: minClosing
+    };
+    populateHoursSelects(mockDayNum, startSelect, endSelect, infoText, clinicConfig, startSelect.dataset.old, endSelect.dataset.old, getInterval());
+  }
+
+  // Populate static per-day selectors
+  function initPerDaySelectors() {
+    for (let W = 1; W <= 7; W++) {
+      const startSelect = document.getElementById(`dias_${W}_hora_inicio`);
+      const endSelect = document.getElementById(`dias_${W}_hora_fin`);
+      if (startSelect && endSelect) {
+        populateHoursSelects(W, startSelect, endSelect, null, clinicConfig, startSelect.dataset.old, endSelect.dataset.old, getInterval());
+      }
+    }
+  }
+
   bindDateTrigger(f1Trigger,f1);
   bindDateTrigger(f2Trigger,f2);
   syncMode();
   syncDateRange();
   validDateRange();
+  initPerDaySelectors();
+  syncGlobalSelectors();
 
   form&&form.addEventListener('submit',e=>{
     syncDateRange();

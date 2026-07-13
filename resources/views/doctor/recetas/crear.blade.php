@@ -27,13 +27,14 @@
 
       <div>
         <label for="medicamentos" class="form-label">Medicamentos (dosis y frecuencia)</label>
-        <textarea id="medicamentos" name="medicamentos" required class="form-textarea">{{ old('medicamentos') }}</textarea>
+        <textarea id="medicamentos" name="medicamentos" required class="form-textarea">{{ old('medicamentos', $medicamentosSugeridos ?? '') }}</textarea>
+        <p class="mt-2 text-xs text-gray-500">Se cargan automaticamente desde la medicacion activa del expediente cuando existe.</p>
         @error('medicamentos')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
 
       <div>
         <label for="indicaciones" class="form-label">Indicaciones adicionales</label>
-        <textarea id="indicaciones" name="indicaciones" required class="form-textarea">{{ old('indicaciones') }}</textarea>
+        <textarea id="indicaciones" name="indicaciones" class="form-textarea" placeholder="Opcional">{{ old('indicaciones') }}</textarea>
         @error('indicaciones')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
     </div>

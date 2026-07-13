@@ -1,8 +1,8 @@
 @extends('layouts.doctor')
-@section('title', 'Nota medica de consulta')
+@section('title', 'Nota médica de consulta')
 @section('activeSidebar', 'citas')
-@section('header-title','Nota medica de consulta')
-@section('header-subtitle','Registro clinico individual de la atencion')
+@section('header-title','Nota médica de consulta')
+@section('header-subtitle','Registro clínico individual de la atención')
 
 @php
   $nota = $nota ?? null;
@@ -24,6 +24,8 @@
   $antecedentesDiabetes = old('antecedentes_diabetes', $antecedentesData['diabetes'] ?? '');
   $antecedentesHipertension = old('antecedentes_hipertension', $antecedentesData['hipertension'] ?? '');
   $antecedentesOtros = old('antecedentes_otros', $antecedentesData['otros'] ?? '');
+  $antecedentesFamiliares = old('antecedentes_familiares', $antecedentesData['familiares'] ?? '');
+  $antecedentesInmunizaciones = old('antecedentes_inmunizaciones', $antecedentesData['inmunizaciones'] ?? '');
   $internalHpi = old('subjetivo_hpi', $nota?->subjetivo_hpi ?: 'Registro estructurado de antecedentes del paciente.');
   $internalRos = $rosText !== '' ? $rosText : 'Registro estructurado de alergias y antecedentes.';
   $internalNotas = old('subjetivo_notas', $nota?->subjetivo_notas ?: 'Registro estructurado de alergias del paciente.');
@@ -44,6 +46,9 @@
 @endphp
 
 @section('main')
+@php
+  $expedienteUrl = route('doctor.pacientes.historial', ['paciente' => $cita->paciente_id] + ($cita->dependiente_id ? ['dependiente_id' => $cita->dependiente_id] : []));
+@endphp
 <div
   class="space-y-6"
   id="soap-page"
@@ -57,13 +62,13 @@
 >
   <div class="panel-action-bar panel-action-bar--between">
     <div class="panel-action-bar__meta">
-      Cita #{{ $cita->id }} | {{ optional($cita->paciente)->name ?? 'Paciente' }} | {{ optional($cita->especialidad)->nombre ?? '-' }} |
+      Cita #{{ $cita->id }} | {{ $cita->nombrePacienteReal() }} | {{ optional($cita->especialidad)->nombre ?? '-' }} |
       {{ \Carbon\Carbon::parse($cita->fecha)->format('d/m/Y') }} {{ \Carbon\Carbon::parse($cita->hora)->format('H:i') }}
     </div>
     <div class="panel-action-bar__actions">
       <x-ui.badge :tone="$isSigned ? 'success' : 'warning'">{{ $isSigned ? 'Firmada' : 'Borrador' }}</x-ui.badge>
       @if($cita->paciente_id)
-        <a href="{{ route('doctor.pacientes.historial', $cita->paciente_id) }}" class="btn btn-ghost btn-sm">Abrir expediente del paciente</a>
+        <a href="{{ $expedienteUrl }}" class="btn btn-ghost btn-sm">Abrir expediente del paciente</a>
       @endif
     </div>
   </div>
@@ -78,6 +83,8 @@
       @endif
     </div>
   @endif
+
+
 
   <section class="card p-6">
     <form method="POST" action="{{ route('doctor.citas.soap.store', $cita->id) }}" class="space-y-6">
@@ -97,94 +104,226 @@
           <div>
             <label class="form-label" for="subjetivo_motivo">Motivo de consulta</label>
             <textarea id="subjetivo_motivo" name="subjetivo_motivo" class="form-textarea" rows="3" @if($isSigned) readonly @endif>{{ $motivoConsulta }}</textarea>
+            @error('subjetivo_motivo')
+              <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+            @enderror
             <p class="mt-2 text-xs text-gray-500">Tomado del motivo registrado por el paciente al agendar la cita.</p>
           </div>
 
-          <label class="inline-flex items-center gap-2 text-sm text-gray-700">
-            <input type="checkbox" name="alergias_no_conocidas" value="1" @checked($alergiasNoConocidasChecked) @if($isSigned) disabled @endif>
-            Sin alergias conocidas
-          </label>
-          <textarea name="alergias_detalle" class="form-textarea" rows="3" placeholder="Detalle de alergias" @if($isSigned) readonly @endif>{{ $alergiasDetalle }}</textarea>
+          <div>
+            <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+              <input type="checkbox" name="alergias_no_conocidas" value="1" @checked($alergiasNoConocidasChecked) @if($isSigned) disabled @endif>
+              Sin alergias conocidas
+            </label>
+            @error('alergias_no_conocidas')
+              <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+            @enderror
+          </div>
+          <div>
+            <textarea name="alergias_detalle" class="form-textarea" rows="3" placeholder="Detalle de alergias" @if($isSigned) readonly @endif>{{ $alergiasDetalle }}</textarea>
+            @error('alergias_detalle')
+              <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+            @enderror
+          </div>
 
           <div class="grid gap-3 md:grid-cols-2">
-            <textarea name="antecedentes_cronicas" class="form-textarea" rows="3" placeholder="Enfermedades cronicas" @if($isSigned) readonly @endif>{{ $antecedentesCronicas }}</textarea>
-            <textarea name="antecedentes_cirugias" class="form-textarea" rows="3" placeholder="Cirugias previas" @if($isSigned) readonly @endif>{{ $antecedentesCirugias }}</textarea>
-            <textarea name="antecedentes_hospitalizaciones" class="form-textarea" rows="3" placeholder="Hospitalizaciones" @if($isSigned) readonly @endif>{{ $antecedentesHospitalizaciones }}</textarea>
-            <textarea name="antecedentes_otros" class="form-textarea" rows="3" placeholder="Otros antecedentes" @if($isSigned) readonly @endif>{{ $antecedentesOtros }}</textarea>
-            <select name="antecedentes_diabetes" class="form-select" @if($isSigned) disabled @endif>
-              <option value="">Diabetes</option>
-              <option value="No" @selected($antecedentesDiabetes === 'No')>No</option>
-              <option value="Tipo 1" @selected($antecedentesDiabetes === 'Tipo 1')>Tipo 1</option>
-              <option value="Tipo 2" @selected($antecedentesDiabetes === 'Tipo 2')>Tipo 2</option>
-              <option value="Gestacional" @selected($antecedentesDiabetes === 'Gestacional')>Gestacional</option>
-              <option value="No aplica" @selected($antecedentesDiabetes === 'No aplica')>No aplica</option>
-            </select>
-            <select name="antecedentes_hipertension" class="form-select" @if($isSigned) disabled @endif>
-              <option value="">Hipertension</option>
-              <option value="No" @selected($antecedentesHipertension === 'No')>No</option>
-              <option value="Si" @selected($antecedentesHipertension === 'Si')>Si</option>
-              <option value="No documentado" @selected($antecedentesHipertension === 'No documentado')>No documentado</option>
-            </select>
+            <div>
+              <textarea name="antecedentes_cronicas" class="form-textarea" rows="3" placeholder="Enfermedades crónicas" @if($isSigned) readonly @endif>{{ $antecedentesCronicas }}</textarea>
+              @error('antecedentes_cronicas')
+                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+              @enderror
+            </div>
+            <div>
+              <textarea name="antecedentes_cirugias" class="form-textarea" rows="3" placeholder="Cirugías previas" @if($isSigned) readonly @endif>{{ $antecedentesCirugias }}</textarea>
+              @error('antecedentes_cirugias')
+                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+              @enderror
+            </div>
+            <div>
+              <textarea name="antecedentes_hospitalizaciones" class="form-textarea" rows="3" placeholder="Hospitalizaciones" @if($isSigned) readonly @endif>{{ $antecedentesHospitalizaciones }}</textarea>
+              @error('antecedentes_hospitalizaciones')
+                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+              @enderror
+            </div>
+            <div>
+              <textarea name="antecedentes_otros" class="form-textarea" rows="3" placeholder="Otros antecedentes" @if($isSigned) readonly @endif>{{ $antecedentesOtros }}</textarea>
+              @error('antecedentes_otros')
+                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+              @enderror
+            </div>
+            <div>
+              <textarea name="antecedentes_familiares" class="form-textarea" rows="3" placeholder="Antecedentes familiares" @if($isSigned) readonly @endif>{{ $antecedentesFamiliares }}</textarea>
+              @error('antecedentes_familiares')
+                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+              @enderror
+            </div>
+            <div>
+              <textarea name="antecedentes_inmunizaciones" class="form-textarea" rows="3" placeholder="Inmunizaciones" @if($isSigned) readonly @endif>{{ $antecedentesInmunizaciones }}</textarea>
+              @error('antecedentes_inmunizaciones')
+                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+              @enderror
+            </div>
+            <div>
+              <select name="antecedentes_diabetes" class="form-select" @if($isSigned) disabled @endif>
+                <option value="">Diabetes</option>
+                <option value="No" @selected($antecedentesDiabetes === 'No')>No</option>
+                <option value="Tipo 1" @selected($antecedentesDiabetes === 'Tipo 1')>Tipo 1</option>
+                <option value="Tipo 2" @selected($antecedentesDiabetes === 'Tipo 2')>Tipo 2</option>
+                <option value="Gestacional" @selected($antecedentesDiabetes === 'Gestacional')>Gestacional</option>
+                <option value="No aplica" @selected($antecedentesDiabetes === 'No aplica')>No aplica</option>
+              </select>
+              @error('antecedentes_diabetes')
+                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+              @enderror
+            </div>
+            <div>
+              <select name="antecedentes_hipertension" class="form-select" @if($isSigned) disabled @endif>
+                <option value="">Hipertensión</option>
+                <option value="No" @selected($antecedentesHipertension === 'No')>No</option>
+                <option value="Si" @selected($antecedentesHipertension === 'Si')>Sí</option>
+                <option value="No documentado" @selected($antecedentesHipertension === 'No documentado')>No documentado</option>
+              </select>
+              @error('antecedentes_hipertension')
+                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+              @enderror
+            </div>
           </div>
         </section>
 
         <section class="space-y-4 rounded-2xl border border-gray-200 p-4">
           <div>
             <p class="text-xs uppercase tracking-widest text-gray-500">Objetivo</p>
-            <h3 class="text-lg font-semibold text-gray-900">Signos vitales y exploracion</h3>
+            <h3 class="text-lg font-semibold text-gray-900">Signos vitales y exploración</h3>
           </div>
 
-          <div class="grid gap-3 md:grid-cols-2">
-            <input id="sv_ta" name="sv_ta" class="form-input" placeholder="Presion arterial" value="{{ old('sv_ta', $sv['ta'] ?? '') }}" required @if($isSigned) readonly @endif>
-            <input id="sv_fc" name="sv_fc" type="number" class="form-input" placeholder="Pulso" value="{{ old('sv_fc', $sv['fc'] ?? '') }}" required @if($isSigned) readonly @endif>
-            <input id="sv_fr" name="sv_fr" type="number" class="form-input" placeholder="Respiracion" value="{{ old('sv_fr', $sv['fr'] ?? '') }}" required @if($isSigned) readonly @endif>
-            <input id="sv_temp" name="sv_temp" type="number" step="0.1" class="form-input" placeholder="Temperatura" value="{{ old('sv_temp', $sv['temp'] ?? '') }}" required @if($isSigned) readonly @endif>
-            <input id="sv_spo2" name="sv_spo2" type="number" class="form-input" placeholder="SpO2" value="{{ old('sv_spo2', $sv['spo2'] ?? '') }}" required @if($isSigned) readonly @endif>
-            <input id="sv_peso" name="sv_peso" type="number" step="0.1" class="form-input" placeholder="Peso" value="{{ old('sv_peso', $sv['peso'] ?? '') }}" required @if($isSigned) readonly @endif>
+            <div class="relative">
+              <label class="sr-only" for="sv_ta">Presión arterial en mmHg</label>
+              <input id="sv_ta" name="sv_ta" class="form-input pr-20" placeholder="Presión arterial" value="{{ old('sv_ta', $sv['ta'] ?? '') }}" aria-describedby="sv_ta_unit" required @if($isSigned) readonly @endif>
+              <span id="sv_ta_unit" class="pointer-events-none absolute inset-y-0 right-4 flex items-center text-sm font-semibold text-gray-500">mmHg</span>
+              @error('sv_ta')
+                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+              @enderror
+            </div>
+            <div class="relative">
+              <label class="sr-only" for="sv_fc">Pulso o frecuencia cardiaca en lpm</label>
+              <input id="sv_fc" name="sv_fc" type="number" class="form-input pr-16" placeholder="Pulso" value="{{ old('sv_fc', $sv['fc'] ?? '') }}" aria-describedby="sv_fc_unit" required @if($isSigned) readonly @endif>
+              <span id="sv_fc_unit" class="pointer-events-none absolute inset-y-0 right-4 flex items-center text-sm font-semibold text-gray-500">lpm</span>
+              @error('sv_fc')
+                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+              @enderror
+            </div>
+            <div class="relative">
+              <label class="sr-only" for="sv_fr">Frecuencia respiratoria en rpm</label>
+              <input id="sv_fr" name="sv_fr" type="number" class="form-input pr-16" placeholder="Respiración" value="{{ old('sv_fr', $sv['fr'] ?? '') }}" aria-describedby="sv_fr_unit" required @if($isSigned) readonly @endif>
+              <span id="sv_fr_unit" class="pointer-events-none absolute inset-y-0 right-4 flex items-center text-sm font-semibold text-gray-500">rpm</span>
+              @error('sv_fr')
+                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+              @enderror
+            </div>
+            <div class="relative">
+              <label class="sr-only" for="sv_temp">Temperatura en grados Celsius</label>
+              <input id="sv_temp" name="sv_temp" type="number" step="0.1" class="form-input pr-16" placeholder="Temperatura" value="{{ old('sv_temp', $sv['temp'] ?? '') }}" aria-describedby="sv_temp_unit" required @if($isSigned) readonly @endif>
+              <span id="sv_temp_unit" class="pointer-events-none absolute inset-y-0 right-4 flex items-center text-sm font-semibold text-gray-500">°C</span>
+              @error('sv_temp')
+                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+              @enderror
+            </div>
+            <div class="relative">
+              <label class="sr-only" for="sv_spo2">Saturación de oxígeno en porcentaje</label>
+              <input id="sv_spo2" name="sv_spo2" type="number" class="form-input pr-16" placeholder="SpO2" value="{{ old('sv_spo2', $sv['spo2'] ?? '') }}" aria-describedby="sv_spo2_unit" required @if($isSigned) readonly @endif>
+              <span id="sv_spo2_unit" class="pointer-events-none absolute inset-y-0 right-4 flex items-center text-sm font-semibold text-gray-500">%</span>
+              @error('sv_spo2')
+                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+              @enderror
+            </div>
+            <div class="relative">
+              <label class="sr-only" for="sv_peso">Peso en kilogramos</label>
+              <input id="sv_peso" name="sv_peso" type="number" step="0.1" class="form-input pr-16" placeholder="Peso" value="{{ old('sv_peso', $sv['peso'] ?? '') }}" aria-describedby="sv_peso_unit" required @if($isSigned) readonly @endif>
+              <span id="sv_peso_unit" class="pointer-events-none absolute inset-y-0 right-4 flex items-center text-sm font-semibold text-gray-500">kg</span>
+              @error('sv_peso')
+                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+              @enderror
+            </div>
             <div class="relative md:col-span-2">
-              <label class="sr-only" for="sv_talla">Estatura en centimetros</label>
+              <label class="sr-only" for="sv_talla">Estatura en centímetros</label>
               <input id="sv_talla" name="sv_talla" type="number" step="0.01" min="0" max="300" class="form-input pr-20" placeholder="Estatura" value="{{ old('sv_talla', $sv['talla'] ?? '') }}" aria-describedby="sv_talla_unit sv_talla_help" required @if($isSigned) readonly @endif>
               <span id="sv_talla_unit" class="pointer-events-none absolute inset-y-0 right-10 flex items-center text-sm font-semibold text-gray-500">cm</span>
+              @error('sv_talla')
+                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+              @enderror
             </div>
-            <p id="sv_talla_help" class="text-xs text-gray-500 md:col-span-2">Registra la estatura en centimetros. Puedes escribir 163 o 1,63; se guardara como 163 cm.</p>
+            <p id="sv_talla_help" class="text-xs text-gray-500 md:col-span-2">Registra la estatura en centímetros. Puedes escribir 163 o 1,63; se guardará como 163 cm.</p>
           </div>
 
           @if(!empty($signosPrevios))
             <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
-              Ultimos signos previos: TA {{ $signosPrevios['ta'] ?? '---' }}, FC {{ $signosPrevios['fc'] ?? '---' }}, FR {{ $signosPrevios['fr'] ?? '---' }}, Temp {{ $signosPrevios['temp'] ?? '---' }}.
+              Últimos signos previos: TA {{ $signosPrevios['ta'] ?? '---' }} mmHg, FC {{ $signosPrevios['fc'] ?? '---' }} lpm, FR {{ $signosPrevios['fr'] ?? '---' }} rpm, Temp {{ $signosPrevios['temp'] ?? '---' }} °C.
             </div>
           @endif
 
-          <textarea id="examen_fisico" name="examen_fisico" class="form-textarea" rows="4" placeholder="Hallazgos del examen fisico" required @if($isSigned) readonly @endif>{{ old('examen_fisico', $nota?->examen_fisico) }}</textarea>
-          <textarea id="notas_objetivas" name="notas_objetivas" class="form-textarea" rows="4" placeholder="Observaciones medicas" required @if($isSigned) readonly @endif>{{ old('notas_objetivas', $nota?->notas_objetivas) }}</textarea>
+          <div>
+            <textarea id="examen_fisico" name="examen_fisico" class="form-textarea" rows="4" placeholder="Hallazgos del examen físico" required @if($isSigned) readonly @endif>{{ old('examen_fisico', $nota?->examen_fisico) }}</textarea>
+            @error('examen_fisico')
+              <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+            @enderror
+          </div>
+          <div>
+            <textarea id="notas_objetivas" name="notas_objetivas" class="form-textarea" rows="4" placeholder="Observaciones médicas" required @if($isSigned) readonly @endif>{{ old('notas_objetivas', $nota?->notas_objetivas) }}</textarea>
+            @error('notas_objetivas')
+              <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+            @enderror
+          </div>
         </section>
       </div>
 
       <section class="space-y-4 rounded-2xl border border-gray-200 p-4">
         <div>
-          <p class="text-xs uppercase tracking-widest text-gray-500">Evaluacion</p>
-          <h3 class="text-lg font-semibold text-gray-900">Assessment y diagnosticos</h3>
+          <p class="text-xs uppercase tracking-widest text-gray-500">Evaluación</p>
+          <h3 class="text-lg font-semibold text-gray-900">Evaluación y diagnósticos</h3>
         </div>
 
-        <textarea id="assessment" name="assessment" class="form-textarea" rows="4" placeholder="Evaluacion medica" required @if($isSigned) readonly @endif>{{ old('assessment', $nota?->assessment) }}</textarea>
+        <div>
+          <textarea id="assessment" name="assessment" class="form-textarea" rows="4" placeholder="Evaluación médica" required @if($isSigned) readonly @endif>{{ old('assessment', $nota?->assessment) }}</textarea>
+          @error('assessment')
+            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+          @enderror
+        </div>
 
         <div>
           <div class="mb-3 flex items-center justify-between">
-            <label class="form-label">Diagnosticos *</label>
+            <label class="form-label">Diagnósticos *</label>
             @if(!$isSigned)
-              <button class="btn btn-ghost btn-sm" type="button" id="add-diagnostico">Agregar diagnostico</button>
+              <button class="btn btn-ghost btn-sm" type="button" id="add-diagnostico">Agregar diagnóstico</button>
             @endif
           </div>
+          @error('diagnosticos')
+            <p class="text-red-500 text-sm mb-3">{{ $message }}</p>
+          @enderror
           <div class="space-y-3" id="diagnosticos-wrap">
             @foreach($diagnosticos as $index => $diag)
               <div class="grid gap-2 md:grid-cols-[140px_1fr_160px]" data-diag-row="1">
-                <select name="diagnosticos[{{ $index }}][tipo]" class="form-select" @if($isSigned) disabled @endif>
-                  <option value="principal" @selected(($diag['tipo'] ?? '') === 'principal')>Principal</option>
-                  <option value="secundario" @selected(($diag['tipo'] ?? '') === 'secundario')>Secundario</option>
-                  <option value="diferencial" @selected(($diag['tipo'] ?? '') === 'diferencial')>Diferencial</option>
-                </select>
-                <input name="diagnosticos[{{ $index }}][texto]" class="form-input" value="{{ $diag['texto'] ?? '' }}" placeholder="Diagnostico" @if($isSigned) readonly @endif>
-                <input name="diagnosticos[{{ $index }}][cie10]" class="form-input" value="{{ $diag['cie10'] ?? '' }}" placeholder="CIE-10" @if($isSigned) readonly @endif>
+                <div>
+                  <select name="diagnosticos[{{ $index }}][tipo]" class="form-select" @if($isSigned) disabled @endif>
+                    <option value="principal" @selected(($diag['tipo'] ?? '') === 'principal')>Principal</option>
+                    <option value="secundario" @selected(($diag['tipo'] ?? '') === 'secundario')>Secundario</option>
+                    <option value="diferencial" @selected(($diag['tipo'] ?? '') === 'diferencial')>Diferencial</option>
+                  </select>
+                  @error("diagnosticos.$index.tipo")
+                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                  @enderror
+                </div>
+                <div>
+                  <input name="diagnosticos[{{ $index }}][texto]" class="form-input" value="{{ $diag['texto'] ?? '' }}" placeholder="Diagnóstico" @if($isSigned) readonly @endif>
+                  @error("diagnosticos.$index.texto")
+                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                  @enderror
+                </div>
+                <div>
+                  <input name="diagnosticos[{{ $index }}][cie10]" class="form-input" value="{{ $diag['cie10'] ?? '' }}" placeholder="CIE-10" @if($isSigned) readonly @endif>
+                  @error("diagnosticos.$index.cie10")
+                    <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                  @enderror
+                </div>
               </div>
             @endforeach
           </div>
@@ -197,18 +336,34 @@
           <h3 class="text-lg font-semibold text-gray-900">Tratamiento y seguimiento</h3>
         </div>
 
-        <textarea id="plan_general" name="plan_general" class="form-textarea" rows="4" placeholder="Tratamiento indicado" required @if($isSigned) readonly @endif>{{ old('plan_general', $nota?->plan_general) }}</textarea>
+        <div>
+          <textarea id="plan_general" name="plan_general" class="form-textarea" rows="4" placeholder="Tratamiento indicado" required @if($isSigned) readonly @endif>{{ old('plan_general', $nota?->plan_general) }}</textarea>
+          @error('plan_general')
+            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+          @enderror
+        </div>
         <div class="grid gap-3 md:grid-cols-2">
           <div>
-            <label class="form-label" for="follow_up_date">Proximo control</label>
+            <label class="form-label" for="follow_up_date">Próximo control</label>
             <input id="follow_up_date" type="date" name="follow_up_date" class="form-input" value="{{ $followUpDate }}" min="{{ $controlMinFecha }}" @if($isSigned) readonly @endif>
+            @error('follow_up_date')
+              <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+            @enderror
           </div>
           <div>
             <label class="form-label" for="follow_up_notes">Observaciones de seguimiento</label>
             <textarea id="follow_up_notes" name="follow_up_notes" class="form-textarea" rows="3" @if($isSigned) readonly @endif>{{ $followUpNotes }}</textarea>
+            @error('follow_up_notes')
+              <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+            @enderror
           </div>
         </div>
-        <textarea id="plan_notas" name="plan_notas" class="form-textarea" rows="4" placeholder="Indicaciones al paciente" required @if($isSigned) readonly @endif>{{ old('plan_notas', $nota?->plan_notas) }}</textarea>
+        <div>
+          <textarea id="plan_notas" name="plan_notas" class="form-textarea" rows="4" placeholder="Indicaciones al paciente" required @if($isSigned) readonly @endif>{{ old('plan_notas', $nota?->plan_notas) }}</textarea>
+          @error('plan_notas')
+            <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+          @enderror
+        </div>
 
         <div class="rounded-2xl border border-gray-200 bg-white/80 p-4" id="plan-control-box">
           @if($isSigned && $controlCita)
@@ -219,11 +374,15 @@
                   {{ \Carbon\Carbon::parse($controlCita->fecha)->format('d/m/Y') }}
                   {{ \Carbon\Carbon::parse($controlCita->hora)->format('H:i') }}
                 </p>
-                <p class="mt-1 text-xs text-gray-500">Estado: {{ $controlEstado }}. Puedes reagendar o cancelar este control.</p>
+                <p class="mt-1 text-xs text-gray-500">
+                  Estado: {{ $controlEstado }}.
+                  {{ $controlCita->especialidad?->nombre ? 'Especialidad: '.$controlCita->especialidad->nombre.'.' : '' }}
+                  {{ $controlCita->doctor?->name ? 'Médico: '.$controlCita->doctor->name.'.' : '' }}
+                </p>
               </div>
               <form method="POST" action="{{ route('doctor.citas.proxima.cancelar', ['cita' => $cita->id, 'control' => $controlCita->id]) }}">
                 @csrf
-                <button class="btn btn-danger btn-sm" type="submit">Cancelar control</button>
+                <button class="btn btn-danger btn-sm" type="submit" onclick="return confirm('Cancelar el control agendado no elimina la nota clinica, pero deja la cita sin vigencia. ¿Deseas continuar?')">Cancelar control</button>
               </form>
             </div>
 
@@ -245,7 +404,12 @@
             <p id="control-help" class="mt-2 text-xs text-gray-500">Selecciona una nueva fecha para consultar horarios disponibles.</p>
           @else
             <h4 class="text-sm font-semibold text-gray-900">Agendar control</h4>
-            <p class="mt-1 text-xs text-gray-500">Programa la proxima cita de seguimiento sin salir de esta consulta.</p>
+            <p class="mt-1 text-xs text-gray-500">
+              Programa la próxima cita de seguimiento sin salir de esta consulta.
+              @if($isSigned && $followUpDate)
+                <span class="block mt-1">Fecha sugerida registrada en la nota, aun sin cita agendada: {{ \Carbon\Carbon::parse($followUpDate)->format('d/m/Y') }}.</span>
+              @endif
+            </p>
             @if($isSigned)
               <div class="mt-3 grid gap-3 lg:grid-cols-[1fr_1fr_auto]">
                 <div>
@@ -287,7 +451,7 @@
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h3 class="text-lg font-semibold text-gray-900">Consulta cerrada</h3>
-          <p class="text-sm text-gray-600">La nota ya fue firmada. La correccion posterior se registra mediante enmiendas.</p>
+          <p class="text-sm text-gray-600">La nota ya fue firmada. La corrección posterior se registra mediante enmiendas.</p>
         </div>
         @if($cita->estado === \App\Models\Cita::ESTADO_CONFIRMADA)
           <form action="{{ route('doctor.citas.realizar', $cita->id) }}" method="POST">
@@ -316,8 +480,8 @@
 
       <form method="POST" action="{{ route('doctor.citas.soap.enmienda', $cita->id) }}" class="space-y-3">
         @csrf
-        <input id="motivo" name="motivo" class="form-input" value="{{ old('motivo') }}" placeholder="Motivo de la correccion" required>
-        <textarea id="contenido" name="contenido" class="form-textarea" rows="3" placeholder="Detalle de la correccion" required>{{ old('contenido') }}</textarea>
+        <input id="motivo" name="motivo" class="form-input" value="{{ old('motivo') }}" placeholder="Motivo de la corrección" required>
+        <textarea id="contenido" name="contenido" class="form-textarea" rows="3" placeholder="Detalle de la corrección" required>{{ old('contenido') }}</textarea>
         <div class="flex flex-wrap items-center justify-between gap-3">
           <a href="{{ route('doctor.citas') }}" class="btn btn-ghost">Volver</a>
           <button class="btn btn-outline" type="submit">Registrar enmienda</button>

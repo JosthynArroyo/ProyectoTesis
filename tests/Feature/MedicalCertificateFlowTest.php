@@ -8,9 +8,11 @@ use App\Models\ClinicalRecord;
 use App\Models\Especialidad;
 use App\Models\Role;
 use App\Models\User;
+use App\Mail\CertificadoMedicoMail;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -24,6 +26,7 @@ class MedicalCertificateFlowTest extends TestCase
 
         Carbon::setTestNow(Carbon::parse('2026-04-16 10:00:00', 'America/Guayaquil'));
         Storage::fake('local');
+        Mail::fake();
 
         $this->seed(DatabaseSeeder::class);
     }
@@ -71,6 +74,9 @@ class MedicalCertificateFlowTest extends TestCase
         $this->assertNotNull($certificado->clinical_record_id);
         $this->assertNotEmpty($certificado->pdf_path);
         Storage::disk('local')->assertExists($certificado->pdf_path);
+        $this->assertSame('sent', $certificado->fresh()->envio_estado);
+        $this->assertSame($patient->email, $certificado->fresh()->enviado_a);
+        Mail::assertSent(CertificadoMedicoMail::class);
 
         $this->actingAs($doctor)
             ->get(route('doctor.certificados.show', $certificado))

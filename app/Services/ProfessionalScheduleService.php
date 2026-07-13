@@ -9,6 +9,13 @@ use Carbon\Carbon;
 
 class ProfessionalScheduleService
 {
+    private SiteSettingsService $siteSettings;
+
+    public function __construct(SiteSettingsService $siteSettings)
+    {
+        $this->siteSettings = $siteSettings;
+    }
+
     public function parseFlexibleTime(string $time): Carbon
     {
         return strlen($time) >= 8
@@ -91,11 +98,43 @@ class ProfessionalScheduleService
         ?string $exceptHoldToken = null,
         string $timezone = 'America/Guayaquil'
     ): ?array {
+        $day = Carbon::parse($date)->isoWeekday();
+        $clinicHours = $this->getClinicHours($day);
+        if ($clinicHours['status'] === 0) {
+            return [
+                'field' => $messages['missing_schedule_field'] ?? 'hora',
+                'message' => $messages['missing_schedule'] ?? 'La clínica está cerrada este día.',
+            ];
+        }
+
+        $slotStr = $slot->format('H:i');
+
         $schedule = $this->findScheduleForSlot($professionalId, $date, $slot);
         if (! $schedule) {
             return [
                 'field' => $messages['missing_schedule_field'] ?? 'hora',
                 'message' => $messages['missing_schedule'] ?? 'No hay horario configurado para ese profesional en ese dia y hora.',
+            ];
+        }
+
+        // Intersect schedule and clinic hours to find effective boundary
+        $effectiveStart = max(substr($schedule->hora_inicio, 0, 5), $clinicHours['opening']);
+        $effectiveEnd = min(substr($schedule->hora_fin, 0, 5), $clinicHours['closing']);
+
+        if ($slotStr < $effectiveStart || $slotStr >= $effectiveEnd) {
+            return [
+                'field' => $messages['missing_schedule_field'] ?? 'hora',
+                'message' => $messages['missing_schedule'] ?? 'La hora seleccionada está fuera del horario permitido.',
+            ];
+        }
+
+        $interval = $this->intervalMinutes($schedule);
+        // Slot complete duration must fit before effectiveEnd
+        $slotEnd = $slot->copy()->addMinutes($interval)->format('H:i');
+        if ($slotEnd > $effectiveEnd) {
+            return [
+                'field' => $messages['missing_schedule_field'] ?? 'hora',
+                'message' => $messages['missing_schedule'] ?? 'La consulta excede el horario de cierre.',
             ];
         }
 
@@ -114,7 +153,6 @@ class ProfessionalScheduleService
             ];
         }
 
-        $interval = $this->intervalMinutes($schedule);
         if ($this->hasConflict($professionalId, $date, $slot, $interval, $exceptCitaId, $exceptHoldToken)) {
             return [
                 'field' => $messages['conflict_field'] ?? 'error',
@@ -136,6 +174,12 @@ class ProfessionalScheduleService
         $limiteHora = $ahora->copy()->addHour();
         $normalizedDate = Carbon::parse($date, $timezone)->toDateString();
         $esHoy = $normalizedDate === $ahora->toDateString();
+
+        $day = Carbon::parse($normalizedDate)->isoWeekday();
+        $clinicHours = $this->getClinicHours($day);
+        if ($clinicHours['status'] === 0) {
+            return [];
+        }
 
         $horarios = Horario::query()
             ->where('doctor_id', $professionalId)
@@ -172,10 +216,19 @@ class ProfessionalScheduleService
         $slots = [];
         foreach ($horarios as $horario) {
             $step = $this->intervalMinutes($horario);
-            $inicio = Carbon::parse($normalizedDate.' '.$horario->hora_inicio, $timezone);
-            $fin = Carbon::parse($normalizedDate.' '.$horario->hora_fin, $timezone);
+            
+            // Intersect schedule and clinic hours to find effective boundary
+            $effectiveStart = max(substr($horario->hora_inicio, 0, 5), $clinicHours['opening']);
+            $effectiveEnd = min(substr($horario->hora_fin, 0, 5), $clinicHours['closing']);
 
-            for ($time = $inicio->copy(); $time->lt($fin); $time->addMinutes($step)) {
+            if ($effectiveStart >= $effectiveEnd) {
+                continue;
+            }
+
+            $inicio = Carbon::parse($normalizedDate.' '.$effectiveStart, $timezone);
+            $fin = Carbon::parse($normalizedDate.' '.$effectiveEnd, $timezone);
+
+            for ($time = $inicio->copy(); $time->copy()->addMinutes($step)->lte($fin); $time->addMinutes($step)) {
                 if ($esHoy && $time->lt($limiteHora)) {
                     continue;
                 }
@@ -193,5 +246,218 @@ class ProfessionalScheduleService
         ksort($slots);
 
         return array_values($slots);
+    }
+
+    public function getClinicHours(int $day): array
+    {
+        $status = $this->siteSettings->get("clinic_hours.{$day}.status", $day === 7 ? '0' : '1');
+        $opening = $this->siteSettings->get("clinic_hours.{$day}.opening", '08:00');
+        $closing = $this->siteSettings->get("clinic_hours.{$day}.closing", $day === 6 ? '13:00' : '18:00');
+
+        return [
+            'status' => (string) $status === '1' || (string) $status === 'true' || $status === true ? 1 : 0,
+            'opening' => substr((string) $opening, 0, 5),
+            'closing' => substr((string) $closing, 0, 5),
+        ];
+    }
+
+    public function checkTimeWithinClinicHours(string $fecha, string $hi, string $hf): ?string
+    {
+        $day = Carbon::parse($fecha)->isoWeekday();
+        $hours = $this->getClinicHours($day);
+
+        if ($hours['status'] === 0) {
+            return "La clínica no atiende los " . $this->getDayNameInSpanish($day) . "s.";
+        }
+
+        $hiFormatted = substr($hi, 0, 5);
+        $hfFormatted = substr($hf, 0, 5);
+
+        if ($hiFormatted < $hours['opening'] || $hfFormatted > $hours['closing']) {
+            return "La clínica atiende los " . $this->getDayNameInSpanish($day) . "s de " . $hours['opening'] . " a " . $hours['closing'] . ".";
+        }
+
+        return null;
+    }
+
+    public function checkOverlapsWithLock(int $doctorId, string $fecha, string $hi, string $hf, ?int $ignoreId = null): bool
+    {
+        $hiFormatted = substr($hi, 0, 5);
+        $hfFormatted = substr($hf, 0, 5);
+
+        return Horario::where('doctor_id', $doctorId)
+            ->whereDate('fecha', $fecha)
+            ->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))
+            ->lockForUpdate()
+            ->get()
+            ->contains(function ($h) use ($hiFormatted, $hfFormatted) {
+                $existHi = substr($h->hora_inicio, 0, 5);
+                $existHf = substr($h->hora_fin, 0, 5);
+                return $hiFormatted < $existHf && $hfFormatted > $existHi;
+            });
+    }
+
+    public function isCitaCovered(Cita $cita, $schedules): bool
+    {
+        $citaTime = substr((string) $cita->hora, 0, 5);
+        $citaCarbon = Carbon::parse($cita->fecha->toDateString() . ' ' . $citaTime);
+
+        foreach ($schedules as $s) {
+            $sHi = substr($s->hora_inicio, 0, 5);
+            $sHf = substr($s->hora_fin, 0, 5);
+            $step = $s->intervalo_minutos ?: 30;
+
+            $citaEnd = $citaCarbon->copy()->addMinutes($step);
+            $sFinCarbon = Carbon::parse($cita->fecha->toDateString() . ' ' . $sHf);
+
+            if ($citaTime >= $sHi && $citaEnd->lte($sFinCarbon)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function countUncoveredCitas(int $doctorId, string $fecha, $schedulesList): int
+    {
+        $timezone = config('app.timezone', 'America/Guayaquil');
+        $now = Carbon::now($timezone);
+        $todayStr = $now->toDateString();
+        $timeStr = $now->toTimeString();
+
+        $appointments = Cita::query()
+            ->where('doctor_id', $doctorId)
+            ->whereDate('fecha', $fecha)
+            ->where('activo', 1)
+            ->whereIn('estado', [Cita::ESTADO_PENDIENTE, Cita::ESTADO_CONFIRMADA])
+            ->where(function ($q) use ($todayStr, $timeStr) {
+                $q->where('fecha', '>', $todayStr)
+                  ->orWhere(function ($qq) use ($todayStr, $timeStr) {
+                      $qq->where('fecha', '=', $todayStr)
+                        ->where('hora', '>=', $timeStr);
+                  });
+            })
+            ->get();
+
+        $conflictsCount = 0;
+        foreach ($appointments as $cita) {
+            if (!$this->isCitaCovered($cita, $schedulesList)) {
+                $conflictsCount++;
+            }
+        }
+
+        return $conflictsCount;
+    }
+
+    public function detectConflictsForClinicHoursChange(array $newClinicHours): array
+    {
+        $timezone = config('app.timezone', 'America/Guayaquil');
+        $now = Carbon::now($timezone);
+        $todayStr = $now->toDateString();
+        $timeStr = $now->toTimeString();
+
+        // 1. Existing doctor schedules affected
+        $affectedSchedulesCount = 0;
+        $affectedDays = [];
+
+        $schedules = Horario::whereDate('fecha', '>=', $todayStr)->get();
+        foreach ($schedules as $h) {
+            $day = $h->fecha->isoWeekday();
+            $hours = $newClinicHours[$day] ?? null;
+            if (!$hours) {
+                continue;
+            }
+
+            $status = (int) ($hours['status'] ?? 0);
+            $opening = substr($hours['opening'] ?? '08:00', 0, 5);
+            $closing = substr($hours['closing'] ?? '18:00', 0, 5);
+
+            $isInvalid = ($status === 0)
+                || (substr($h->hora_inicio, 0, 5) < $opening)
+                || (substr($h->hora_fin, 0, 5) > $closing);
+
+            if ($isInvalid) {
+                $affectedSchedulesCount++;
+                $affectedDays[$h->fecha->toDateString()] = true;
+            }
+        }
+
+        // 2. Future active appointments affected
+        $affectedCitasCount = 0;
+        $appointments = Cita::query()
+            ->where('activo', 1)
+            ->whereIn('estado', [Cita::ESTADO_PENDIENTE, Cita::ESTADO_CONFIRMADA])
+            ->where(function ($q) use ($todayStr, $timeStr) {
+                $q->where('fecha', '>', $todayStr)
+                  ->orWhere(function ($qq) use ($todayStr, $timeStr) {
+                      $qq->where('fecha', '=', $todayStr)
+                        ->where('hora', '>=', $timeStr);
+                  });
+            })
+            ->get();
+
+        foreach ($appointments as $cita) {
+            $day = $cita->fecha->isoWeekday();
+            $hours = $newClinicHours[$day] ?? null;
+            if (!$hours) {
+                continue;
+            }
+
+            $status = (int) ($hours['status'] ?? 0);
+
+            $isAffected = false;
+            if ($status === 0) {
+                $isAffected = true;
+            } else {
+                $opening = substr($hours['opening'] ?? '08:00', 0, 5);
+                $closing = substr($hours['closing'] ?? '18:00', 0, 5);
+                $citaStart = substr((string) $cita->hora, 0, 5);
+
+                // We need the schedule block covering this appointment to get its interval_minutos
+                $coveringHorarios = Horario::where('doctor_id', $cita->doctor_id)
+                    ->whereDate('fecha', $cita->fecha)
+                    ->get();
+
+                $interval = 30; // default
+                foreach ($coveringHorarios as $ch) {
+                    if ($citaStart >= substr($ch->hora_inicio, 0, 5) && $citaStart < substr($ch->hora_fin, 0, 5)) {
+                        $interval = $ch->intervalo_minutos ?: 30;
+                        break;
+                    }
+                }
+
+                $citaCarbon = Carbon::parse($cita->fecha->toDateString() . ' ' . $citaStart);
+                $citaEnd = $citaCarbon->copy()->addMinutes($interval)->format('H:i');
+
+                if ($citaStart < $opening || $citaEnd > $closing) {
+                    $isAffected = true;
+                }
+            }
+
+            if ($isAffected) {
+                $affectedCitasCount++;
+                $affectedDays[$cita->fecha->toDateString()] = true;
+            }
+        }
+
+        return [
+            'schedules_count' => $affectedSchedulesCount,
+            'citas_count' => $affectedCitasCount,
+            'days_count' => count($affectedDays),
+        ];
+    }
+
+    private function getDayNameInSpanish(int $day): string
+    {
+        return match ($day) {
+            1 => 'lunes',
+            2 => 'martes',
+            3 => 'miércoles',
+            4 => 'jueves',
+            5 => 'viernes',
+            6 => 'sábado',
+            7 => 'domingo',
+            default => 'desconocido'
+        };
     }
 }

@@ -112,22 +112,33 @@
           </div>
         </div>
 
+        <input type="hidden" id="intervalo_minutos" value="30">
+
+        <script id="clinica-horarios-config" type="application/json">
+          {!! json_encode(collect(range(1, 7))->mapWithKeys(function($day) {
+              return [$day => app(App\Services\ProfessionalScheduleService::class)->getClinicHours($day)];
+          })) !!}
+        </script>
+
         <div id="franja-global" class="grid gap-4 sm:grid-cols-2">
           <div>
-            <label class="form-label" for="hora_inicio">Hora inicio</label>
+            <label class="form-label" for="hora_inicio_global">Hora inicio</label>
             <div class="flex items-center gap-2 rounded-xl border border-gray-200 bg-white/90 px-3 py-2">
               <i class="ri-time-line text-gray-400"></i>
-              <input class="w-full bg-transparent text-sm" type="time" id="hora_inicio" name="hora_inicio" step="1800" value="{{ old('hora_inicio') }}" required>
+              <select class="w-full bg-transparent text-sm" id="hora_inicio_global" name="hora_inicio" data-old="{{ old('hora_inicio') }}" required></select>
             </div>
             @error('hora_inicio')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
           </div>
           <div>
-            <label class="form-label" for="hora_fin">Hora fin</label>
+            <label class="form-label" for="hora_fin_global">Hora fin</label>
             <div class="flex items-center gap-2 rounded-xl border border-gray-200 bg-white/90 px-3 py-2">
               <i class="ri-time-line text-gray-400"></i>
-              <input class="w-full bg-transparent text-sm" type="time" id="hora_fin" name="hora_fin" step="1800" value="{{ old('hora_fin') }}" required>
+              <select class="w-full bg-transparent text-sm" id="hora_fin_global" name="hora_fin" data-old="{{ old('hora_fin') }}" required></select>
             </div>
             @error('hora_fin')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
+          </div>
+          <div class="sm:col-span-2">
+            <p class="text-xs text-teal-650 dark:text-teal-400 font-semibold" id="clinic-hours-info-global"></p>
           </div>
         </div>
 
@@ -137,9 +148,9 @@
             @php $row = old("horas.$num", ['inicio'=>null,'fin'=>null]); @endphp
             <div class="row-dia flex flex-wrap items-center gap-2 rounded-2xl border border-gray-200 bg-white/90 px-3 py-2" data-dia="{{ $num }}">
               <div class="row-dia__label text-sm font-semibold text-gray-600">{{ $lbl }}</div>
-              <input class="form-input" type="time" name="horas[{{ $num }}][inicio]" step="1800" value="{{ $row['inicio'] }}" placeholder="hh:mm" required>
+              <select class="form-input" id="dias_{{ $num }}_hora_inicio" name="horas[{{ $num }}][inicio]" data-old="{{ $row['inicio'] }}" required></select>
               <span class="row-dia__sep text-xs text-gray-400">a</span>
-              <input class="form-input" type="time" name="horas[{{ $num }}][fin]" step="1800" value="{{ $row['fin'] }}" placeholder="hh:mm" required>
+              <select class="form-input" id="dias_{{ $num }}_hora_fin" name="horas[{{ $num }}][fin]" data-old="{{ $row['fin'] }}" required></select>
             </div>
           @endforeach
         </div>

@@ -148,6 +148,11 @@ const bootDeferredModules = () => {
     () => import('./table-responsive-x'),
     'No se pudo inicializar el ajuste responsive de tablas.'
   );
+  loadModule(
+    () => hasElement('[data-dashboard-page]'),
+    () => import('./dashboard-charts'),
+    'No se pudieron inicializar las graficas del dashboard.'
+  );
   loadDatepickers();
   loadNativeDatePickers();
 

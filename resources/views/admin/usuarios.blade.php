@@ -88,8 +88,8 @@
     <x-ui.alert tone="success">{{ session('success') }}</x-ui.alert>
   @endif
 
-  <div class="card p-0">
-    <div class="table-shell table-shell--overflow-visible users table-responsive-cards">
+  <div class="card p-0 !overflow-visible">
+    <div class="table-shell table-shell--overflow-visible users table-responsive-cards !overflow-visible">
       <table class="table users" role="region" aria-label="Listado de usuarios">
         <thead>
           <tr>

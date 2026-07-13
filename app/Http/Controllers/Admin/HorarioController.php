@@ -7,6 +7,7 @@ use App\Models\Cita;
 use App\Models\Horario;
 use App\Models\User;
 use App\Support\WeeklyCalendarData;
+use App\Services\ProfessionalScheduleService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -146,7 +147,7 @@ class HorarioController extends Controller
     }
 
     /** STORE: rango + días (franja única o por día) */
-    public function store(Request $request)
+    public function store(Request $request, ProfessionalScheduleService $scheduleService)
     {
         $modoPerDia = ! $request->boolean('misma_franja');
 
@@ -180,29 +181,24 @@ class HorarioController extends Controller
             return back()->withErrors(['doctor_id' => 'Selecciona un doctor activo.'])->withInput();
         }
 
-        if (! $modoPerDia) {
-            if (! $this->isThirtyStep($data['hora_inicio']) || ! $this->isThirtyStep($data['hora_fin'])) {
-                return back()->withErrors(['hora_fin' => 'Usa intervalos de 30 minutos.'])->withInput();
-            }
-        }
-
-        // Rango inclusivo y sin sesgos de hora
         $inicio = Carbon::parse($data['fecha_inicio'])->startOfDay();
         $fin = Carbon::parse($data['fecha_fin'])->endOfDay();
         $diasSel = collect($data['dias'])->map(fn ($d) => (int) $d)->unique();
 
-        $creados = 0;
-        $omitidos = 0;
+        $creados = [];
+        $cerrados = [];
+        $fueraRango = [];
+        $superpuestos = [];
 
-        DB::transaction(function () use ($modoPerDia, $data, $inicio, $fin, $diasSel, &$creados, &$omitidos) {
+        DB::transaction(function () use ($modoPerDia, $data, $inicio, $fin, $diasSel, $scheduleService, &$creados, &$cerrados, &$fueraRango, &$superpuestos) {
             $cursor = $inicio->copy();
 
             while ($cursor->lte($fin)) {
-                $dow = $cursor->isoWeekday(); // 1..7 (Dom=7)
+                $dow = $cursor->isoWeekday();
+                $fecha = $cursor->toDateString();
 
                 if (! $diasSel->contains($dow)) {
                     $cursor->addDay();
-
                     continue;
                 }
 
@@ -210,37 +206,47 @@ class HorarioController extends Controller
                     $par = $data['horas'][$dow] ?? null;
                     $hi = $par['inicio'] ?? null;
                     $hf = $par['fin'] ?? null;
-
-                    if (! $hi || ! $hf || $hf <= $hi) {
-                        $cursor->addDay();
-
-                        continue;
-                    }
-                    if (! $this->isThirtyStep($hi) || ! $this->isThirtyStep($hf)) {
-                        $cursor->addDay();
-
-                        continue;
-                    }
                 } else {
                     $hi = $data['hora_inicio'];
                     $hf = $data['hora_fin'];
                 }
 
-                $fecha = $cursor->toDateString();
+                if (! $hi || ! $hf || $hf <= $hi) {
+                    $cursor->addDay();
+                    continue;
+                }
 
-                if ($this->overlapExists((int) $data['doctor_id'], $fecha, $hi, $hf)) {
-                    $omitidos++;
+                // Centralized clinic hours check
+                $clinicH = $scheduleService->getClinicHours($dow);
+                if ($clinicH['status'] === 0) {
+                    $cerrados[] = $fecha;
+                    $cursor->addDay();
+                    continue;
+                }
+
+                if (substr($hi, 0, 5) < $clinicH['opening'] || substr($hf, 0, 5) > $clinicH['closing']) {
+                    $fueraRango[] = $fecha;
+                    $cursor->addDay();
+                    continue;
+                }
+
+                // Check overlap with row locking
+                if ($scheduleService->checkOverlapsWithLock((int)$data['doctor_id'], $fecha, $hi, $hf)) {
+                    $superpuestos[] = $fecha;
                 } else {
                     $horario = Horario::firstOrCreate([
                         'doctor_id' => (int) $data['doctor_id'],
-                        'fecha' => $fecha,          // idealmente columna DATE
+                        'fecha' => $fecha,
                         'hora_inicio' => $hi,
                         'hora_fin' => $hf,
+                    ], [
+                        'intervalo_minutos' => 30
                     ]);
+
                     if ($horario->wasRecentlyCreated) {
-                        $creados++;
+                        $creados[] = $fecha;
                     } else {
-                        $omitidos++;
+                        $superpuestos[] = $fecha;
                     }
                 }
 
@@ -250,10 +256,21 @@ class HorarioController extends Controller
 
         $week = $inicio->copy()->startOfWeek(Carbon::MONDAY)->toDateString();
 
+        $successMessage = "Procesamiento finalizado. Creados: " . count($creados) . " bloques.";
+        if (count($cerrados) > 0) {
+            $successMessage .= " Omitidos por día cerrado: " . count($cerrados) . " (" . implode(', ', $cerrados) . ").";
+        }
+        if (count($fueraRango) > 0) {
+            $successMessage .= " Omitidos fuera de franja institucional: " . count($fueraRango) . " (" . implode(', ', $fueraRango) . ").";
+        }
+        if (count($superpuestos) > 0) {
+            $successMessage .= " Omitidos por superposición: " . count($superpuestos) . " (" . implode(', ', $superpuestos) . ").";
+        }
+
         return redirect()->route('admin.horarios.index', [
             'doctor_id' => $data['doctor_id'],
             'week' => $week,
-        ])->with('success', 'Horarios creados correctamente.');
+        ])->with('success', $successMessage);
     }
 
     /** EDIT */
@@ -274,28 +291,73 @@ class HorarioController extends Controller
     }
 
     /** UPDATE */
-    public function update(Request $request, Horario $horario)
+    public function update(Request $request, Horario $horario, ProfessionalScheduleService $scheduleService)
     {
         $data = $request->validate([
             'doctor_id' => ['required', 'exists:users,id'],
             'fecha' => ['required', 'date'],
             'hora_inicio' => ['required', 'date_format:H:i'],
             'hora_fin' => ['required', 'date_format:H:i', 'after:hora_inicio'],
+            'confirmar_conflictos' => ['nullable', 'in:0,1'],
         ]);
 
         if (! $this->activeDoctorExists((int) $data['doctor_id'])) {
             return back()->withErrors(['doctor_id' => 'Selecciona un doctor activo.'])->withInput();
         }
 
-        if (! $this->isThirtyStep($data['hora_inicio']) || ! $this->isThirtyStep($data['hora_fin'])) {
-            return back()->withErrors(['hora_fin' => 'Usa intervalos de 30 minutos.'])->withInput();
+        // Validate clinic hours
+        $errorMsg = $scheduleService->checkTimeWithinClinicHours($data['fecha'], $data['hora_inicio'], $data['hora_fin']);
+        if ($errorMsg) {
+            return back()->withErrors(['hora_inicio' => $errorMsg])->withInput();
         }
 
-        if ($this->overlapExists((int) $data['doctor_id'], (string) $data['fecha'], (string) $data['hora_inicio'], (string) $data['hora_fin'], $horario->id)) {
+        // Run checking in transaction with locks
+        $hasOverlap = false;
+        $conflicts = 0;
+
+        DB::transaction(function () use ($horario, $data, $scheduleService, &$hasOverlap, &$conflicts) {
+            $hasOverlap = $scheduleService->checkOverlapsWithLock(
+                (int) $data['doctor_id'],
+                (string) $data['fecha'],
+                (string) $data['hora_inicio'],
+                (string) $data['hora_fin'],
+                $horario->id
+            );
+
+            if (!$hasOverlap) {
+                // Mock remaining schedules to calculate uncovered citas
+                $mockSchedule = clone $horario;
+                $mockSchedule->hora_inicio = $data['hora_inicio'];
+                $mockSchedule->hora_fin = $data['hora_fin'];
+
+                $remaining = collect([$mockSchedule])->concat(
+                    Horario::where('doctor_id', $horario->doctor_id)
+                        ->whereDate('fecha', $horario->fecha)
+                        ->where('id', '!=', $horario->id)
+                        ->get()
+                );
+
+                $conflicts = $scheduleService->countUncoveredCitas($horario->doctor_id, $horario->fecha->toDateString(), $remaining);
+            }
+        });
+
+        if ($hasOverlap) {
             return back()->withErrors(['hora_inicio' => 'Existe un horario que se superpone.'])->withInput();
         }
 
-        $horario->update($data);
+        if ($conflicts > 0 && !$request->boolean('confirmar_conflictos')) {
+            return back()->withInput()->with('horario_conflicts', $conflicts);
+        }
+
+        // Persist inside transaction
+        DB::transaction(function () use ($horario, $data) {
+            $horario->update([
+                'doctor_id' => $data['doctor_id'],
+                'fecha' => $data['fecha'],
+                'hora_inicio' => $data['hora_inicio'],
+                'hora_fin' => $data['hora_fin'],
+            ]);
+        });
 
         $week = Carbon::parse($data['fecha'])->startOfWeek(Carbon::MONDAY)->toDateString();
 
@@ -304,40 +366,37 @@ class HorarioController extends Controller
     }
 
     /** DESTROY */
-    public function destroy(Horario $horario)
+    public function destroy(Horario $horario, Request $request, ProfessionalScheduleService $scheduleService)
     {
         $week = Carbon::parse($horario->fecha)->startOfWeek(Carbon::MONDAY)->toDateString();
         $doctorId = $horario->doctor_id;
 
-        $horario->delete();
+        // Check if deleting leaves appointments uncovered
+        $remaining = Horario::where('doctor_id', $horario->doctor_id)
+            ->whereDate('fecha', $horario->fecha)
+            ->where('id', '!=', $horario->id)
+            ->get();
+
+        $conflicts = $scheduleService->countUncoveredCitas($horario->doctor_id, $horario->fecha->toDateString(), $remaining);
+
+        if ($conflicts > 0 && !$request->boolean('confirmar_conflictos')) {
+            return back()->with([
+                'horario_conflicts' => $conflicts,
+                'conflict_target_route' => route('admin.horarios.destroy', $horario),
+                'conflict_target_method' => 'DELETE',
+                'conflict_payload' => ['confirmar_conflictos' => 1]
+            ]);
+        }
+
+        DB::transaction(function () use ($horario) {
+            $horario->delete();
+        });
 
         return redirect()->route('admin.horarios.index', ['doctor_id' => $doctorId, 'week' => $week])
             ->with('success', 'Horario eliminado.');
     }
 
     /** Helpers */
-    private function isThirtyStep(string $hhmm): bool
-    {
-        if (! str_contains($hhmm, ':')) {
-            return false;
-        }
-        [, $m] = explode(':', $hhmm, 2);
-
-        return ((int) $m) % 30 === 0;
-    }
-
-    private function overlapExists(int $doctorId, string $fecha, string $hi, string $hf, ?int $ignoreId = null): bool
-    {
-        return Horario::where('doctor_id', $doctorId)
-            ->whereDate('fecha', $fecha) // robusto para DATE/DATETIME
-            ->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))
-            ->where(function ($q) use ($hi, $hf) {
-                $q->whereBetween('hora_inicio', [$hi, $hf])
-                    ->orWhereBetween('hora_fin', [$hi, $hf])
-                    ->orWhere(fn ($qq) => $qq->where('hora_inicio', '<=', $hi)->where('hora_fin', '>=', $hf));
-            })->exists();
-    }
-
     private function activeDoctorExists(int $doctorId): bool
     {
         return User::query()

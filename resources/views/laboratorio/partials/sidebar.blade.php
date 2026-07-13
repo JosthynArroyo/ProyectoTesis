@@ -22,6 +22,10 @@
             <i class="ri-flask-line text-lg"></i> Citas y resultados
         </a>
 
+        <a href="{{ route('laboratorio.pedidos.index') }}" class="flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors {{ $current === 'pedidos' ? 'bg-gray-100 text-gray-900 font-medium' : 'text-gray-600 hover:bg-gray-50' }}">
+            <i class="ri-file-shield-line text-lg"></i> Pedidos Médicos (.p12)
+        </a>
+
         <a href="{{ route('laboratorio.horario.index') }}" class="flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors {{ $current === 'horario' ? 'bg-gray-100 text-gray-900 font-medium' : 'text-gray-600 hover:bg-gray-50' }}">
             <i class="ri-calendar-schedule-line text-lg"></i> Horarios
         </a>

@@ -27,15 +27,15 @@ class SoapController extends Controller
                 ->with('error', 'No puedes registrar una nota clínica para esta cita.');
         }
 
-        $nota = NotaSoap::with(['diagnosticos', 'enmiendas.autor'])
+        $nota = NotaSoap::with(['diagnosticos', 'enmiendas.autor', 'followUpCita.doctor', 'followUpCita.especialidad'])
             ->where('cita_id', $cita->id)
             ->first();
         $persistenciaClinica = $this->resolvePersistenciaClinica($cita, $nota);
         $signosPrevios = $this->obtenerSignosVitalesPrevios($cita, $nota);
-        $controlCita = $this->controlPosteriorActivo($cita);
+        $controlCita = $this->controlPosteriorActivo($cita, $nota);
 
         return view('doctor.soap', [
-            'cita' => $cita->load(['paciente', 'especialidad']),
+            'cita' => $cita->load(['paciente', 'dependiente.responsable', 'especialidad']),
             'nota' => $nota,
             'persistenciaClinica' => $persistenciaClinica,
             'signosPrevios' => $signosPrevios,
@@ -58,7 +58,7 @@ class SoapController extends Controller
 
         DB::transaction(function () use ($request, $cita, $nota): void {
             $clinicalRecords = app(ClinicalRecordService::class);
-            $record = $clinicalRecords->ensureForPatient($cita->paciente_id, Auth::id());
+            $record = $this->clinicalRecordForCita($cita, Auth::id());
 
             $nota = $nota ?? new NotaSoap(['cita_id' => $cita->id]);
             $nota->fill($this->mapSoapData($request));
@@ -97,7 +97,7 @@ class SoapController extends Controller
 
         DB::transaction(function () use ($request, $cita, $nota): void {
             $clinicalRecords = app(ClinicalRecordService::class);
-            $record = $clinicalRecords->ensureForPatient($cita->paciente_id, Auth::id());
+            $record = $this->clinicalRecordForCita($cita, Auth::id());
 
             $nota = $nota ?? new NotaSoap(['cita_id' => $cita->id]);
             $nota->fill($this->mapSoapData($request));
@@ -193,13 +193,30 @@ class SoapController extends Controller
         return in_array($cita->estado, [Cita::ESTADO_CONFIRMADA, Cita::ESTADO_REALIZADA], true);
     }
 
-    protected function controlPosteriorActivo(Cita $cita): ?Cita
+    protected function controlPosteriorActivo(Cita $cita, ?NotaSoap $nota = null): ?Cita
     {
+        if ($nota?->followUpCita && $this->controlPerteneceACita($cita, $nota->followUpCita)) {
+            $control = $nota->followUpCita;
+
+            if (
+                in_array($control->estado, [Cita::ESTADO_PENDIENTE, Cita::ESTADO_CONFIRMADA], true)
+                && $this->fechaHoraCita($control)->greaterThanOrEqualTo(now('America/Guayaquil'))
+            ) {
+                return $control;
+            }
+        }
+
         $inicio = $this->fechaHoraCita($cita);
 
         return Cita::query()
             ->where('id', '<>', $cita->id)
-            ->where('paciente_id', $cita->paciente_id)
+            ->when(
+                $cita->dependiente_id,
+                fn ($query) => $query->where('dependiente_id', $cita->dependiente_id),
+                fn ($query) => $query
+                    ->where('paciente_id', $cita->paciente_id)
+                    ->whereNull('dependiente_id')
+            )
             ->where('doctor_id', $cita->doctor_id)
             ->where('especialidad_id', $cita->especialidad_id)
             ->where('activo', true)
@@ -216,11 +233,38 @@ class SoapController extends Controller
             ->first();
     }
 
+    protected function controlPerteneceACita(Cita $cita, Cita $control): bool
+    {
+        if ($control->id === $cita->id) {
+            return false;
+        }
+
+        if (
+            (int) $control->paciente_id !== (int) $cita->paciente_id
+            || (int) ($control->dependiente_id ?? 0) !== (int) ($cita->dependiente_id ?? 0)
+            || (int) $control->doctor_id !== (int) $cita->doctor_id
+            || (int) $control->especialidad_id !== (int) $cita->especialidad_id
+        ) {
+            return false;
+        }
+
+        return $this->fechaHoraCita($control)->gt($this->fechaHoraCita($cita));
+    }
+
     protected function fechaHoraCita(Cita $cita): Carbon
     {
         return Carbon::parse(
             Carbon::parse($cita->fecha)->toDateString().' '.substr((string) $cita->hora, 0, 8),
             'America/Guayaquil'
+        );
+    }
+
+    protected function clinicalRecordForCita(Cita $cita, ?int $actorId = null)
+    {
+        return app(ClinicalRecordService::class)->ensureForPatient(
+            $cita->paciente_id,
+            $actorId,
+            $cita->dependiente_id
         );
     }
 
@@ -354,6 +398,8 @@ class SoapController extends Controller
             'diabetes' => trim((string) $request->input('antecedentes_diabetes', '')),
             'hipertension' => trim((string) $request->input('antecedentes_hipertension', '')),
             'otros' => trim((string) $request->input('antecedentes_otros', '')),
+            'familiares' => trim((string) $request->input('antecedentes_familiares', '')),
+            'inmunizaciones' => trim((string) $request->input('antecedentes_inmunizaciones', '')),
         ];
 
         $hasAnyValue = false;
@@ -397,6 +443,8 @@ class SoapController extends Controller
             'diabetes' => 'Diabetes',
             'hipertension' => 'Hipertension',
             'otros' => 'Otros',
+            'familiares' => 'Antecedentes familiares',
+            'inmunizaciones' => 'Inmunizaciones',
         ];
 
         $chunks = [];

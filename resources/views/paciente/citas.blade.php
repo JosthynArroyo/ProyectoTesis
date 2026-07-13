@@ -127,7 +127,8 @@
           </div>
 
           <div class="mt-4 flex flex-wrap gap-4 text-sm text-gray-600">
-            <span><strong>Fecha:</strong> {{ \Carbon\Carbon::parse($cita->fecha)->format('Y/m/d') }}</span>
+            <span><strong>Paciente:</strong> {{ $cita->dependiente_id && $cita->dependiente ? $cita->dependiente->nombre . ' (' . ucfirst($cita->dependiente->parentesco) . ')' : 'Mí' }}</span>
+            <span><strong>Fecha:</strong> {{ \Carbon\Carbon::parse($cita->fecha)->format('d/m/Y') }}</span>
             <span><strong>Hora:</strong> {{ \Carbon\Carbon::parse($cita->hora)->format('H:i') }}</span>
           </div>
 

@@ -79,48 +79,48 @@
   data-storage-base="{{ asset('storage') }}"
 >
   <div class="personalizacion-public-surface space-y-6">
-    <section class="card border border-gray-200/80 bg-white/95 p-6" data-public-preview-trigger-card>
+    <section class="card border border-gray-200/80 bg-white/95 p-6 dark:border-gray-800/80 dark:bg-gray-900/95" data-public-preview-trigger-card>
       <div class="flex flex-wrap items-center justify-between gap-4">
         <div class="min-w-0">
-          <p class="text-xs uppercase tracking-[0.2em] text-gray-400">Servicios publicos</p>
-          <h3 class="mt-1 text-lg font-semibold text-gray-900">Edita el contenido y abre la preview reactiva</h3>
-          <p class="mt-1 text-sm text-gray-500">La vista previa usa los datos actuales del formulario, sin guardar y sin navegar a la pagina real.</p>
+          <p class="text-xs uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">Servicios publicos</p>
+          <h3 class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">Edita el contenido y abre la preview reactiva</h3>
+          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">La vista previa usa los datos actuales del formulario, sin guardar y sin navegar a la pagina real.</p>
         </div>
-        <button type="button" class="btn btn-outline" data-public-preview-open>
+        <button type="button" class="btn btn-outline dark:border-gray-700 dark:bg-gray-850 dark:text-gray-200 dark:hover:bg-gray-800 dark:hover:text-white" data-public-preview-open>
           <i class="ri-macbook-line"></i> Ver vista previa
         </button>
       </div>
     </section>
 
-    <section class="card border border-gray-200/80 bg-white/95 p-6" data-public-preview-form-card>
+    <section class="card border border-gray-200/80 bg-white/95 p-6 dark:border-gray-800/80 dark:bg-gray-900/95" data-public-preview-form-card>
       <div>
-        <p class="text-xs uppercase tracking-widest text-gray-500">Hero</p>
-        <h3 class="mt-2 text-lg font-semibold text-gray-900">Cabecera publica de servicios</h3>
-        <p class="text-sm text-gray-500">Titulo principal, subtitulo, CTA e imagen lateral.</p>
+        <p class="text-xs uppercase tracking-widest text-gray-500 dark:text-gray-450">Hero</p>
+        <h3 class="mt-2 text-lg font-semibold text-gray-900 dark:text-white">Cabecera publica de servicios</h3>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Titulo principal, subtitulo, CTA e imagen lateral.</p>
       </div>
 
       <div class="mt-4 grid gap-4 lg:grid-cols-2">
         <div>
           <label class="form-label">Titulo principal</label>
           <input class="form-input" name="services_title" value="{{ old('services_title', $serviceSettings['services.title'] ?? $siteSettings->get('services.title')) }}">
-          @error('services_title')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
+          @error('services_title')<div class="text-xs text-rose-600 dark:text-rose-400">{{ $message }}</div>@enderror
         </div>
         <div>
           <label class="form-label">Texto del boton principal</label>
           <input class="form-input" name="services_cta_text" value="{{ old('services_cta_text', $serviceSettings['services.cta_text'] ?? $siteSettings->get('services.cta_text')) }}">
-          @error('services_cta_text')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
+          @error('services_cta_text')<div class="text-xs text-rose-600 dark:text-rose-400">{{ $message }}</div>@enderror
         </div>
         <div class="lg:col-span-2">
           <label class="form-label">Subtitulo / descripcion</label>
           <textarea class="form-textarea" name="services_subtitle" rows="3">{{ old('services_subtitle', $serviceSettings['services.subtitle'] ?? $siteSettings->get('services.subtitle')) }}</textarea>
-          @error('services_subtitle')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
+          @error('services_subtitle')<div class="text-xs text-rose-600 dark:text-rose-400">{{ $message }}</div>@enderror
         </div>
         </div>
 
       <div class="mt-6">
-        <div class="flex flex-col sm:flex-row items-start gap-5 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+        <div class="flex flex-col sm:flex-row items-start gap-5 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-950/20">
           <div class="w-full sm:w-[280px] shrink-0">
-            <div class="overflow-hidden rounded-2xl border border-gray-200 bg-gray-50" data-public-preview-inline-image>
+            <div class="overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-950" data-public-preview-inline-image>
               @php
                 $heroPreview = $imageUrl->variants($heroImagePath, 'services', 'banner');
               @endphp
@@ -136,24 +136,24 @@
             </div>
           </div>
           <div class="flex-1 w-full flex flex-col justify-center">
-            <label class="form-label font-semibold text-gray-800">Imagen principal del hero</label>
-            <p class="mb-3 text-xs text-gray-500">Formato valido: JPG, PNG, WEBP o SVG. La preview conserva la imagen anterior mientras no selecciones una nueva.</p>
+            <label class="form-label font-semibold text-gray-800 dark:text-white">Imagen principal del hero</label>
+            <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">Formato valido: JPG, PNG, WEBP o SVG. La preview conserva la imagen anterior mientras no selecciones una nueva.</p>
             <input type="hidden" name="services_hero_image_path" value="{{ $heroImagePath }}">
             <input class="form-input w-full" type="file" name="services_hero_image" accept="image/*">
-            @error('services_hero_image')<div class="mt-1 text-xs text-rose-600">{{ $message }}</div>@enderror
+            @error('services_hero_image')<div class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</div>@enderror
           </div>
         </div>
       </div>
     </section>
 
-    <section class="card border border-gray-200/80 bg-white/95 p-6" data-public-preview-form-card>
+    <section class="card border border-gray-200/80 bg-white/95 p-6 dark:border-gray-800/80 dark:bg-gray-900/95" data-public-preview-form-card>
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p class="text-xs uppercase tracking-widest text-gray-500">Especialidades</p>
-          <h3 class="mt-2 text-lg font-semibold text-gray-900">Cards de servicios destacados</h3>
-          <p class="text-sm text-gray-500">Nombre, descripcion, icono, estado, orden e imagen por servicio.</p>
+          <p class="text-xs uppercase tracking-widest text-gray-500 dark:text-gray-455">Especialidades</p>
+          <h3 class="mt-2 text-lg font-semibold text-gray-900 dark:text-white">Cards de servicios destacados</h3>
+          <p class="text-sm text-gray-500 dark:text-gray-400">Nombre, descripcion, icono, estado, orden e imagen por servicio.</p>
         </div>
-        <button type="button" class="btn btn-outline" data-add-especialidad>
+        <button type="button" class="btn btn-outline dark:border-gray-700 dark:bg-gray-850 dark:text-gray-200 dark:hover:bg-gray-800 dark:hover:text-white" data-add-especialidad>
           <i class="ri-add-line"></i> Agregar especialidad
         </button>
       </div>
@@ -171,11 +171,11 @@
             $currentIcon = old($oldPrefix.'.icono', $esp->icono);
             $currentOption = collect($iconOptions)->firstWhere('id', $currentIcon);
           @endphp
-          <div class="rounded-3xl border border-gray-200 bg-gray-50/70 p-4" data-especialidad-row data-service-id="{{ $esp->id }}" data-public-preview-row-card>
+          <div class="rounded-3xl border border-gray-200 bg-gray-50/70 p-4 dark:border-gray-800 dark:bg-gray-800/40" data-especialidad-row data-service-id="{{ $esp->id }}" data-public-preview-row-card>
             <div class="grid gap-6">
-              <div class="flex flex-col sm:flex-row items-start gap-5 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+              <div class="flex flex-col sm:flex-row items-start gap-5 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-955/20">
                 <div class="w-full sm:w-[240px] shrink-0">
-                  <div class="overflow-hidden rounded-2xl border border-gray-200 bg-gray-50" data-public-preview-inline-image>
+                  <div class="overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-950" data-public-preview-inline-image>
                     <img
                       src="{{ $serviceImage['thumb'] }}"
                       @if($serviceImage['srcset']) srcset="{{ $serviceImage['srcset'] }}" sizes="(max-width: 640px) 100vw, 240px" @endif
@@ -188,11 +188,11 @@
                   </div>
                 </div>
                 <div class="flex-1 w-full flex flex-col justify-center">
-                  <label class="form-label font-semibold text-gray-800">Imagen de la card</label>
-                  <p class="mb-3 text-xs text-gray-500">La imagen se actualiza al instante en la vista previa. Se recomienda formato 4:3 para mantener la proporcion.</p>
+                  <label class="form-label font-semibold text-gray-800 dark:text-white">Imagen de la card</label>
+                  <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">La imagen se actualiza al instante en la vista previa. Se recomienda formato 4:3 para mantener la proporcion.</p>
                   <input type="hidden" name="{{ $prefix }}[image_path]" value="{{ $serviceImagePath }}">
                   <input class="form-input w-full" type="file" name="{{ $prefix }}[image]" accept="image/*">
-                  @error($oldPrefix.'.image')<div class="mt-1 text-xs text-rose-600">{{ $message }}</div>@enderror
+                  @error($oldPrefix.'.image')<div class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</div>@enderror
                 </div>
               </div>
 
@@ -200,7 +200,7 @@
                 <div>
                   <label class="form-label">Nombre</label>
                   <input class="form-input" name="{{ $prefix }}[nombre]" value="{{ old($oldPrefix.'.nombre', $esp->nombre) }}">
-                  @error($oldPrefix.'.nombre')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
+                  @error($oldPrefix.'.nombre')<div class="text-xs text-rose-600 dark:text-rose-400">{{ $message }}</div>@enderror
                 </div>
                 <div>
                   <label class="form-label">Icono (Remixicon)</label>
@@ -208,7 +208,7 @@
                     <input type="hidden" name="{{ $prefix }}[icono]" value="{{ $currentIcon }}" data-icon-value>
                     <input class="form-input" type="text" placeholder="Buscar icono: salud, piel, ninos, diente..." autocomplete="off" data-icon-search>
                     <div class="flex flex-wrap items-center gap-3">
-                      <div class="flex h-12 w-12 items-center justify-center rounded-xl border border-gray-200 bg-gray-50 text-2xl text-gray-700" data-icon-preview>
+                      <div class="flex h-12 w-12 items-center justify-center rounded-xl border border-gray-200 bg-gray-50 text-2xl text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200" data-icon-preview>
                         @if($currentIcon)
                           <i class="{{ $currentIcon }}"></i>
                         @else
@@ -216,22 +216,22 @@
                         @endif
                       </div>
                       <div class="text-sm">
-                        <p class="font-semibold text-gray-800" data-icon-selected-label>{{ $currentOption['label'] ?? 'Usar icono por defecto' }}</p>
-                        <p class="text-xs text-gray-500" data-icon-selected-id>{{ $currentIcon ?? 'Defecto' }}</p>
+                        <p class="font-semibold text-gray-800 dark:text-white" data-icon-selected-label>{{ $currentOption['label'] ?? 'Usar icono por defecto' }}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400" data-icon-selected-id>{{ $currentIcon ?? 'Defecto' }}</p>
                       </div>
                     </div>
-                    <div class="max-h-52 overflow-auto rounded-xl border border-gray-200 bg-white shadow-sm" data-icon-list>
+                    <div class="max-h-52 overflow-auto rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800" data-icon-list>
                       <div class="grid gap-2 p-2 sm:grid-cols-2">
                         @foreach($iconOptions as $option)
                           <button
                             type="button"
-                            class="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-left text-sm text-gray-700 hover:border-gray-400 hover:bg-gray-50"
+                            class="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-left text-sm text-gray-700 hover:border-gray-400 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white"
                             data-icon-option
                             data-icon-id="{{ $option['id'] }}"
                             data-icon-label="{{ $option['label'] }}"
                             data-icon-keywords="{{ $option['keywords'] }}"
                           >
-                            <span class="inline-flex h-8 w-8 items-center justify-center rounded-md bg-gray-50 text-lg text-gray-700">
+                            <span class="inline-flex h-8 w-8 items-center justify-center rounded-md bg-gray-50 text-lg text-gray-700 dark:bg-gray-900 dark:text-gray-300">
                               @if($option['id'])
                                 <i class="{{ $option['id'] }}"></i>
                               @else
@@ -244,27 +244,27 @@
                       </div>
                     </div>
                   </div>
-                  @error($oldPrefix.'.icono')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
+                  @error($oldPrefix.'.icono')<div class="text-xs text-rose-600 dark:text-rose-400">{{ $message }}</div>@enderror
                 </div>
 
                 <div class="md:col-span-2">
                   <label class="form-label">Descripcion</label>
                   <textarea class="form-textarea" name="{{ $prefix }}[descripcion]" rows="2">{{ old($oldPrefix.'.descripcion', $esp->descripcion) }}</textarea>
-                  @error($oldPrefix.'.descripcion')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
+                  @error($oldPrefix.'.descripcion')<div class="text-xs text-rose-600 dark:text-rose-400">{{ $message }}</div>@enderror
                 </div>
 
                 <div>
                   <label class="form-label">Orden</label>
                   <input class="form-input" type="number" min="0" name="{{ $prefix }}[orden]" value="{{ old($oldPrefix.'.orden', $esp->orden ?? 0) }}">
-                  @error($oldPrefix.'.orden')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
+                  @error($oldPrefix.'.orden')<div class="text-xs text-rose-600 dark:text-rose-400">{{ $message }}</div>@enderror
                 </div>
                 <div class="flex flex-col justify-end gap-2 pb-2">
-                  <label class="inline-flex items-center gap-2 text-sm text-gray-600">
+                  <label class="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                     <input type="hidden" name="{{ $prefix }}[activo]" value="0">
                     <input type="checkbox" class="h-4 w-4 rounded border-gray-300" name="{{ $prefix }}[activo]" value="1" @checked(old($oldPrefix.'.activo', (bool) $esp->activo))>
                     Activa
                   </label>
-                  @error($oldPrefix.'.activo')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
+                  @error($oldPrefix.'.activo')<div class="text-xs text-rose-600 dark:text-rose-400">{{ $message }}</div>@enderror
                 </div>
               </div>
             </div>
@@ -273,19 +273,19 @@
       </div>
 
       <template data-especialidad-template>
-        <div class="rounded-3xl border border-gray-200 bg-gray-50/70 p-4" data-especialidad-row data-row-key="new-__INDEX__" data-public-preview-row-card>
+        <div class="rounded-3xl border border-gray-200 bg-gray-50/70 p-4 dark:border-gray-800 dark:bg-gray-800/40" data-especialidad-row data-row-key="new-__INDEX__" data-public-preview-row-card>
           <div class="grid gap-6">
-            <div class="flex flex-col sm:flex-row items-start gap-5 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+            <div class="flex flex-col sm:flex-row items-start gap-5 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-955/20">
               <div class="w-full sm:w-[240px] shrink-0">
-                <div class="overflow-hidden rounded-2xl border border-gray-200 bg-gray-50" data-public-preview-inline-image>
-                  <div class="flex aspect-[4/3] w-full items-center justify-center text-gray-400">
+                <div class="overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-950" data-public-preview-inline-image>
+                  <div class="flex aspect-[4/3] w-full items-center justify-center text-gray-400 dark:text-gray-500">
                     <i class="ri-image-line text-3xl"></i>
                   </div>
                 </div>
               </div>
               <div class="flex-1 w-full flex flex-col justify-center">
-                <label class="form-label font-semibold text-gray-800">Imagen de la card</label>
-                <p class="mb-3 text-xs text-gray-500">Puedes probar la imagen en preview antes de guardar la nueva especialidad. Se recomienda formato 4:3.</p>
+                <label class="form-label font-semibold text-gray-800 dark:text-white">Imagen de la card</label>
+                <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">Puedes probar la imagen en preview antes de guardar la nueva especialidad. Se recomienda formato 4:3.</p>
                 <input type="hidden" name="nuevas[__INDEX__][image_path]" value="">
                 <input class="form-input w-full" type="file" name="nuevas[__INDEX__][image]" accept="image/*">
               </div>
@@ -302,26 +302,26 @@
                   <input type="hidden" name="nuevas[__INDEX__][icono]" value="" data-icon-value>
                   <input class="form-input" type="text" placeholder="Buscar icono: salud, piel, ninos, diente..." autocomplete="off" data-icon-search>
                   <div class="flex flex-wrap items-center gap-3">
-                    <div class="flex h-12 w-12 items-center justify-center rounded-xl border border-gray-200 bg-gray-50 text-2xl text-gray-700" data-icon-preview>
+                    <div class="flex h-12 w-12 items-center justify-center rounded-xl border border-gray-200 bg-gray-50 text-2xl text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200" data-icon-preview>
                       <span class="text-xs text-gray-400">Sin icono</span>
                     </div>
                     <div class="text-sm">
-                      <p class="font-semibold text-gray-800" data-icon-selected-label>Usar icono por defecto</p>
-                      <p class="text-xs text-gray-500" data-icon-selected-id>Defecto</p>
+                      <p class="font-semibold text-gray-800 dark:text-white" data-icon-selected-label>Usar icono por defecto</p>
+                      <p class="text-xs text-gray-500 dark:text-gray-400" data-icon-selected-id>Defecto</p>
                     </div>
                   </div>
-                  <div class="max-h-52 overflow-auto rounded-xl border border-gray-200 bg-white shadow-sm" data-icon-list>
+                  <div class="max-h-52 overflow-auto rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800" data-icon-list>
                     <div class="grid gap-2 p-2 sm:grid-cols-2">
                       @foreach($iconOptions as $option)
                         <button
                           type="button"
-                          class="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-left text-sm text-gray-700 hover:border-gray-400 hover:bg-gray-50"
+                          class="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-left text-sm text-gray-700 hover:border-gray-400 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white"
                           data-icon-option
                           data-icon-id="{{ $option['id'] }}"
                           data-icon-label="{{ $option['label'] }}"
                           data-icon-keywords="{{ $option['keywords'] }}"
                         >
-                          <span class="inline-flex h-8 w-8 items-center justify-center rounded-md bg-gray-50 text-lg text-gray-700">
+                          <span class="inline-flex h-8 w-8 items-center justify-center rounded-md bg-gray-50 text-lg text-gray-700 dark:bg-gray-900 dark:text-gray-300">
                             @if($option['id'])
                               <i class="{{ $option['id'] }}"></i>
                             @else
@@ -346,7 +346,7 @@
                 <input class="form-input" type="number" min="0" name="nuevas[__INDEX__][orden]" value="0">
               </div>
               <div class="flex flex-col justify-end gap-2 pb-2">
-                <label class="inline-flex items-center gap-2 text-sm text-gray-600">
+                <label class="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                   <input type="hidden" name="nuevas[__INDEX__][activo]" value="0">
                   <input type="checkbox" class="h-4 w-4 rounded border-gray-300" name="nuevas[__INDEX__][activo]" value="1" checked>
                   Activa
@@ -354,7 +354,7 @@
               </div>
 
               <div class="md:col-span-2 mt-2">
-                <button type="button" class="btn btn-ghost" data-remove-item>Quitar especialidad</button>
+                <button type="button" class="btn btn-ghost dark:text-gray-300 dark:hover:bg-gray-800" data-remove-item>Quitar especialidad</button>
               </div>
             </div>
           </div>

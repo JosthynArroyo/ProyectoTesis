@@ -150,8 +150,8 @@ class LaboratorioController extends Controller
                     'url' => route('paciente.crear-cita'),
                 ],
                 [
-                    'label' => 'Solicitar examen',
-                    'url' => route('paciente.laboratorio.solicitar'),
+                    'label' => 'Ver mis citas',
+                    'url' => route('paciente.citas'),
                 ],
             ],
         ];
@@ -194,8 +194,8 @@ class LaboratorioController extends Controller
                     'url' => route('paciente.crear-cita'),
                 ],
                 [
-                    'label' => 'Solicitar otro examen',
-                    'url' => route('paciente.laboratorio.solicitar'),
+                    'label' => 'Ver mis citas',
+                    'url' => route('paciente.citas'),
                 ],
             ],
         ];

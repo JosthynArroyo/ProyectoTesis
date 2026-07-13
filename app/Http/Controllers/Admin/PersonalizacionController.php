@@ -11,9 +11,11 @@ use App\Services\ImageOptimizer;
 use App\Services\LandingWelcomeManager;
 use App\Services\LandingWelcomeService;
 use App\Services\SiteSettingsService;
+use App\Services\ProfessionalScheduleService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class PersonalizacionController extends Controller
 {
@@ -194,9 +196,20 @@ class PersonalizacionController extends Controller
         ]);
     }
 
-    public function contactoUpdate(PersonalizacionContactoRequest $request, SiteSettingsService $settings)
-    {
+    public function contactoUpdate(
+        PersonalizacionContactoRequest $request,
+        SiteSettingsService $settings,
+        ProfessionalScheduleService $scheduleService
+    ) {
         $data = $request->validated();
+
+        $newHours = $data['clinic_hours'] ?? [];
+        $conflicts = $scheduleService->detectConflictsForClinicHoursChange($newHours);
+
+        $hasConflicts = ($conflicts['schedules_count'] > 0 || $conflicts['citas_count'] > 0);
+        if ($hasConflicts && !$request->boolean('confirmar_conflictos')) {
+            return back()->withInput()->with('clinic_hours_conflicts', $conflicts);
+        }
 
         $payload = [
             'contact.info_badge' => $data['contact_info_badge'] ?? null,
@@ -228,12 +241,22 @@ class PersonalizacionController extends Controller
             'contact.form_message_help' => $data['contact_form_message_help'] ?? null,
         ];
 
-        $meta = [];
-        foreach (array_keys($payload) as $key) {
-            $meta[$key] = ['section' => 'contact', 'type' => 'text'];
+        foreach ($newHours as $day => $hours) {
+            $payload["clinic_hours.{$day}.status"] = $hours['status'];
+            $payload["clinic_hours.{$day}.opening"] = $hours['opening'] ?? '08:00';
+            $payload["clinic_hours.{$day}.closing"] = $hours['closing'] ?? ($day == 6 ? '13:00' : '18:00');
         }
 
-        $settings->setMany($payload, $meta);
+        DB::transaction(function () use ($settings, $payload) {
+            $meta = [];
+            foreach (array_keys($payload) as $key) {
+                $meta[$key] = ['section' => 'contact', 'type' => 'text'];
+            }
+            $settings->setMany($payload, $meta);
+        });
+
+        // Clear cache only after successful transaction
+        $settings->forgetCache();
 
         return back()->with('success', 'Seccion de contacto actualizada correctamente.');
     }
@@ -295,7 +318,7 @@ class PersonalizacionController extends Controller
 
     private function contactSettingKeys(): array
     {
-        return [
+        $keys = [
             'contact.info_badge',
             'contact.title',
             'contact.subtitle',
@@ -324,6 +347,14 @@ class PersonalizacionController extends Controller
             'contact.form_message_placeholder',
             'contact.form_message_help',
         ];
+
+        for ($i = 1; $i <= 7; $i++) {
+            $keys[] = "clinic_hours.{$i}.status";
+            $keys[] = "clinic_hours.{$i}.opening";
+            $keys[] = "clinic_hours.{$i}.closing";
+        }
+
+        return $keys;
     }
 
     private function serviceSettingKeys(): array

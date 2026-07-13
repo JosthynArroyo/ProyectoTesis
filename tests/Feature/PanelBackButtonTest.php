@@ -35,7 +35,7 @@ class PanelBackButtonTest extends TestCase
     public function test_nested_admin_page_renders_panel_back_button(): void
     {
         $admin = $this->createUserWithRole('administrador');
-        $user = User::factory()->create(['status' => 'active']);
+        $user = $this->createUserWithRole('paciente');
 
         $response = $this->actingAs($admin)->get(route('admin.usuarios.show', $user));
 

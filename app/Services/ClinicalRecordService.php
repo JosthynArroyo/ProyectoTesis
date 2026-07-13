@@ -24,17 +24,28 @@ use Illuminate\Support\Str;
 
 class ClinicalRecordService
 {
-    public function ensureForPatient(User|int $patient, ?int $actorId = null): ClinicalRecord
+    public function ensureForPatient(User|int $patient, ?int $actorId = null, ?int $dependienteId = null): ClinicalRecord
     {
         $patientId = $patient instanceof User ? $patient->id : (int) $patient;
 
-        $record = ClinicalRecord::firstOrCreate(
-            ['patient_id' => $patientId],
-            [
-                'created_by' => $actorId,
-                'updated_by' => $actorId,
-            ]
-        );
+        if ($dependienteId) {
+            $record = ClinicalRecord::firstOrCreate(
+                ['dependiente_id' => $dependienteId],
+                [
+                    'patient_id' => null,
+                    'created_by' => $actorId,
+                    'updated_by' => $actorId,
+                ]
+            );
+        } else {
+            $record = ClinicalRecord::firstOrCreate(
+                ['patient_id' => $patientId, 'dependiente_id' => null],
+                [
+                    'created_by' => $actorId,
+                    'updated_by' => $actorId,
+                ]
+            );
+        }
 
         if ($actorId && (! $record->created_by || ! $record->updated_by)) {
             $record->forceFill([
@@ -68,7 +79,7 @@ class ClinicalRecordService
 
     public function buildSoapContext(Cita $cita, ?NotaSoap $nota = null): array
     {
-        $record = $this->ensureForPatient($cita->paciente_id);
+        $record = $this->ensureForPatient($cita->paciente_id, null, $cita->dependiente_id);
         $this->hydrateLegacyData($record);
 
         $record->load(['allergies', 'histories', 'problems', 'medications', 'alerts']);
@@ -91,7 +102,7 @@ class ClinicalRecordService
 
     public function getPreviousVitalSigns(Cita $cita, ?NotaSoap $nota = null): ?array
     {
-        $record = $this->ensureForPatient($cita->paciente_id);
+        $record = $this->ensureForPatient($cita->paciente_id, null, $cita->dependiente_id);
 
         $notaPrevia = NotaSoap::query()
             ->select('signos_vitales', 'id', 'cita_id')
@@ -113,7 +124,7 @@ class ClinicalRecordService
 
     public function syncFromSoap(Cita $cita, NotaSoap $nota, array $payload, ?int $actorId = null): ClinicalRecord
     {
-        $record = $this->ensureForPatient($cita->paciente_id, $actorId);
+        $record = $this->ensureForPatient($cita->paciente_id, $actorId, $cita->dependiente_id);
 
         $this->syncSoapMasterData($record, $nota, $payload);
         $this->attachExistingArtifacts($cita, $record);
@@ -175,6 +186,7 @@ class ClinicalRecordService
         $record->load([
             'patient.roles',
             'patient.patientFlag',
+            'dependiente.responsable',
             'allergies',
             'histories',
             'problems',
@@ -182,8 +194,10 @@ class ClinicalRecordService
             'alerts',
         ]);
 
+        $subject = $this->subjectData($record);
+
         $notes = NotaSoap::query()
-            ->with(['cita.doctor', 'cita.especialidad', 'diagnosticos', 'enmiendas.autor'])
+            ->with(['cita.doctor', 'cita.especialidad', 'followUpCita.doctor', 'followUpCita.especialidad', 'diagnosticos', 'enmiendas.autor'])
             ->where('clinical_record_id', $record->id)
             ->where('estado', NotaSoap::ESTADO_FIRMADA)
             ->get()
@@ -192,7 +206,13 @@ class ClinicalRecordService
 
         $appointments = Cita::query()
             ->with(['doctor', 'especialidad', 'notaSoap'])
-            ->where('paciente_id', $record->patient_id)
+            ->when(
+                $record->dependiente_id,
+                fn ($query) => $query->where('dependiente_id', $record->dependiente_id),
+                fn ($query) => $query
+                    ->where('paciente_id', $record->patient_id)
+                    ->whereNull('dependiente_id')
+            )
             ->orderByDesc('fecha')
             ->orderByDesc('hora')
             ->get();
@@ -227,6 +247,16 @@ class ClinicalRecordService
             ->sortBy(fn (Cita $cita) => $cita->inicioProgramado(config('app.timezone', 'America/Guayaquil'))->timestamp)
             ->values();
 
+        $scheduledFollowUps = $notes
+            ->pluck('followUpCita')
+            ->filter(function ($cita) {
+                return $cita instanceof Cita
+                    && in_array($cita->estado, [Cita::ESTADO_PENDIENTE, Cita::ESTADO_CONFIRMADA], true)
+                    && $cita->inicioProgramado(config('app.timezone', 'America/Guayaquil'))->greaterThanOrEqualTo(now(config('app.timezone', 'America/Guayaquil')));
+            })
+            ->sortBy(fn (Cita $cita) => $cita->inicioProgramado(config('app.timezone', 'America/Guayaquil'))->timestamp)
+            ->values();
+
         $completedAppointments = $appointments
             ->where('estado', Cita::ESTADO_REALIZADA)
             ->sortByDesc(fn (Cita $cita) => $cita->inicioProgramado(config('app.timezone', 'America/Guayaquil'))->timestamp)
@@ -239,6 +269,7 @@ class ClinicalRecordService
 
         return [
             'record' => $record,
+            'subject' => $subject,
             'historiesByCategory' => $record->histories->groupBy('category'),
             'activeProblems' => $record->problems
                 ->whereIn('status', [ClinicalRecordProblem::STATUS_ACTIVE, ClinicalRecordProblem::STATUS_MONITORING])
@@ -262,7 +293,9 @@ class ClinicalRecordService
             'appointments' => $appointments,
             'futureAppointments' => $futureAppointments,
             'completedAppointments' => $completedAppointments,
-            'nextAppointment' => $futureAppointments->first(),
+            'nextAppointment' => $futureAppointments->first() ?? $scheduledFollowUps->first(),
+            'scheduledFollowUps' => $scheduledFollowUps,
+            'nextScheduledFollowUp' => $scheduledFollowUps->first(),
             'prescriptions' => $prescriptions,
             'certificates' => $certificates,
             'laboratoryEntries' => $this->mergeLaboratories($legacyLabs, $selfServiceLabs),
@@ -273,6 +306,37 @@ class ClinicalRecordService
             'latestNote' => $notes->first(),
             'vitalSnapshot' => $this->buildVitalSnapshot($notes),
             'recentDiagnoses' => $this->buildRecentDiagnoses($notes),
+        ];
+    }
+
+    public function subjectData(ClinicalRecord $record): object
+    {
+        $record->loadMissing(['patient', 'dependiente.responsable']);
+
+        if ($record->dependiente_id && $record->dependiente) {
+            return (object) [
+                'name' => $record->dependiente->nombre,
+                'dni' => $record->dependiente->dni,
+                'sexo' => $record->dependiente->sexo,
+                'telefono' => $record->dependiente->telefono_emergencia,
+                'email' => null,
+                'fecha_nacimiento' => $record->dependiente->fecha_nacimiento,
+                'representante' => $record->dependiente->responsable?->name,
+                'representante_dni' => $record->dependiente->responsable?->dni,
+            ];
+        }
+
+        $patient = $record->patient;
+
+        return (object) [
+            'name' => $patient?->name ?? 'N/D',
+            'dni' => $patient?->dni ?? null,
+            'sexo' => $patient?->sexo ?? null,
+            'telefono' => $patient?->telefono ?? null,
+            'email' => $patient?->email ?? null,
+            'fecha_nacimiento' => $patient?->fecha_nacimiento ?? null,
+            'representante' => null,
+            'representante_dni' => null,
         ];
     }
 
@@ -366,6 +430,8 @@ class ClinicalRecordService
         $chronicFromText = $this->normalizeLines($payload['antecedentes_cronicas'] ?? '');
         $diabetes = $this->normalizeText($payload['antecedentes_diabetes'] ?? null);
         $hypertension = $this->normalizeText($payload['antecedentes_hipertension'] ?? null);
+        $familiares = $this->normalizeLines($payload['antecedentes_familiares'] ?? '');
+        $inmunizaciones = $this->normalizeLines($payload['antecedentes_inmunizaciones'] ?? '');
 
         $this->replaceHistories($record, ClinicalRecordHistory::CATEGORY_PERSONAL, collect($personal)
             ->map(fn ($line) => ['title' => $line])
@@ -374,6 +440,12 @@ class ClinicalRecordService
             ->map(fn ($line) => ['title' => $line])
             ->all());
         $this->replaceHistories($record, ClinicalRecordHistory::CATEGORY_HOSPITALIZATION, collect($hospitalizations)
+            ->map(fn ($line) => ['title' => $line])
+            ->all());
+        $this->replaceHistories($record, ClinicalRecordHistory::CATEGORY_FAMILY, collect($familiares)
+            ->map(fn ($line) => ['title' => $line])
+            ->all());
+        $this->replaceHistories($record, ClinicalRecordHistory::CATEGORY_IMMUNIZATION, collect($inmunizaciones)
             ->map(fn ($line) => ['title' => $line])
             ->all());
 
@@ -679,6 +751,12 @@ class ClinicalRecordService
             'diabetes' => $diabetes?->name,
             'hipertension' => $hypertension?->name,
             'otros' => $otros ?: null,
+            'familiares' => ($histories[ClinicalRecordHistory::CATEGORY_FAMILY] ?? collect())
+                ->map(fn (ClinicalRecordHistory $history) => $history->title)
+                ->implode("\n") ?: null,
+            'inmunizaciones' => ($histories[ClinicalRecordHistory::CATEGORY_IMMUNIZATION] ?? collect())
+                ->map(fn (ClinicalRecordHistory $history) => $history->title)
+                ->implode("\n") ?: null,
         ];
 
         return collect($payload)->filter()->isNotEmpty() ? $payload : null;
@@ -802,11 +880,19 @@ class ClinicalRecordService
 
         return collect($definitions)->map(function (array $definition, string $key) use ($vitals) {
             $value = data_get($vitals, $key);
+            $normalized = filled($value) ? trim((string) $value) : null;
+
+            // For talla (cm): always display as integer to avoid float artifacts (e.g. 162.98 → 163)
+            if ($normalized !== null && $key === 'talla' && is_numeric($normalized)) {
+                $normalized = (string) (int) round((float) $normalized);
+            }
 
             return [
                 'key' => $key,
                 'label' => $definition['label'],
-                'value' => filled($value) ? trim((string) $value).' '.$definition['unit'] : 'Sin registro',
+                'value' => $normalized,
+                'unit' => $definition['unit'],
+                'display' => $normalized !== null ? $normalized.' '.$definition['unit'] : 'Sin registro',
             ];
         })->values();
     }
