@@ -4,7 +4,6 @@ namespace App\Jobs;
 
 use App\Mail\CambioEstadoCitaMail;
 use App\Models\Cita;
-use App\Services\WhatsAppService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -28,9 +27,8 @@ class EnviarConfirmacionCitaJob implements ShouldQueue
     /**
      * Envía correos separados a paciente y doctor para "cita agendada".
      */
-    public function handle(?WhatsAppService $whatsapp = null): void
+    public function handle(): void
     {
-        $whatsapp ??= app(WhatsAppService::class);
         $cita = Cita::with(['paciente', 'doctor', 'especialidad'])->findOrFail($this->cita->id);
 
         // Paciente (autor del agendamiento)
@@ -43,14 +41,6 @@ class EnviarConfirmacionCitaJob implements ShouldQueue
         if ($cita->doctor && $cita->doctor->email) {
             Mail::to($cita->doctor->email)
                 ->queue(new CambioEstadoCitaMail($cita, 'doctor', 'agendada', 'paciente'));
-        }
-
-        if ($cita->paciente) {
-            $whatsapp->sendCitaAgendada($cita, $cita->paciente, 'paciente');
-        }
-
-        if ($cita->doctor) {
-            $whatsapp->sendCitaAgendada($cita, $cita->doctor, 'doctor');
         }
 
         Log::info(sprintf(

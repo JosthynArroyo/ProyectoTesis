@@ -25,17 +25,8 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
-    'twilio' => [
-        'sid' => env('TWILIO_SID'),
-        'auth_token' => env('TWILIO_AUTH_TOKEN'),
-        'whatsapp_from' => env('TWILIO_WHATSAPP_FROM'),
-    ],
-
     'whatsapp' => [
-        'enabled' => env('WHATSAPP_ENABLED', true),
         'default_country' => env('WHATSAPP_DEFAULT_COUNTRY', 'EC'),
-        'reminder_previous_day_hour' => env('WHATSAPP_REMINDER_PREVIOUS_DAY_HOUR', 12),
-        'reminder_window_minutes' => env('WHATSAPP_REMINDER_WINDOW_MINUTES', 10),
     ],
 
     'face' => [

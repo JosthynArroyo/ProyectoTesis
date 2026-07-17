@@ -1,56 +1,182 @@
 @extends('layouts.demo')
-@section('title', 'Pacientes doctor | Demo')
+@section('title', 'Pacientes - Demo')
+@section('activeSidebar', 'pacientes')
 @section('header-title', 'Pacientes')
-@section('header-subtitle', 'Consulta rapida de historiales e informacion')
+@section('header-subtitle', 'Expedientes y seguimiento clínico (Demo)')
 
 @section('sidebar')
     @include('demo.partials.sidebar-doctor-demo')
 @endsection
 
+@push('styles')
+    @vite('resources/css/doctor/pacientes-index.css')
+@endpush
+
+@php
+    $sortLabels = [
+        'recientes' => 'Última consulta reciente',
+        'alfabetico' => 'Nombre A-Z',
+        'laboratorios' => 'Más laboratorios pendientes',
+    ];
+
+    $mappedPatients = collect($patients)->map(function($p) {
+        return [
+            'initials' => strtoupper(substr($p['name'], 0, 2)),
+            'avatar_tone' => 'blue',
+            'name' => $p['name'],
+            'code' => $p['document'],
+            'age' => $p['age'],
+            'last_visit_display' => $p['last_visit'],
+            'last_visit_context_tone' => 'info',
+            'last_visit_context' => 'Pediatría',
+            'last_visit_status_tone' => 'success',
+            'last_visit_status_label' => 'Atendido',
+            'email' => str_contains($p['name'], 'Lucia') ? 'lucia@example.com' : 'daniel.salazar@example.com',
+            'phone' => '+593 99 514 0927',
+            'record_url' => route('demo.doctor.pacientes.historial', $p['id'] ?? 10),
+            'pending_labs_count' => 0,
+        ];
+    });
+
+    $stats = [
+        'total_active' => count($patients),
+        'pending_labs' => 0,
+        'today_visits' => 2,
+    ];
+
+    $sort = request('sort', 'recientes');
+@endphp
+
 @section('main')
-<div class="space-y-6">
-    <div class="panel-action-bar">
-        <div class="inline-control-shell max-w-sm flex-1">
-            <i class="ri-search-line text-gray-400"></i>
-            <input type="text" value="" placeholder="Buscar por nombre o documento..." readonly>
-        </div>
+<section class="doctor-patients-page">
+    <div class="doctor-patients-overview">
+        <article class="doctor-patients-stat">
+            <span class="doctor-patients-stat__icon doctor-patients-stat__icon--blue">
+                <i class="ri-group-line"></i>
+            </span>
+            <div class="doctor-patients-stat__body">
+                <p>Pacientes activos</p>
+                <strong>{{ number_format($stats['total_active']) }}</strong>
+            </div>
+        </article>
+
+        <article class="doctor-patients-stat">
+            <span class="doctor-patients-stat__icon doctor-patients-stat__icon--amber">
+                <i class="ri-flask-line"></i>
+            </span>
+            <div class="doctor-patients-stat__body">
+                <p>Laboratorios pendientes</p>
+                <strong>{{ number_format($stats['pending_labs']) }}</strong>
+            </div>
+        </article>
+
+        <article class="doctor-patients-stat">
+            <span class="doctor-patients-stat__icon doctor-patients-stat__icon--emerald">
+                <i class="ri-stethoscope-line"></i>
+            </span>
+            <div class="doctor-patients-stat__body">
+                <p>Consultas de hoy</p>
+                <strong>{{ number_format($stats['today_visits']) }}</strong>
+            </div>
+        </article>
+
+        <form class="doctor-patients-sort-card" method="GET" action="{{ route('demo.doctor.pacientes.index') }}">
+            <span class="doctor-patients-sort-card__label">Ordenar por</span>
+            <label class="doctor-patients-select-shell" for="sort">
+                <select id="sort" name="sort" onchange="this.form.submit()">
+                    <option value="recientes" @selected($sort === 'recientes')>Última consulta reciente</option>
+                    <option value="alfabetico" @selected($sort === 'alfabetico')>Nombre A-Z</option>
+                    <option value="laboratorios" @selected($sort === 'laboratorios')>Más laboratorios pendientes</option>
+                </select>
+                <i class="ri-arrow-down-s-line"></i>
+            </label>
+        </form>
     </div>
 
-    <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-        @foreach($patients as $patient)
-            <section class="card p-0 transition-all hover:-translate-y-1 hover:shadow-md">
-                <div class="border-b border-gray-100 p-6">
-                    <div class="flex items-start justify-between gap-4">
-                        <div class="flex items-center gap-4">
-                            <div class="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 text-lg font-semibold text-blue-700">
-                                {{ strtoupper(substr($patient['name'], 0, 1)) }}
-                            </div>
-                            <div>
-                                <h2 class="text-base font-semibold text-gray-900">{{ $patient['name'] }}</h2>
-                                <p class="text-sm text-gray-500">C.I: {{ $patient['document'] }}</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="mt-4 grid gap-2 sm:grid-cols-3">
-                        <div class="rounded-xl bg-gray-50 p-2 text-center">
-                            <span class="block text-xs text-gray-500">Edad</span>
-                            <span class="font-semibold text-gray-900">{{ $patient['age'] }}</span>
-                        </div>
-                        <div class="rounded-xl bg-gray-50 p-2 text-center">
-                            <span class="block text-xs text-gray-500">Sangre</span>
-                            <span class="font-semibold text-rose-600">{{ $patient['blood_type'] }}</span>
-                        </div>
-                        <div class="rounded-xl bg-gray-50 p-2 text-center">
-                            <span class="block text-xs text-gray-500">Ultima cita</span>
-                            <span class="font-semibold text-gray-900">{{ $patient['last_visit'] }}</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="bg-gray-50 px-4 py-3">
-                    <button class="text-sm font-medium text-blue-700 demo-action-blocked">Ver historial <i class="ri-arrow-right-line align-middle"></i></button>
-                </div>
-            </section>
-        @endforeach
-    </div>
-</div>
+    <section class="doctor-patients-list">
+        <div class="doctor-patients-list__head">
+            <div>
+                <p class="doctor-patients-eyebrow">Casos clínicos</p>
+                <h2>Listado de pacientes</h2>
+            </div>
+            <p class="doctor-patients-list__meta">{{ count($mappedPatients) }} expedientes - {{ $sortLabels[$sort] ?? $sortLabels['recientes'] }}</p>
+        </div>
+
+        @if(count($mappedPatients) === 0)
+            <div class="doctor-patients-list__empty">
+                <x-ui.empty-state title="Aún no tienes pacientes vinculados." message="Cuando atiendas o confirmes consultas aparecerán aquí para abrir su expediente clínico y continuar el seguimiento.">
+                    <a class="btn btn-primary" href="{{ route('demo.doctor.citas') }}">
+                        <i class="ri-calendar-line"></i>
+                        Ir a mis citas
+                    </a>
+                </x-ui.empty-state>
+            </div>
+        @else
+            <div class="doctor-patients-table-wrap">
+                <table class="doctor-patients-table">
+                    <thead>
+                        <tr>
+                            <th>Paciente</th>
+                            <th>Edad</th>
+                            <th>Última atención</th>
+                            <th>Contacto</th>
+                            <th class="doctor-patients-table__actions-col">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($mappedPatients as $patient)
+                            <tr>
+                                <td data-label="Paciente">
+                                    <div class="doctor-patient-cell">
+                                        <span class="doctor-patient-avatar doctor-patient-avatar--{{ $patient['avatar_tone'] }}">
+                                            {{ $patient['initials'] }}
+                                        </span>
+                                        <div class="doctor-patient-cell__text">
+                                            <strong>{{ $patient['name'] }}</strong>
+                                            <p>ID: #{{ $patient['code'] }}</p>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td data-label="Edad">
+                                    {{ $patient['age'] !== null ? $patient['age'].' años' : 'No registrada' }}
+                                </td>
+                                <td data-label="Última atención">
+                                    <div class="doctor-patient-last-visit">
+                                        <strong>{{ $patient['last_visit_display'] }}</strong>
+                                        <span class="doctor-patient-chip doctor-patient-chip--{{ $patient['last_visit_context_tone'] }}">
+                                            {{ $patient['last_visit_context'] }}
+                                        </span>
+                                        <span class="doctor-patient-status doctor-patient-status--{{ $patient['last_visit_status_tone'] }}">
+                                            {{ $patient['last_visit_status_label'] }}
+                                        </span>
+                                    </div>
+                                </td>
+                                <td data-label="Contacto">
+                                    <div class="doctor-patient-contact">
+                                        <span>
+                                            <i class="ri-mail-line"></i>
+                                            {{ $patient['email'] ?: 'Sin correo registrado' }}
+                                        </span>
+                                        <span>
+                                            <i class="ri-phone-line"></i>
+                                            {{ $patient['phone'] ?: 'Sin teléfono registrado' }}
+                                        </span>
+                                    </div>
+                                </td>
+                                <td data-label="Acciones">
+                                    <div class="doctor-patient-actions">
+                                        <a class="doctor-patient-link" href="{{ $patient['record_url'] }}">
+                                            Ver expediente
+                                            <i class="ri-arrow-right-line"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
+    </section>
+</section>
 @endsection

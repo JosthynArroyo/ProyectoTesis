@@ -4,7 +4,7 @@
             <span class="sidebar-brand__icon"><i class="ri-shield-star-line"></i></span>
             <div class="sidebar-brand__text">
                 <small>Superadmin</small>
-                <strong>{{ $clinicName }}</strong>
+                <strong>{{ $clinicIdentity->name() }}</strong>
             </div>
         </a>
         <button type="button" class="close btn btn-ghost px-2 lg:hidden" aria-label="Cerrar menu" data-sidebar-close>

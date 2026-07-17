@@ -116,6 +116,9 @@
             $esAdmin = in_array($roleNombre, ['administrador', 'superadmin'], true);
             $isClinicalProfessional = in_array($roleNombre, ['doctor', 'laboratorio'], true);
             $espNombres = ($u->especialidades ?? collect())->pluck('nombre')->all();
+            $dependientes = $roleNombre === 'paciente' ? ($u->dependientes ?? collect()) : collect();
+            $dependientesCount = (int) ($u->dependientes_count ?? $dependientes->count());
+            $dependientesPanelId = 'dependientes-panel-'.$u->id;
             $estado = $u->status ?? 'active';
             $isSusp = $u->suspended_until && now()->lt($u->suspended_until);
           @endphp
@@ -150,6 +153,22 @@
                     <p class="truncate text-sm font-semibold text-gray-900">{{ $u->name }}</p>
                     <div class="mt-2 flex flex-wrap items-center gap-3">
                       <p class="text-xs text-gray-500">ID #{{ $u->id }}</p>
+                      @if($roleNombre === 'paciente')
+                        <button
+                          type="button"
+                          class="btn btn-ghost btn-sm justify-start"
+                          data-dependent-toggle
+                          data-dependent-target="{{ $dependientesPanelId }}"
+                          aria-controls="{{ $dependientesPanelId }}"
+                          aria-expanded="false"
+                        >
+                          <i class="ri-arrow-down-s-line" data-dependent-chevron></i>
+                          <span data-dependent-label>Ver dependientes</span>
+                          @if($dependientesCount > 0)
+                            <span class="badge">{{ $dependientesCount }}</span>
+                          @endif
+                        </button>
+                      @endif
                       <button
                         type="button"
                         class="btn btn-ghost btn-sm md:hidden"
@@ -293,6 +312,67 @@
               </td>
             @endif
           </tr>
+          @if($roleNombre === 'paciente')
+            <tr id="{{ $dependientesPanelId }}" data-dependent-panel hidden>
+              <td colspan="{{ max(count($cols), 1) }}" class="!px-0 !pt-0">
+                <div class="rounded-2xl border border-gray-200 bg-gray-50/80 p-4 sm:p-5">
+                  <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p class="text-xs uppercase tracking-widest text-gray-500">Pacientes dependientes</p>
+                      <h4 class="mt-1 text-base font-semibold text-gray-900">{{ $u->name }}</h4>
+                    </div>
+                    <span class="text-xs text-gray-500">Cuenta titular #{{ $u->id }}</span>
+                  </div>
+
+                  @if($dependientes->isEmpty())
+                    <div class="mt-4">
+                      <x-ui.empty-state title="No tiene pacientes dependientes asociados" message="Los registros de esta cuenta no incluyen dependientes activos en este momento." />
+                    </div>
+                  @else
+                    <div class="mt-4 grid gap-4 lg:grid-cols-2">
+                      @foreach($dependientes as $dep)
+                        @php
+                          $fechaNacimiento = optional($dep->fecha_nacimiento)->format('d/m/Y') ?: 'Sin registro';
+                          $sexo = $dep->sexo ?: 'Sin registro';
+                          $dni = $dep->dni ?: 'Sin registro';
+                          $parentesco = $dep->parentesco ? \Illuminate\Support\Str::headline($dep->parentesco) : 'Sin registro';
+                          $estadoDependiente = $dep->activo ? 'Activo' : 'Inactivo';
+                        @endphp
+                        <article class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                          <div class="flex flex-wrap items-start justify-between gap-3">
+                            <div class="min-w-0">
+                              <p class="text-base font-semibold text-gray-900">{{ $dep->nombre ?: 'Sin nombre' }}</p>
+                              <p class="mt-1 text-sm text-gray-500">Parentesco: {{ $parentesco }}</p>
+                            </div>
+                            <span class="badge {{ $dep->activo ? 'success' : 'warning' }}">{{ $estadoDependiente }}</span>
+                          </div>
+
+                          <dl class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                            <div>
+                              <dt class="text-xs uppercase tracking-widest text-gray-500">Documento</dt>
+                              <dd class="mt-1 text-sm font-medium text-gray-800">{{ $dni }}</dd>
+                            </div>
+                            <div>
+                              <dt class="text-xs uppercase tracking-widest text-gray-500">Fecha de nacimiento</dt>
+                              <dd class="mt-1 text-sm font-medium text-gray-800">{{ $fechaNacimiento }}</dd>
+                            </div>
+                            <div>
+                              <dt class="text-xs uppercase tracking-widest text-gray-500">Sexo</dt>
+                              <dd class="mt-1 text-sm font-medium text-gray-800">{{ $sexo }}</dd>
+                            </div>
+                            <div>
+                              <dt class="text-xs uppercase tracking-widest text-gray-500">Estado</dt>
+                              <dd class="mt-1 text-sm font-medium text-gray-800">{{ $estadoDependiente }}</dd>
+                            </div>
+                          </dl>
+                        </article>
+                      @endforeach
+                    </div>
+                  @endif
+                </div>
+              </td>
+            </tr>
+          @endif
         @empty
           <tr>
             <td colspan="{{ max(count($cols), 1) }}">

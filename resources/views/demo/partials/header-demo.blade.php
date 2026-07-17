@@ -25,14 +25,36 @@
 
             <x-layout.theme-toggle />
 
-            <div class="flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-2 py-1.5">
-                <span class="flex h-9 w-9 items-center justify-center rounded-full bg-teal-100 text-sm font-semibold text-teal-700">
-                    {{ $demoUser['avatarInitials'] ?? 'DM' }}
+            <button id="user-menu-button" data-dropdown-toggle="user-dropdown" class="header-user-button min-w-0">
+                <span class="hidden max-w-[160px] truncate text-sm font-semibold text-gray-700 sm:inline lg:max-w-[220px]">{{ $demoUser['name'] ?? 'Usuario Demo' }}</span>
+                <span class="relative flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-gray-100">
+                    <span class="flex h-full w-full items-center justify-center bg-teal-100 text-sm font-semibold text-teal-700">
+                        {{ $demoUser['avatarInitials'] ?? 'DM' }}
+                    </span>
                 </span>
-                <div class="hidden min-w-0 sm:block">
-                    <p class="truncate text-sm font-semibold text-gray-800">{{ $demoUser['name'] ?? 'Usuario Demo' }}</p>
-                    <p class="truncate text-xs text-gray-500">{{ $demoUser['email'] ?? 'demo@clinica.test' }}</p>
+                <i class="ri-arrow-down-s-line text-gray-400"></i>
+            </button>
+
+            <div id="user-dropdown" class="z-50 hidden w-56 max-w-[calc(100vw-2rem)] rounded-2xl border border-gray-200 bg-white p-2 shadow-xl">
+                <div class="px-3 py-2">
+                    <p class="text-sm font-semibold text-gray-800">{{ $demoUser['name'] ?? 'Usuario Demo' }}</p>
+                    <p class="text-xs text-gray-500">{{ $demoUser['email'] ?? 'demo@clinica.test' }}</p>
                 </div>
+                <div class="my-2 h-px bg-gray-100"></div>
+                @if(\Illuminate\Support\Facades\Route::has('demo.' . $demoRole . '.perfil'))
+                    <a href="{{ route('demo.' . $demoRole . '.perfil') }}" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-gray-600 hover:bg-gray-50">
+                        <i class="ri-user-line"></i> Perfil
+                    </a>
+                @endif
+                <button type="button" class="flex w-full cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-gray-600 hover:bg-gray-50" data-legal-open="privacy-policy-modal">
+                    <i class="ri-shield-check-line"></i> Políticas de privacidad
+                </button>
+                <button type="button" class="flex w-full cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-gray-600 hover:bg-gray-50" data-legal-open="terms-service-modal">
+                    <i class="ri-file-text-line"></i> Términos de servicio
+                </button>
+                <a href="{{ $logoutUrl }}" class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-rose-600 hover:bg-rose-50">
+                    <i class="ri-logout-circle-r-line"></i> Cerrar sesión
+                </a>
             </div>
         </div>
     </div>

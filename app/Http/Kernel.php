@@ -58,5 +58,8 @@ class Kernel extends HttpKernel
         // alias para control por rol ya usado en tus rutas
         'role' => \App\Http\Middleware\EnsureUserRole::class,
         'feature' => \App\Http\Middleware\EnsureFeatureAccess::class,
+
+        // Aislamiento global de demos: bloquea métodos mutables y limpia estado persistido.
+        'demo.isolation' => \App\Http\Middleware\DemoIsolation::class,
     ];
 }

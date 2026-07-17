@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\Authenticate;
+use App\Http\Middleware\DemoIsolation;
 use App\Http\Middleware\EnsureAccountActive;
 use App\Http\Middleware\EnsureFeatureAccess;
 use App\Http\Middleware\EnsureNoPendingPaymentsForBooking;
@@ -20,12 +21,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withSchedule(function (Schedule $schedule): void {
-        $reminderHour = str_pad((string) (int) config('services.whatsapp.reminder_previous_day_hour', 12), 2, '0', STR_PAD_LEFT);
-
         $schedule->command('users:deactivate-inactive')->dailyAt('02:30')->withoutOverlapping();
         $schedule->command('citas:marcar-no-show')->everyTenMinutes()->withoutOverlapping();
         $schedule->command('citas:sync-recordatorios')->everyTenMinutes()->withoutOverlapping();
-        $schedule->command('citas:recordatorio-whatsapp')->dailyAt($reminderHour.':00')->withoutOverlapping();
     })
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->appendToGroup('web', [
@@ -39,6 +37,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => EnsureUserRole::class,
             'feature' => EnsureFeatureAccess::class,
             'no_pending_payments' => EnsureNoPendingPaymentsForBooking::class,
+            // Aislamiento global de todas las rutas /demo.
+            'demo.isolation' => DemoIsolation::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

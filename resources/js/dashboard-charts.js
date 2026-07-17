@@ -270,71 +270,104 @@ const buildBarOptions = (chart, theme, base) => ({
   ],
 });
 
-const buildLineOptions = (chart, theme, base) => ({
-  ...base,
-  chart: {
-    ...base.chart,
-    type: chart.type === 'area' ? 'area' : 'line',
-    stacked: Boolean(chart.stacked),
-  },
-  series: Array.isArray(chart.series) ? chart.series : [],
-  xaxis: {
-    ...buildSharedAxis(theme, chart.labels || []),
-    labels: {
-      ...buildSharedAxis(theme, chart.labels || []).labels,
-      trim: true,
-      rotate: -20,
-      hideOverlappingLabels: true,
+const buildLineOptions = (chart, theme, base) => {
+  const isArea = chart.type === 'area';
+  return {
+    ...base,
+    chart: {
+      ...base.chart,
+      type: isArea ? 'area' : 'line',
+      stacked: Boolean(chart.stacked),
     },
-  },
-  yaxis: {
-    labels: {
-      formatter: (value) => formatNumber(value),
+    series: Array.isArray(chart.series) ? chart.series : [],
+    xaxis: {
+      ...buildSharedAxis(theme, chart.labels || []),
+      tickAmount: chart.labels && chart.labels.length > 8 ? 8 : undefined,
+      labels: {
+        ...buildSharedAxis(theme, chart.labels || []).labels,
+        trim: true,
+        rotate: 0,
+        hideOverlappingLabels: true,
+        style: {
+          colors: theme.foreColor,
+          fontSize: '11px',
+        },
+      },
+      crosshairs: {
+        show: true,
+        width: 1,
+        position: 'back',
+        stroke: {
+          color: theme.gridColor,
+          width: 1,
+          dashArray: 3,
+        },
+      },
+    },
+    yaxis: {
+      labels: {
+        formatter: (value) => formatNumber(value),
+        style: {
+          colors: theme.foreColor,
+          fontSize: '11px',
+        },
+      },
+    },
+    tooltip: {
+      ...base.tooltip,
+      shared: true,
+      intersect: false,
+      theme: theme.tooltipTheme,
+      x: {
+        show: true,
+      },
+      y: {
+        formatter: (value) => formatNumber(value),
+      },
       style: {
-        colors: theme.foreColor,
+        fontSize: '12px',
+        fontFamily: 'inherit',
       },
     },
-  },
-  tooltip: {
-    ...base.tooltip,
-    y: {
-      formatter: (value) => formatNumber(value),
-    },
-  },
-  fill: chart.type === 'area'
-    ? {
-        type: 'gradient',
-        gradient: {
-          shadeIntensity: 0.25,
-          opacityFrom: 0.35,
-          opacityTo: 0.05,
-          stops: [0, 80, 100],
-        },
-      }
-    : undefined,
-  markers: {
-    size: chart.type === 'area' ? 3 : 4,
-    strokeWidth: 2,
-  },
-  stroke: {
-    curve: 'smooth',
-    width: chart.type === 'area' ? 2.5 : 3,
-  },
-  legend: {
-    ...base.legend,
-    position: 'top',
-  },
-  responsive: [
-    {
-      breakpoint: 768,
-      options: {
-        legend: {
-          position: 'bottom',
-        },
+    fill: isArea
+      ? {
+          type: 'gradient',
+          gradient: {
+            shadeIntensity: 0.5,
+            opacityFrom: 0.35,
+            opacityTo: 0.02,
+            stops: [0, 90, 100],
+          },
+        }
+      : undefined,
+    markers: {
+      size: isArea ? 4 : 5,
+      strokeWidth: 2,
+      strokeColors: theme.surface,
+      hover: {
+        size: 6,
       },
     },
-  ],
-});
+    stroke: {
+      curve: 'smooth',
+      width: isArea ? 2.5 : 3,
+    },
+    legend: {
+      ...base.legend,
+      position: 'top',
+    },
+    responsive: [
+      {
+        breakpoint: 768,
+        options: {
+          legend: {
+            position: 'bottom',
+          },
+        },
+      },
+    ],
+  };
+};
 
 const makeChartOptions = (chart, theme) => {
   const base = buildBaseOptions(chart, theme);

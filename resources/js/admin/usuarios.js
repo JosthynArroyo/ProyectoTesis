@@ -84,6 +84,32 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   };
 
+  const setDependentState = (button, open) => {
+    const panelId = button.dataset.dependentTarget;
+    if (!panelId) {
+      return;
+    }
+
+    const panel = document.getElementById(panelId);
+    button.setAttribute('aria-expanded', String(open));
+
+    const label = button.querySelector('[data-dependent-label]');
+    if (label) {
+      label.textContent = open ? 'Ocultar dependientes' : 'Ver dependientes';
+    }
+
+    const chevron = button.querySelector('[data-dependent-chevron]');
+    if (chevron) {
+      chevron.classList.toggle('ri-arrow-up-s-line', open);
+      chevron.classList.toggle('ri-arrow-down-s-line', !open);
+    }
+
+    if (panel) {
+      panel.hidden = !open;
+      panel.classList.toggle('is-open', open);
+    }
+  };
+
   const syncRows = () => {
     if (!mobileQuery.matches) {
       rows.forEach((row) => setRowState(row, true));
@@ -111,6 +137,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         setRowState(row, open);
       });
+    });
+  });
+
+  document.querySelectorAll('[data-dependent-toggle]').forEach((button) => {
+    const panelId = button.dataset.dependentTarget;
+    const panel = panelId ? document.getElementById(panelId) : null;
+    if (panel) {
+      panel.hidden = true;
+    }
+
+    button.addEventListener('click', () => {
+      const open = panel ? panel.hidden : button.getAttribute('aria-expanded') !== 'true';
+      setDependentState(button, open);
     });
   });
 

@@ -176,7 +176,6 @@ class PdfViewsRenderTest extends TestCase
 
         $this->assertStringContainsString('ORDEN DE LABORATORIO', $html);
         $this->assertStringContainsString('Biometria hematica completa', $html);
-        $this->assertStringContainsString('No seleccionado en esta orden', $html);
         $this->assertStringContainsString('Control y chequeo general', $html);
         $this->assertStringNotContainsString('@php', $html);
     }

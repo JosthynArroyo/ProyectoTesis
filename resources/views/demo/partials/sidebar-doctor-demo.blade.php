@@ -4,7 +4,7 @@
             <span class="sidebar-brand__icon"><i class="ri-stethoscope-line"></i></span>
             <div class="sidebar-brand__text">
                 <small>Panel Medico</small>
-                <strong>{{ $clinicName }}</strong>
+                <strong>{{ $clinicIdentity->name() }}</strong>
             </div>
         </a>
         <button type="button" class="close btn btn-ghost px-2 lg:hidden" aria-label="Cerrar menu" data-sidebar-close>
@@ -30,6 +30,9 @@
         </a>
         <a href="{{ route('demo.doctor.historial-recetas') }}" class="flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors {{ request()->routeIs('demo.doctor.historial-recetas') ? 'bg-gray-100 text-gray-900 font-medium' : 'text-gray-600 hover:bg-gray-50' }}">
             <i class="ri-file-list-3-line text-lg"></i> Historial de recetas
+        </a>
+        <a href="#" data-demo-blocked class="flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors text-gray-600 hover:bg-gray-50">
+            <i class="ri-flask-line text-lg"></i> Pedidos de laboratorio
         </a>
         <a href="{{ route('demo.doctor.perfil') }}" class="flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors {{ request()->routeIs('demo.doctor.perfil') ? 'bg-gray-100 text-gray-900 font-medium' : 'text-gray-600 hover:bg-gray-50' }}">
             <i class="ri-account-circle-line text-lg"></i> Perfil

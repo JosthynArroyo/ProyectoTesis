@@ -145,6 +145,7 @@ class AppServiceProvider extends ServiceProvider
             'emails.*',
             'pdf.*',
             'citas.*',
+            'demo.*',
         ], function ($view): void {
             static $payload = null;
 

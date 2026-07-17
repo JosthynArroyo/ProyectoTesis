@@ -13,7 +13,7 @@ class ChatbotIdentityFlowTest extends TestCase
 
     public function test_verificar_paciente_acepta_cedula_sin_correo(): void
     {
-        $rolPaciente = Role::create(['name' => 'paciente']);
+        $rolPaciente = Role::firstOrCreate(['name' => 'paciente']);
 
         $paciente = User::factory()->create([
             'dni' => '1234567890',
@@ -34,7 +34,7 @@ class ChatbotIdentityFlowTest extends TestCase
 
     public function test_verificar_paciente_solo_valida_correo_si_fue_enviado(): void
     {
-        $rolPaciente = Role::create(['name' => 'paciente']);
+        $rolPaciente = Role::firstOrCreate(['name' => 'paciente']);
 
         $paciente = User::factory()->create([
             'dni' => '1234567890',

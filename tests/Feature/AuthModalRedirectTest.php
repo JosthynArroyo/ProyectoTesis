@@ -28,7 +28,7 @@ class AuthModalRedirectTest extends TestCase
 
     public function test_salir_logs_out_and_returns_to_landing(): void
     {
-        $role = Role::create(['name' => 'superadmin']);
+        $role = Role::firstOrCreate(['name' => 'superadmin']);
         $user = User::factory()->create(['status' => 'active']);
         $user->roles()->attach($role->id);
 
@@ -50,7 +50,7 @@ class AuthModalRedirectTest extends TestCase
 
     public function test_login_with_remember_sets_persistent_recaller_cookie(): void
     {
-        $role = Role::create(['name' => 'paciente']);
+        $role = Role::firstOrCreate(['name' => 'paciente']);
         $user = User::factory()->create([
             'email' => 'paciente@example.com',
             'password' => 'password',
@@ -71,7 +71,7 @@ class AuthModalRedirectTest extends TestCase
 
     public function test_login_without_remember_does_not_set_recaller_cookie(): void
     {
-        $role = Role::create(['name' => 'paciente']);
+        $role = Role::firstOrCreate(['name' => 'paciente']);
         $user = User::factory()->create([
             'email' => 'paciente@example.com',
             'password' => 'password',

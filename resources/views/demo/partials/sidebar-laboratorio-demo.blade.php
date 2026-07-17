@@ -4,7 +4,7 @@
             <span class="sidebar-brand__icon"><i class="ri-test-tube-line"></i></span>
             <div class="sidebar-brand__text">
                 <small>Laboratorio</small>
-                <strong>{{ $clinicName }}</strong>
+                <strong>{{ $clinicIdentity->name() }}</strong>
             </div>
         </a>
         <button type="button" class="close btn btn-ghost px-2 lg:hidden" aria-label="Cerrar menu" data-sidebar-close>
@@ -18,6 +18,9 @@
         </a>
         <a href="{{ route('demo.laboratorio.citas-resultados') }}" class="flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors {{ request()->routeIs('demo.laboratorio.citas-resultados') ? 'bg-gray-100 text-gray-900 font-medium' : 'text-gray-600 hover:bg-gray-50' }}">
             <i class="ri-flask-line text-lg"></i> Citas y resultados
+        </a>
+        <a href="#" data-demo-blocked class="flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors text-gray-600 hover:bg-gray-50">
+            <i class="ri-file-shield-line text-lg"></i> Pedidos Médicos (.p12)
         </a>
         <a href="{{ route('demo.laboratorio.horarios') }}" class="flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors {{ request()->routeIs('demo.laboratorio.horarios') ? 'bg-gray-100 text-gray-900 font-medium' : 'text-gray-600 hover:bg-gray-50' }}">
             <i class="ri-calendar-schedule-line text-lg"></i> Horarios

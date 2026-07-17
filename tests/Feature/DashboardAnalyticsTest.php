@@ -37,6 +37,12 @@ class DashboardAnalyticsTest extends TestCase
 
     public function test_superadmin_dashboard_uses_real_counts_and_drill_down_links(): void
     {
+        $initialActive = User::onlyActive()->count();
+        $initialPatients = User::whereHas('roles', fn($q) => $q->where('name', 'paciente'))->count();
+        $initialDoctors = User::whereHas('roles', fn($q) => $q->where('name', 'doctor'))->count();
+        $initialAdmins = User::whereHas('roles', fn($q) => $q->where('name', 'administrador'))->count();
+        $initialLabs = User::whereHas('roles', fn($q) => $q->where('name', 'laboratorio'))->count();
+
         $superadmin = $this->userWithRole('superadmin', ['created_at' => Carbon::parse('2026-07-01 00:00:00', 'America/Guayaquil')]);
         $admin = $this->userWithRole('administrador');
         $doctorA = $this->userWithRole('doctor');
@@ -62,11 +68,11 @@ class DashboardAnalyticsTest extends TestCase
         $payload = $response->json();
 
         $this->assertSame('superadmin', $payload['role']);
-        $this->assertSame(7, $payload['metrics']['users_active']['value']);
-        $this->assertSame(2, $payload['metrics']['patients_total']['value']);
-        $this->assertSame(2, $payload['metrics']['doctors_total']['value']);
-        $this->assertSame(1, $payload['metrics']['admins_total']['value']);
-        $this->assertSame(1, $payload['metrics']['laboratory_total']['value']);
+        $this->assertSame(7 + $initialActive, $payload['metrics']['users_active']['value']);
+        $this->assertSame(2 + $initialPatients, $payload['metrics']['patients_total']['value']);
+        $this->assertSame(2 + $initialDoctors, $payload['metrics']['doctors_total']['value']);
+        $this->assertSame(1 + $initialAdmins, $payload['metrics']['admins_total']['value']);
+        $this->assertSame(1 + $initialLabs, $payload['metrics']['laboratory_total']['value']);
         $this->assertSame(4, $payload['metrics']['appointments_period']['value']);
         $this->assertSame(3, $payload['metrics']['appointments_today']['value']);
         $this->assertSame(1, $payload['metrics']['lab_pending']['value']);
@@ -88,6 +94,9 @@ class DashboardAnalyticsTest extends TestCase
 
     public function test_admin_dashboard_is_filterable_and_exposes_state_links(): void
     {
+        $initialPatients = User::whereHas('roles', fn($q) => $q->where('name', 'paciente'))->count();
+        $initialActiveDoctors = User::onlyActive()->whereHas('roles', fn($q) => $q->where('name', 'doctor'))->count();
+
         $admin = $this->userWithRole('administrador', ['created_at' => Carbon::parse('2026-07-01 00:00:00', 'America/Guayaquil')]);
         $doctor = $this->userWithRole('doctor');
         $patientA = $this->userWithRole('paciente');
@@ -108,8 +117,8 @@ class DashboardAnalyticsTest extends TestCase
         $payload = $response->json();
 
         $this->assertSame('admin', $payload['role']);
-        $this->assertSame(2, $payload['metrics']['patients_total']['value']);
-        $this->assertSame(1, $payload['metrics']['doctors_active']['value']);
+        $this->assertSame(2 + $initialPatients, $payload['metrics']['patients_total']['value']);
+        $this->assertSame(1 + $initialActiveDoctors, $payload['metrics']['doctors_active']['value']);
         $this->assertSame(4, $payload['metrics']['appointments_period']['value']);
         $this->assertSame(3, $payload['metrics']['appointments_today']['value']);
         $this->assertSame(1, $payload['metrics']['appointments_pending']['value']);

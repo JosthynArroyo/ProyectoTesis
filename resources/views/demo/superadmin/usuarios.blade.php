@@ -1,7 +1,7 @@
 @extends('layouts.demo')
 @section('title', 'Usuarios | Demo')
-@section('header-title', 'Usuarios')
-@section('header-subtitle', 'Gestion de usuarios del sistema')
+@section('header-title', 'Usuarios del sistema')
+@section('header-subtitle', 'Listado global por rol')
 
 @section('sidebar')
     @include('demo.partials.sidebar-superadmin-demo')
@@ -9,66 +9,63 @@
 
 @section('main')
 <div class="space-y-6">
-    <div class="panel-action-bar flex flex-wrap items-center justify-between gap-3">
-        <div class="inline-control-shell max-w-sm flex-1">
-            <i class="ri-search-line text-gray-400"></i>
-            <input type="text" value="" placeholder="Buscar por nombre, correo o documento..." readonly>
-        </div>
-        <div class="flex flex-wrap gap-2">
-            <button class="btn btn-outline demo-action-blocked"><i class="ri-filter-3-line"></i> Filtros</button>
-            <button class="btn btn-primary demo-action-blocked"><i class="ri-user-add-line"></i> Nuevo usuario</button>
-        </div>
+  <form class="card p-5" method="GET" action="{{ route('demo.superadmin.usuarios') }}">
+    <div class="flex flex-wrap gap-3">
+      <div class="inline-control-shell flex-1">
+        <i class="ri-search-line text-gray-400"></i>
+        <input type="search" name="buscar" value="{{ $search }}" placeholder="Buscar usuario">
+      </div>
+      <select class="form-select" name="role">
+        <option value="all" @selected($role === 'all')>Todos</option>
+        <option value="paciente" @selected($role === 'paciente')>Pacientes</option>
+        <option value="doctor" @selected($role === 'doctor')>Doctores</option>
+        <option value="laboratorio" @selected($role === 'laboratorio')>Laboratorio</option>
+        <option value="administrador" @selected($role === 'administrador')>Administradores</option>
+      </select>
+      <button class="btn btn-primary" type="submit">Aplicar</button>
     </div>
+  </form>
 
-    <section class="card p-0">
-        <div class="table-shell table-responsive-cards">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Usuario</th>
-                        <th>Rol</th>
-                        <th>Estado</th>
-                        <th>Registro</th>
-                        <th class="text-right">Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($usuarios as $usuario)
-                        <tr>
-                            <td data-label="Usuario">
-                                <div class="flex items-center gap-3">
-                                    <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-100 text-sm font-semibold text-blue-700">
-                                        {{ strtoupper(substr($usuario['name'], 0, 1)) }}
-                                    </div>
-                                    <div>
-                                        <p class="text-sm font-semibold text-gray-900">{{ $usuario['name'] }}</p>
-                                        <p class="text-xs text-gray-500">{{ $usuario['email'] }}</p>
-                                    </div>
-                                </div>
-                            </td>
-                            <td data-label="Rol"><span class="badge {{ $usuario['role_tone'] }}">{{ $usuario['role'] }}</span></td>
-                            <td data-label="Estado"><span class="badge {{ $usuario['status_tone'] }}">{{ $usuario['status'] }}</span></td>
-                            <td data-label="Registro">{{ $usuario['created_at'] }}</td>
-                            <td data-label="Acciones">
-                                <div class="table-actions">
-                                    <button class="btn btn-outline btn-sm demo-action-blocked"><i class="ri-eye-line"></i> Ver</button>
-                                    <button class="btn btn-ghost btn-sm demo-action-blocked"><i class="ri-edit-line"></i> Editar</button>
-                                    <button class="btn btn-ghost btn-sm demo-action-blocked text-rose-600"><i class="ri-forbid-line"></i> Suspender</button>
-                                </div>
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-        <div class="flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 bg-gray-50 px-6 py-4 text-sm text-gray-500">
-            <span>Mostrando 1 a {{ count($usuarios) }} de {{ $kpis['total_usuarios'] }} resultados simulados</span>
-            <div class="flex gap-2">
-                <button class="btn btn-ghost btn-sm demo-action-blocked">Anterior</button>
-                <button class="btn btn-primary btn-sm demo-action-blocked">1</button>
-                <button class="btn btn-outline btn-sm demo-action-blocked">2</button>
-            </div>
-        </div>
-    </section>
+  <div class="card p-0">
+    <div class="table-shell table-responsive-cards">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Usuario</th>
+            <th>Correo</th>
+            <th>Cédula</th>
+            <th>Rol</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+          @forelse($users as $user)
+            @php($status = $user['status'] ?? 'active')
+            @php($statusLabel = ['active' => 'Activo', 'inactive' => 'Inactivo', 'blocked' => 'Bloqueado'][$status] ?? ucfirst($status))
+            <tr>
+              <td data-label="Usuario">{{ $user['name'] }}</td>
+              <td data-label="Correo">{{ $user['email'] }}</td>
+              <td data-label="Cédula">{{ $user['dni'] ?: 'N/D' }}</td>
+              <td data-label="Rol">{{ ucfirst($user['role']) }}</td>
+              <td data-label="Estado">
+                @if($status === 'active')
+                  <span class="badge success">{{ $statusLabel }}</span>
+                @elseif($status === 'inactive')
+                  <span class="badge warning">{{ $statusLabel }}</span>
+                @else
+                  <span class="badge danger">{{ $statusLabel }}</span>
+                @endif
+              </td>
+            </tr>
+          @empty
+            <tr><td colspan="5">No se encontraron usuarios.</td></tr>
+          @endforelse
+        </tbody>
+      </table>
+    </div>
+    <div class="px-6 py-4">
+      {{ $users->links() }}
+    </div>
+  </div>
 </div>
 @endsection

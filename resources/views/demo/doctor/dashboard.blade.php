@@ -1,78 +1,202 @@
 @extends('layouts.demo')
-@section('title', 'Panel medico | Demo')
-@section('header-title', 'Panel medico')
-@section('header-subtitle', 'Resumen del dia y agenda activa')
+@section('title', 'Panel del doctor - Demo')
+@section('activeSidebar', 'dashboard')
+@section('header-title','Panel médico')
+@section('header-subtitle','Resumen del periodo y agenda activa (Demo)')
 
 @section('sidebar')
     @include('demo.partials.sidebar-doctor-demo')
 @endsection
 
-@section('main')
-<div class="space-y-6">
-    <section class="stat-grid">
-        <x-ui.stat label="Pacientes atendidos" :value="$estadisticas['pacientes_atendidos']" tone="sky">
-            <x-slot:icon><i class="ri-user-heart-line"></i></x-slot:icon>
-        </x-ui.stat>
-        <x-ui.stat label="Citas pendientes" :value="$estadisticas['citas_pendientes']" tone="amber">
-            <x-slot:icon><i class="ri-calendar-todo-line"></i></x-slot:icon>
-        </x-ui.stat>
-        <x-ui.stat label="Calificacion" :value="$estadisticas['calificacion']" tone="teal">
-            <x-slot:icon><i class="ri-star-fill"></i></x-slot:icon>
-        </x-ui.stat>
-        <x-ui.stat label="Citas hoy" :value="$estadisticas['citas_hoy']" tone="slate">
-            <x-slot:icon><i class="ri-calendar-check-line"></i></x-slot:icon>
-        </x-ui.stat>
-    </section>
+@php
+    $period = request('period', '30d');
+    $options = [
+        '7d' => 'Últimos 7 días',
+        '30d' => 'Últimos 30 días',
+        '90d' => 'Últimos 90 días',
+    ];
 
-    <div class="grid gap-6 lg:grid-cols-[1.3fr_0.7fr]">
-        <section class="card p-6">
-            <div class="page-header">
-                <div class="page-header__info">
-                    <p class="text-xs uppercase tracking-widest text-gray-500">Agenda</p>
-                    <h2>Citas recientes</h2>
-                    <p>Actualizadas en tiempo real dentro de la demo.</p>
+    $citas = collect($citasHoy)->map(function($c) {
+        $cita = new \App\Models\Cita();
+        $cita->id = $c['id'];
+        $cita->estado = match ($c['status']) {
+            'En sala de espera' => 'pendiente',
+            'Pendiente' => 'pendiente',
+            'Realizada' => 'realizada',
+            'Confirmada' => 'confirmada',
+            default => 'pendiente',
+        };
+        $cita->prioridad_nivel = strtolower($c['priority_label']) === 'media' ? 'MEDIA' : (strtolower($c['priority_label']) === 'alta' ? 'ALTA' : 'BAJA');
+        $cita->prioridad_red_flag = strtolower($c['priority_label']) === 'alta';
+        $cita->fecha = now()->toDateString();
+        $cita->hora = $c['time'];
+        $cita->setRelation('paciente', new \App\Models\User(['name' => $c['patient']]));
+        return $cita;
+    });
+@endphp
+
+@push('scripts')
+    @vite(['resources/js/dashboard-doctor.js'])
+@endpush
+
+@section('main')
+    <div
+        class="space-y-6"
+        data-dashboard-page
+        data-dashboard-endpoint="{{ route('demo.doctor.dashboard.data') }}"
+        data-dashboard-role="doctor"
+    >
+        <script type="application/json" data-dashboard-state>@json($dashboard)</script>
+
+        @if(session('success'))
+            <x-ui.alert tone="success">{{ session('success') }}</x-ui.alert>
+        @endif
+
+        <section class="card p-5">
+            <form method="GET" action="{{ route('demo.doctor.dashboard') }}" class="flex flex-col gap-3 lg:flex-row lg:items-end lg:gap-4" data-dashboard-filters-form>
+                <div class="min-w-0 lg:w-56">
+                    <label class="form-label" for="period">Periodo</label>
+                    <select id="period" name="period" class="form-select">
+                        @foreach($options as $value => $label)
+                            <option value="{{ $value }}" @selected($period === $value)>{{ $label }}</option>
+                        @endforeach
+                    </select>
                 </div>
-                <div class="page-header__actions">
-                    <a href="{{ route('demo.doctor.citas') }}" class="btn btn-outline btn-sm">Ver agenda completa</a>
+                <div class="lg:ml-auto">
+                    <button class="btn btn-primary w-full lg:w-auto" type="submit">
+                        <i class="ri-refresh-line"></i> Actualizar
+                    </button>
                 </div>
-            </div>
-            <div class="mt-4 space-y-3">
-                @foreach($citasHoy as $appointment)
-                    <div class="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-gray-200 bg-white/90 p-4">
-                        <div class="flex items-center gap-4">
-                            <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-100 text-sm font-semibold text-blue-700">{{ $appointment['time'] }}</div>
-                            <div>
-                                <h3 class="text-sm font-semibold text-gray-900">{{ $appointment['patient'] }}</h3>
-                                <p class="text-xs text-gray-500">{{ $appointment['age'] }} anios, {{ $appointment['sex'] }}</p>
-                                <p class="mt-1 text-sm text-gray-600">{{ $appointment['reason'] }}</p>
-                            </div>
-                        </div>
-                        <div class="flex flex-wrap items-center gap-2">
-                            <span class="inline-flex items-center gap-1.5 rounded-full {{ $appointment['priority_badge'] }} px-2 py-0.5 text-xs font-medium">{{ $appointment['priority_label'] }}</span>
-                            <span class="badge {{ $appointment['status_tone'] }}">{{ $appointment['status'] }}</span>
-                            <button class="btn btn-primary btn-sm demo-action-blocked">Atender</button>
-                        </div>
-                    </div>
-                @endforeach
-            </div>
+            </form>
         </section>
 
-        <aside class="space-y-6">
-            <section class="card p-6">
-                <h3 class="text-lg font-semibold text-gray-900">Acciones rapidas</h3>
-                <div class="mt-4 space-y-3">
-                    <button class="w-full rounded-2xl border border-gray-200 px-4 py-3 text-left text-sm font-medium text-gray-900 transition hover:bg-gray-50 demo-action-blocked">
-                        <i class="ri-file-add-line mr-2 text-blue-600"></i> Nueva receta medica
-                    </button>
-                    <button class="w-full rounded-2xl border border-gray-200 px-4 py-3 text-left text-sm font-medium text-gray-900 transition hover:bg-gray-50 demo-action-blocked">
-                        <i class="ri-flask-line mr-2 text-teal-600"></i> Orden de laboratorio
-                    </button>
-                    <button class="w-full rounded-2xl border border-gray-200 px-4 py-3 text-left text-sm font-medium text-gray-900 transition hover:bg-gray-50 demo-action-blocked">
-                        <i class="ri-calendar-event-line mr-2 text-purple-600"></i> Agendar control
-                    </button>
+        <section class="grid gap-6 lg:grid-cols-2">
+            <x-dashboard.chart-card
+                class="lg:col-span-1"
+                chart-key="appointments_status"
+                chart-type="donut"
+                title="Mis citas por estado"
+                subtitle="Solo tus citas, con estados reales (Simulado)."
+            />
+            <x-dashboard.chart-card
+                class="lg:col-span-1"
+                chart-key="patients_timeline"
+                chart-type="area"
+                title="Pacientes atendidos"
+                subtitle="Pacientes únicos atendidos por periodo (Simulado)."
+            />
+            <x-dashboard.chart-card
+                class="lg:col-span-2"
+                chart-key="appointments_status_timeline"
+                chart-type="bar"
+                title="Agenda de mis citas por día"
+                subtitle="Comparación apilada del flujo de trabajo por día (Simulado)."
+            />
+            <x-dashboard.chart-card
+                class="lg:col-span-1"
+                chart-key="documents_type"
+                chart-type="bar"
+                title="Documentos generados"
+                subtitle="Recetas, certificados y pedidos emitidos (Simulado)."
+            />
+            <x-dashboard.chart-card
+                class="lg:col-span-1"
+                chart-key="controls_status"
+                chart-type="donut"
+                title="Controles médicos"
+                subtitle="Seguimientos agendados, completados o pendientes (Simulado)."
+            />
+        </section>
+
+        <section class="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+            <article class="card p-6">
+                <div class="page-header">
+                    <div class="page-header__info">
+                        <p class="text-xs uppercase tracking-widest text-gray-500">Agenda</p>
+                        <h2>Citas recientes</h2>
+                        <p>Actualizadas en tiempo real dentro de la demo.</p>
+                    </div>
                 </div>
-            </section>
-        </aside>
+                <div class="mt-4 table-shell table-responsive-cards">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Paciente</th>
+                                <th>Estado</th>
+                                <th>Prioridad</th>
+                                <th>Fecha</th>
+                                <th>Hora</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-citas">
+                            @forelse($citas as $c)
+                                <tr>
+                                    <td data-label="Paciente">{{ optional($c->paciente)->name ?? 'Sin paciente' }}</td>
+                                    <td data-label="Estado">
+                                        <x-ui.badge :tone="$c->estado === 'pendiente' ? 'warning' : ($c->estado === 'realizada' ? 'success' : ($c->estado === 'confirmada' ? 'info' : 'danger'))">
+                                            {{ $c->estado === 'no_se_presento' ? 'No se presento' : ucfirst($c->estado) }}
+                                        </x-ui.badge>
+                                    </td>
+                                    <td data-label="Prioridad">
+                                        @php
+                                            $priorityTone = match($c->prioridad_nivel) {
+                                                'ALTA' => 'danger',
+                                                'MEDIA' => 'warning',
+                                                default => 'neutral',
+                                            };
+                                        @endphp
+                                        <x-ui.badge :tone="$priorityTone">{{ $c->prioridad_nivel ?? 'BAJA' }}</x-ui.badge>
+                                        @if($c->prioridad_red_flag)
+                                            <span class="badge danger">Red flag</span>
+                                        @endif
+                                    </td>
+                                    <td data-label="Fecha">{{ \Illuminate\Support\Carbon::parse($c->fecha)->format('d/m/Y') }}</td>
+                                    <td data-label="Hora">{{ $c->hora }}</td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="5">Sin citas para hoy.</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </article>
+
+            <aside class="space-y-4">
+                <section class="card p-6 dashboard-list-card" data-dashboard-list="next_appointments">
+                    <div class="flex items-center justify-between gap-3">
+                        <h3 class="text-lg font-semibold text-gray-900">Próximas citas</h3>
+                        <i class="ri-arrow-right-up-line text-gray-400"></i>
+                    </div>
+                    <div class="mt-4 space-y-3" data-dashboard-list-body>
+                        <div class="flex items-center justify-between gap-2 border-b border-gray-100 pb-2">
+                            <div>
+                                <p class="text-sm font-semibold text-gray-900">Lucía Vega</p>
+                                <p class="text-xs text-gray-500">Pediatría · 09:00</p>
+                            </div>
+                            <span class="badge warning">Pendiente</span>
+                        </div>
+                        <div class="flex items-center justify-between gap-2 pb-2">
+                            <div>
+                                <p class="text-sm font-semibold text-gray-900">Daniel Salazar</p>
+                                <p class="text-xs text-gray-500">Medicina General · 10:30</p>
+                            </div>
+                            <span class="badge success">Confirmada</span>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="card p-6 dashboard-list-card" data-dashboard-list="follow_up_controls">
+                    <div class="flex items-center justify-between gap-3">
+                        <h3 class="text-lg font-semibold text-gray-900">Controles próximos</h3>
+                        <i class="ri-calendar-event-line text-gray-400"></i>
+                    </div>
+                    <div class="mt-4 space-y-3" data-dashboard-list-body>
+                        <p class="text-xs text-gray-500">No hay controles programados para hoy.</p>
+                    </div>
+                </section>
+            </aside>
+        </section>
     </div>
-</div>
 @endsection

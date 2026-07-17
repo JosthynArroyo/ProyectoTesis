@@ -68,6 +68,7 @@ class DashboardAnalyticsService
             'Citas',
             $now
         );
+        $citasTimeline['colors'] = ['#0d9488'];
 
         $usersTimeline = $this->buildTimelineSeries(
             User::query(),
@@ -78,6 +79,7 @@ class DashboardAnalyticsService
             'Usuarios',
             $now
         );
+        $usersTimeline['colors'] = ['#3b82f6'];
 
         $specialtySeries = $this->buildSpecialtySeries($range['start'], $range['end']);
         $doctorSeries = $this->buildDoctorSeries($range['start'], $range['end'], $range);

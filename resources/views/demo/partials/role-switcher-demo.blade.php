@@ -8,5 +8,10 @@
             <a href="{{ route('demo.doctor.dashboard') }}" data-role-switcher-link class="role-switcher-btn rounded-full px-3 py-1.5 text-sm {{ request()->routeIs('demo.doctor.*') ? 'bg-emerald-100 text-emerald-800 font-semibold' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">Doctor</a>
             <a href="{{ route('demo.laboratorio.dashboard') }}" data-role-switcher-link class="role-switcher-btn rounded-full px-3 py-1.5 text-sm {{ request()->routeIs('demo.laboratorio.*') ? 'bg-amber-100 text-amber-800 font-semibold' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' }}">Laboratorio</a>
         </div>
+        <div class="mt-2.5 pt-2.5 border-t border-gray-100 flex justify-center">
+            <a href="{{ route('demo.index') }}" data-role-switcher-link class="flex items-center gap-1.5 text-xs text-teal-600 hover:text-teal-700 font-semibold">
+                <i class="ri-home-4-line"></i> Volver al inicio
+            </a>
+        </div>
     </div>
 </div>

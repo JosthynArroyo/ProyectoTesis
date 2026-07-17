@@ -10,10 +10,10 @@ use App\Models\LaboratorioOrden;
 use App\Models\Pago;
 use App\Models\Role;
 use App\Models\User;
+use Database\Seeders\DatabaseSeeder;
 use App\Services\SiteSettingsService;
 use Carbon\Carbon;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
@@ -25,6 +25,8 @@ class AuditFunctionalFlowTest extends TestCase
     private array $results = [];
 
     private array $context = [];
+
+    private array $auditUsers = [];
 
     protected function setUp(): void
     {
@@ -47,23 +49,17 @@ class AuditFunctionalFlowTest extends TestCase
             DB::purge('sqlite');
             DB::reconnect('sqlite');
         } else {
-            $this->prepareIsolatedAuditFixture();
+            if (app()->environment() !== 'testing') {
+                $this->fail('La auditoria funcional solo puede ejecutarse en el entorno de testing o con AUDIT_DB_PATH.');
+            }
         }
+
+        $this->seed(DatabaseSeeder::class);
 
         Mail::fake();
         Notification::fake();
         Storage::fake('local');
         Storage::fake('public');
-    }
-
-    private function prepareIsolatedAuditFixture(): void
-    {
-        Artisan::call('migrate:fresh', [
-            '--database' => config('database.default'),
-            '--seed' => true,
-            '--force' => true,
-        ]);
-
         $this->seedAuditRoleUsers();
     }
 
@@ -80,7 +76,7 @@ class AuditFunctionalFlowTest extends TestCase
             $this->fail('La auditoría funcional requiere especialidades base sembradas.');
         }
 
-        $this->upsertAuditUser(
+        $this->auditUsers['administrador'] = $this->upsertAuditUser(
             roleName: 'administrador',
             attributes: [
                 'name' => 'Admin QA',
@@ -94,7 +90,7 @@ class AuditFunctionalFlowTest extends TestCase
             ]
         );
 
-        $this->upsertAuditUser(
+        $this->auditUsers['doctor'] = $this->upsertAuditUser(
             roleName: 'doctor',
             attributes: [
                 'name' => 'Doctor QA',
@@ -110,7 +106,7 @@ class AuditFunctionalFlowTest extends TestCase
             specialtyIds: [$doctorSpecialty->id]
         );
 
-        $this->upsertAuditUser(
+        $this->auditUsers['paciente'] = $this->upsertAuditUser(
             roleName: 'paciente',
             attributes: [
                 'name' => 'Paciente QA',
@@ -130,7 +126,7 @@ class AuditFunctionalFlowTest extends TestCase
             ]
         );
 
-        $this->upsertAuditUser(
+        $this->auditUsers['laboratorio'] = $this->upsertAuditUser(
             roleName: 'laboratorio',
             attributes: [
                 'name' => 'Laboratorio QA',
@@ -257,8 +253,17 @@ class AuditFunctionalFlowTest extends TestCase
         $map = [];
 
         foreach ($roles as $role) {
-            $map[$role] = User::query()
+            if ($role === 'superadmin') {
+                $map[$role] = User::query()
+                    ->whereHas('roles', fn ($q) => $q->where('name', $role))
+                    ->where('email', 'superadmin@clinic.test')
+                    ->firstOrFail();
+                continue;
+            }
+
+            $map[$role] = $this->auditUsers[$role] ?? User::query()
                 ->whereHas('roles', fn ($q) => $q->where('name', $role))
+                ->where('email', sprintf('%s.qa@clinic.test', $role))
                 ->firstOrFail();
         }
 
@@ -355,8 +360,8 @@ class AuditFunctionalFlowTest extends TestCase
             $this->post('/salir');
         }
 
-        $lab = $roles['laboratorio']->fresh();
-        if (! $lab->active && $lab->status === 'active') {
+        $lab = User::query()->find($roles['laboratorio']->getKey()) ?? $roles['laboratorio'];
+        if ($lab && ! $lab->active && $lab->status === 'active') {
             $this->record(
                 role: 'laboratorio',
                 module: 'Autenticación',

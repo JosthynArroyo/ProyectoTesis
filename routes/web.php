@@ -96,7 +96,10 @@ Route::middleware('signed')->get('/email/cita/{cita}/{rol}/{accion}', EmailCitaA
     ->name('email.cita.action');
 
 // =========================== DEMO (Pública) ===========================
-Route::prefix('demo')->name('demo.')->group(function () {
+// El middleware 'demo.isolation' bloquea cualquier método HTTP que no sea GET/HEAD
+// y limpia cualquier clave de sesión persistida por simulaciones anteriores.
+// Esto garantiza que NINGUNA acción demo sobreviva a una recarga o regreso.
+Route::prefix('demo')->name('demo.')->middleware('demo.isolation')->group(function () {
     Route::get('/', [DemoDashboardController::class, 'index'])->name('index');
     
     // Superadmin
@@ -112,48 +115,185 @@ Route::prefix('demo')->name('demo.')->group(function () {
     // Admin
     Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/', [DemoDashboardController::class, 'adminDashboard'])->name('dashboard');
-        Route::get('/usuarios', [DemoDashboardController::class, 'adminUsuarios'])->name('usuarios');
-        Route::get('/registrar-usuario', [DemoDashboardController::class, 'adminRegistrarUsuario'])->name('registrar-usuario');
-        Route::get('/personalizacion', [DemoDashboardController::class, 'adminPersonalizacion'])->name('personalizacion');
-        Route::get('/historial-clinico', [DemoDashboardController::class, 'adminHistorialClinico'])->name('historial-clinico');
+        Route::get('/dashboard/data', [DemoDashboardController::class, 'adminDashboardData'])->name('dashboard.data');
+        Route::get('/dashboard/resumen', [DemoDashboardController::class, 'adminDashboardResumen'])->name('dashboard.resumen');
+
+        Route::get('/usuarios', [DemoDashboardController::class, 'adminUsuarios'])->name('usuarios.index');
+        Route::get('/usuarios/crear', [DemoDashboardController::class, 'adminRegistrarUsuario'])->name('usuarios.create');
+        Route::post('/usuarios', [DemoDashboardController::class, 'adminUsuariosStore'])->name('usuarios.store');
+        Route::get('/usuarios/{id}', [DemoDashboardController::class, 'adminUsuariosShow'])->name('usuarios.show');
+        Route::get('/usuarios/{id}/editar', [DemoDashboardController::class, 'adminUsuariosEdit'])->name('usuarios.edit');
+        Route::put('/usuarios/{id}', [DemoDashboardController::class, 'adminUsuariosUpdate'])->name('usuarios.update');
+        Route::delete('/usuarios/{id}', [DemoDashboardController::class, 'adminUsuariosDestroy'])->name('usuarios.destroy');
+
+        Route::patch('/usuarios/{id}/block', [DemoDashboardController::class, 'adminUsuariosBlock'])->name('usuarios.block');
+        Route::patch('/usuarios/{id}/suspend', [DemoDashboardController::class, 'adminUsuariosSuspend'])->name('usuarios.suspend');
+        Route::patch('/usuarios/{id}/activate', [DemoDashboardController::class, 'adminUsuariosActivate'])->name('usuarios.activate');
+        Route::patch('/usuarios/{id}/deactivate', [DemoDashboardController::class, 'adminUsuariosDeactivate'])->name('usuarios.deactivate');
+
+        Route::get('/personalizacion', [DemoDashboardController::class, 'adminPersonalizacion'])->name('personalizacion.index');
+        Route::get('/personalizacion/bienvenida', [DemoDashboardController::class, 'adminPersonalizacionBienvenidaEdit'])->name('personalizacion.bienvenida.edit');
+        Route::put('/personalizacion/bienvenida', [DemoDashboardController::class, 'adminPersonalizacionBienvenidaUpdate'])->name('personalizacion.bienvenida.update');
+        Route::get('/personalizacion/servicios', [DemoDashboardController::class, 'adminPersonalizacionServiciosEdit'])->name('personalizacion.servicios.edit');
+        Route::put('/personalizacion/servicios', [DemoDashboardController::class, 'adminPersonalizacionServiciosUpdate'])->name('personalizacion.servicios.update');
+        Route::get('/personalizacion/contacto', [DemoDashboardController::class, 'adminPersonalizacionContactoEdit'])->name('personalizacion.contacto.edit');
+        Route::put('/personalizacion/contacto', [DemoDashboardController::class, 'adminPersonalizacionContactoUpdate'])->name('personalizacion.contacto.update');
+        Route::post('/personalizacion/solicitar', [DemoDashboardController::class, 'adminPersonalizacionRequestAccess'])->name('personalizacion.request');
+
+        Route::get('/historial-clinico', [DemoDashboardController::class, 'adminHistorialClinico'])->name('historial.index');
+        Route::get('/historial/paciente/{id}', [DemoDashboardController::class, 'adminHistorialPaciente'])->name('historial.paciente');
+        Route::get('/historial/{id}', [DemoDashboardController::class, 'adminHistorialShow'])->name('historial.show');
+
         Route::get('/horarios', [DemoDashboardController::class, 'adminHorarios'])->name('horarios');
+        Route::get('/horarios/crear', [DemoDashboardController::class, 'adminHorariosCreate'])->name('horarios.create');
+        Route::post('/horarios', [DemoDashboardController::class, 'adminHorariosStore'])->name('horarios.store');
+        Route::get('/horarios/{id}/editar', [DemoDashboardController::class, 'adminHorariosEdit'])->name('horarios.edit');
+        Route::put('/horarios/{id}', [DemoDashboardController::class, 'adminHorariosUpdate'])->name('horarios.update');
+        Route::delete('/horarios/{id}', [DemoDashboardController::class, 'adminHorariosDestroy'])->name('horarios.destroy');
+
         Route::get('/recordatorios', [DemoDashboardController::class, 'adminRecordatorios'])->name('recordatorios');
+        Route::patch('/recordatorios/{id}/enviado', [DemoDashboardController::class, 'adminRecordatoriosEnviado'])->name('recordatorios.enviado');
+        Route::patch('/recordatorios/{id}/omitido', [DemoDashboardController::class, 'adminRecordatoriosOmitido'])->name('recordatorios.omitido');
+        // Alias para vistas que usan recordatorios.index
+        Route::get('/recordatorios/index', [DemoDashboardController::class, 'adminRecordatorios'])->name('recordatorios.index');
+
         Route::get('/agendar-manualmente', [DemoDashboardController::class, 'adminAgendarManualmente'])->name('agendar-manualmente');
+        Route::post('/citas/override', [DemoDashboardController::class, 'adminAgendarManualmenteStore'])->name('citas.override.store');
+        // Alias para vistas que usan citas.override.create
+        Route::get('/citas/override/create', [DemoDashboardController::class, 'adminAgendarManualmente'])->name('citas.override.create');
+        Route::get('/citas/{id}/prioridad', [DemoDashboardController::class, 'adminCitasPrioridadEdit'])->name('citas.prioridad.edit');
+        Route::patch('/citas/{id}/prioridad', [DemoDashboardController::class, 'adminCitasPrioridadUpdate'])->name('citas.prioridad.update');
+
         Route::get('/cambios-citas', [DemoDashboardController::class, 'adminCambiosCitas'])->name('cambios-citas');
+        
         Route::get('/gestion-pagos', [DemoDashboardController::class, 'adminGestionPagos'])->name('gestion-pagos');
+        // Alias para vistas que usan pagos.index
+        Route::get('/gestion-pagos/index', [DemoDashboardController::class, 'adminGestionPagos'])->name('pagos.index');
+        Route::get('/pagos/{id}', [DemoDashboardController::class, 'adminPagosShow'])->name('pagos.show');
+        Route::post('/pagos/{id}/aprobar', [DemoDashboardController::class, 'adminPagosAprobar'])->name('pagos.aprobar');
+        Route::post('/pagos/{id}/rechazar', [DemoDashboardController::class, 'adminPagosRechazar'])->name('pagos.rechazar');
+        Route::post('/pagos/{id}/anular', [DemoDashboardController::class, 'adminPagosAnular'])->name('pagos.anular');
+        // Alias para metodo y monto update (simulados)
+        Route::patch('/pagos/{id}/metodo', [DemoDashboardController::class, 'adminPagosShow'])->name('pagos.metodo.update');
+        Route::patch('/pagos/{id}/monto', [DemoDashboardController::class, 'adminPagosShow'])->name('pagos.monto.update');
+
+        // Alias horarios.index
+        Route::get('/horarios/index', [DemoDashboardController::class, 'adminHorarios'])->name('horarios.index');
+
         Route::get('/perfil', [DemoDashboardController::class, 'adminPerfil'])->name('perfil');
+        Route::post('/perfil', [DemoDashboardController::class, 'adminPerfilUpdate'])->name('perfil.update');
+
         Route::get('/notificaciones-contacto', [DemoDashboardController::class, 'adminNotificacionesContacto'])->name('notificaciones-contacto');
+        Route::get('/notificaciones-contacto/{id}', [DemoDashboardController::class, 'adminNotificacionesContactoShow'])->name('contacto.mensajes.show');
     });
 
     // Paciente
     Route::prefix('paciente')->name('paciente.')->group(function () {
         Route::get('/', [DemoDashboardController::class, 'pacienteDashboard'])->name('dashboard');
         Route::get('/citas', [DemoDashboardController::class, 'pacienteCitas'])->name('citas');
+        Route::get('/crear-cita', [DemoDashboardController::class, 'pacienteAgendarCita'])->name('agendar-cita');
+        Route::post('/crear-cita', [DemoDashboardController::class, 'pacienteAgendarCitaStore'])->name('crear-cita.store');
+        Route::post('/citas/{id}/cancelar', [DemoDashboardController::class, 'pacienteCitasCancelar'])->name('citas.cancelar');
+        Route::get('/editar-cita/{id}', [DemoDashboardController::class, 'pacienteCitasEdit'])->name('editar-cita');
+        Route::put('/editar-cita/{id}', [DemoDashboardController::class, 'pacienteCitasUpdate'])->name('editar-cita.update');
+
         Route::get('/pagos', [DemoDashboardController::class, 'pacientePagos'])->name('pagos');
+        Route::post('/pagos/{id}/enviar', [DemoDashboardController::class, 'pacientePagosSubmit'])->name('pagos.submit');
+
         Route::get('/historial-clinico', [DemoDashboardController::class, 'pacienteHistorialClinico'])->name('historial-clinico');
+        Route::get('/historial/{id}', [DemoDashboardController::class, 'pacienteHistorialShow'])->name('historial.show');
+
         Route::get('/resultados', [DemoDashboardController::class, 'pacienteResultados'])->name('resultados');
-        Route::get('/agendar-cita', [DemoDashboardController::class, 'pacienteAgendarCita'])->name('agendar-cita');
         Route::get('/perfil', [DemoDashboardController::class, 'pacientePerfil'])->name('perfil');
+        Route::post('/perfil', [DemoDashboardController::class, 'pacientePerfilUpdate'])->name('perfil.update');
+
+        Route::get('/dependientes', [DemoDashboardController::class, 'pacienteDependientesIndex'])->name('dependientes.index');
+        Route::get('/dependientes/crear', [DemoDashboardController::class, 'pacienteDependientesCreate'])->name('dependientes.create');
+        Route::post('/dependientes', [DemoDashboardController::class, 'pacienteDependientesStore'])->name('dependientes.store');
+        Route::get('/dependientes/{id}/editar', [DemoDashboardController::class, 'pacienteDependientesEdit'])->name('dependientes.edit');
+        Route::put('/dependientes/{id}', [DemoDashboardController::class, 'pacienteDependientesUpdate'])->name('dependientes.update');
+        Route::delete('/dependientes/{id}', [DemoDashboardController::class, 'pacienteDependientesDestroy'])->name('dependientes.destroy');
+
+        // Aliases para nombres alternativos usados en vistas
+        Route::get('/crear-cita/form', [DemoDashboardController::class, 'pacienteAgendarCita'])->name('crear-cita');
+        Route::get('/historial-clinico/index', [DemoDashboardController::class, 'pacienteHistorialClinico'])->name('historial');
+        Route::get('/pagos/index', [DemoDashboardController::class, 'pacientePagos'])->name('pagos.index');
+        Route::get('/laboratorio/resultados', [DemoDashboardController::class, 'pacienteResultados'])->name('laboratorio.index');
     });
 
     // Doctor
     Route::prefix('doctor')->name('doctor.')->group(function () {
         Route::get('/', [DemoDashboardController::class, 'doctorDashboard'])->name('dashboard');
+        Route::get('/dashboard/data', [DemoDashboardController::class, 'doctorDashboardData'])->name('dashboard.data');
         Route::get('/citas', [DemoDashboardController::class, 'doctorCitas'])->name('citas');
+        Route::post('/citas/{id}/aceptar', [DemoDashboardController::class, 'doctorCitasAceptar'])->name('citas.aceptar');
+        Route::post('/citas/{id}/rechazar', [DemoDashboardController::class, 'doctorCitasRechazar'])->name('citas.rechazar');
+        Route::post('/citas/{id}/realizar', [DemoDashboardController::class, 'doctorCitasRealizar'])->name('citas.realizar');
+        Route::get('/citas/{id}/prioridad', [DemoDashboardController::class, 'doctorCitasPrioridadEdit'])->name('citas.prioridad.edit');
+        Route::patch('/citas/{id}/prioridad', [DemoDashboardController::class, 'doctorCitasPrioridadUpdate'])->name('citas.prioridad.update');
+
+        Route::get('/recetas', [DemoDashboardController::class, 'doctorRecetasIndex'])->name('historial-recetas');
+        Route::get('/recetas/crear/{cita}', [DemoDashboardController::class, 'doctorRecetasCreate'])->name('recetas.create');
+        Route::post('/recetas', [DemoDashboardController::class, 'doctorRecetasStore'])->name('recetas.store');
+        Route::get('/recetas/editar/{cita}', [DemoDashboardController::class, 'doctorRecetasEdit'])->name('recetas.edit');
+        Route::post('/recetas/actualizar', [DemoDashboardController::class, 'doctorRecetasUpdate'])->name('recetas.update');
+
+        Route::get('/citas/{cita}/certificado-medico/crear', [DemoDashboardController::class, 'doctorCertificadosCreate'])->name('certificados.create');
+        Route::post('/citas/{cita}/certificado-medico', [DemoDashboardController::class, 'doctorCertificadosStore'])->name('certificados.store');
+
+        Route::get('/pedidos-laboratorio', [DemoDashboardController::class, 'doctorPedidosLaboratorioIndex'])->name('pedidos-laboratorio.index');
+        Route::get('/citas/{cita}/pedido-laboratorio/crear', [DemoDashboardController::class, 'doctorPedidosLaboratorioCreate'])->name('pedidos-laboratorio.create');
+        Route::post('/citas/{cita}/pedido-laboratorio', [DemoDashboardController::class, 'doctorPedidosLaboratorioStore'])->name('pedidos-laboratorio.store');
+        Route::get('/citas/{cita}/pedido-laboratorio/editar', [DemoDashboardController::class, 'doctorPedidosLaboratorioEdit'])->name('pedidos-laboratorio.edit');
+        Route::post('/citas/{cita}/pedido-laboratorio/editar', [DemoDashboardController::class, 'doctorPedidosLaboratorioUpdate'])->name('pedidos-laboratorio.update');
+
+        Route::get('/citas/{cita}/historial-clinico', [DemoDashboardController::class, 'doctorCitasSoap'])->name('citas.soap');
+        Route::post('/citas/{cita}/historial-clinico', [DemoDashboardController::class, 'doctorCitasSoapStore'])->name('citas.soap.store');
+        Route::post('/citas/{cita}/historial-clinico/firmar', [DemoDashboardController::class, 'doctorCitasSoapFirmar'])->name('citas.soap.firmar');
+        Route::post('/citas/{cita}/historial-clinico/enmienda', [DemoDashboardController::class, 'doctorCitasSoapEnmienda'])->name('citas.soap.enmienda');
+
         Route::get('/pacientes', [DemoDashboardController::class, 'doctorPacientes'])->name('pacientes');
-        Route::get('/historial-recetas', [DemoDashboardController::class, 'doctorHistorialRecetas'])->name('historial-recetas');
+        // Alias pacientes.index
+        Route::get('/pacientes/index', [DemoDashboardController::class, 'doctorPacientes'])->name('pacientes.index');
+        Route::get('/pacientes/{id}/historial', [DemoDashboardController::class, 'doctorPacientesHistorial'])->name('pacientes.historial');
+        Route::put('/pacientes/{id}/historial', [DemoDashboardController::class, 'doctorPacientesHistorialUpdate'])->name('pacientes.historial.update');
+
         Route::get('/agenda-semanal', [DemoDashboardController::class, 'doctorAgendaSemanal'])->name('agenda-semanal');
         Route::get('/mi-horario', [DemoDashboardController::class, 'doctorMiHorario'])->name('mi-horario');
+        // Alias horario.index
+        Route::get('/horario-index', [DemoDashboardController::class, 'doctorMiHorario'])->name('horario.index');
+        Route::post('/horario', [DemoDashboardController::class, 'doctorHorarioStore'])->name('horario.store');
+        Route::get('/horario/{id}/edit', [DemoDashboardController::class, 'doctorHorarioEdit'])->name('horario.edit');
+        Route::put('/horario/{id}', [DemoDashboardController::class, 'doctorHorarioUpdate'])->name('horario.update');
+        Route::delete('/horario/{id}', [DemoDashboardController::class, 'doctorHorarioDestroy'])->name('horario.destroy');
+
         Route::get('/perfil', [DemoDashboardController::class, 'doctorPerfil'])->name('perfil');
+        Route::post('/perfil', [DemoDashboardController::class, 'doctorPerfilUpdate'])->name('perfil.update');
     });
 
     // Laboratorio
     Route::prefix('laboratorio')->name('laboratorio.')->group(function () {
         Route::get('/', [DemoDashboardController::class, 'laboratorioDashboard'])->name('dashboard');
         Route::get('/citas-resultados', [DemoDashboardController::class, 'laboratorioCitasResultados'])->name('citas-resultados');
+
         Route::get('/horarios', [DemoDashboardController::class, 'laboratorioHorarios'])->name('horarios');
+        // Alias horario.index
+        Route::get('/horario-index', [DemoDashboardController::class, 'laboratorioHorarios'])->name('horario.index');
+        Route::post('/horario', [DemoDashboardController::class, 'laboratorioHorarioStore'])->name('horario.store');
+        Route::get('/horario/{id}/edit', [DemoDashboardController::class, 'laboratorioHorarioEdit'])->name('horario.edit');
+        Route::put('/horario/{id}', [DemoDashboardController::class, 'laboratorioHorarioUpdate'])->name('horario.update');
+        Route::delete('/horario/{id}', [DemoDashboardController::class, 'laboratorioHorarioDestroy'])->name('horario.destroy');
+
+        Route::get('/ordenes', [DemoDashboardController::class, 'laboratorioOrdenesIndex'])->name('ordenes.index');
+        Route::post('/ordenes/{orden}/muestra', [DemoDashboardController::class, 'laboratorioOrdenesMuestra'])->name('ordenes.muestra');
+        Route::post('/ordenes/{orden}/resultado', [DemoDashboardController::class, 'laboratorioOrdenesResultado'])->name('ordenes.resultado');
+
+        Route::get('/pedidos-mvp', [DemoDashboardController::class, 'laboratorioPedidosMvpIndex'])->name('pedidos.index');
+        Route::post('/pedidos-mvp/{id}/muestra', [DemoDashboardController::class, 'laboratorioPedidosMuestra'])->name('pedidos.muestra');
+        Route::post('/pedidos-mvp/{id}/resultado', [DemoDashboardController::class, 'laboratorioPedidosResultado'])->name('pedidos.resultado');
     });
 });
+
 
 Route::middleware('auth')
     ->get('/cita/comprobante/{token}', [CitaComprobanteController::class, 'showByToken'])

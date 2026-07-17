@@ -1,41 +1,72 @@
 @extends('layouts.demo')
-@section('title', 'Historial de recetas | Demo')
-@section('header-title', 'Historial de recetas')
-@section('header-subtitle', 'Descarga y consulta de recetas emitidas')
+@section('title', 'Historial de Recetas - Demo')
+@section('activeSidebar', 'recetas')
+@section('header-title','Historial de recetas')
+@section('header-subtitle','Descarga y consulta recetas (Demo)')
 
 @section('sidebar')
     @include('demo.partials.sidebar-doctor-demo')
 @endsection
 
+@php
+  $recetas = collect($prescriptions)->map(function($p) {
+      $receta = new \App\Models\Receta();
+      $receta->id = 1;
+      $receta->pdf_path = 'receta.pdf';
+      
+      $cita = new \App\Models\Cita();
+      $cita->id = 1;
+      $cita->fecha = \Carbon\Carbon::parse($p['date']);
+      $cita->hora = $p['time'];
+      
+      $pUser = new \App\Models\User(['name' => $p['patient']]);
+      $cita->setRelation('paciente', $pUser);
+      
+      $esp = new \App\Models\Especialidad(['nombre' => $p['specialty']]);
+      $cita->setRelation('especialidad', $esp);
+      
+      $receta->setRelation('cita', $cita);
+      return $receta;
+  });
+@endphp
+
 @section('main')
-<div class="space-y-6">
-    <section class="card p-0">
-        <div class="table-shell table-responsive-cards">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Paciente</th>
-                        <th>Especialidad</th>
-                        <th>Fecha</th>
-                        <th>Hora</th>
-                        <th>PDF</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($prescriptions as $prescription)
-                        <tr>
-                            <td data-label="Paciente">{{ $prescription['patient'] }}</td>
-                            <td data-label="Especialidad">{{ $prescription['specialty'] }}</td>
-                            <td data-label="Fecha">{{ $prescription['date'] }}</td>
-                            <td data-label="Hora">{{ $prescription['time'] }}</td>
-                            <td data-label="PDF">
-                                <button class="btn btn-outline btn-sm demo-action-blocked"><i class="ri-download-2-line"></i> {{ $prescription['pdf'] }}</button>
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-    </section>
-</div>
+<section class="space-y-6">
+  <div class="card p-6">
+    <div class="table-shell table-responsive-cards">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Paciente</th>
+            <th>Especialidad</th>
+            <th>Fecha de cita</th>
+            <th>Hora</th>
+            <th>PDF</th>
+          </tr>
+        </thead>
+        <tbody>
+          @forelse($recetas as $receta)
+            <tr>
+              <td data-label="Paciente">{{ optional($receta->cita->paciente)->name ?? '-' }}</td>
+              <td data-label="Especialidad">{{ optional($receta->cita->especialidad)->nombre ?? '-' }}</td>
+              <td data-label="Fecha de cita">{{ optional($receta->cita->fecha)->format('d/m/Y') }}</td>
+              <td data-label="Hora">{{ \Carbon\Carbon::parse($receta->cita->hora)->format('H:i') }}</td>
+              <td data-label="PDF">
+                @if($receta->pdf_path)
+                  <button class="btn btn-outline demo-action-blocked">
+                    <i class="ri-download-2-line"></i> Descargar
+                  </button>
+                @else
+                  <span class="text-xs text-gray-500">Sin PDF</span>
+                @endif
+              </td>
+            </tr>
+          @empty
+            <tr><td colspan="5">Aún no hay recetas.</td></tr>
+          @endforelse
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
 @endsection

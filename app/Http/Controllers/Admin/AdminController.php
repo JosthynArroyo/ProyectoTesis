@@ -293,7 +293,23 @@ class AdminController extends Controller
         }
         $request->session()->put('usuarios.cols', $cols);
 
-        $usersQ = User::with(['roles', 'especialidades', 'patientFlag'])
+        $usersQ = User::with([
+            'roles:id,name',
+            'especialidades:id,nombre',
+            'patientFlag',
+            'dependientes' => function ($query) {
+                $query->select([
+                    'id',
+                    'user_id',
+                    'nombre',
+                    'dni',
+                    'fecha_nacimiento',
+                    'sexo',
+                    'parentesco',
+                    'activo',
+                ])->orderBy('nombre');
+            },
+        ])->withCount('dependientes')
             ->orderBy('created_at', 'desc')
             ->search($buscar)
             ->role($role)

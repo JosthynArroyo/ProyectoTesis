@@ -4,7 +4,6 @@ namespace App\Jobs;
 
 use App\Mail\CambioEstadoCitaMail;
 use App\Models\Cita;
-use App\Services\WhatsAppService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -71,16 +70,6 @@ class NotificarCambioEstadoCitaJob implements ShouldQueue
             Mail::to($paraDoctor)->queue(
                 new CambioEstadoCitaMail($cita, 'doctor', $this->evento, $this->quien)
             );
-        }
-
-        if ($this->evento === 'aceptada') {
-            $whatsapp = app(WhatsAppService::class);
-            if ($cita->paciente) {
-                $whatsapp->sendCitaAceptada($cita, $cita->paciente, 'paciente');
-            }
-            if ($cita->doctor) {
-                $whatsapp->sendCitaAceptada($cita, $cita->doctor, 'doctor');
-            }
         }
 
         Log::info("NotificarCambioEstadoCitaJob: enviados correos de evento '{$this->evento}' (quien={$this->quien}) para Cita {$cita->id}.");
