@@ -184,8 +184,8 @@
                   <span class="badge {{ $pillClass }} whitespace-nowrap"><i class="{{ $icon }}"></i> {{ $eventLabels[$registro->tipo] ?? ucfirst($registro->tipo) }}</span>
                 </td>
                 <td data-label="Cita" class="whitespace-nowrap">#{{ $registro->cita_id }}</td>
-                <td data-label="Paciente" class="max-w-[11rem] break-words">{{ optional($registro->cita->paciente)->name ?? '-' }}</td>
-                <td data-label="Doctor" class="max-w-[12rem] break-words">{{ optional($registro->cita->doctor)->name ?? '-' }}</td>
+                <td data-label="Paciente" class="max-w-[11rem] break-words">{{ $registro->cita ? $registro->cita->nombrePacienteReal() : '-' }}</td>
+                <td data-label="Doctor" class="max-w-[12rem] break-words">{{ optional($registro->cita?->doctor)->name ?? '-' }}</td>
                 <td data-label="De">
                   @if($registro->tipo === 'reprogramada' && !blank($registro->de_fecha))
                     <div class="whitespace-nowrap">{{ \Illuminate\Support\Carbon::parse($registro->de_fecha)->format('d/m/Y') }}</div>

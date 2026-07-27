@@ -129,7 +129,7 @@
                 <td data-label="Acciones">
                   <div class="table-actions table-actions--start">
                     <a class="btn btn-outline" href="{{ route('demo.doctor.horario.edit',$h->id) }}">Editar</a>
-                    <form action="{{ route('demo.doctor.horario.destroy',$h->id) }}" method="POST">
+                    <form action="{{ route('demo.doctor.horario.destroy',$h->id) }}" method="POST" data-confirm-title="Eliminar horario" data-confirm-message="¿Estás seguro de que deseas eliminar este horario?" data-confirm-action="eliminar" data-confirm-btn="Sí, eliminar">
                       @csrf @method('DELETE')
                       <button class="btn btn-danger" type="submit">Eliminar</button>
                     </form>

@@ -33,6 +33,7 @@ class Kernel extends HttpKernel
             \App\Http\Middleware\PreventBackHistory::class,
             // Verifica estado de cuenta en rutas web autenticadas
             \App\Http\Middleware\EnsureAccountActive::class,
+            \App\Http\Middleware\CheckMustChangePassword::class,
         ],
 
         'api' => [

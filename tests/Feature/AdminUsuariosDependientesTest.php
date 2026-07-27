@@ -3,14 +3,18 @@
 namespace Tests\Feature;
 
 use App\Models\Dependiente;
+use App\Models\IdentityDocument;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 class AdminUsuariosDependientesTest extends TestCase
 {
+    use DatabaseTransactions;
+
     private array $createdUserEmails = [];
 
     public function test_admin_can_view_users_index_and_expand_the_correct_dependientes_without_n_plus_one(): void
@@ -40,7 +44,7 @@ class AdminUsuariosDependientesTest extends TestCase
         Dependiente::create([
             'user_id' => $titularConDependientes->id,
             'nombre' => 'Anabel Arroyo',
-            'dni' => '0987654321',
+            'dni' => '0987654329',
             'fecha_nacimiento' => '2010-06-15',
             'sexo' => 'Femenino',
             'parentesco' => 'hija',
@@ -133,7 +137,7 @@ class AdminUsuariosDependientesTest extends TestCase
         Dependiente::create([
             'user_id' => $patient->id,
             'nombre' => 'Anabel Arroyo',
-            'dni' => '0987654321',
+            'dni' => '0987654329',
             'fecha_nacimiento' => '2010-06-15',
             'sexo' => 'Femenino',
             'parentesco' => 'hija',
@@ -158,7 +162,7 @@ class AdminUsuariosDependientesTest extends TestCase
         foreach ($alienUsers as $user) {
             $user->roles()->detach();
             $user->especialidades()->detach();
-            $user->delete();
+            DB::table('users')->where('id', $user->id)->delete();
         }
 
         DB::getPdo()->exec('ALTER TABLE users AUTO_INCREMENT = 6');
@@ -200,6 +204,11 @@ class AdminUsuariosDependientesTest extends TestCase
     private function insertFixedUser(int $id, string $roleName, array $attributes = []): User
     {
         $now = now();
+        DB::table('identity_documents')
+            ->where('documentable_type', User::class)
+            ->where('documentable_id', $id)
+            ->delete();
+
         DB::table('users')->insert(array_merge([
             'id' => $id,
             'name' => $attributes['name'] ?? sprintf('User %d', $id),
@@ -244,9 +253,13 @@ class AdminUsuariosDependientesTest extends TestCase
         $users = User::query()->with(['roles', 'especialidades'])->whereIn('email', $emails)->get();
 
         foreach ($users as $user) {
+            IdentityDocument::query()
+                ->where('documentable_type', get_class($user))
+                ->where('documentable_id', $user->id)
+                ->delete();
             $user->roles()->detach();
             $user->especialidades()->detach();
-            $user->delete();
+            DB::table('users')->where('id', $user->id)->delete();
         }
 
         $this->createdUserEmails = [];
@@ -269,9 +282,13 @@ class AdminUsuariosDependientesTest extends TestCase
             ->get();
 
         foreach ($users as $user) {
+            IdentityDocument::query()
+                ->where('documentable_type', get_class($user))
+                ->where('documentable_id', $user->id)
+                ->delete();
             $user->roles()->detach();
             $user->especialidades()->detach();
-            $user->delete();
+            DB::table('users')->where('id', $user->id)->delete();
         }
     }
 

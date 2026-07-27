@@ -55,6 +55,7 @@
 
     @stack('modals')
     @include('partials.legal-modals')
+    <x-ui.global-action-lock />
     @stack('scripts')
 </body>
 </html>

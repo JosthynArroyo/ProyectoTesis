@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\CertificadoMedico;
+use App\Models\PedidoLaboratorioResultado;
 use App\Models\PedidoLaboratorio;
 use App\Models\Receta;
 use Endroid\QrCode\Builder\Builder;
@@ -100,6 +101,23 @@ class DocumentoCsvService
             ];
         }
 
+        $resultado = PedidoLaboratorioResultado::query()->where('csv', $csv)->first();
+        if ($resultado) {
+            return [
+                'tipo' => 'resultado_laboratorio',
+                'titulo' => 'Informe de resultados de laboratorio',
+                'pdf_path' => $resultado->pdf_path,
+                'nombre_descarga' => 'resultado_laboratorio_'.$resultado->pedido_laboratorio_id.'_v'.$resultado->version.'.pdf',
+                'metadata' => [
+                    'pedido_id' => $resultado->pedido_laboratorio_id,
+                    'version' => $resultado->version,
+                    'estado' => $resultado->estado,
+                    'publicado_at' => $resultado->publicado_at,
+                    'laboratorio_id' => $resultado->laboratorio_id,
+                ],
+            ];
+        }
+
         return null;
     }
 
@@ -116,7 +134,8 @@ class DocumentoCsvService
 
         return Receta::query()->where('csv', $csv)->exists()
             || CertificadoMedico::query()->where('csv', $csv)->exists()
-            || PedidoLaboratorio::query()->where('csv', $csv)->exists();
+            || PedidoLaboratorio::query()->where('csv', $csv)->exists()
+            || PedidoLaboratorioResultado::query()->where('csv', $csv)->exists();
     }
 
     private function normalizeCsv(string $csv): string

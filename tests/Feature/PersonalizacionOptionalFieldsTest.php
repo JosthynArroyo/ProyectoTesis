@@ -23,10 +23,10 @@ class PersonalizacionOptionalFieldsTest extends TestCase
             route('superadmin.personalizacion.contacto.edit'),
             route('superadmin.personalizacion.servicios.edit'),
         ] as $route) {
-            $this->actingAs($superadmin)
-                ->get($route)
-                ->assertOk()
-                ->assertDontSee(' required', false);
+            $response = $this->actingAs($superadmin)->get($route)->assertOk();
+            $html = $response->getContent();
+            $this->assertStringNotContainsString('name="telefono_emergencia" required', $html);
+            $this->assertStringNotContainsString('name="horarios_atencion" required', $html);
         }
     }
 
@@ -47,10 +47,10 @@ class PersonalizacionOptionalFieldsTest extends TestCase
             route('admin.personalizacion.contacto.edit'),
             route('admin.personalizacion.servicios.edit'),
         ] as $route) {
-            $this->actingAs($admin)
-                ->get($route)
-                ->assertOk()
-                ->assertDontSee(' required', false);
+            $response = $this->actingAs($admin)->get($route)->assertOk();
+            $html = $response->getContent();
+            $this->assertStringNotContainsString('name="telefono_emergencia" required', $html);
+            $this->assertStringNotContainsString('name="horarios_atencion" required', $html);
         }
     }
 

@@ -7,10 +7,13 @@ use App\Models\Cita;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
-use Throwable;
 
 class CitaNoShowService
 {
+    public function __construct(private readonly CitaComprobanteService $comprobanteService)
+    {
+    }
+
     public function marcarVencidas(string $tz = 'America/Guayaquil', int $duracionMin = 30): Collection
     {
         $threshold = Carbon::now($tz)->subMinutes($duracionMin);
@@ -36,9 +39,8 @@ class CitaNoShowService
                     $cita->estado = Cita::ESTADO_NO_SE_PRESENTO;
                     $cita->activo = false;
                     $cita->save();
-                    $this->sincronizarComprobanteSinInterrumpir($cita);
-
-                    NotificarCambioEstadoCitaJob::dispatch($cita, 'no_se_presento', 'sistema');
+                    $this->dispatchNoShowNotification($cita);
+                    $this->syncComprobanteSafely($cita, 'marcarVencidas');
                     $citas->push($cita);
                 }
             });
@@ -59,23 +61,38 @@ class CitaNoShowService
         $cita->estado = Cita::ESTADO_NO_SE_PRESENTO;
         $cita->activo = false;
         $cita->save();
-        $this->sincronizarComprobanteSinInterrumpir($cita);
 
-        NotificarCambioEstadoCitaJob::dispatch($cita, 'no_se_presento', 'sistema');
+        $this->dispatchNoShowNotification($cita);
+        $this->syncComprobanteSafely($cita, 'marcarSiVencio');
 
         return true;
     }
 
-    private function sincronizarComprobanteSinInterrumpir(Cita $cita): void
+    private function syncComprobanteSafely(Cita $cita, string $origin): void
     {
         try {
-            app(CitaComprobanteService::class)->sincronizarComprobante($cita);
-        } catch (Throwable $exception) {
-            Log::error('No se pudo regenerar el comprobante al marcar cita vencida.', [
+            $this->comprobanteService->sincronizarComprobante($cita);
+        } catch (\Throwable $e) {
+            Log::error('No se pudo regenerar el comprobante al marcar una cita como no se presentó.', [
+                'origin' => $origin,
                 'cita_id' => $cita->id,
                 'estado' => $cita->estado,
-                'exception' => $exception,
+                'fecha' => optional($cita->fecha)->toDateString(),
+                'hora' => (string) $cita->hora,
+                'exception_class' => $e::class,
+                'exception_message' => $e->getMessage(),
             ]);
         }
+    }
+
+    private function dispatchNoShowNotification(Cita $cita): void
+    {
+        if (app()->runningInConsole()) {
+            NotificarCambioEstadoCitaJob::dispatch($cita, 'no_se_presento', 'sistema');
+
+            return;
+        }
+
+        NotificarCambioEstadoCitaJob::dispatchAfterResponse($cita, 'no_se_presento', 'sistema');
     }
 }

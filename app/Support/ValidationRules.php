@@ -2,6 +2,9 @@
 
 namespace App\Support;
 
+use App\Models\Dependiente;
+use App\Models\User;
+use App\Rules\GlobalUniqueCedulaRule;
 use Closure;
 use Illuminate\Validation\Rule;
 
@@ -39,14 +42,24 @@ class ValidationRules
         return ['required', 'email', 'max:255', $rule];
     }
 
-    public static function cedulaUnique(string $table = 'users', ?int $ignoreId = null, string $column = 'dni'): array
+    public static function cedulaUnique(mixed $ignoreTypeOrTable = User::class, mixed $ignoreId = null, string $action = 'guardar_usuario', string $module = 'usuarios', ?int $userId = null): array
     {
-        $rule = Rule::unique($table, $column);
-        if ($ignoreId) {
-            $rule->ignore($ignoreId);
-        }
+        $ignoreType = is_string($ignoreTypeOrTable) && class_exists($ignoreTypeOrTable) ? $ignoreTypeOrTable : User::class;
+        return ['required', new GlobalUniqueCedulaRule($ignoreType, $ignoreId, $action, $module, $userId)];
+    }
 
-        return ['required', 'digits:10', $rule];
+    public static function documentoValidationRules(mixed $ignoreTypeOrTable = User::class, mixed $ignoreId = null, string $action = 'guardar_usuario', string $module = 'usuarios', ?int $userId = null): array
+    {
+        $ignoreType = is_string($ignoreTypeOrTable) && class_exists($ignoreTypeOrTable) ? $ignoreTypeOrTable : User::class;
+        return [
+            'tipo_documento' => ['nullable', 'in:cedula,pasaporte'],
+            'nacionalidad' => ['required_if:tipo_documento,pasaporte', 'nullable', 'string', function ($attribute, $value, $fail) {
+                if (request('tipo_documento') === 'pasaporte' && (! $value || ! \App\Support\CountryCatalog::isValidCode($value))) {
+                    $fail('La nacionalidad es obligatoria cuando el documento es pasaporte.');
+                }
+            }],
+            'dni' => ['required', new GlobalUniqueCedulaRule($ignoreType, $ignoreId, $action, $module, $userId)],
+        ];
     }
 
     public static function telefono(): array
@@ -93,6 +106,44 @@ class ValidationRules
                     $fail('Ingresa un motivo breve para la cita, por ejemplo fiebre, dolor de cabeza o tos.');
                 }
             },
+        ];
+    }
+
+    public static function dependentAge(): array
+    {
+        return [
+            'required',
+            'date',
+            'before:today',
+            static function (string $attribute, mixed $value, \Closure $fail): void {
+                try {
+                    $age = \Carbon\Carbon::parse($value)->age;
+                    if ($age >= 18 && $age <= 65) {
+                        $fail('Aviso: El paciente ingresado es mayor de edad. Por políticas del sistema, las personas entre 18 y 65 años deben registrar y gestionar su propia cuenta principal.');
+                    }
+                } catch (\Throwable) {
+                    $fail('La fecha de nacimiento no es válida.');
+                }
+            }
+        ];
+    }
+
+    public static function dependiente(bool $isUpdate = false, mixed $ignoreId = null, ?int $userId = null): array
+    {
+        return [
+            'nombre' => ['required', 'string', 'max:255'],
+            'tipo_documento' => ['nullable', 'in:cedula,pasaporte'],
+            'nacionalidad' => ['required_if:tipo_documento,pasaporte', 'nullable', 'string', function ($attribute, $value, $fail) {
+                if (request('tipo_documento') === 'pasaporte' && (! $value || ! \App\Support\CountryCatalog::isValidCode($value))) {
+                    $fail('La nacionalidad es obligatoria cuando el documento es pasaporte.');
+                }
+            }],
+            'dni' => ['required', new GlobalUniqueCedulaRule(Dependiente::class, $ignoreId, $isUpdate ? 'actualizar_dependiente' : 'crear_dependiente', 'dependientes', $userId)],
+            'fecha_nacimiento' => self::dependentAge(),
+            'sexo' => ['nullable', 'in:Masculino,Femenino,Otro'],
+            'parentesco' => ['required', 'in:' . implode(',', \App\Models\Dependiente::PARENTESCOS)],
+            'telefono_emergencia' => ['nullable', 'string', 'max:20'],
+            'notas' => ['nullable', 'string'],
         ];
     }
 }

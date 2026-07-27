@@ -51,12 +51,7 @@
                     @error('nombre')<div class="text-xs text-rose-600 mt-1">{{ $message }}</div>@enderror
                 </div>
 
-                <div>
-                    <label class="form-label" for="dni">Número de Cédula <span class="text-rose-500">*</span></label>
-                    <input class="form-input" type="text" name="dni" id="dni" value="{{ old('dni', $dependiente->dni) }}" inputmode="numeric" pattern="\d{10}" minlength="10" maxlength="10" placeholder="1723456789" title="Debe contener exactamente 10 dígitos" required>
-                    <div class="text-xs text-gray-500 mt-1">Exactamente 10 dígitos.</div>
-                    @error('dni')<div class="text-xs text-rose-600 mt-1">{{ $message }}</div>@enderror
-                </div>
+                <x-ui.document-fields :model="$dependiente" />
 
                 <div>
                     <label class="form-label" for="fecha_nacimiento">Fecha de Nacimiento <span class="text-rose-500">*</span></label>

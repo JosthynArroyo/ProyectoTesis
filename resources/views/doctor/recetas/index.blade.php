@@ -21,7 +21,7 @@
         <tbody>
           @forelse($recetas as $receta)
             <tr>
-              <td data-label="Paciente">{{ optional($receta->cita->paciente)->name ?? '-' }}</td>
+              <td data-label="Paciente">{{ $receta->cita ? $receta->cita->nombrePacienteReal() : '-' }}</td>
               <td data-label="Especialidad">{{ optional($receta->cita->especialidad)->nombre ?? '-' }}</td>
               <td data-label="Fecha de cita">{{ optional($receta->cita->fecha)->format('d/m/Y') }}</td>
               <td data-label="Hora">{{ \Carbon\Carbon::parse($receta->cita->hora)->format('H:i') }}</td>

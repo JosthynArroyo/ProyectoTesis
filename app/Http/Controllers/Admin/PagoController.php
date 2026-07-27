@@ -162,12 +162,10 @@ class PagoController extends Controller
 
     public function aprobar(ApprovePagoRequest $request, Pago $pago, PagoService $pagoService)
     {
-        if ($pago->estado === Pago::ESTADO_ANULADO) {
-            return back()->withErrors(['error' => 'No se puede aprobar un pago anulado.']);
+        if (! $pago->canPerformAdministrativeAction(Pago::ADMIN_ACTION_APROBAR)) {
+            return $this->rejectAdministrativeTransition($pago);
         }
-        if ($pago->estado === Pago::ESTADO_PAGADO) {
-            return back()->withErrors(['error' => 'El pago ya se encuentra aprobado.']);
-        }
+
         if (empty($pago->metodo_pago)) {
             return back()->withErrors(['error' => 'Debe asignar metodo de pago antes de aprobar.']);
         }
@@ -177,47 +175,57 @@ class PagoController extends Controller
 
         $pagoService->cambiarEstado(
             pago: $pago,
-            nuevoEstado: Pago::ESTADO_PAGADO,
+            nuevoEstado: $pago->administrativeTargetState(Pago::ADMIN_ACTION_APROBAR) ?? Pago::ESTADO_PAGADO,
             actor: $request->user(),
             motivo: $request->validated('observacion_admin')
         );
 
-        return back()->with('success', 'Pago aprobado correctamente.');
+        return redirect()
+            ->route('admin.pagos.show', $pago)
+            ->with('success', 'Pago aprobado correctamente.');
     }
 
     public function rechazar(RejectPagoRequest $request, Pago $pago, PagoService $pagoService)
     {
-        if ($pago->estado === Pago::ESTADO_ANULADO) {
-            return back()->withErrors(['error' => 'No se puede rechazar un pago anulado.']);
-        }
-        if ($pago->estado === Pago::ESTADO_PAGADO) {
-            return back()->withErrors(['error' => 'No se puede rechazar un pago ya aprobado.']);
+        if (! $pago->canPerformAdministrativeAction(Pago::ADMIN_ACTION_RECHAZAR)) {
+            return $this->rejectAdministrativeTransition($pago);
         }
 
         $pagoService->cambiarEstado(
             pago: $pago,
-            nuevoEstado: Pago::ESTADO_RECHAZADO,
+            nuevoEstado: $pago->administrativeTargetState(Pago::ADMIN_ACTION_RECHAZAR) ?? Pago::ESTADO_RECHAZADO,
             actor: $request->user(),
             motivo: $request->validated('observacion_admin')
         );
 
-        return back()->with('success', 'Pago rechazado y devuelto al paciente para corrección.');
+        return redirect()
+            ->route('admin.pagos.show', $pago)
+            ->with('success', 'Pago rechazado y devuelto al paciente para correccion.');
     }
 
     public function anular(AnularPagoRequest $request, Pago $pago, PagoService $pagoService)
     {
-        if ($pago->estado === Pago::ESTADO_ANULADO) {
-            return back()->withErrors(['error' => 'El pago ya está anulado.']);
+        if (! $pago->canPerformAdministrativeAction(Pago::ADMIN_ACTION_ANULAR)) {
+            return $this->rejectAdministrativeTransition($pago);
         }
 
         $pagoService->cambiarEstado(
             pago: $pago,
-            nuevoEstado: Pago::ESTADO_ANULADO,
+            nuevoEstado: $pago->administrativeTargetState(Pago::ADMIN_ACTION_ANULAR) ?? Pago::ESTADO_ANULADO,
             actor: $request->user(),
             motivo: $request->validated('observacion_admin')
         );
 
-        return back()->with('success', 'Pago anulado correctamente.');
+        return redirect()
+            ->route('admin.pagos.show', $pago)
+            ->with('success', 'Pago anulado correctamente.');
+    }
+
+    private function rejectAdministrativeTransition(Pago $pago)
+    {
+        return redirect()
+            ->route('admin.pagos.show', $pago)
+            ->withErrors(['error' => $pago->administrativeStateMessage()]);
     }
 
     public function ordenPdf(Request $request, Pago $pago, PagoService $pagoService)

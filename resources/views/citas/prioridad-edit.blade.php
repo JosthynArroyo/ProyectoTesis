@@ -11,7 +11,7 @@
       <p class="text-xs uppercase tracking-widest text-gray-500">Cita #{{ $cita->id }}</p>
       <h1 class="text-2xl font-semibold text-gray-900">Actualizar prioridad</h1>
       <p class="text-gray-600">
-        Paciente: <strong>{{ optional($cita->paciente)->name ?? 'Sin paciente' }}</strong> |
+        Paciente: <strong>{{ $cita->nombrePacienteReal() }}</strong> |
         Doctor: <strong>{{ optional($cita->doctor)->name ?? 'Sin doctor' }}</strong> |
         Fecha: <strong>{{ \Carbon\Carbon::parse($cita->fecha)->format('d/m/Y') }}</strong> {{ \Carbon\Carbon::parse($cita->hora)->format('H:i') }}
       </p>

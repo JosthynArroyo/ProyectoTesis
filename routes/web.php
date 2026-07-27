@@ -32,6 +32,7 @@ use App\Http\Controllers\ExportCitasController;
 use App\Http\Controllers\Laboratorio\AdminController as LaboratorioDashboardController;
 use App\Http\Controllers\Laboratorio\HorarioController as LaboratorioHorarioController;
 use App\Http\Controllers\Laboratorio\OrdenController as LaboratorioOrdenController;
+use App\Http\Controllers\Laboratorio\PedidoLaboratorioResultadoController as LaboratorioPedidoResultadoController;
 use App\Http\Controllers\Paciente\AdminController as PacienteDashboardController;
 use App\Http\Controllers\Paciente\CertificadoMedicoController as PacienteCertificadoMedicoController;
 use App\Http\Controllers\Paciente\HistorialController as PacienteHistorialController;
@@ -480,6 +481,8 @@ Route::middleware(['auth', 'role:paciente'])->prefix('paciente')->group(function
     Route::get('/laboratorio', [PacienteLaboratorioController::class, 'index'])->name('paciente.laboratorio.index');
     Route::get('/laboratorio/{orden}/descargar', [PacienteLaboratorioController::class, 'download'])
         ->whereNumber('orden')->name('paciente.laboratorio.download');
+    Route::get('/laboratorio/pedidos/{pedido}/descargar', [PacienteLaboratorioController::class, 'downloadPedido'])
+        ->whereNumber('pedido')->name('paciente.laboratorio.pedido.download');
     Route::get('/laboratorio/solicitudes/{order}/descargar', [PacienteLaboratorioController::class, 'downloadAutoOrder'])
         ->whereNumber('order')->name('paciente.lab-orders.download');
     Route::get('/historial', [PacienteHistorialController::class, 'index'])->name('paciente.historial');
@@ -564,6 +567,9 @@ Route::middleware(['auth', 'role:doctor'])->prefix('doctor')->group(function () 
     Route::get('/pedidos-laboratorio/{pedido}/descargar', [PedidoLaboratorioController::class, 'download'])
         ->whereNumber('pedido')
         ->name('doctor.pedidos-laboratorio.download');
+    Route::get('/pedidos-laboratorio/{pedido}/resultado', [PedidoLaboratorioController::class, 'downloadResultado'])
+        ->whereNumber('pedido')
+        ->name('doctor.pedidos-laboratorio.resultado.download');
     Route::post('/pedidos-laboratorio/{pedido}/reenviar', [PedidoLaboratorioController::class, 'resend'])
         ->whereNumber('pedido')
         ->name('doctor.pedidos-laboratorio.resend');
@@ -620,6 +626,19 @@ Route::middleware(['auth', 'role:laboratorio'])->prefix('laboratorio')->name('la
     Route::get('/pedidos-mvp/{pedido}/download-orden', [\App\Http\Controllers\Laboratorio\PedidoLaboratorioController::class, 'downloadOrden'])->name('pedidos.download-orden');
     Route::get('/pedidos-mvp/{pedido}/download-resultado', [\App\Http\Controllers\Laboratorio\PedidoLaboratorioController::class, 'downloadResultado'])->name('pedidos.download-resultado');
 
+    Route::get('/pedidos/{pedido}/resultados', [LaboratorioPedidoResultadoController::class, 'create'])
+        ->whereNumber('pedido')->name('pedidos.resultados.form');
+    Route::post('/pedidos/{pedido}/resultados/borrador', [LaboratorioPedidoResultadoController::class, 'draft'])
+        ->whereNumber('pedido')->name('pedidos.resultados.draft');
+    Route::post('/pedidos/{pedido}/resultados/preview', [LaboratorioPedidoResultadoController::class, 'preview'])
+        ->whereNumber('pedido')->name('pedidos.resultados.preview');
+    Route::post('/pedidos/{pedido}/resultados/publicar', [LaboratorioPedidoResultadoController::class, 'publish'])
+        ->whereNumber('pedido')->name('pedidos.resultados.publish');
+    Route::post('/pedidos/{pedido}/resultados/reenviar', [LaboratorioPedidoResultadoController::class, 'resend'])
+        ->whereNumber('pedido')->name('pedidos.resultados.resend');
+    Route::get('/pedidos/{pedido}/resultados/descargar', [LaboratorioPedidoResultadoController::class, 'download'])
+        ->whereNumber('pedido')->name('pedidos.resultados.download');
+
 });
 
 // =========================== LOGOUT ==========================
@@ -627,7 +646,49 @@ Route::post('/salir', [PublicPageController::class, 'logout'])->name('salir');
 Route::get('/salir', [PublicPageController::class, 'logout'])->name('salir.get');
 
 // =========================== CHATBOT ===========================
-Route::middleware('throttle:chatbot')->group(function () {
+// 1. CAPTCHA public endpoints (with strict throttles)
+Route::middleware('throttle:captcha.challenge')->group(function () {
+    Route::get('/captcha/challenge', [\App\Http\Controllers\Captcha\CaptchaController::class, 'challenge'])
+        ->name('captcha.challenge');
+});
+Route::middleware('throttle:captcha.verify')->group(function () {
+    Route::post('/captcha/verify', [\App\Http\Controllers\Captcha\CaptchaController::class, 'verify'])
+        ->name('captcha.verify');
+});
+Route::get('/captcha/challenge/{token}/image/{position}', [\App\Http\Controllers\Captcha\CaptchaController::class, 'image'])
+    ->name('captcha.image.show');
+
+// 2. Chatbot Identification endpoints (protected by CAPTCHA, throttle general or OTP)
+Route::middleware(['captcha_verified'])->group(function () {
+    Route::post('/chatbot/verificar-paciente', [ChatBotController::class, 'verificarPaciente'])
+        ->middleware('throttle:chatbot.message')
+        ->name('chatbot.verificarPaciente');
+    
+    Route::post('/chatbot/enviar-codigo', [ChatBotController::class, 'enviarCodigoVerificacion'])
+        ->name('chatbot.enviarCodigo');
+    
+    Route::post('/chatbot/verificar-codigo', [ChatBotController::class, 'verificarCodigo'])
+        ->middleware('throttle:chatbot.otp.verify')
+        ->name('chatbot.verificarCodigo');
+    
+    Route::post('/chatbot/registrar-usuario', [ChatBotController::class, 'registrarUsuario'])
+        ->middleware('throttle:chatbot.message')
+        ->name('chatbot.registrarUsuario');
+});
+
+// Agendar: supports both guest (captcha verified) and OTP-identified session flows.
+// Deliberately kept outside captcha_verified group so the OTP session can access it directly.
+Route::post('/chatbot/agendar', [ChatBotController::class, 'agendar'])
+    ->middleware('throttle:chatbot.message')
+    ->name('chatbot.agendar');
+
+// Session cleanup (widget reset)
+Route::post('/chatbot/finalizar', [ChatBotController::class, 'finalizar'])
+    ->name('chatbot.finalizar');
+
+
+// 3. Chatbot Transactional/Patient endpoints (protected by Identity OTP, throttle message)
+Route::middleware(['chatbot_identity', 'throttle:chatbot.message'])->group(function () {
     Route::get('/chatbot/especialidades', [ChatBotController::class, 'especialidades'])->name('chatbot.especialidades');
     Route::get('/chatbot/especialidades/{especialidad}/doctores', [ChatBotController::class, 'doctoresPorEspecialidad'])
         ->whereNumber('especialidad')
@@ -635,11 +696,6 @@ Route::middleware('throttle:chatbot')->group(function () {
     Route::get('/chatbot/doctores/{doctor}/fechas', [ChatBotController::class, 'fechasDisponibles'])
         ->whereNumber('doctor')
         ->name('chatbot.doctor.fechas');
-    Route::post('/chatbot/verificar-paciente', [ChatBotController::class, 'verificarPaciente'])->name('chatbot.verificarPaciente');
-    Route::post('/chatbot/enviar-codigo', [ChatBotController::class, 'enviarCodigoVerificacion'])->name('chatbot.enviarCodigo');
-    Route::post('/chatbot/verificar-codigo', [ChatBotController::class, 'verificarCodigo'])->name('chatbot.verificarCodigo');
-    Route::post('/chatbot/registrar-usuario', [ChatBotController::class, 'registrarUsuario'])->name('chatbot.registrarUsuario');
-    Route::post('/chatbot/agendar', [ChatBotController::class, 'agendar'])->name('chatbot.agendar');
     Route::post('/chatbot/buscar-citas', [ChatBotController::class, 'buscarCitas'])->name('chatbot.buscarCitas');
     Route::post('/chatbot/cancelar', [ChatBotController::class, 'cancelar'])->name('chatbot.cancelar');
     Route::post('/chatbot/reagendar', [ChatBotController::class, 'reagendar'])->name('chatbot.reagendar');
@@ -648,26 +704,11 @@ Route::middleware('throttle:chatbot')->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
-
     Route::patch('/panel/theme', [PanelThemeController::class, 'update'])->name('panel.theme.update');
-});
-
-
-
-Route::middleware('auth')->group(function () {
     Route::get('/cobro/{token}', [PagoLookupController::class, 'showByToken'])->name('pagos.token.show');
+    Route::get('/auth/must-change-password', [\App\Http\Controllers\Auth\MustChangePasswordController::class, 'show'])->name('auth.must-change-password');
+    Route::post('/auth/must-change-password', [\App\Http\Controllers\Auth\MustChangePasswordController::class, 'update'])->name('auth.must-change-password.update');
 });
-
-Route::middleware('throttle:chatbot')->group(function () {
-    Route::get('/captcha/challenge', [\App\Http\Controllers\Captcha\CaptchaController::class, 'challenge'])
-        ->name('captcha.challenge');
-    Route::post('/captcha/verify', [\App\Http\Controllers\Captcha\CaptchaController::class, 'verify'])
-        ->name('captcha.verify');
-});
-
-Route::get('/captcha/image/{image}', [\App\Http\Controllers\Captcha\CaptchaController::class, 'image'])
-    ->whereNumber('image')
-    ->name('captcha.image.show');
 
 // Asigna nombre a rutas del framework/UI que se registran sin ->name()
 foreach (Route::getRoutes() as $route) {

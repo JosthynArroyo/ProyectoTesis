@@ -3,7 +3,9 @@
 namespace App\Providers;
 
 use App\Models\Cita;
+use App\Models\FeatureAccessRequest;
 use App\Observers\CitaObserver;
+use App\Observers\FeatureAccessRequestObserver;
 use App\Services\ClinicIdentityService;
 use App\Services\LandingWelcomeService;
 use App\Services\LayoutMetricsService;
@@ -68,6 +70,10 @@ class AppServiceProvider extends ServiceProvider
             Cita::observe(CitaObserver::class);
         }
 
+        if (class_exists(FeatureAccessRequest::class) && class_exists(FeatureAccessRequestObserver::class)) {
+            FeatureAccessRequest::observe(FeatureAccessRequestObserver::class);
+        }
+
         $this->registerSharedViewContext();
 
         View::composer('components.layout.dashboard-header', function ($view): void {
@@ -111,10 +117,38 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(5)->by($request->ip().'|'.$email);
         });
 
-        RateLimiter::for('chatbot', function (Request $request) {
-            $userId = optional($request->user())->id;
-            $key = $userId ? "user:{$userId}" : $request->ip();
+        RateLimiter::for('captcha.challenge', function (Request $request) {
+            return Limit::perMinute(10)->by($request->ip());
+        });
 
+        RateLimiter::for('captcha.verify', function (Request $request) {
+            $sessionId = $request->session()->getId() ?: $request->ip();
+            return Limit::perMinute(10)->by($sessionId);
+        });
+
+        RateLimiter::for('chatbot.otp.send', function (Request $request) {
+            $email = strtolower((string) $request->input('email', ''));
+            $emailHash = hash('sha256', $email);
+            return [
+                Limit::perMinute(1)->by($request->ip()),
+                Limit::perMinutes(10, 3)->by("send_otp:{$emailHash}"),
+            ];
+        });
+
+        RateLimiter::for('chatbot.otp.verify', function (Request $request) {
+            $email = strtolower((string) $request->input('email', ''));
+            $emailHash = hash('sha256', $email);
+            $sessionId = $request->session()->getId() ?: $request->ip();
+            return [
+                Limit::perMinutes(10, 5)->by("verify_otp:{$sessionId}"),
+                Limit::perMinutes(10, 5)->by("verify_otp:{$emailHash}"),
+            ];
+        });
+
+        RateLimiter::for('chatbot.message', function (Request $request) {
+            $userId = $request->session()->get(\App\Support\ChatbotSessionKeys::SESSION_CHATBOT_USER_ID)
+                ?: optional($request->user())->id;
+            $key = $userId ? "user:{$userId}" : $request->ip();
             return Limit::perMinute(30)->by($key);
         });
 

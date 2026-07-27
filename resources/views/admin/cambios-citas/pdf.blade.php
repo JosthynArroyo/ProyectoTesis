@@ -36,8 +36,8 @@
           <td>{{ $r->created_at->format('Y-m-d H:i') }}</td>
           <td>{{ $eventLabels[$r->tipo] ?? ucfirst($r->tipo) }}</td>
           <td>#{{ $r->cita_id }}</td>
-          <td>{{ optional($r->cita->paciente)->name ?? '-' }}</td>
-          <td>{{ optional($r->cita->doctor)->name ?? '-' }}</td>
+          <td>{{ $r->cita ? $r->cita->nombrePacienteReal() : '-' }}</td>
+          <td>{{ optional($r->cita?->doctor)->name ?? '-' }}</td>
           <td>
             @if($r->tipo==='reprogramada' && !blank($r->de_fecha))
               {{ \Illuminate\Support\Carbon::parse($r->de_fecha)->format('Y-m-d') }} {{ $r->de_hora }}

@@ -18,6 +18,7 @@
 @php($labVentanaAtencion = $labVentanaAtencion ?? null)
 @php($labEsperaEstimada = $labEsperaEstimada ?? null)
 @php($labOrders = collect($labOrders ?? []))
+@php($pedidosLaboratorio = collect($pedidosLaboratorio ?? []))
 
 @section('main')
   <div class="space-y-6">
@@ -255,6 +256,43 @@
         </table>
       </div>
     </section>
+
+    @if($pedidosLaboratorio->isNotEmpty())
+      <section class="card p-6">
+        <div class="page-header">
+          <div class="page-header__info">
+            <h2>Resultados publicados</h2>
+            <p>Últimos informes generados por tu doctor.</p>
+          </div>
+        </div>
+        <div class="mt-4 grid gap-3">
+          @foreach($pedidosLaboratorio as $pedido)
+            @php($resultadoPublicado = $pedido->resultados->firstWhere('estado', 'publicado'))
+            <div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white/90 p-4">
+              <div>
+                <p class="text-sm font-semibold text-gray-900">Pedido #{{ $pedido->id }}</p>
+                <p class="text-xs text-gray-500">
+                  Doctor: {{ $pedido->doctor?->name ?? '-' }}
+                  | Versión: {{ $resultadoPublicado?->version ?? '-' }}
+                </p>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                @if($resultadoPublicado && $resultadoPublicado->pdf_path)
+                  <a class="btn btn-primary btn-sm" href="{{ route('paciente.laboratorio.pedido.download', $pedido) }}">
+                    <i class="ri-download-line"></i> Descargar
+                  </a>
+                @endif
+                @if($resultadoPublicado?->csv)
+                  <a class="btn btn-outline btn-sm" href="{{ route('documentos.verificar.show', $resultadoPublicado->csv) }}" target="_blank" rel="noopener">
+                    <i class="ri-qr-code-line"></i> Verificación
+                  </a>
+                @endif
+              </div>
+            </div>
+          @endforeach
+        </div>
+      </section>
+    @endif
 
     <section class="card p-6">
       <div class="page-header">

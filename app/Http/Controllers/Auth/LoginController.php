@@ -24,12 +24,13 @@ class LoginController extends Controller
 
     public function showLoginForm()
     {
-        return redirect(url('/').'?login=1');
+        return view('auth.login');
     }
 
     protected function validateLogin(Request $request)
     {
-        $request->validate(
+        $request->validateWithBag(
+            'login',
             [
                 $this->username() => 'required|email',
                 'password' => 'required|string',
@@ -67,7 +68,7 @@ class LoginController extends Controller
             $request->session()->regenerateToken();
 
             return redirect(url()->previous() ?: url('/'))
-                ->withErrors(['email' => self::MAINTENANCE_LOGIN_MESSAGE])
+                ->withErrors(['email' => self::MAINTENANCE_LOGIN_MESSAGE], 'login')
                 ->with('auth_error', self::MAINTENANCE_LOGIN_MESSAGE);
         }
 
@@ -77,7 +78,7 @@ class LoginController extends Controller
             $target = url('/').'?login=1';
 
             return redirect($target)
-                ->withErrors(['email' => 'Tu cuenta está deshabilitada o suspendida.'])
+                ->withErrors(['email' => 'Tu cuenta está deshabilitada o suspendida.'], 'login')
                 ->with('auth_error', 'Tu cuenta está deshabilitada o suspendida.');
         }
 
@@ -103,7 +104,7 @@ class LoginController extends Controller
     {
         throw ValidationException::withMessages([
             $this->username() => ['Las credenciales no coinciden con nuestros registros.'],
-        ]);
+        ])->errorBag('login');
     }
 
     protected function sendLockoutResponse(Request $request)
@@ -112,6 +113,6 @@ class LoginController extends Controller
 
         throw ValidationException::withMessages([
             $this->username() => ['Demasiados intentos. Inténtelo nuevamente en '.$seconds.' segundos.'],
-        ])->status(429);
+        ])->status(429)->errorBag('login');
     }
 }

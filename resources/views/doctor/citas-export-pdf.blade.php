@@ -45,7 +45,7 @@
         @forelse($citas as $index => $cita)
           <tr>
             <td>{{ $index + 1 }}</td>
-            <td>{{ optional($cita->paciente)->name ?? 'Sin paciente' }}</td>
+            <td>{{ $cita->nombrePacienteReal() }}</td>
             <td>{{ optional($cita->especialidad)->nombre ?? 'Sin especialidad' }}</td>
             <td>{{ \Carbon\Carbon::parse($cita->fecha)->format('d/m/Y') }}</td>
             <td>{{ \Carbon\Carbon::parse($cita->hora)->format('H:i') }}</td>

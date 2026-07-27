@@ -96,7 +96,7 @@
                             <a href="{{ route('demo.paciente.dependientes.edit', $dep['id']) }}" class="btn btn-outline btn-sm flex-1 text-center justify-center">
                                 <i class="ri-edit-line"></i> Editar
                             </a>
-                            <form action="{{ route('demo.paciente.dependientes.destroy', $dep['id']) }}" method="POST" onsubmit="return confirm('¿Deseas eliminar este familiar de la simulación?');">
+                            <form action="{{ route('demo.paciente.dependientes.destroy', $dep['id']) }}" method="POST" data-confirm-title="Eliminar dependiente" data-confirm-message="¿Estás seguro de que deseas eliminar este dependiente de la simulación?" data-confirm-action="eliminar" data-confirm-btn="Sí, eliminar">
                                 @csrf
                                 @method('DELETE')
                                 <button type="submit" class="btn btn-sm btn-danger"><i class="ri-delete-bin-line"></i> Eliminar</button>

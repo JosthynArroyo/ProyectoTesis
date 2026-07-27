@@ -16,7 +16,7 @@ class AuthModalRedirectTest extends TestCase
     {
         $response = $this->get(route('login'));
 
-        $response->assertRedirect(url('/').'?login=1');
+        $response->assertOk();
     }
 
     public function test_guest_access_to_protected_panel_redirects_to_landing_modal(): void
@@ -88,5 +88,18 @@ class AuthModalRedirectTest extends TestCase
         $response->assertRedirect('paciente/dashboard');
         $response->assertCookieMissing(Auth::guard()->getRecallerName());
         $this->assertAuthenticatedAs($user);
+    }
+
+    public function test_failed_login_keeps_using_the_login_error_bag(): void
+    {
+        $response = $this->from(url('/').'?login=1')->post(route('login'), [
+            'email' => 'inexistente@example.com',
+            'password' => 'incorrecta',
+            'remember' => '0',
+        ]);
+
+        $response->assertRedirect(url('/').'?login=1');
+        $response->assertSessionHasErrorsIn('login', ['email']);
+        $response->assertSessionMissing('auth_error');
     }
 }

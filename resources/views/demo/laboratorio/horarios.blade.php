@@ -164,7 +164,7 @@
                     <a class="btn btn-ghost btn-sm" href="{{ route('demo.laboratorio.horario.edit', $horario->id) }}">
                       <i class="ri-edit-line"></i> Editar
                     </a>
-                    <form action="{{ route('demo.laboratorio.horario.destroy', $horario->id) }}" method="POST" onsubmit="return confirm('Eliminar horario')">
+                    <form action="{{ route('demo.laboratorio.horario.destroy', $horario->id) }}" method="POST" data-confirm-title="Eliminar horario" data-confirm-message="¿Estás seguro de que deseas eliminar este horario?" data-confirm-action="eliminar" data-confirm-btn="Sí, eliminar">
                       @csrf
                       @method('DELETE')
                       <button class="btn btn-danger btn-sm" type="submit">

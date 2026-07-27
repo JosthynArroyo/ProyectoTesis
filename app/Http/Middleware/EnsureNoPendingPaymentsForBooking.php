@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Services\PagoService;
+use App\Services\LayoutMetricsService;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -17,7 +18,10 @@ class EnsureNoPendingPaymentsForBooking
         }
 
         $pagoService = app(PagoService::class);
-        if (! $pagoService->pacienteTieneBloqueo($user->id)) {
+        $bloqueado = $pagoService->pacienteTieneBloqueo($user->id);
+        app(LayoutMetricsService::class)->cachePatientPaymentBlockForRequest((int) $user->id, $bloqueado);
+
+        if (! $bloqueado) {
             return $next($request);
         }
 

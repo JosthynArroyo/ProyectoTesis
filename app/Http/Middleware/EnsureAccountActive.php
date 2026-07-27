@@ -27,7 +27,7 @@ class EnsureAccountActive
 
                 // NO invalidate aquí para no perder los flashes
                 return redirect(url('/').'?login=1')
-                    ->withErrors(['email' => 'Tu cuenta está deshabilitada o suspendida.'])
+                    ->withErrors(['email' => 'Tu cuenta está deshabilitada o suspendida.'], 'login')
                     ->with('auth_error', 'Tu cuenta está deshabilitada o suspendida.');
             }
         }

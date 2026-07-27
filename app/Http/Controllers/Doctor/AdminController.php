@@ -115,6 +115,12 @@ class AdminController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ValidationRules::emailUnique('users', $user->id),
             'telefono' => ValidationRules::telefono(),
+            'tipo_documento' => ['nullable', 'in:cedula,pasaporte'],
+            'nacionalidad' => ['required_if:tipo_documento,pasaporte', 'nullable', 'string', function ($attribute, $value, $fail) use ($request) {
+                if ($request->input('tipo_documento') === 'pasaporte' && (! $value || ! \App\Support\CountryCatalog::isValidCode($value))) {
+                    $fail('La nacionalidad es obligatoria cuando el documento es pasaporte.');
+                }
+            }],
             'dni' => ValidationRules::cedulaUnique('users', $user->id),
             'direccion' => ['required', 'string', 'max:255'],
             'fecha_nacimiento' => ValidationRules::birthDate(),
@@ -143,6 +149,8 @@ class AdminController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'telefono' => $request->telefono,
+            'tipo_documento' => $request->input('tipo_documento', 'cedula'),
+            'nacionalidad' => $request->input('tipo_documento') === 'pasaporte' ? $request->input('nacionalidad') : null,
             'dni' => $request->dni,
             'direccion' => $request->direccion,
             'fecha_nacimiento' => $request->fecha_nacimiento,

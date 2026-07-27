@@ -43,6 +43,7 @@
   @php
     use Illuminate\Support\Facades\Route as R;
     $errors = $errors ?? new \Illuminate\Support\ViewErrorBag();
+    $loginErrors = $errors->getBag('login');
     $loginModalUrl = url('/') . '?login=1';
     $navigationOrder = array_values(array_filter(array_map('trim', explode(',', (string) $siteSettings->get('header.navigation_order', 'home,services,contact')))));
     $navigationOrder = empty($navigationOrder) ? ['home', 'services', 'contact'] : $navigationOrder;
@@ -194,7 +195,6 @@
   </header>
 
   @guest
-  @php($errorsBag = $errors ?? null)
   @php($maintenanceEnabled = $siteSettings->getBool('maintenance.enabled', false))
 
   {{-- ================================================================
@@ -303,7 +303,7 @@
                 {{ session('status') }}
               </div>
             @endif
-            @if(session('auth_error') || ($errorsBag && $errorsBag->any()))
+            @if(session('auth_error') || $loginErrors->any())
               <span data-open-login-onload hidden></span>
             @endif
             @if(session('auth_error'))
@@ -311,12 +311,12 @@
                 <i class="ri-error-warning-line" style="flex-shrink:0"></i>
                 {{ session('auth_error') }}
               </div>
-            @elseif($errorsBag && $errorsBag->has('email'))
+            @elseif($loginErrors->has('email'))
               <div class="lm-alert error">
                 <i class="ri-error-warning-line" style="flex-shrink:0"></i>
-                {{ $errorsBag->first('email') }}
+                {{ $loginErrors->first('email') }}
               </div>
-            @elseif($errorsBag && $errorsBag->any())
+            @elseif($loginErrors->any())
               <div class="lm-alert error">
                 <i class="ri-error-warning-line" style="flex-shrink:0"></i>
                 Revisa tus datos e inténtalo nuevamente.
@@ -406,6 +406,7 @@
   @endguest
 
   @include('partials.legal-modals')
+  <x-ui.global-action-lock />
   @stack('scripts')
 </body>
 

@@ -45,31 +45,14 @@ class DependienteController extends Controller
                 ->with('error', 'Has alcanzado el lÃ­mite mÃ¡ximo de dependientes registrados.');
         }
 
-        $request->validate([
-            'nombre' => 'required|string|max:255',
-            'dni' => 'required|string|max:20',
-            'fecha_nacimiento' => 'required|date|before:today',
-            'sexo' => 'nullable|in:Masculino,Femenino,Otro',
-            'parentesco' => 'required|in:' . implode(',', Dependiente::PARENTESCOS),
-            'telefono_emergencia' => 'nullable|string|max:20',
-            'notas' => 'nullable|string',
-        ], [
+        $rules = \App\Support\ValidationRules::dependiente(false, null, $user->id);
+        $request->validate($rules, [
             'nombre.required' => 'El nombre es obligatorio.',
-            'dni.required' => 'El nÃºmero de cÃ©dula es obligatorio.',
+            'dni.required' => 'El número de cédula es obligatorio.',
             'fecha_nacimiento.required' => 'La fecha de nacimiento es obligatoria.',
-            'fecha_nacimiento.before' => 'La fecha de nacimiento debe ser anterior a hoy.',
             'parentesco.required' => 'El parentesco es obligatorio.',
-            'parentesco.in' => 'El parentesco seleccionado no es vÃ¡lido.',
+            'parentesco.in' => 'El parentesco seleccionado no es válido.',
         ]);
-
-        $fechaNacimiento = Carbon::parse($request->fecha_nacimiento);
-        $edad = $fechaNacimiento->age;
-
-        if ($edad >= 18 && $edad <= 65) {
-            return back()->withInput()->withErrors([
-                'fecha_nacimiento' => 'Aviso: El paciente ingresado es mayor de edad. Por polÃ­ticas del sistema, las personas entre 18 y 65 aÃ±os deben registrar y gestionar su propia cuenta principal.',
-            ]);
-        }
 
         try {
             DB::beginTransaction();
@@ -107,31 +90,14 @@ class DependienteController extends Controller
     {
         $dependiente = $this->ownedDependientesQuery()->whereKey($id)->firstOrFail();
 
-        $request->validate([
-            'nombre' => 'required|string|max:255',
-            'dni' => 'required|string|max:20',
-            'fecha_nacimiento' => 'required|date|before:today',
-            'sexo' => 'nullable|in:Masculino,Femenino,Otro',
-            'parentesco' => 'required|in:' . implode(',', Dependiente::PARENTESCOS),
-            'telefono_emergencia' => 'nullable|string|max:20',
-            'notas' => 'nullable|string',
-        ], [
+        $rules = \App\Support\ValidationRules::dependiente(true, $dependiente->id, Auth::id());
+        $request->validate($rules, [
             'nombre.required' => 'El nombre es obligatorio.',
-            'dni.required' => 'El nÃºmero de cÃ©dula es obligatorio.',
+            'dni.required' => 'El número de cédula es obligatorio.',
             'fecha_nacimiento.required' => 'La fecha de nacimiento es obligatoria.',
-            'fecha_nacimiento.before' => 'La fecha de nacimiento debe ser anterior a hoy.',
             'parentesco.required' => 'El parentesco es obligatorio.',
-            'parentesco.in' => 'El parentesco seleccionado no es vÃ¡lido.',
+            'parentesco.in' => 'El parentesco seleccionado no es válido.',
         ]);
-
-        $fechaNacimiento = Carbon::parse($request->fecha_nacimiento);
-        $edad = $fechaNacimiento->age;
-
-        if ($edad >= 18 && $edad <= 65) {
-            return back()->withInput()->withErrors([
-                'fecha_nacimiento' => 'Aviso: El paciente ingresado es mayor de edad. Por polÃ­ticas del sistema, las personas entre 18 y 65 aÃ±os deben registrar y gestionar su propia cuenta principal.',
-            ]);
-        }
 
         $dependiente->fill($request->all());
         $dependiente->save();

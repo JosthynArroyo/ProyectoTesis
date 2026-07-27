@@ -65,7 +65,7 @@ class DoctorDeactivationTest extends TestCase
             'remember' => '0',
         ])
             ->assertRedirect('/?login=1')
-            ->assertSessionHasErrors('email');
+            ->assertSessionHasErrorsIn('login', ['email']);
 
         $this->assertGuest();
         $this->assertFalse($doctor->fresh()->active);

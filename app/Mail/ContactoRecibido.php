@@ -21,6 +21,7 @@ class ContactoRecibido extends Mailable
     public function build()
     {
         return $this->subject(app(ClinicIdentityService::class)->subject('Nuevo mensaje de contacto'))
+            ->replyTo($this->datos['email'], $this->datos['nombre'])
             ->view('emails.contacto_recibido');
     }
 }

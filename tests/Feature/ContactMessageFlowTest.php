@@ -97,4 +97,36 @@ class ContactMessageFlowTest extends TestCase
             'estado' => 'nuevo',
         ]);
     }
+
+    public function test_contact_form_validation_uses_contact_error_bag_and_keeps_values(): void
+    {
+        $payload = [
+            'nombre' => 'Paciente Prueba',
+            'email' => 'correo-invalido',
+            'telefono' => '0991234567',
+            'asunto' => 'Consulta de horarios',
+            'mensaje' => 'Necesito informacion sobre horarios de atencion.',
+            'empresa' => '',
+            't0' => now()->subSeconds(5)->timestamp,
+        ];
+
+        $response = $this->from('/contacto')->post('/contacto', $payload);
+
+        $response->assertRedirect('/contacto');
+        $response->assertSessionHasErrorsIn('contacto', ['email']);
+        $response->assertSessionMissing('auth_error');
+
+        $page = $this->followingRedirects()
+            ->from('/contacto')
+            ->post('/contacto', $payload);
+
+        $page->assertOk()
+            ->assertSee('id="err-email"', false)
+            ->assertSee('value="Paciente Prueba"', false)
+            ->assertSee('value="correo-invalido"', false)
+            ->assertSee('value="0991234567"', false)
+            ->assertSee('Consulta de horarios', false)
+            ->assertDontSee('data-open-login-onload', false)
+            ->assertDontSee('lm-alert error', false);
+    }
 }

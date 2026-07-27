@@ -47,8 +47,7 @@ class FeatureAccessService
         return FeatureAccessRequest::query()
             ->where('user_id', $user->id)
             ->forFeature($feature)
-            ->where('status', 'approved')
-            ->whereNull('revoked_at')
+            ->approvedActive()
             ->latest('reviewed_at')
             ->first();
     }
@@ -64,8 +63,10 @@ class FeatureAccessService
         }
 
         $pending = $this->pendingRequest($user, $feature);
-        $approved = $this->latestApproved($user, $feature);
         $canAccess = $this->hasAccess($user, $feature);
+        $approved = $canAccess
+            ? $this->latestApproved($user, $feature)
+            : null;
 
         return [
             'can_access' => $canAccess,

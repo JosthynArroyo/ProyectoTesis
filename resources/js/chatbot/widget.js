@@ -58,9 +58,9 @@ document.addEventListener('DOMContentLoaded', function () {
     direccion: '',
     fecha_nacimiento: '',
     sexo: '',
-    password_actual: '',
-    password_nuevo: '',
-    password_confirmacion: '',
+    parentesco: '',
+    telefono_emergencia: '',
+    notas: '',
     motivo: '',
     especialidad_id: null,
     doctor_id: null,
@@ -79,7 +79,9 @@ document.addEventListener('DOMContentLoaded', function () {
     nueva_fecha: '',
     nueva_fecha_label: '',
     nueva_hora: '',
+    dependiente_id: null,
   });
+
   const initialRegistro = () => ({
     cedula: '',
     email: '',
@@ -87,12 +89,23 @@ document.addEventListener('DOMContentLoaded', function () {
     telefono: '',
     crearUsuario: null,
   });
+
   const initialSession = () => ({
     type: 'anonymous',
     otpSent: false,
     emailVerified: false,
     profileFound: false,
   });
+
+  let challengeAbortController = null;
+  const actionLock = window.ActionLock || null;
+  const runLocked = (copy, executor, options = {}) => {
+    if (actionLock && typeof actionLock.run === 'function') {
+      return actionLock.run(copy, executor, options);
+    }
+
+    return Promise.resolve().then(executor);
+  };
 
   const state = {
     mode: 'identidad',
@@ -106,7 +119,8 @@ document.addEventListener('DOMContentLoaded', function () {
     crearUsuarioPreferido: null,
     buffer: initialBuffer(),
     citasEncontradas: [],
-    retoHumano: { challengeId: null, targetKey: '', targetLabelEs: '', images: [], verifying: false },
+    dependientes: [],
+    retoHumano: { token: '', targetLabelEs: '', images: [], verifying: false },
   };
 
   const limpiarCedula = (value) => String(value || '').replace(/\s+/g, '');
@@ -115,7 +129,20 @@ document.addEventListener('DOMContentLoaded', function () {
   const esTelefonoValido = (value) => /^\d{10}$/.test(value);
   const esCorreoValido = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizarCorreo(value));
   const esFechaValida = (value) => /^\d{4}-\d{2}-\d{2}$/.test(value);
-  const esPasswordValido = (value) => /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/.test(String(value || ''));
+  const esEdadDependienteValida = (fecha) => {
+    try {
+      const birth = new Date(fecha);
+      const today = new Date();
+      let age = today.getFullYear() - birth.getFullYear();
+      const m = today.getMonth() - birth.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+        age--;
+      }
+      return age < 18 || age > 65;
+    } catch(e) {
+      return false;
+    }
+  };
   const MOTIVOS_NO_VALIDOS = ['no', 'ninguno', 'ninguna', 'n/a', 'na', 'sin motivo', 'omitir'];
   const normalizarMotivoConsulta = (value) => String(value || '').trim().replace(/\s+/g, ' ');
   const esMotivoConsultaValido = (value) => {
@@ -150,13 +177,13 @@ document.addEventListener('DOMContentLoaded', function () {
     state.autenticado = false;
     state.identidad = { id:null, nombre:'', cedula:'', email:'', telefono:'' };
     state.session = initialSession();
+    state.dependientes = [];
   }
 
   function issueHoldToken() {
     if (window.crypto?.randomUUID) {
       return window.crypto.randomUUID();
     }
-
     return `hold-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   }
 
@@ -164,7 +191,6 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!state.holdToken) {
       state.holdToken = issueHoldToken();
     }
-
     return state.holdToken;
   }
 
@@ -241,7 +267,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const title = document.createElement('div');
     title.className = 'chat-verificacion-text';
-    title.textContent = `Para verificar que no eres un robot, haz clic o escribe el número de: ${reto.targetLabelEs}.`;
+    title.textContent = `Para verificar que no eres un robot, haz clic o escribe el número (1-4) de: ${reto.targetLabelEs}.`;
 
     const grid = document.createElement('div');
     grid.className = 'chat-verificacion-grid';
@@ -291,11 +317,17 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   async function obtenerRetoHumano() {
+    if (challengeAbortController) {
+      challengeAbortController.abort();
+    }
+    challengeAbortController = new AbortController();
+
     const res = await fetch(`${baseUrl}/captcha/challenge`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
       },
+      signal: challengeAbortController.signal,
     });
 
     const data = await res.json().catch(() => ({}));
@@ -305,17 +337,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const images = Array.isArray(data.images) ? data.images : [];
     return {
-      challengeId: Number(data.challenge_id) || null,
-      targetKey: String(data.target_key || ''),
-      targetLabelEs: String(data.target_label_es || data.target_key || ''),
+      token: String(data.token || ''),
+      targetLabelEs: String(data.target_label_es || ''),
       images: images.map((img) => ({
-        id: Number(img.id) || null,
+        position: Number(img.position),
         url: String(img.url || ''),
-      })).filter((img) => img.id && img.url),
+      })),
     };
   }
 
-  async function verificarRetoHumano(challengeId, imageId) {
+  async function verificarRetoHumano(token, position) {
     const res = await fetch(`${baseUrl}/captcha/verify`, {
       method: 'POST',
       headers: {
@@ -324,8 +355,8 @@ document.addEventListener('DOMContentLoaded', function () {
         'Accept': 'application/json',
       },
       body: JSON.stringify({
-        challenge_id: challengeId,
-        selected_image_id: imageId,
+        token: token,
+        position: position,
       }),
     });
 
@@ -339,21 +370,23 @@ document.addEventListener('DOMContentLoaded', function () {
   async function mostrarRetoHumano() {
     try {
       const reto = await obtenerRetoHumano();
-      if (!reto.challengeId || reto.images.length !== 4) {
+      if (!reto.token || reto.images.length !== 4) {
         throw new Error('No se pudo preparar el captcha.');
       }
       state.retoHumano = reto;
       addRetoHumano(state.retoHumano);
     } catch (error) {
-      console.error(error);
-      addMessage('bot', 'No pudimos cargar el captcha. Intenta nuevamente.');
+      if (error.name !== 'AbortError') {
+        console.error(error);
+        addMessage('bot', error.message || 'La verificación no está disponible temporalmente.');
+      }
     }
   }
 
   async function procesarRespuestaRetoHumano(respuesta) {
     const seleccion = parseInt(respuesta, 10);
 
-    if (!state.retoHumano.challengeId || !Array.isArray(state.retoHumano.images) || state.retoHumano.images.length !== 4) {
+    if (!state.retoHumano.token || !Array.isArray(state.retoHumano.images) || state.retoHumano.images.length !== 4) {
       addMessage('bot', 'Generando un nuevo reto...');
       await mostrarRetoHumano();
       return;
@@ -365,7 +398,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     const selected = state.retoHumano.images[seleccion - 1];
-    if (!selected || !selected.id) {
+    if (!selected || selected.position === undefined || selected.position === null) {
       addMessage('bot', 'No se pudo leer la opción seleccionada. Intentaremos de nuevo.');
       await mostrarRetoHumano();
       return;
@@ -379,7 +412,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     try {
       addMessage('bot', 'Validando selección...');
-      const resultado = await verificarRetoHumano(state.retoHumano.challengeId, selected.id);
+      const resultado = await verificarRetoHumano(state.retoHumano.token, selected.position);
       if (!resultado.ok) {
         addMessage('bot', resultado.message || 'Selección incorrecta. Intenta nuevamente.');
         await mostrarRetoHumano();
@@ -432,10 +465,34 @@ document.addEventListener('DOMContentLoaded', function () {
     if (a === 'info_citas') return startInfoCitas();
     if (a === 'actualizar_perfil') return startActualizarPerfil();
     if (a === 'registro_iniciar') return startRegistro();
-    if (a === 'registro_crear_si') return registrarUsuarioDesdeRegistro();
-    if (a === 'registro_crear_no') return continuarRegistroSinUsuario();
     if (a === 'finalizar') return finalizarChat();
     if (a === 'reenviar_codigo') return reenviarCodigo();
+    
+    // Family / patient selection button handlers
+    if (a === 'agendar_para_titular') {
+      state.buffer.dependiente_id = null;
+      state.step = 'motivo';
+      return addMessage('bot', MENSAJE_MOTIVO_CONSULTA);
+    }
+    if (a === 'agendar_para_dependiente') {
+      state.buffer.dependiente_id = btn.payload.dependiente_id;
+      state.step = 'motivo';
+      return addMessage('bot', `Agendaremos para: ${btn.payload.nombre}.\n\n${MENSAJE_MOTIVO_CONSULTA}`);
+    }
+    
+    if (a === 'info_citas_filter') {
+      state.buffer.dependiente_id = btn.payload.dependiente_id;
+      state.step = 'elige_estado';
+      return mostrarEstadosCitas();
+    }
+    
+    if (a === 'perfil_ver_titular') {
+      return cargarPerfilDesdeServidor(null);
+    }
+    if (a === 'perfil_ver_dependiente') {
+      return cargarPerfilDesdeServidor(btn.payload.dependiente_id);
+    }
+
     if (a === 'estado_citas') return mostrarCitasPorEstado(btn.payload.estado, btn.payload.titulo);
     if (a === 'volver_estados') return mostrarEstadosCitas();
     if (a === 'cancelar_cita_id') return seleccionarCitaCancelar(btn.payload.cita_id);
@@ -449,30 +506,6 @@ document.addEventListener('DOMContentLoaded', function () {
     state.buffer.dni = state.identidad.cedula;
     state.buffer.email = state.identidad.email;
     state.buffer.telefono = state.identidad.telefono;
-    state.buffer.direccion = '';
-    state.buffer.fecha_nacimiento = '';
-    state.buffer.sexo = '';
-    state.buffer.password_actual = '';
-    state.buffer.password_nuevo = '';
-    state.buffer.password_confirmacion = '';
-  }
-
-  function resetBufferConInvitado() {
-    state.buffer = initialBuffer();
-    state.buffer.nombre = state.registro.nombre;
-    state.buffer.cedula = state.registro.cedula;
-    state.buffer.dni = state.registro.cedula;
-    state.buffer.email = state.registro.email;
-    state.buffer.telefono = state.registro.telefono || '';
-  }
-
-  function resetBufferSegunSesion() {
-    if (hasGuestSession()) {
-      resetBufferConInvitado();
-      return;
-    }
-
-    resetBufferConIdentidad();
   }
 
   function resetRegistro() {
@@ -480,9 +513,6 @@ document.addEventListener('DOMContentLoaded', function () {
     state.crearUsuarioPreferido = null;
   }
 
-  // ======================
-  // IDENTIDAD Y ACCESO
-  // ======================
   function startIdentidad(reiniciar = false) {
     if (reiniciar) {
       clearVerificationState();
@@ -497,10 +527,28 @@ document.addEventListener('DOMContentLoaded', function () {
     addMessage('bot','Hola, soy el asistente virtual de la clínica.\n\nEscribe "hola" para comenzar.');
   }
 
-  function resetChat() {
-    log.innerHTML = '';
-    state.retoHumano = { challengeId: null, targetKey: '', targetLabelEs: '', images: [], verifying: false };
-    startIdentidad(true);
+  async function resetChat() {
+    return runLocked({
+      title: 'Cerrando conversación...',
+      description: 'Por favor, espera. No cierres esta página.',
+      mode: 'operation',
+    }, async () => {
+      log.innerHTML = '';
+      state.retoHumano = { token: '', targetLabelEs: '', images: [], verifying: false };
+
+      // Explicitly call finalized on backend to purge session data
+      try {
+        await fetch(`${baseUrl}/chatbot/finalizar`, {
+          method: 'POST',
+          headers: {
+            'X-CSRF-TOKEN': csrf,
+            'Accept': 'application/json'
+          }
+        });
+      } catch(e) {}
+
+      startIdentidad(true);
+    });
   }
 
   function mostrarOpcionesRegistro(mensaje) {
@@ -523,77 +571,56 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   async function registrarUsuarioDesdeRegistro() {
-    state.registro.crearUsuario = true;
-    state.crearUsuarioPreferido = true;
-    addMessage('bot', 'Registrando tu usuario...');
+    return runLocked({
+      title: 'Registrando usuario...',
+      description: 'Por favor, espera. No cierres esta página.',
+      mode: 'operation',
+    }, async () => {
+      addMessage('bot', 'Registrando tu usuario...');
 
-    try {
-      const res = await fetch(`${baseUrl}/chatbot/registrar-usuario`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRF-TOKEN': csrf,
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({
-          nombre: state.registro.nombre,
+      try {
+        const res = await fetch(`${baseUrl}/chatbot/registrar-usuario`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrf,
+            'Accept': 'application/json',
+          },
+          body: JSON.stringify({
+            nombre: state.registro.nombre,
+            cedula: state.registro.cedula,
+            email: state.registro.email,
+            telefono: state.registro.telefono,
+          }),
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data.ok === false) {
+          addMessage('bot', data.message || 'No pudimos registrar tu usuario en este momento.');
+          return;
+        }
+
+        state.identidad = {
+          id: data.paciente?.id || null,
+          nombre: data.paciente?.nombre || state.registro.nombre,
           cedula: state.registro.cedula,
-          email: state.registro.email,
-        }),
-      });
+          email: data.paciente?.email || state.registro.email,
+          telefono: data.paciente?.telefono || state.registro.telefono,
+        };
+        state.autenticado = true;
+        state.session.type = 'registered';
+        state.session.emailVerified = true;
+        state.dependientes = [];
+        resetBufferConIdentidad();
 
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || data.ok === false) {
-        addMessage('bot', data.message || 'No pudimos registrar tu usuario en este momento.');
-        return;
+        let mensaje = 'Tu cuenta de paciente ha sido registrada correctamente. Tu cédula es tu contraseña temporal.';
+        addMessage('bot', mensaje);
+        startAgendar();
+      } catch (error) {
+        console.error(error);
+        addMessage('bot', 'No pudimos registrar tu usuario en este momento.');
       }
-
-      state.identidad = {
-        id: data.paciente?.id || null,
-        nombre: data.paciente?.nombre || state.registro.nombre,
-        cedula: state.registro.cedula,
-        email: data.paciente?.email || state.registro.email,
-        telefono: data.paciente?.telefono || '',
-      };
-      state.autenticado = true;
-      state.session.type = 'registered';
-      state.session.emailVerified = true;
-      resetBufferConIdentidad();
-
-      let mensaje = data.usuario_creado
-        ? 'Creamos tu usuario. Tu correo es el usuario y tu cédula la contraseña inicial.'
-        : 'Tu usuario ya estaba registrado con ese correo y esa cédula.';
-
-      if (data.credenciales_enviadas) {
-        mensaje += ' También enviamos esos datos al correo.';
-      } else if (data.credenciales_error) {
-        mensaje += ` ${data.credenciales_error}`;
-      }
-
-      addMessage('bot', mensaje);
-      startAgendar();
-    } catch (error) {
-      console.error(error);
-      addMessage('bot', 'No pudimos registrar tu usuario en este momento.');
-    }
-  }
-
-  function continuarRegistroSinUsuario() {
-    state.registro.crearUsuario = false;
-    state.crearUsuarioPreferido = false;
-    clearVerificationState();
-    state.session.type = 'guest';
-    resetBufferConInvitado();
-    addMessage('bot', 'Continuaremos como invitado, sin crear una cuenta ni pedir codigo de verificacion.');
-    startAgendar();
-  }
-
-  function mostrarRevisionContactoInvitado() {
-    state.step = 'guest_contact_review';
-    addMessage(
-      'bot',
-      `Datos de contacto para esta cita:\n\nNombre: ${state.buffer.nombre || 'No registrado'}\nCédula: ${state.buffer.cedula || 'No registrada'}\nCorreo: ${state.buffer.email || 'No registrado'}\nTeléfono: ${state.buffer.telefono || 'No registrado'}\n\nEscribe "continuar" para seguir. Si quieres corregir un dato, escribe "correo", "telefono", "nombre" o "cedula".`
-    );
+    });
   }
 
   async function procesarCedula(cedula) {
@@ -625,21 +652,8 @@ document.addEventListener('DOMContentLoaded', function () {
         return addMessage('bot', data.message || 'No pudimos validar esa cédula. Intenta nuevamente.');
       }
 
-      if (data.existe && data.paciente) {
-        state.session.type = 'registered_pending';
-        state.session.profileFound = true;
-        state.identidad.id = data.paciente.id || state.identidad.id;
-        state.identidad.nombre = data.paciente.nombre || state.identidad.nombre;
-        state.identidad.telefono = data.paciente.telefono || state.identidad.telefono;
-        state.buffer.telefono = state.identidad.telefono;
-      }
-
       state.step = 'email';
-      const saludoNombre = state.identidad.nombre ? `Hola, ${state.identidad.nombre}.` : 'Hola.';
-      const notaCorreo = data.existe && data.paciente && data.paciente.email
-        ? 'Usaremos el correo registrado para verificarte.'
-        : 'Necesito tu correo para enviarte un código de verificación.';
-      addMessage('bot', `${saludoNombre} ${notaCorreo}\n\nEscribe tu correo:`);
+      addMessage('bot', 'Paciente identificado.\n\nEscribe tu correo electrónico para continuar:');
     } catch (error) {
       console.error(error);
       addMessage('bot','Hubo un problema al validar tu cédula. Intenta nuevamente.');
@@ -652,49 +666,42 @@ document.addEventListener('DOMContentLoaded', function () {
       return addMessage('bot','El correo debe incluir @ y no tener espacios.');
     }
 
-    addMessage('bot','Verificando tu correo...');
+    return runLocked({
+      title: 'Enviando código de verificación...',
+      description: 'Por favor, espera. No cierres esta página.',
+      mode: 'operation',
+    }, async () => {
+      addMessage('bot','Enviando tu codigo de verificacion...');
 
-    try {
-      const res = await fetch(`${baseUrl}/chatbot/verificar-paciente`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRF-TOKEN': csrf,
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({ cedula: state.identidad.cedula, email: emailNormalizado }),
-      });
-      const data = await res.json();
+      try {
+        state.identidad.email = emailNormalizado;
+        state.buffer.email = emailNormalizado;
 
-      if (!res.ok || data.ok === false) {
-        if (res.status === 404 || data.existe === false) {
-          return mostrarOpcionesRegistro(data.message);
+        const envio = await enviarCodigoVerificacion(emailNormalizado);
+
+        if (!envio.ok) {
+          state.session.otpSent = false;
+          state.step = 'email';
+
+          if (envio.status === 404 || envio.data?.existe === false) {
+            return mostrarOpcionesRegistro(envio.data?.message || 'No encontramos pacientes registrados con estos datos.');
+          }
+
+          if (envio.status === 429 && envio.data?.retry_after) {
+            return addMessage('bot', envio.data.message || `Has solicitado varios codigos. Intenta nuevamente en ${envio.data.retry_after} segundos.`);
+          }
+
+          return addMessage('bot', envio.data?.message || 'No pudimos enviar el codigo de verificacion.');
         }
-        return addMessage('bot', data.message || 'El correo no coincide con el paciente registrado.');
-      }
 
-      if (data.existe && data.paciente) {
-        state.session.type = 'registered_pending';
-        state.session.profileFound = true;
-        state.identidad.id = data.paciente.id || state.identidad.id;
-        state.identidad.nombre = data.paciente.nombre || state.identidad.nombre;
-        state.identidad.telefono = data.paciente.telefono || state.identidad.telefono;
+        state.session.otpSent = true;
+        state.step = 'codigo';
+        addMessage('bot', 'Te enviamos un codigo de 6 digitos a tu correo. Ingresa el codigo para continuar:');
+      } catch (error) {
+        console.error(error);
+        addMessage('bot','No fue posible enviar el codigo en este momento. Intenta nuevamente.');
       }
-
-      state.identidad.email = emailNormalizado;
-      state.buffer.email = emailNormalizado;
-      const enviado = await enviarCodigoVerificacion(emailNormalizado);
-      if (!enviado) {
-        state.step = 'email';
-        return addMessage('bot','Escribe tu correo nuevamente para intentar enviar el código:');
-      }
-      state.session.otpSent = true;
-      state.step = 'codigo';
-      addMessage('bot', 'Te enviamos un código de 6 dígitos a tu correo. Ingresa el código para continuar:');
-    } catch (error) {
-      console.error(error);
-      addMessage('bot','No fue posible verificar tu correo en este momento. Intenta nuevamente.');
-    }
+    });
   }
 
   async function enviarCodigoVerificacion(email) {
@@ -712,16 +719,21 @@ document.addEventListener('DOMContentLoaded', function () {
         }),
       });
 
-      const data = await res.json();
-      if (!res.ok || data.ok === false) {
-        addMessage('bot', data.message || 'No se pudo enviar el código de verificación.');
-        return false;
-      }
-      return true;
+      const data = await res.json().catch(() => ({}));
+      return {
+        ok: res.ok && data.ok !== false,
+        status: res.status,
+        data,
+      };
     } catch (error) {
       console.error(error);
-      addMessage('bot','No pudimos enviar el código de verificación. Intenta más tarde.');
-      return false;
+      return {
+        ok: false,
+        status: 0,
+        data: {
+          message: 'No pudimos enviar el codigo de verificacion. Intenta mas tarde.',
+        },
+      };
     }
   }
 
@@ -731,15 +743,27 @@ document.addEventListener('DOMContentLoaded', function () {
       return addMessage('bot','Necesito tu cédula y correo para enviarte un nuevo código.');
     }
 
-    addMessage('bot','Enviando un nuevo código...');
-    const enviado = await enviarCodigoVerificacion(state.identidad.email);
-    if (!enviado) {
-      return addButtons([{ label:'Enviar nuevo código', action:'reenviar_codigo' }]);
-    }
+    return runLocked({
+      title: 'Enviando código de verificación...',
+      description: 'Por favor, espera. No cierres esta página.',
+      mode: 'operation',
+    }, async () => {
+      addMessage('bot','Enviando un nuevo código...');
+      const envio = await enviarCodigoVerificacion(state.identidad.email);
+      if (!envio.ok) {
+        if (envio.status === 429 && envio.data?.retry_after) {
+          addMessage('bot', envio.data.message || `Has solicitado varios codigos. Intenta nuevamente en ${envio.data.retry_after} segundos.`);
+          return addButtons([{ label:'Enviar nuevo codigo', action:'reenviar_codigo' }]);
+        }
 
-    state.session.otpSent = true;
-    state.step = 'codigo';
-    addMessage('bot','Te enviamos un nuevo código de 6 dígitos a tu correo. Ingresa el código para continuar:');
+        addMessage('bot', envio.data?.message || 'No pudimos enviar el codigo de verificacion.');
+        return addButtons([{ label:'Enviar nuevo codigo', action:'reenviar_codigo' }]);
+      }
+
+      state.session.otpSent = true;
+      state.step = 'codigo';
+      addMessage('bot','Te enviamos un nuevo codigo de 6 digitos a tu correo. Ingresa el codigo para continuar:');
+    });
   }
 
   async function procesarCodigo(codigo) {
@@ -747,67 +771,58 @@ document.addEventListener('DOMContentLoaded', function () {
       return addMessage('bot','El código debe tener 6 dígitos.');
     }
 
-    addMessage('bot','Validando código...');
+    return runLocked({
+      title: 'Verificando código...',
+      description: 'Por favor, espera. No cierres esta página.',
+      mode: 'operation',
+    }, async () => {
+      addMessage('bot','Validando código...');
 
-    try {
-      const res = await fetch(`${baseUrl}/chatbot/verificar-codigo`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRF-TOKEN': csrf,
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({
-          cedula: state.identidad.cedula,
-          email: state.identidad.email,
-          codigo,
-        }),
-      });
+      try {
+        const res = await fetch(`${baseUrl}/chatbot/verificar-codigo`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrf,
+            'Accept': 'application/json',
+          },
+          body: JSON.stringify({
+            cedula: state.identidad.cedula,
+            email: state.identidad.email,
+            codigo,
+          }),
+        });
 
-      const data = await res.json();
-      if (!res.ok || data.ok === false) {
-        if (data.error === 'codigo_vencido' || data.allow_resend) {
-          addMessage('bot', data.message || 'El código ya venció. Solicita uno nuevo.');
-          return addButtons([{ label:'Enviar nuevo código', action:'reenviar_codigo' }]);
+        const data = await res.json();
+        if (!res.ok || data.ok === false) {
+          if (data.error === 'otp_invalidated' || data.error === 'codigo_vencido' || data.allow_resend) {
+            addMessage('bot', data.message || 'El código fue invalidado. Solicita uno nuevo.');
+            return addButtons([{ label:'Enviar nuevo código', action:'reenviar_codigo' }]);
+          }
+          return addMessage('bot', data.message || 'Código incorrecto.');
         }
-        return addMessage('bot', data.message || 'Código incorrecto.');
-      }
 
-      if (data.paciente) {
-        state.identidad.id = data.paciente.id || state.identidad.id;
-        state.identidad.nombre = data.paciente.nombre || state.identidad.nombre;
-        state.identidad.telefono = data.paciente.telefono || state.identidad.telefono;
-        state.identidad.email = data.paciente.email || state.identidad.email;
-      }
+        if (data.paciente) {
+          state.identidad.id = data.paciente.id || state.identidad.id;
+          state.identidad.nombre = data.paciente.nombre || state.identidad.nombre;
+          state.identidad.telefono = data.paciente.telefono || state.identidad.telefono;
+          state.identidad.email = data.paciente.email || state.identidad.email;
+        }
 
-      state.session.type = 'registered';
-      state.autenticado = true;
-      resetBufferConIdentidad();
-      addMessage('bot', `Código verificado. Bienvenido${state.identidad.nombre ? ', ' + state.identidad.nombre : ''}.`);
-      showMainMenu(true);
-    } catch (error) {
-      console.error(error);
-      addMessage('bot','No pudimos validar el código en este momento.');
-    }
+        state.dependientes = Array.isArray(data.dependientes) ? data.dependientes : [];
+        state.session.type = 'registered';
+        state.autenticado = true;
+        resetBufferConIdentidad();
+        addMessage('bot', `Código verificado. Bienvenido${state.identidad.nombre ? ', ' + state.identidad.nombre : ''}.`);
+        showMainMenu(true);
+      } catch (error) {
+        console.error(error);
+        addMessage('bot','No pudimos validar el código en este momento.');
+      }
+    });
   }
 
-  // ======================
-  // MENUS
-  // ======================
   function showMainMenu(esBienvenida = false) {
-    if (hasGuestSession()) {
-      state.mode = 'menu';
-      state.step = null;
-      resetBufferConInvitado();
-      state.citasEncontradas = [];
-      addMessage('bot', 'Sesion de invitado.\n\nPuedes agendar una cita o finalizar.');
-      addButtons([
-        { label:'Agendar cita', action:'agendar' },
-        { label:'Finalizar', action:'finalizar' },
-      ]);
-      return;
-    }
-
     if (!hasRegisteredSession()) {
       return startIdentidad(true);
     }
@@ -817,9 +832,7 @@ document.addEventListener('DOMContentLoaded', function () {
     resetBufferConIdentidad();
     state.citasEncontradas = [];
 
-    const saludo = esBienvenida
-      ? 'Identidad confirmada.' 
-      : 'Menú principal.';
+    const saludo = esBienvenida ? 'Identidad confirmada.' : 'Menú principal.';
     const nombre = state.identidad.nombre ? state.identidad.nombre : '';
 
     addMessage('bot', `${saludo}${nombre ? ' ' + nombre : ''}\n\nSelecciona la gestión que deseas realizar:`);
@@ -828,43 +841,61 @@ document.addEventListener('DOMContentLoaded', function () {
       { label:'Cancelar cita', action:'cancelar' },
       { label:'Reagendar cita', action:'reagendar' },
       { label:'Información de mis citas', action:'info_citas' },
-       { label:'Actualizar mis datos', action:'actualizar_perfil' },
+      { label:'Actualizar mis datos', action:'actualizar_perfil' },
       { label:'Finalizar', action:'finalizar' },
     ]);
   }
 
-  function finalizarChat() {
-    state.mode = 'finalizado';
-    state.step = null;
-    state.citasEncontradas = [];
-    addMessage('bot','Se cerró esta gestión. Escribe "menu" para continuar sin reiniciar tu identidad o "reiniciar" para iniciar desde cero.');
+  async function finalizarChat() {
+    return runLocked({
+      title: 'Cerrando conversación...',
+      description: 'Por favor, espera. No cierres esta página.',
+      mode: 'operation',
+    }, async () => {
+      state.mode = 'finalizado';
+      state.step = null;
+      state.citasEncontradas = [];
+      addMessage('bot','Cerrando la sesión en el servidor...');
+      try {
+        await fetch(`${baseUrl}/chatbot/finalizar`, {
+          method: 'POST',
+          headers: {
+            'X-CSRF-TOKEN': csrf,
+            'Accept': 'application/json'
+          }
+        });
+      } catch(e) {}
+      clearVerificationState();
+      addMessage('bot','Se cerró esta gestión. Escribe "menu" para continuar sin reiniciar tu identidad o "reiniciar" para iniciar desde cero.');
+    });
   }
 
-  // ======================
-  // AGENDAR
-  // ======================
   function startAgendar() {
     if (!hasActiveSession()) return startIdentidad(true);
     state.mode = 'agendar';
-    resetBufferSegunSesion();
+    state.buffer = initialBuffer();
+    state.buffer.dependiente_id = null;
+
     addMessage('bot','Iniciaremos el agendamiento de tu cita.');
 
-    if (!state.buffer.nombre) {
-      state.step = 'nombre';
-      return addMessage('bot','Escribe tu nombre completo:');
+    if (state.dependientes && state.dependientes.length > 0) {
+      state.step = 'seleccionar_paciente';
+      addMessage('bot', '¿Para quién deseas agendar la cita?');
+      const buttons = [
+        { label: `Para mí (${state.identidad.nombre})`, action: 'agendar_para_titular' }
+      ];
+      state.dependientes.forEach(dep => {
+        buttons.push({
+          label: `Para ${dep.nombre} (${dep.parentesco})`,
+          action: 'agendar_para_dependiente',
+          payload: { dependiente_id: dep.id, nombre: dep.nombre }
+        });
+      });
+      addButtons(buttons);
+    } else {
+      state.step = 'motivo';
+      addMessage('bot', MENSAJE_MOTIVO_CONSULTA);
     }
-
-    if (!state.buffer.telefono) {
-      state.step = 'telefono';
-      return addMessage('bot','Ingresa tu número de teléfono (10 dígitos):');
-    }
-
-    if (hasGuestSession()) {
-      return mostrarRevisionContactoInvitado();
-    }
-
-    state.step = 'motivo';
-    addMessage('bot', MENSAJE_MOTIVO_CONSULTA);
   }
 
   async function pedirEspecialidades() {
@@ -887,7 +918,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   async function pedirDoctores() {
-      addMessage('bot','Consultando médicos disponibles...');
+    addMessage('bot','Consultando médicos disponibles...');
     try {
       const res = await fetch(`${baseUrl}/chatbot/especialidades/${state.buffer.especialidad_id}/doctores`);
       const data = await res.json();
@@ -960,7 +991,8 @@ document.addEventListener('DOMContentLoaded', function () {
     try {
       const res = await fetch(buildSlotsUrl(state.buffer.doctor_id, fecha));
       const data = await res.json();
-      const libres = (data.slots || []).filter(slot => slot.estado === 'libre');
+      const slots = data.slots || [];
+      const libres = slots.filter(slot => slot.estado === 'libre');
 
       if (!libres.length) {
         addMessage('bot','Ese día ya no tiene cupos. Escoge otra fecha.');
@@ -994,81 +1026,71 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   async function enviarAgendar() {
-    addMessage('bot','Registrando tu cita...');
-
     const payload = {
-      nombre:          state.buffer.nombre,
-      cedula:          state.buffer.cedula,
-      email:           state.buffer.email,
-      telefono:        state.buffer.telefono,
-      paciente_id:     state.identidad.id || null,
       especialidad_id: state.buffer.especialidad_id,
       doctor_id:       state.buffer.doctor_id,
       fecha:           state.buffer.fecha,
       hora:            state.buffer.hora,
       hold_token:      state.holdToken || null,
-      motivo:          state.buffer.motivo,
-      crear_usuario:   state.crearUsuarioPreferido !== null ? state.crearUsuarioPreferido : true,
+      motivo_consulta: state.buffer.motivo,
+      dependiente_id:  state.buffer.dependiente_id || null,
     };
 
-    try {
-      const res = await fetch(`${baseUrl}/chatbot/agendar`, {
-        method:'POST',
-        headers:{
-          'Content-Type':'application/json',
-          'X-CSRF-TOKEN':csrf,
-          'Accept':'application/json',
-        },
-        body:JSON.stringify(payload)
-      });
+    return runLocked({
+      title: 'Registrando cita...',
+      description: 'Por favor, espera. No cierres esta página.',
+      mode: 'operation',
+    }, async () => {
+      addMessage('bot','Registrando tu cita...');
 
-      const data = await res.json();
+      try {
+        const res = await fetch(`${baseUrl}/chatbot/agendar`, {
+          method:'POST',
+          headers:{
+            'Content-Type':'application/json',
+            'X-CSRF-TOKEN':csrf,
+            'Accept':'application/json',
+          },
+          body:JSON.stringify(payload)
+        });
 
-      if (!data.ok) {
-        addMessage('bot', data.message || 'No se pudo agendar la cita.');
-        return showMainMenu();
-      }
+        const data = await res.json();
 
-      let msg = `Cita agendada con ${state.buffer.doctor_nombre} el ${state.buffer.fecha} a las ${state.buffer.hora}.`;
-      if (state.buffer.doctor_tarifa) {
-        msg += `\nTarifa: ${state.buffer.doctor_tarifa}`;
-      }
-      if (data.credenciales_enviadas) {
-        msg += '\nSe creó una cuenta. Tu usuario es tu correo y tu contraseña inicial es tu cédula. También te enviamos esos datos al correo.';
-      } else if (data.credenciales_error) {
-        msg += `\n${data.credenciales_error}`;
-      }
-      if (state.buffer.email) {
-        msg += `\nHemos enviado la confirmación al correo ${state.buffer.email}.`;
-      }
-      if (state.buffer.telefono) {
-        msg += `\nEn caso necesario te contactaremos al teléfono ${state.buffer.telefono}.`;
-      }
+        if (!res.ok || !data.ok) {
+          addMessage('bot', data.message || 'No se pudo agendar la cita.');
+          return showMainMenu();
+        }
 
-      addMessage('bot', msg);
-      state.holdExpiresAt = null;
-      addButtons([
-        { label:'Volver al menú', action:'menu' },
-        { label:'Finalizar', action:'finalizar' },
-      ]);
-      state.mode = 'menu';
-      state.step = null;
+        let msg = `Cita agendada con ${state.buffer.doctor_nombre} el ${state.buffer.fecha} a las ${state.buffer.hora} (Paciente: ${data.cita?.paciente || state.identidad.nombre}).`;
+        if (state.buffer.doctor_tarifa) {
+          msg += `\nTarifa: ${state.buffer.doctor_tarifa}`;
+        }
+        if (state.identidad.email) {
+          msg += `\nHemos enviado la confirmación al correo ${state.identidad.email}.`;
+        }
 
-    } catch (error) {
-      console.error(error);
-      addMessage('bot','Error interno al agendar.');
-      showMainMenu();
-    }
+        addMessage('bot', msg);
+        state.holdExpiresAt = null;
+        addButtons([
+          { label:'Volver al menú', action:'menu' },
+          { label:'Finalizar', action:'finalizar' },
+        ]);
+        state.mode = 'menu';
+        state.step = null;
+
+      } catch (error) {
+        console.error(error);
+        addMessage('bot','Error interno al agendar.');
+        showMainMenu();
+      }
+    });
   }
 
-  // ======================
-  // CANCELAR / REAGENDAR
-  // ======================
   function startCancelar() {
     if (!hasRegisteredSession()) return startIdentidad(true);
     state.mode = 'cancelar';
     state.step = 'cancelar_cita';
-    addMessage('bot','Estas son tus citas vigentes. Selecciona cuál deseas cancelar:');
+    addMessage('bot','Estas son las citas vigentes asociadas a tu cuenta. Selecciona cuál deseas cancelar:');
     buscarCitasConCredenciales().then(listar => {
       if (!listar) {
         addButtons([{label:'Volver al menú', action:'menu'}]);
@@ -1096,10 +1118,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
   async function buscarCitasConCredenciales(opciones = {}) {
     const payload = {
-      email: state.identidad.email || null,
-      cedula: state.identidad.cedula || null,
       estado: opciones.estado || 'all',
       incluir_todas: opciones.incluir_todas || false,
+      dependiente_id: 'all' // Query all so titular sees their own and their dependents' appointments
     };
 
     try {
@@ -1115,8 +1136,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
       const data = await res.json();
 
-      if (!data.ok || !data.citas.length) {
-        addMessage('bot', data.message || 'No encontramos citas con esos datos.');
+      if (!res.ok || !data.ok || !data.citas.length) {
+        addMessage('bot', data.message || 'No encontramos citas.');
         return null;
       }
 
@@ -1132,14 +1153,14 @@ document.addEventListener('DOMContentLoaded', function () {
   function mostrarListadoCitas(citas, contexto) {
     let msg = 'Citas encontradas:\n\n';
     citas.forEach((c,i)=> {
-      msg += `${i+1}) ${c.fecha} ${c.hora} - ${c.especialidad} (${c.estado})\n`;
+      msg += `${i+1}) ${c.fecha} ${c.hora} - ${c.especialidad} (${c.paciente_real}) | Estado: ${c.estado}\n`;
     });
     addMessage('bot', msg.trim());
 
     if (contexto === 'cancelar') {
       addMessage('bot','Selecciona la cita a cancelar (escribe el número o usa un botón):');
       addButtons(citas.map((c,i)=>({
-        label:`${i+1}) ${c.fecha} ${c.hora}`,
+        label:`${i+1}) ${c.fecha} ${c.hora} (${c.paciente_real})`,
         action:'cancelar_cita_id',
         payload:{ cita_id:c.id }
       })));
@@ -1148,7 +1169,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (contexto === 'reagendar') {
       addMessage('bot','Selecciona la cita a reprogramar (escribe el número o usa un botón):');
       addButtons(citas.map((c,i)=>({
-        label:`${i+1}) ${c.fecha} ${c.hora}`,
+        label:`${i+1}) ${c.fecha} ${c.hora} (${c.paciente_real})`,
         action:'reagendar_cita_id',
         payload:{ cita_id:c.id }
       })));
@@ -1158,7 +1179,7 @@ document.addEventListener('DOMContentLoaded', function () {
   function seleccionarCitaCancelar(id) {
     state.buffer.cita_id = id;
     state.step = 'confirmar_cancelacion';
-    addMessage('bot','Confirma que deseas cancelar esta cita (si/no):');
+    addMessage('bot','¿Confirma que deseas cancelar esta cita (si/no)?');
   }
 
   function seleccionarCitaCancelarPorIndice(idx) {
@@ -1170,32 +1191,36 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   async function ejecutarCancelacion() {
-    try {
-      const res = await fetch(`${baseUrl}/chatbot/cancelar`, {
-        method:'POST',
-        headers:{
-          'Content-Type':'application/json',
-          'X-CSRF-TOKEN':csrf,
-          'Accept':'application/json',
-        },
-        body:JSON.stringify({
-          cita_id: state.buffer.cita_id,
-          cedula: state.identidad.cedula || null,
-          email: state.identidad.email || null,
-        })
-      });
+    return runLocked({
+      title: 'Cancelando cita...',
+      description: 'Por favor, espera. No cierres esta página.',
+      mode: 'operation',
+    }, async () => {
+      try {
+        const res = await fetch(`${baseUrl}/chatbot/cancelar`, {
+          method:'POST',
+          headers:{
+            'Content-Type':'application/json',
+            'X-CSRF-TOKEN':csrf,
+            'Accept':'application/json',
+          },
+          body:JSON.stringify({
+            cita_id: state.buffer.cita_id
+          })
+        });
 
-      const data = await res.json();
-      addMessage('bot', data.message || 'Cita cancelada.');
-      addButtons([
-        {label:'Volver al menú', action:'menu'},
-        {label:'Finalizar', action:'finalizar'},
-      ]);
-    } catch (error) {
-      console.error(error);
-      addMessage('bot','Error cancelando la cita.');
-      showMainMenu();
-    }
+        const data = await res.json();
+        addMessage('bot', data.message || 'Cita cancelada.');
+        addButtons([
+          {label:'Volver al menú', action:'menu'},
+          {label:'Finalizar', action:'finalizar'},
+        ]);
+      } catch (error) {
+        console.error(error);
+        addMessage('bot','Error cancelando la cita.');
+        showMainMenu();
+      }
+    });
   }
 
   function prepararReagendarDesdeId(id) {
@@ -1230,45 +1255,65 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   async function ejecutarReagendar() {
-    try {
-      const res = await fetch(`${baseUrl}/chatbot/reagendar`, {
-        method:'POST',
-        headers:{
-          'Content-Type':'application/json',
-          'X-CSRF-TOKEN':csrf,
-          'Accept':'application/json',
-        },
-        body:JSON.stringify({
-          cita_id:state.buffer.cita_id,
-          fecha:state.buffer.nueva_fecha,
-          hora:state.buffer.nueva_hora,
-          cedula: state.identidad.cedula || null,
-          email: state.identidad.email || null,
-        })
-      });
+    return runLocked({
+      title: 'Reagendando cita...',
+      description: 'Por favor, espera. No cierres esta página.',
+      mode: 'operation',
+    }, async () => {
+      try {
+        const res = await fetch(`${baseUrl}/chatbot/reagendar`, {
+          method:'POST',
+          headers:{
+            'Content-Type':'application/json',
+            'X-CSRF-TOKEN':csrf,
+            'Accept':'application/json',
+          },
+          body:JSON.stringify({
+            cita_id:state.buffer.cita_id,
+            fecha:state.buffer.nueva_fecha,
+            hora:state.buffer.nueva_hora,
+          })
+        });
 
-      const data = await res.json();
-      addMessage('bot', data.message || 'Cita reprogramada.');
-      addButtons([
-        {label:'Volver al menú', action:'menu'},
-        {label:'Finalizar', action:'finalizar'},
-      ]);
+        const data = await res.json();
+        addMessage('bot', data.message || 'Cita reprogramada.');
+        addButtons([
+          {label:'Volver al menú', action:'menu'},
+          {label:'Finalizar', action:'finalizar'},
+        ]);
 
-    } catch (error) {
-      console.error(error);
-      addMessage('bot','Error reprogramando la cita.');
-      showMainMenu();
-    }
+      } catch (error) {
+        console.error(error);
+        addMessage('bot','Error reprogramando la cita.');
+        showMainMenu();
+      }
+    });
   }
 
-  // ======================
-  // INFORMACIÓN DE CITAS
-  // ======================
   function startInfoCitas() {
     if (!hasRegisteredSession()) return startIdentidad(true);
     state.mode = 'info_citas';
-    state.step = 'elige_estado';
-    mostrarEstadosCitas();
+    
+    if (state.dependientes && state.dependientes.length > 0) {
+      state.step = 'info_seleccionar_paciente';
+      addMessage('bot', '¿De quién deseas consultar las citas?');
+      const buttons = [
+        { label: 'Todas las citas', action: 'info_citas_filter', payload: { dependiente_id: 'all' } },
+        { label: 'Solo mis citas', action: 'info_citas_filter', payload: { dependiente_id: 'titular' } }
+      ];
+      state.dependientes.forEach(dep => {
+        buttons.push({
+          label: `Citas de ${dep.nombre}`,
+          action: 'info_citas_filter',
+          payload: { dependiente_id: dep.id }
+        });
+      });
+      addButtons(buttons);
+    } else {
+      state.buffer.dependiente_id = 'all';
+      state.step = 'elige_estado';
+      mostrarEstadosCitas();
+    }
   }
 
   function mostrarEstadosCitas() {
@@ -1295,7 +1340,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     let msg = `${titulo}:\n\n`;
     citas.forEach((c,i)=> {
-      msg += `${i+1}) ${c.fecha} ${c.hora} - ${c.especialidad} | Doctor: ${c.doctor || 'No asignado'} | Estado: ${c.estado}\n`;
+      msg += `${i+1}) ${c.fecha} ${c.hora} - ${c.especialidad} | Doctor: ${c.doctor || 'No asignado'} | Paciente: ${c.paciente_real} | Estado: ${c.estado}\n`;
     });
     addMessage('bot', msg.trim());
     addButtons([
@@ -1304,19 +1349,35 @@ document.addEventListener('DOMContentLoaded', function () {
     ]);
   }
 
-  // ======================
-  // ACTUALIZAR PERFIL
-  // ======================
   function startActualizarPerfil() {
     if (!hasRegisteredSession()) return startIdentidad(true);
     state.mode = 'actualizar_perfil';
-    state.step = 'perfil_cargando';
-    resetBufferConIdentidad();
-    addMessage('bot','Obteniendo tus datos de perfil...');
-    cargarPerfilDesdeServidor();
+    state.buffer = initialBuffer();
+    state.buffer.dependiente_id = null;
+
+    if (state.dependientes && state.dependientes.length > 0) {
+      state.step = 'perfil_seleccionar_paciente';
+      addMessage('bot', '¿Los datos de quién deseas actualizar?');
+      const buttons = [
+        { label: 'Mis datos personales', action: 'perfil_ver_titular' }
+      ];
+      state.dependientes.forEach(dep => {
+        buttons.push({
+          label: `Datos de ${dep.nombre} (${dep.parentesco})`,
+          action: 'perfil_ver_dependiente',
+          payload: { dependiente_id: dep.id, nombre: dep.nombre }
+        });
+      });
+      addButtons(buttons);
+    } else {
+      cargarPerfilDesdeServidor(null);
+    }
   }
 
-  async function cargarPerfilDesdeServidor() {
+  async function cargarPerfilDesdeServidor(dependienteId = null) {
+    state.buffer.dependiente_id = dependienteId;
+    addMessage('bot','Obteniendo tus datos de perfil...');
+
     try {
       const res = await fetch(`${baseUrl}/chatbot/perfil`, {
         method:'POST',
@@ -1328,36 +1389,50 @@ document.addEventListener('DOMContentLoaded', function () {
         body:JSON.stringify({
           cedula: state.identidad.cedula,
           email: state.identidad.email,
-          user_id: state.identidad.id || null,
         })
       });
 
       const data = await res.json();
 
-      if (!data.ok || !data.perfil) {
+      if (!res.ok || !data.ok) {
         addMessage('bot', data.message || 'No pudimos obtener tu perfil.');
         return showMainMenu();
       }
 
-      const perfil = data.perfil;
-      state.identidad.id = perfil.id || state.identidad.id;
+      if (dependienteId) {
+        const dep = (data.dependientes || []).find(d => d.id === dependienteId);
+        if (!dep) {
+          addMessage('bot', 'No se encontró el dependiente seleccionado.');
+          return showMainMenu();
+        }
+        state.buffer.nombre = dep.nombre;
+        state.buffer.dni = dep.dni;
+        state.buffer.fecha_nacimiento = dep.fecha_nacimiento;
+        state.buffer.sexo = dep.sexo || '';
+        state.buffer.parentesco = dep.parentesco;
+        state.buffer.telefono_emergencia = dep.telefono_emergencia || '';
+        state.buffer.notes = dep.notas || '';
 
-      state.buffer.nombre = perfil.nombre || state.identidad.nombre;
-      state.buffer.email = perfil.email || state.identidad.email;
-      state.buffer.telefono = perfil.telefono || state.identidad.telefono || '';
-      state.buffer.cedula = state.identidad.cedula;
-      state.buffer.dni = perfil.dni || state.identidad.cedula;
-      state.buffer.direccion = perfil.direccion || '';
-      state.buffer.fecha_nacimiento = perfil.fecha_nacimiento || '';
-      state.buffer.sexo = perfil.sexo || '';
-      state.buffer.password_actual = '';
-      state.buffer.password_nuevo = '';
-      state.buffer.password_confirmacion = '';
+        addMessage('bot', `Datos de ${dep.nombre} (${dep.parentesco}):\n\nNombre: ${state.buffer.nombre}\nCédula: ${state.buffer.dni}\nFecha de nacimiento: ${state.buffer.fecha_nacimiento}\nSexo: ${state.buffer.sexo || 'Sin especificar'}\nTeléfono emergencia: ${state.buffer.telefono_emergencia || 'No registrado'}\nNotas: ${state.buffer.notes || 'Ninguna'}`);
+        addMessage('bot','Responde con el nuevo valor o escribe "igual" para dejarlo como está.');
+        state.step = 'perfil_dep_nombre';
+        addMessage('bot',`Nombre actual: ${state.buffer.nombre}.`);
+      } else {
+        const perfil = data.perfil;
+        state.buffer.nombre = perfil.nombre || state.identidad.nombre;
+        state.buffer.email = perfil.email || state.identidad.email;
+        state.buffer.telefono = perfil.telefono || state.identidad.telefono || '';
+        state.buffer.cedula = state.identidad.cedula;
+        state.buffer.dni = perfil.dni || state.identidad.cedula;
+        state.buffer.direccion = perfil.direccion || '';
+        state.buffer.fecha_nacimiento = perfil.fecha_nacimiento || '';
+        state.buffer.sexo = perfil.sexo || '';
 
-      addMessage('bot', `Estos son tus datos registrados:\n\nNombre: ${state.buffer.nombre || 'No registrado'}\nCorreo: ${state.buffer.email || 'No registrado'}\nTeléfono: ${state.buffer.telefono || 'No registrado'}\nCédula: ${state.buffer.dni || 'No registrado'}\nDirección: ${state.buffer.direccion || 'Sin dirección'}\nFecha de nacimiento: ${state.buffer.fecha_nacimiento || 'No registrada'}\nSexo: ${state.buffer.sexo || 'Sin especificar'}`);
-      addMessage('bot','Responde con el nuevo valor o escribe "igual" para dejarlo como está.');
-      state.step = 'perfil_nombre';
-      addMessage('bot',`Nombre actual: ${state.buffer.nombre || 'No registrado'}.`);
+        addMessage('bot', `Tus datos registrados:\n\nNombre: ${state.buffer.nombre}\nCorreo: ${state.buffer.email} (No editable)\nTeléfono: ${state.buffer.telefono}\nCédula: ${state.buffer.dni} (No editable)\nDirección: ${state.buffer.direccion || 'Sin dirección'}\nFecha de nacimiento: ${state.buffer.fecha_nacimiento || 'No registrada'}\nSexo: ${state.buffer.sexo || 'Sin especificar'}`);
+        addMessage('bot','Responde con el nuevo valor o escribe "igual" para dejarlo como está.');
+        state.step = 'perfil_nombre';
+        addMessage('bot',`Nombre actual: ${state.buffer.nombre}.`);
+      }
     } catch (error) {
       console.error(error);
       addMessage('bot','No pudimos cargar tu perfil ahora mismo.');
@@ -1367,84 +1442,106 @@ document.addEventListener('DOMContentLoaded', function () {
 
   function resumenPerfil() {
     let msg = 'Así quedarán tus datos:\n\n';
-    msg += `Nombre: ${state.buffer.nombre || 'No registrado'}\n`;
-    msg += `Correo: ${state.buffer.email || 'No registrado'}\n`;
-    msg += `Teléfono: ${state.buffer.telefono || 'Sin teléfono'}\n`;
-    msg += `Cédula: ${state.buffer.dni || 'No registrada'}\n`;
-    msg += `Dirección: ${state.buffer.direccion || 'Sin dirección'}\n`;
-    msg += `Fecha de nacimiento: ${state.buffer.fecha_nacimiento || 'No registrada'}\n`;
-    msg += `Sexo: ${state.buffer.sexo || 'Sin especificar'}\n`;
-    msg += `Contraseña: ${state.buffer.password_nuevo ? 'Se actualizará' : 'Sin cambios'}`;
+    if (state.buffer.dependiente_id) {
+      msg += `Nombre: ${state.buffer.nombre}\n`;
+      msg += `Cédula: ${state.buffer.dni}\n`;
+      msg += `Fecha de nacimiento: ${state.buffer.fecha_nacimiento}\n`;
+      msg += `Sexo: ${state.buffer.sexo || 'Sin especificar'}\n`;
+      msg += `Parentesco: ${state.buffer.parentesco}\n`;
+      msg += `Teléfono emergencia: ${state.buffer.telefono_emergencia || 'Sin teléfono'}\n`;
+      msg += `Notas: ${state.buffer.notes || 'Ninguna'}\n`;
+    } else {
+      msg += `Nombre: ${state.buffer.nombre}\n`;
+      msg += `Teléfono: ${state.buffer.telefono || 'Sin teléfono'}\n`;
+      msg += `Dirección: ${state.buffer.direccion || 'Sin dirección'}\n`;
+      msg += `Fecha de nacimiento: ${state.buffer.fecha_nacimiento}\n`;
+      msg += `Sexo: ${state.buffer.sexo || 'Sin especificar'}\n`;
+    }
     addMessage('bot', msg.trim());
     state.step = 'perfil_confirmar';
-    addMessage('bot','¿Confirmas guardar estos cambios (si/no)');
+    addMessage('bot','¿Confirmas guardar estos cambios (si/no)?');
   }
 
   async function enviarActualizacionPerfil() {
-    addMessage('bot','Guardando tus datos...');
     const payload = {
-      user_id: state.identidad.id || null,
-      cedula: state.identidad.cedula,
-      email_identidad: state.identidad.email,
       nombre: state.buffer.nombre,
-      email: state.buffer.email,
       telefono: state.buffer.telefono || null,
-      dni: state.buffer.dni,
       direccion: state.buffer.direccion || null,
       fecha_nacimiento: state.buffer.fecha_nacimiento,
       sexo: state.buffer.sexo || null,
-      current_password: state.buffer.password_actual || null,
-      password: state.buffer.password_nuevo || null,
-      password_confirmation: state.buffer.password_confirmacion || null,
     };
 
-    try {
-      const res = await fetch(`${baseUrl}/chatbot/perfil/actualizar`, {
-        method:'POST',
-        headers:{
-          'Content-Type':'application/json',
-          'X-CSRF-TOKEN':csrf,
-          'Accept':'application/json',
-        },
-        body:JSON.stringify(payload)
-      });
-
-      const data = await res.json();
-
-      if (!res.ok || data.ok === false) {
-        const msg = data.message || 'No pudimos actualizar tus datos.';
-        addMessage('bot', msg);
-        if (data.field === 'current_password') {
-          state.step = 'perfil_password_actual';
-          return addMessage('bot','Ingresa de nuevo tu contraseña actual:');
-        }
-        return showMainMenu();
-      }
-
-      state.identidad.id = data.perfil.id || state.identidad.id;
-      state.identidad.nombre = data.perfil.nombre || state.identidad.nombre;
-      state.identidad.email = data.perfil.email || state.identidad.email;
-      state.identidad.telefono = data.perfil.telefono || state.identidad.telefono;
-      state.identidad.cedula = data.perfil.dni || state.identidad.cedula;
-      resetBufferConIdentidad();
-
-      addMessage('bot','Listo, tus datos fueron actualizados y se reflejarán en tu panel.');
-      addButtons([
-        { label:'Volver al menú', action:'menu' },
-        { label:'Finalizar', action:'finalizar' },
-      ]);
-      state.mode = 'menu';
-      state.step = null;
-    } catch (error) {
-      console.error(error);
-      addMessage('bot','No pudimos guardar los cambios en este momento.');
-      showMainMenu();
+    if (state.buffer.dependiente_id) {
+      payload.dependiente_id = state.buffer.dependiente_id;
+      payload.dni = state.buffer.dni;
+      payload.parentesco = state.buffer.parentesco;
+      payload.telefono_emergencia = state.buffer.telefono_emergencia || null;
+      payload.notas = state.buffer.notes || null;
     }
+
+    return runLocked({
+      title: 'Actualizando perfil...',
+      description: 'Por favor, espera. No cierres esta página.',
+      mode: 'operation',
+    }, async () => {
+      addMessage('bot','Guardando tus datos...');
+
+      try {
+        const res = await fetch(`${baseUrl}/chatbot/perfil/actualizar`, {
+          method:'POST',
+          headers:{
+            'Content-Type':'application/json',
+            'X-CSRF-TOKEN':csrf,
+            'Accept':'application/json',
+          },
+          body:JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+
+        if (!res.ok || data.ok === false) {
+          addMessage('bot', data.message || 'No pudimos actualizar los datos.');
+          return showMainMenu();
+        }
+
+        if (!state.buffer.dependiente_id) {
+          state.identidad.nombre = data.perfil.nombre || state.identidad.nombre;
+          state.identidad.telefono = data.perfil.telefono || state.identidad.telefono;
+        }
+
+        // Reload local cache of profile & dependents
+        const profileRes = await fetch(`${baseUrl}/chatbot/perfil`, {
+          method:'POST',
+          headers:{
+            'Content-Type':'application/json',
+            'X-CSRF-TOKEN':csrf,
+            'Accept':'application/json',
+          },
+          body:JSON.stringify({
+            cedula: state.identidad.cedula,
+            email: state.identidad.email,
+          })
+        });
+        const profileData = await profileRes.json().catch(() => ({}));
+        if (profileRes.ok && profileData.ok) {
+          state.dependientes = Array.isArray(profileData.dependientes) ? profileData.dependientes : [];
+        }
+
+        addMessage('bot','Listo, los datos fueron actualizados correctamente.');
+        addButtons([
+          { label:'Volver al menú', action:'menu' },
+          { label:'Finalizar', action:'finalizar' },
+        ]);
+        state.mode = 'menu';
+        state.step = null;
+      } catch (error) {
+        console.error(error);
+        addMessage('bot','No pudimos guardar los cambios en este momento.');
+        showMainMenu();
+      }
+    });
   }
 
-  // ======================
-  // MANEJO DE INPUT
-  // ======================
   form.addEventListener('submit', async e => {
     e.preventDefault();
     const text = input.value.trim();
@@ -1468,7 +1565,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (state.mode === 'identidad') {
       if (state.step === 'espera_saludo') {
         if (comando !== 'hola') {
-          return addMessage('bot','Por favor escribe "hola" para continuar.');
+          return addMessage('bot','Por favor escribe "hola" para comenzar.');
         }
         state.step = 'verificacion_humano';
         await mostrarRetoHumano();
@@ -1521,22 +1618,16 @@ document.addEventListener('DOMContentLoaded', function () {
           return addMessage('bot','Necesitamos tus nombres y apellidos.');
         }
         state.registro.nombre = text;
-        state.step = 'registro_crear';
-        addMessage('bot','¿Deseas crear un usuario con ese correo? Tu correo será el usuario y tu cédula la contraseña inicial.');
-        return addButtons([
-          { label:'Sí, crear usuario', action:'registro_crear_si' },
-          { label:'No, solo agendar', action:'registro_crear_no' },
-        ]);
+        state.step = 'registro_telefono';
+        return addMessage('bot','Escribe tu número de teléfono (10 dígitos):');
       }
 
-      if (state.step === 'registro_crear') {
-        if (comando.startsWith('s')) {
-          return registrarUsuarioDesdeRegistro();
+      if (state.step === 'registro_telefono') {
+        if (!esTelefonoValido(text)) {
+          return addMessage('bot','El teléfono debe tener 10 dígitos, solo números.');
         }
-        if (comando.startsWith('n')) {
-          return continuarRegistroSinUsuario();
-        }
-        return addMessage('bot','Responde si/no o usa los botones.');
+        state.registro.telefono = text;
+        return registrarUsuarioDesdeRegistro();
       }
 
       return;
@@ -1544,87 +1635,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Flujo AGENDAR
     if (state.mode === 'agendar') {
-      if (state.step === 'nombre') {
-        state.buffer.nombre = text;
-        if (hasGuestSession()) {
-          state.registro.nombre = text;
-        } else {
-          state.identidad.nombre = text;
-        }
-        state.step = 'telefono';
-        return addMessage('bot','Ingresa tu número de teléfono (10 dígitos):');
-      }
-      if (state.step === 'telefono') {
-        if (!esTelefonoValido(text)) {
-          return addMessage('bot','El teléfono debe tener 10 dígitos, solo números.');
-        }
-        state.buffer.telefono = text;
-        if (hasGuestSession()) {
-          state.registro.telefono = text;
-          return mostrarRevisionContactoInvitado();
-        }
-        state.identidad.telefono = text;
-        state.step = 'motivo';
-        return addMessage('bot', MENSAJE_MOTIVO_CONSULTA);
-      }
-      if (state.step === 'guest_contact_review') {
-        if (comando === 'continuar' || comando.startsWith('s')) {
-          state.step = 'motivo';
-          return addMessage('bot', MENSAJE_MOTIVO_CONSULTA);
-        }
-        if (comando === 'correo') {
-          state.step = 'guest_edit_email';
-          return addMessage('bot', 'Escribe el correo de contacto que deseas usar para esta cita:');
-        }
-        if (comando === 'telefono') {
-          state.step = 'guest_edit_phone';
-          return addMessage('bot', 'Escribe el número de teléfono de contacto (10 dígitos):');
-        }
-        if (comando === 'nombre') {
-          state.step = 'guest_edit_name';
-          return addMessage('bot', 'Escribe el nombre completo que deseas usar en esta cita:');
-        }
-        if (comando === 'cedula') {
-          state.step = 'guest_edit_cedula';
-          return addMessage('bot', 'Escribe la cédula de 10 dígitos que deseas usar en esta cita:');
-        }
-        return addMessage('bot', 'Escribe "continuar" para seguir o indica qué dato quieres corregir: "correo", "telefono", "nombre" o "cedula".');
-      }
-      if (state.step === 'guest_edit_email') {
-        const correoNormalizado = normalizarCorreo(text);
-        if (!esCorreoValido(correoNormalizado)) {
-          return addMessage('bot','El correo debe incluir @ y no tener espacios.');
-        }
-        state.buffer.email = correoNormalizado;
-        state.registro.email = correoNormalizado;
-        return mostrarRevisionContactoInvitado();
-      }
-      if (state.step === 'guest_edit_phone') {
-        if (!esTelefonoValido(text)) {
-          return addMessage('bot','El teléfono debe tener 10 dígitos, solo números.');
-        }
-        state.buffer.telefono = text;
-        state.registro.telefono = text;
-        return mostrarRevisionContactoInvitado();
-      }
-      if (state.step === 'guest_edit_name') {
-        if (!text) {
-          return addMessage('bot','Necesitamos un nombre para continuar.');
-        }
-        state.buffer.nombre = text;
-        state.registro.nombre = text;
-        return mostrarRevisionContactoInvitado();
-      }
-      if (state.step === 'guest_edit_cedula') {
-        const cedulaNormalizada = limpiarCedula(text);
-        if (!esCedulaValida(cedulaNormalizada)) {
-          return addMessage('bot','La cédula debe tener exactamente 10 dígitos.');
-        }
-        state.buffer.cedula = cedulaNormalizada;
-        state.buffer.dni = cedulaNormalizada;
-        state.registro.cedula = cedulaNormalizada;
-        return mostrarRevisionContactoInvitado();
-      }
       if (state.step === 'motivo') {
         if (!esMotivoConsultaValido(text)) {
           return addMessage('bot','El motivo de la cita es obligatorio y debe ser breve. Ejemplos: fiebre, dolor de cabeza o tos.');
@@ -1687,16 +1697,6 @@ document.addEventListener('DOMContentLoaded', function () {
         return addMessage('bot', resumen);
       }
       if (state.step === 'confirmar') {
-        if (hasGuestSession()) {
-          if (comando === 'correo') {
-            state.step = 'guest_edit_email';
-            return addMessage('bot', 'Escribe el nuevo correo de contacto antes de confirmar la cita:');
-          }
-          if (comando === 'telefono') {
-            state.step = 'guest_edit_phone';
-            return addMessage('bot', 'Escribe el nuevo teléfono de contacto antes de confirmar la cita:');
-          }
-        }
         if (text.toLowerCase().startsWith('s')) {
           return enviarAgendar();
         }
@@ -1773,24 +1773,92 @@ document.addEventListener('DOMContentLoaded', function () {
     if (state.mode === 'actualizar_perfil') {
       const lower = text.toLowerCase();
 
+      // Dependent specific update step machine
+      if (state.buffer.dependiente_id) {
+        if (state.step === 'perfil_dep_nombre') {
+          if (lower !== 'igual') {
+            state.buffer.nombre = text;
+          }
+          state.step = 'perfil_dep_dni';
+          return addMessage('bot',`Cédula actual: ${state.buffer.dni}. Ingresa la nueva (10 dígitos) o escribe "igual":`);
+        }
+
+        if (state.step === 'perfil_dep_dni') {
+          if (lower !== 'igual') {
+            const ced = limpiarCedula(text);
+            if (!esCedulaValida(ced)) {
+              return addMessage('bot','La cédula debe tener 10 dígitos, solo números.');
+            }
+            state.buffer.dni = ced;
+          }
+          state.step = 'perfil_dep_fecha';
+          return addMessage('bot',`Fecha de nacimiento actual: ${state.buffer.fecha_nacimiento}. Ingresa en formato AAAA-MM-DD o escribe "igual":`);
+        }
+
+        if (state.step === 'perfil_dep_fecha') {
+          if (lower !== 'igual') {
+            if (!esFechaValida(text)) {
+              return addMessage('bot','Usa el formato AAAA-MM-DD.');
+            }
+            if (esEdadDependienteValida(text)) {
+              return addMessage('bot','Aviso: El paciente ingresado es mayor de edad. Por políticas del sistema, las personas entre 18 y 65 años deben registrar y gestionar su propia cuenta principal.');
+            }
+            state.buffer.fecha_nacimiento = text;
+          }
+          state.step = 'perfil_dep_sexo';
+          return addMessage('bot',`Sexo actual: ${state.buffer.sexo || 'Sin especificar'}. Opciones: Masculino, Femenino u Otro. Escribe uno o "igual":`);
+        }
+
+        if (state.step === 'perfil_dep_sexo') {
+          if (lower !== 'igual') {
+            const sex = normalizarSexo(text);
+            if (!sex) {
+              return addMessage('bot','Elige Masculino, Femenino u Otro.');
+            }
+            state.buffer.sexo = sex;
+          }
+          state.step = 'perfil_dep_parentesco';
+          return addMessage('bot',`Parentesco actual: ${state.buffer.parentesco}. Opciones: Hijo, Hija, Conyuge, Padre, Madre, Otro. Escribe uno o "igual":`);
+        }
+
+        if (state.step === 'perfil_dep_parentesco') {
+          if (lower !== 'igual') {
+            const normalizedParentesco = text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
+            const allowed = ['Hijo', 'Hija', 'Conyuge', 'Padre', 'Madre', 'Otro'];
+            if (!allowed.includes(normalizedParentesco)) {
+              return addMessage('bot','Elige un parentesco válido: Hijo, Hija, Conyuge, Padre, Madre, Otro.');
+            }
+            state.buffer.parentesco = normalizedParentesco;
+          }
+          state.step = 'perfil_dep_telefono_emergencia';
+          return addMessage('bot',`Teléfono de emergencia actual: ${state.buffer.telefono_emergencia || 'Ninguno'}.\nIngresa uno nuevo de 10 dígitos o escribe "igual":`);
+        }
+
+        if (state.step === 'perfil_dep_telefono_emergencia') {
+          if (lower !== 'igual') {
+            if (text && !esTelefonoValido(text)) {
+              return addMessage('bot','El teléfono de emergencia debe tener 10 dígitos.');
+            }
+            state.buffer.telefono_emergencia = text;
+          }
+          state.step = 'perfil_dep_notas';
+          return addMessage('bot',`Notas actuales: ${state.buffer.notes || 'Ninguna'}.\nEscribe las nuevas notas o escribe "igual":`);
+        }
+
+        if (state.step === 'perfil_dep_notas') {
+          if (lower !== 'igual') {
+            state.buffer.notes = text;
+          }
+          return resumenPerfil();
+        }
+      }
+
+      // Titular update step machine
       if (state.step === 'perfil_nombre') {
         if (lower !== 'igual') {
           state.buffer.nombre = text;
         } else if (!state.buffer.nombre) {
           return addMessage('bot','Necesitamos un nombre. Ingresa tu nombre completo.');
-        }
-        state.step = 'perfil_email';
-        return addMessage('bot',`Correo actual: ${state.buffer.email || 'No registrado'}.\nIngresa el nuevo correo o escribe "igual" para mantenerlo.`);
-      }
-
-      if (state.step === 'perfil_email') {
-        if (lower !== 'igual') {
-          if (!esCorreoValido(text)) {
-            return addMessage('bot','El correo debe incluir @ y no tener espacios.');
-          }
-          state.buffer.email = text;
-        } else if (!state.buffer.email) {
-          return addMessage('bot','Necesitamos un correo válido para tus notificaciones.');
         }
         state.step = 'perfil_telefono';
         return addMessage('bot',`Teléfono actual: ${state.buffer.telefono || 'No registrado'}.\nIngresa uno nuevo de 10 dígitos o escribe "igual" para mantenerlo.`);
@@ -1807,20 +1875,6 @@ document.addEventListener('DOMContentLoaded', function () {
           }
           state.buffer.telefono = text;
         }
-        state.step = 'perfil_dni';
-        return addMessage('bot',`Cédula actual: ${state.buffer.dni || state.identidad.cedula || 'No registrada'}. Ingresa la nueva (10 dígitos) o escribe "igual".`);
-      }
-
-      if (state.step === 'perfil_dni') {
-        if (lower !== 'igual') {
-          const cedulaNormalizada = limpiarCedula(text);
-          if (!esCedulaValida(cedulaNormalizada)) {
-            return addMessage('bot','La cédula debe tener 10 dígitos.');
-          }
-          state.buffer.dni = cedulaNormalizada;
-        } else if (!state.buffer.dni) {
-          return addMessage('bot','Necesitamos tu número de cédula de 10 dígitos.');
-        }
         state.step = 'perfil_direccion';
         return addMessage('bot',`Dirección actual: ${state.buffer.direccion || 'Sin dirección'}. Escribe la nueva dirección o "igual" para mantenerla.`);
       }
@@ -1834,7 +1888,7 @@ document.addEventListener('DOMContentLoaded', function () {
           state.buffer.direccion = text;
         }
         state.step = 'perfil_fecha';
-        return addMessage('bot',`Fecha de nacimiento actual: ${state.buffer.fecha_nacimiento || 'No registrada'}. Ingresa en formato AAAA-MM-DD.`);
+        return addMessage('bot',`Fecha de nacimiento actual: ${state.buffer.fecha_nacimiento || 'No registrada'}. Ingresa en formato AAAA-MM-DD o escribe "igual".`);
       }
 
       if (state.step === 'perfil_fecha') {
@@ -1863,50 +1917,6 @@ document.addEventListener('DOMContentLoaded', function () {
           }
           state.buffer.sexo = normalizado;
         }
-        state.step = 'perfil_pregunta_password';
-        return addMessage('bot','¿Quieres cambiar tu contraseña (si/no)');
-      }
-
-      if (state.step === 'perfil_pregunta_password') {
-        if (lower.startsWith('s')) {
-          state.buffer.password_actual = '';
-          state.buffer.password_nuevo = '';
-          state.buffer.password_confirmacion = '';
-          state.step = 'perfil_password_actual';
-          return addMessage('bot','Escribe tu contraseña actual:');
-        }
-        state.buffer.password_actual = '';
-        state.buffer.password_nuevo = '';
-        state.buffer.password_confirmacion = '';
-        return resumenPerfil();
-      }
-
-      if (state.step === 'perfil_password_actual') {
-        if (!text) {
-          return addMessage('bot','La contraseña actual no puede estar vacía.');
-        }
-        state.buffer.password_actual = text;
-        state.step = 'perfil_password_nueva';
-        return addMessage('bot','Ingresa la nueva contraseña (mínimo 8 caracteres, con letras, números y un carácter especial):');
-      }
-
-      if (state.step === 'perfil_password_nueva') {
-        if (!esPasswordValido(text)) {
-          return addMessage('bot','La nueva contraseña debe tener mínimo 8 caracteres e incluir letras, números y un carácter especial.');
-        }
-        if (state.buffer.password_actual && text === state.buffer.password_actual) {
-          return addMessage('bot','La nueva contraseña debe ser diferente a la actual.');
-        }
-        state.buffer.password_nuevo = text;
-        state.step = 'perfil_password_confirmacion';
-        return addMessage('bot','Confirma la nueva contraseña:');
-      }
-
-      if (state.step === 'perfil_password_confirmacion') {
-        if (text !== state.buffer.password_nuevo) {
-          return addMessage('bot','La confirmación no coincide. Intenta de nuevo.');
-        }
-        state.buffer.password_confirmacion = text;
         return resumenPerfil();
       }
 
@@ -1919,7 +1929,7 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     }
 
-    // Flujo INFO CITAS: respuestas solo con botones
+    // Flujo INFO CITAS
     if (state.mode === 'info_citas') {
       return addMessage('bot','Usa los botones para elegir una opción. Escribe "menu" para volver.');
     }

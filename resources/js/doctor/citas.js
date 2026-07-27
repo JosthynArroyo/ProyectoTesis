@@ -7,13 +7,23 @@ document.addEventListener('DOMContentLoaded', () => {
   const planUrlTpl = page.dataset.planUrl || '';
   const slotsUrlTpl = page.dataset.slotsUrl || '';
   const loginUrl = page.dataset.loginUrl || '';
+  const actionLock = window.ActionLock || null;
 
   const $ = (q, ctx = document) => ctx.querySelector(q);
   const $$ = (q, ctx = document) => Array.from(ctx.querySelectorAll(q));
 
   const state = { citaId: null, doctorId: null, slot: null };
 
-  $('#btn-refresh').addEventListener('click', () => window.location.reload());
+  $('#btn-refresh').addEventListener('click', () => {
+    if (actionLock?.startNavigation) {
+      actionLock.startNavigation({
+        title: 'Cargando sección...',
+        description: 'Por favor, espera mientras cargamos esta sección.',
+        mode: 'navigation',
+      });
+    }
+    window.location.reload();
+  });
 
   $$('#tabla-citas [data-accion="planificador"]').forEach((button) => {
     button.addEventListener('click', async (event) => {
@@ -124,25 +134,61 @@ document.addEventListener('DOMContentLoaded', () => {
     setLoading($('#tp-crear'), true);
 
     const url = buildPlanUrl(state.citaId);
-    const res = await postJson(url, { fecha: $('#tp-fecha').value, hora: state.slot });
-    setLoading($('#tp-crear'), false);
+    const copy = {
+      title: 'Registrando cita...',
+      description: 'Por favor, espera. No cierres esta página.',
+      mode: 'operation',
+    };
+    let keepLocked = false;
+    if (actionLock?.startOperation) {
+      keepLocked = actionLock.startOperation(copy);
+    }
 
-    if (res.ok && res.json.ok) {
-      toastSmall('Cita creada y notificada por email.');
-      closeToast();
-      window.location.reload();
-      return;
+    const execute = async () => {
+      const res = await postJson(url, { fecha: $('#tp-fecha').value, hora: state.slot });
+
+      if (res.ok && res.json.ok) {
+        toastSmall('Cita creada y notificada por email.');
+        closeToast();
+        keepLocked = true;
+        if (actionLock?.startNavigation) {
+          actionLock.startNavigation({
+            title: 'Cargando sección...',
+            description: 'Por favor, espera mientras cargamos esta sección.',
+            mode: 'navigation',
+          });
+        }
+        window.location.reload();
+        return;
+      }
+      if (res.status === 422) {
+        toastWarn(res.json.msg || 'Validación rechazada.');
+        return;
+      }
+      if (res.status === 419) {
+        toastWarn('Sesión expirada.');
+        keepLocked = true;
+        if (actionLock?.startNavigation) {
+          actionLock.startNavigation({
+            title: 'Cargando sección...',
+            description: 'Por favor, espera mientras cargamos esta sección.',
+            mode: 'navigation',
+          });
+        }
+        if (loginUrl) window.location.href = loginUrl;
+        return;
+      }
+      toastWarn('No se pudo crear la cita.');
+    };
+
+    try {
+      await execute();
+    } finally {
+      setLoading($('#tp-crear'), false);
+      if (actionLock?.unlock && !keepLocked) {
+        actionLock.unlock();
+      }
     }
-    if (res.status === 422) {
-      toastWarn(res.json.msg || 'Validación rechazada.');
-      return;
-    }
-    if (res.status === 419) {
-      toastWarn('Sesión expirada.');
-      if (loginUrl) window.location.href = loginUrl;
-      return;
-    }
-    toastWarn('No se pudo crear la cita.');
   });
 
   function normalizeSlots(raw) {

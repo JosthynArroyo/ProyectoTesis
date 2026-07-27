@@ -217,6 +217,12 @@ class AdminController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ValidationRules::emailUnique('users', $user->id),
             'telefono' => ValidationRules::telefono(),
+            'tipo_documento' => ['nullable', 'in:cedula,pasaporte'],
+            'nacionalidad' => ['required_if:tipo_documento,pasaporte', 'nullable', 'string', function ($attribute, $value, $fail) use ($request) {
+                if ($request->input('tipo_documento') === 'pasaporte' && (! $value || ! \App\Support\CountryCatalog::isValidCode($value))) {
+                    $fail('La nacionalidad es obligatoria cuando el documento es pasaporte.');
+                }
+            }],
             'dni' => ValidationRules::cedulaUnique('users', $user->id),
             'direccion' => ['required', 'string', 'max:255'],
             'fecha_nacimiento' => ValidationRules::birthDate(),
@@ -372,6 +378,12 @@ class AdminController extends Controller
             'email' => ValidationRules::emailUnique(),
             'password' => ValidationRules::passwordRequired(),
             'telefono' => ValidationRules::telefono(),
+            'tipo_documento' => ['nullable', 'in:cedula,pasaporte'],
+            'nacionalidad' => ['required_if:tipo_documento,pasaporte', 'nullable', 'string', function ($attribute, $value, $fail) use ($request) {
+                if ($request->input('tipo_documento') === 'pasaporte' && (! $value || ! \App\Support\CountryCatalog::isValidCode($value))) {
+                    $fail('La nacionalidad es obligatoria cuando el documento es pasaporte.');
+                }
+            }],
             'dni' => ValidationRules::cedulaUnique(),
             'direccion' => ['required', 'string', 'max:255'],
             'fecha_nacimiento' => ValidationRules::birthDate(),
@@ -478,6 +490,12 @@ class AdminController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ValidationRules::emailUnique('users', $user->id),
             'telefono' => ValidationRules::telefono(),
+            'tipo_documento' => ['nullable', 'in:cedula,pasaporte'],
+            'nacionalidad' => ['required_if:tipo_documento,pasaporte', 'nullable', 'string', function ($attribute, $value, $fail) use ($request) {
+                if ($request->input('tipo_documento') === 'pasaporte' && (! $value || ! \App\Support\CountryCatalog::isValidCode($value))) {
+                    $fail('La nacionalidad es obligatoria cuando el documento es pasaporte.');
+                }
+            }],
             'dni' => ValidationRules::cedulaUnique('users', $user->id),
             'direccion' => ['required', 'string', 'max:255'],
             'fecha_nacimiento' => ValidationRules::birthDate(),
@@ -495,6 +513,8 @@ class AdminController extends Controller
         $user->name = $data['name'];
         $user->email = $data['email'];
         $user->telefono = $data['telefono'] ?? null;
+        $user->tipo_documento = $data['tipo_documento'] ?? 'cedula';
+        $user->nacionalidad = ($data['tipo_documento'] ?? 'cedula') === 'pasaporte' ? ($data['nacionalidad'] ?? null) : null;
         $user->dni = $data['dni'] ?? null;
         $user->direccion = $data['direccion'] ?? null;
         $user->fecha_nacimiento = $data['fecha_nacimiento'] ?? null;
@@ -636,6 +656,12 @@ class AdminController extends Controller
             'email' => ValidationRules::emailUnique(),
             'password' => ValidationRules::passwordRequired(),
             'telefono' => ValidationRules::telefono(),
+            'tipo_documento' => ['nullable', 'in:cedula,pasaporte'],
+            'nacionalidad' => ['required_if:tipo_documento,pasaporte', 'nullable', 'string', function ($attribute, $value, $fail) use ($request) {
+                if ($request->input('tipo_documento') === 'pasaporte' && (! $value || ! \App\Support\CountryCatalog::isValidCode($value))) {
+                    $fail('La nacionalidad es obligatoria cuando el documento es pasaporte.');
+                }
+            }],
             'dni' => ValidationRules::cedulaUnique(),
             'direccion' => ['required', 'string', 'max:255'],
             'fecha_nacimiento' => ValidationRules::birthDate(),
@@ -653,6 +679,8 @@ class AdminController extends Controller
         $user->email = $validated['email'];
         $user->password = Hash::make($validated['password']);
         $user->telefono = $validated['telefono'] ?? null;
+        $user->tipo_documento = $validated['tipo_documento'] ?? 'cedula';
+        $user->nacionalidad = ($validated['tipo_documento'] ?? 'cedula') === 'pasaporte' ? ($validated['nacionalidad'] ?? null) : null;
         $user->dni = $validated['dni'] ?? null;
         $user->direccion = $validated['direccion'] ?? null;
         $user->fecha_nacimiento = $validated['fecha_nacimiento'] ?? null;
@@ -737,6 +765,12 @@ class AdminController extends Controller
             'email' => ValidationRules::emailUnique(),
             'password' => ValidationRules::passwordRequired(),
             'telefono' => ValidationRules::telefono(),
+            'tipo_documento' => ['nullable', 'in:cedula,pasaporte'],
+            'nacionalidad' => ['required_if:tipo_documento,pasaporte', 'nullable', 'string', function ($attribute, $value, $fail) use ($request) {
+                if ($request->input('tipo_documento') === 'pasaporte' && (! $value || ! \App\Support\CountryCatalog::isValidCode($value))) {
+                    $fail('La nacionalidad es obligatoria cuando el documento es pasaporte.');
+                }
+            }],
             'dni' => ValidationRules::cedulaUnique(),
             'direccion' => ['required', 'string', 'max:255'],
             'fecha_nacimiento' => ValidationRules::birthDate(),
@@ -750,6 +784,8 @@ class AdminController extends Controller
         $user->email = $data['email'];
         $user->password = Hash::make($data['password']);
         $user->telefono = $data['telefono'] ?? null;
+        $user->tipo_documento = $data['tipo_documento'] ?? 'cedula';
+        $user->nacionalidad = ($data['tipo_documento'] ?? 'cedula') === 'pasaporte' ? ($data['nacionalidad'] ?? null) : null;
         $user->dni = $data['dni'];
         $user->direccion = $data['direccion'] ?? null;
         $user->fecha_nacimiento = $data['fecha_nacimiento'] ?? null;

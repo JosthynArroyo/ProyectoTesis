@@ -301,4 +301,5 @@
   }
 })();
 </script>
+@include('components.ui.global-confirm-modal')
 @endonce

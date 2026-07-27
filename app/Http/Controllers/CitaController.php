@@ -12,7 +12,6 @@ use App\Models\NotaSoap;
 use App\Models\Horario;
 use App\Models\LaboratorioOrden;
 use App\Models\User;
-use App\Services\CitaComprobanteService;
 use App\Services\CitaNoShowService;
 use App\Services\PagoService;
 use App\Services\PriorityEvaluator;
@@ -407,7 +406,7 @@ class CitaController extends Controller
 
         try {
             event(new CitaAgendada($cita));
-            EnviarConfirmacionCitaJob::dispatch($cita);
+            EnviarConfirmacionCitaJob::dispatchAfterResponse($cita);
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error('Error al notificar cita agendada en store(): ' . $e->getMessage(), [
                 'cita_id' => $cita->id,
@@ -451,8 +450,7 @@ class CitaController extends Controller
         }
 
         $cita = $transition['cita'];
-        app(CitaComprobanteService::class)->sincronizarComprobante($cita);
-        NotificarCambioEstadoCitaJob::dispatch($cita, 'cancelada', 'paciente');
+        NotificarCambioEstadoCitaJob::dispatchAfterResponse($cita, 'cancelada', 'paciente');
 
         return back()
             ->with('success', 'Cita cancelada.')
@@ -570,8 +568,7 @@ class CitaController extends Controller
             return back()->withErrors(['error' => $msg])->withInput();
         }
 
-        app(CitaComprobanteService::class)->sincronizarComprobante($cita);
-        NotificarCambioEstadoCitaJob::dispatch($cita, 'reagendada', 'paciente');
+        NotificarCambioEstadoCitaJob::dispatchAfterResponse($cita, 'reagendada', 'paciente');
 
         return redirect()->route('paciente.citas')
             ->with('success', 'Cita reagendada.')
@@ -759,8 +756,7 @@ class CitaController extends Controller
         }
 
         $cita = $transition['cita'];
-        app(CitaComprobanteService::class)->sincronizarComprobante($cita);
-        NotificarCambioEstadoCitaJob::dispatch($cita, 'aceptada', 'doctor');
+        NotificarCambioEstadoCitaJob::dispatchAfterResponse($cita, 'aceptada', 'doctor');
 
         return back()->with('success', 'Cita confirmada.');
     }
@@ -794,8 +790,7 @@ class CitaController extends Controller
         }
 
         $cita = $transition['cita'];
-        app(CitaComprobanteService::class)->sincronizarComprobante($cita);
-        NotificarCambioEstadoCitaJob::dispatch($cita, 'cancelada', 'doctor');
+        NotificarCambioEstadoCitaJob::dispatchAfterResponse($cita, 'cancelada', 'doctor');
 
         return back()->with('success', 'Cita rechazada.');
     }
@@ -842,7 +837,6 @@ class CitaController extends Controller
         }
 
         $cita = $transition['cita'];
-        app(CitaComprobanteService::class)->sincronizarComprobante($cita);
         event(new CitaAtendida($cita));
 
         return back()->with('success', 'Cita marcada como realizada.');
@@ -1033,8 +1027,7 @@ class CitaController extends Controller
         }
 
         $control = $transition['control'];
-        app(CitaComprobanteService::class)->sincronizarComprobante($control);
-        NotificarCambioEstadoCitaJob::dispatch($control, 'cancelada', 'doctor');
+        NotificarCambioEstadoCitaJob::dispatchAfterResponse($control, 'cancelada', 'doctor');
 
         return redirect()->route('doctor.citas.soap', $cita)
             ->with('success', 'Control cancelado correctamente.');
@@ -1140,7 +1133,7 @@ class CitaController extends Controller
             if ($esNuevo) {
                 try {
                     event(new CitaAgendada($control));
-                    EnviarConfirmacionCitaJob::dispatch($control);
+                    EnviarConfirmacionCitaJob::dispatchAfterResponse($control);
                 } catch (\Throwable $e) {
                     \Illuminate\Support\Facades\Log::error('Error al notificar cita de control agendada: ' . $e->getMessage(), [
                         'cita_id' => $control->id,
@@ -1148,8 +1141,7 @@ class CitaController extends Controller
                     ]);
                 }
             } else {
-                app(CitaComprobanteService::class)->sincronizarComprobante($control);
-                NotificarCambioEstadoCitaJob::dispatch($control, 'reagendada', 'doctor');
+                NotificarCambioEstadoCitaJob::dispatchAfterResponse($control, 'reagendada', 'doctor');
             }
 
             return [

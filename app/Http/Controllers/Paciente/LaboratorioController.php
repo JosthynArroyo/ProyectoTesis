@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Paciente;
 
 use App\Http\Controllers\Controller;
+use App\Models\PedidoLaboratorio;
 use App\Models\LabOrder;
 use App\Models\LaboratorioOrden;
 use Carbon\Carbon;
@@ -16,8 +17,19 @@ class LaboratorioController extends Controller
     public function index()
     {
         $ordenes = $this->paginateTimeline((int) Auth::id(), 12);
+        $pedidosLaboratorio = PedidoLaboratorio::with([
+                'doctor',
+                'cita.dependiente.responsable',
+                'resultados' => function ($query) {
+                    $query->orderByDesc('version');
+                },
+                'resultados.laboratorio',
+            ])
+            ->where('paciente_id', Auth::id())
+            ->latest()
+            ->get();
 
-        return view('paciente.laboratorio', compact('ordenes'));
+        return view('paciente.laboratorio', compact('ordenes', 'pedidosLaboratorio'));
     }
 
     public function download(LaboratorioOrden $orden)
@@ -49,6 +61,27 @@ class LaboratorioController extends Controller
         $name = 'resultado_laboratorio_solicitud_'.$order->id.'.pdf';
 
         return Storage::download($order->resultado_path, $name);
+    }
+
+    public function downloadPedido(PedidoLaboratorio $pedido)
+    {
+        if ((int) $pedido->paciente_id !== (int) Auth::id()) {
+            abort(403);
+        }
+
+        $resultado = $pedido->resultados()
+            ->where('estado', 'publicado')
+            ->orderByDesc('version')
+            ->first();
+
+        if (! $resultado || ! $resultado->pdf_path || ! Storage::disk('local')->exists($resultado->pdf_path)) {
+            return back()->withErrors(['error' => 'No hay resultados publicados para descargar.']);
+        }
+
+        return Storage::disk('local')->download(
+            $resultado->pdf_path,
+            'resultado_laboratorio_'.$pedido->id.'_v'.$resultado->version.'.pdf'
+        );
     }
 
     private function paginateTimeline(int $patientId, int $perPage): LengthAwarePaginator

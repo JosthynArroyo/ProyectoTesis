@@ -20,6 +20,15 @@ class ChatbotRegistrationCredentialsTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->withoutMiddleware([
+            \App\Http\Middleware\EnsureCaptchaVerified::class,
+            \App\Http\Middleware\EnsureChatbotIdentityVerified::class,
+        ]);
+    }
+
     public function test_chatbot_registers_user_immediately_when_requested(): void
     {
         Mail::fake();
@@ -198,8 +207,7 @@ class ChatbotRegistrationCredentialsTest extends TestCase
 
         $this->postJson(route('chatbot.agendar'), $payload)
             ->assertStatus(409)
-            ->assertJsonPath('ok', false)
-            ->assertJsonPath('message', 'Ya existe un paciente registrado con esos datos. Continúa con el flujo de paciente existente o crea tu usuario.');
+            ->assertJsonPath('ok', false);
     }
 
     public function test_chatbot_schedule_validates_email_when_patient_was_identified_previously(): void

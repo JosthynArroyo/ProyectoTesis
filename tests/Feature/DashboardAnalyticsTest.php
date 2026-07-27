@@ -281,7 +281,9 @@ class DashboardAnalyticsTest extends TestCase
     {
         $superadmin = $this->userWithRole('superadmin');
 
+        Schema::disableForeignKeyConstraints();
         Schema::dropIfExists((new PedidoLaboratorio())->getTable());
+        Schema::enableForeignKeyConstraints();
 
         $response = $this->actingAs($superadmin)->get(route('superadmin.dashboard'));
 

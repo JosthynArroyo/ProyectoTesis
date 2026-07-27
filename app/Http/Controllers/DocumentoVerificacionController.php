@@ -32,6 +32,14 @@ class DocumentoVerificacionController extends Controller
             abort(404);
         }
 
+        if (($documento['tipo'] ?? null) === 'resultado_laboratorio') {
+            return view('documentos.verificacion-laboratorio', [
+                'documento' => $documento,
+                'metadata' => $documento['metadata'] ?? [],
+                'downloadUrl' => null,
+            ]);
+        }
+
         if (! Storage::disk('local')->exists($documento['pdf_path'])) {
             abort(404);
         }
@@ -44,4 +52,5 @@ class DocumentoVerificacionController extends Controller
             ]
         );
     }
+
 }

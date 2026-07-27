@@ -191,6 +191,21 @@
     margin-top: 0.25rem;
   }
   .ct-submit:hover { background: var(--accent-strong); transform: translateY(-1px); }
+  .ct-submit:disabled,
+  .ct-submit[aria-disabled="true"] {
+    background: #64748b;
+    color: #f8fafc;
+    box-shadow: none;
+    cursor: not-allowed;
+    opacity: 0.72;
+    transform: none;
+    filter: grayscale(0.1);
+  }
+  .ct-submit:disabled:hover,
+  .ct-submit[aria-disabled="true"]:hover {
+    background: #64748b;
+    transform: none;
+  }
 
   /* ── 3 bottom cards ── */
   .ct-features { display: grid; grid-template-columns: repeat(3,1fr); gap: 1rem; margin-top: 1.5rem; }
@@ -238,8 +253,11 @@
     $contactPhone2      = $siteSettings->get('contact.phone2', '');
     $contactEmail       = $siteSettings->get('contact.email', '');
     $contactEmailNote   = $siteSettings->get('contact.email_note', 'Respondemos en menos de 24 horas');
+    $scheduleService    = app(\App\Services\ProfessionalScheduleService::class);
+    $formattedSchedule  = $scheduleService->getFormattedClinicSchedule();
     $hoursLabel         = $siteSettings->get('contact.hours_label', 'Horario de atención');
-    $contactHours       = $siteSettings->get('contact.hours', '');
+    $contactHours       = $formattedSchedule['summary'];
+    $scheduleLines      = $formattedSchedule['lines'];
     $contactHours2      = $siteSettings->get('contact.hours2', '');
 
     $formSectionBadge   = $siteSettings->get('contact.form_section_badge', 'Escríbenos');
@@ -331,14 +349,27 @@
                 </div>
               @endif
 
-              @if(filled($contactHours))
-                <div class="ct-info-item">
-                  <span class="ct-info-icon"><i class="ri-time-line" aria-hidden="true"></i></span>
+              @if(filled($contactHours) || !empty($scheduleLines))
+                <div class="ct-info-item" style="align-items: flex-start;">
+                  <span class="ct-info-icon" style="margin-top: 0.2rem;"><i class="ri-time-line" aria-hidden="true"></i></span>
                   <div class="ct-info-body">
                     <p class="ct-info-label">{{ $hoursLabel }}</p>
-                    <p class="ct-info-value">{{ $contactHours }}@if(filled($contactHours2))<br>{{ $contactHours2 }}@endif</p>
+                    @if(count($scheduleLines) === 1)
+                      <p class="ct-info-value font-medium">{{ $scheduleLines[0]['label'] }}, {{ $scheduleLines[0]['hours'] }}</p>
+                    @else
+                      <div class="space-y-1.5 mt-1">
+                        @foreach($scheduleLines as $line)
+                          <div class="flex flex-wrap items-center justify-between text-xs gap-2 leading-tight">
+                            <span class="font-semibold text-gray-800 dark:text-gray-200">{{ $line['label'] }}:</span>
+                            <span class="{{ $line['is_closed'] ? 'text-rose-600 dark:text-rose-400 font-semibold' : 'text-gray-700 dark:text-gray-300 font-medium' }}">{{ $line['hours'] }}</span>
+                          </div>
+                        @endforeach
+                      </div>
+                    @endif
+                    @if(filled($contactHours2))
+                      <p class="ct-info-value text-xs text-gray-500 mt-1">{{ $contactHours2 }}</p>
+                    @endif
                   </div>
-                  <i class="ri-arrow-right-s-line ct-info-arrow" aria-hidden="true"></i>
                 </div>
               @endif
             </div>
@@ -385,6 +416,8 @@
               <div class="alert success mb-4" role="status">{{ session('success') }}</div>
             @endif
 
+            @php($contactErrors = $errors->getBag('contacto'))
+
             <form method="POST" action="{{ route('contacto.enviar') }}" novalidate id="contactoForm">
               @csrf
               <input type="hidden" name="t0" value="{{ now()->timestamp }}">
@@ -399,20 +432,20 @@
                   <label for="nombre" class="ct-label">{{ $nameLabel }}</label>
                   <input id="nombre" type="text" name="nombre" value="{{ old('nombre') }}"
                     placeholder="{{ $namePlaceholder }}" required autocomplete="name"
-                    aria-invalid="{{ $errors->has('nombre') ? 'true' : 'false' }}"
-                    aria-describedby="{{ $errors->has('nombre') ? 'err-nombre' : '' }}"
+                    aria-invalid="{{ $contactErrors->has('nombre') ? 'true' : 'false' }}"
+                    aria-describedby="{{ $contactErrors->has('nombre') ? 'err-nombre' : '' }}"
                     class="ct-input">
-                  @error('nombre')<small id="err-nombre" class="ct-help" style="color:#e11d48;">{{ $message }}</small>@enderror
+                  @if($contactErrors->has('nombre'))<small id="err-nombre" class="ct-help" style="color:#e11d48;">{{ $contactErrors->first('nombre') }}</small>@endif
                 </div>
 
                 <div class="ct-field">
                   <label for="email" class="ct-label">{{ $emailLabel }}</label>
                   <input id="email" type="email" name="email" value="{{ old('email') }}"
                     placeholder="{{ $emailPlaceholder }}" required autocomplete="email" inputmode="email"
-                    aria-invalid="{{ $errors->has('email') ? 'true' : 'false' }}"
-                    aria-describedby="{{ $errors->has('email') ? 'err-email' : '' }}"
+                    aria-invalid="{{ $contactErrors->has('email') ? 'true' : 'false' }}"
+                    aria-describedby="{{ $contactErrors->has('email') ? 'err-email' : '' }}"
                     class="ct-input">
-                  @error('email')<small id="err-email" class="ct-help" style="color:#e11d48;">{{ $message }}</small>@enderror
+                  @if($contactErrors->has('email'))<small id="err-email" class="ct-help" style="color:#e11d48;">{{ $contactErrors->first('email') }}</small>@endif
                 </div>
 
                 <div class="ct-field">
@@ -421,37 +454,37 @@
                     placeholder="{{ $phonePlaceholder }}" autocomplete="tel" inputmode="numeric"
                     maxlength="10" pattern="[0-9]{10}" title="Debe contener exactamente 10 dígitos numéricos"
                     data-digits="10" required
-                    aria-invalid="{{ $errors->has('telefono') ? 'true' : 'false' }}"
-                    aria-describedby="{{ $errors->has('telefono') ? 'err-telefono' : '' }}"
+                    aria-invalid="{{ $contactErrors->has('telefono') ? 'true' : 'false' }}"
+                    aria-describedby="{{ $contactErrors->has('telefono') ? 'err-telefono' : '' }}"
                     class="ct-input">
-                  @error('telefono')<small id="err-telefono" class="ct-help" style="color:#e11d48;">{{ $message }}</small>@enderror
+                  @if($contactErrors->has('telefono'))<small id="err-telefono" class="ct-help" style="color:#e11d48;">{{ $contactErrors->first('telefono') }}</small>@endif
                 </div>
 
                 <div class="ct-field">
                   <label for="asunto" class="ct-label">{{ $subjectLabel }}</label>
                   <input id="asunto" type="text" name="asunto" value="{{ old('asunto') }}"
                     autocomplete="off" placeholder="{{ $subjectPlaceholder }}" required
-                    aria-invalid="{{ $errors->has('asunto') ? 'true' : 'false' }}"
-                    aria-describedby="{{ $errors->has('asunto') ? 'err-asunto' : '' }}"
+                    aria-invalid="{{ $contactErrors->has('asunto') ? 'true' : 'false' }}"
+                    aria-describedby="{{ $contactErrors->has('asunto') ? 'err-asunto' : '' }}"
                     class="ct-input">
-                  @error('asunto')<small id="err-asunto" class="ct-help" style="color:#e11d48;">{{ $message }}</small>@enderror
+                  @if($contactErrors->has('asunto'))<small id="err-asunto" class="ct-help" style="color:#e11d48;">{{ $contactErrors->first('asunto') }}</small>@endif
                 </div>
 
                 <div class="ct-field" style="grid-column:1/-1;">
                   <label for="mensaje" class="ct-label">{{ $messageLabel }}</label>
                   <textarea id="mensaje" name="mensaje" rows="6" required spellcheck="true"
                     maxlength="1000" placeholder="{{ $messagePlaceholder }}"
-                    aria-invalid="{{ $errors->has('mensaje') ? 'true' : 'false' }}"
-                    aria-describedby="help-mensaje{{ $errors->has('mensaje') ? ' err-mensaje' : '' }}"
+                    aria-invalid="{{ $contactErrors->has('mensaje') ? 'true' : 'false' }}"
+                    aria-describedby="help-mensaje{{ $contactErrors->has('mensaje') ? ' err-mensaje' : '' }}"
                     class="ct-textarea">{{ old('mensaje') }}</textarea>
                   <small id="help-mensaje" class="ct-help">{{ $messageHelp }}</small>
-                  @error('mensaje')<small id="err-mensaje" class="ct-help" style="color:#e11d48;">{{ $message }}</small>@enderror
+                  @if($contactErrors->has('mensaje'))<small id="err-mensaje" class="ct-help" style="color:#e11d48;">{{ $contactErrors->first('mensaje') }}</small>@endif
                 </div>
 
               </div>
 
               <button type="submit" class="ct-submit" id="btnSubmit" style="margin-top:1.25rem;">
-                {{ $submitText }}
+                <span data-contacto-submit-label>{{ $submitText }}</span>
                 <i class="ri-send-plane-line" aria-hidden="true"></i>
               </button>
             </form>

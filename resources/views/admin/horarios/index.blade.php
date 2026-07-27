@@ -24,9 +24,12 @@
 
 @section('main')
   <div class="space-y-6">
-    <div class="panel-action-bar">
+    <div class="panel-action-bar flex flex-wrap items-center gap-3">
       <a class="btn btn-primary btn-full-mobile" href="{{ route('admin.horarios.create') }}">
         <i class="ri-add-line"></i> Nuevo horario
+      </a>
+      <a class="btn btn-outline btn-full-mobile" href="{{ route('admin.personalizacion.contacto.edit') }}">
+        <i class="ri-time-line"></i> Horario de atención de la clínica
       </a>
     </div>
 
@@ -152,7 +155,7 @@
                     <a class="btn btn-ghost btn-sm" href="{{ route('admin.horarios.edit', $horario) }}">
                       <i class="ri-edit-line"></i> Editar
                     </a>
-                    <form action="{{ route('admin.horarios.destroy', $horario) }}" method="POST" onsubmit="return confirm('Eliminar este horario');">
+                    <form action="{{ route('admin.horarios.destroy', $horario) }}" method="POST" data-confirm-title="Eliminar horario" data-confirm-message="¿Estás seguro de que deseas eliminar este horario?" data-confirm-action="eliminar" data-confirm-btn="Sí, eliminar">
                       @csrf
                       @method('DELETE')
                       <button class="btn btn-danger btn-sm" type="submit">

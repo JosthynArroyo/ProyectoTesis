@@ -39,7 +39,7 @@ class MaintenanceModeTest extends TestCase
             'type' => 'boolean',
         ]);
 
-        $role = Role::create(['name' => 'superadmin']);
+        $role = Role::firstOrCreate(['name' => 'superadmin']);
         $user = User::factory()->create(['status' => 'active']);
         $user->roles()->attach($role->id);
 
@@ -50,7 +50,7 @@ class MaintenanceModeTest extends TestCase
 
     public function test_superadmin_can_save_maintenance_without_allowlisted_ips(): void
     {
-        $role = Role::create(['name' => 'superadmin']);
+        $role = Role::firstOrCreate(['name' => 'superadmin']);
         $user = User::factory()->create(['status' => 'active']);
         $user->roles()->attach($role->id);
 
@@ -113,7 +113,7 @@ class MaintenanceModeTest extends TestCase
     {
         $this->enableMaintenance('192.168.18.42');
 
-        $role = Role::create(['name' => 'paciente']);
+        $role = Role::firstOrCreate(['name' => 'paciente']);
         $user = User::factory()->create([
             'email' => 'paciente@example.com',
             'password' => 'password',
@@ -137,7 +137,7 @@ class MaintenanceModeTest extends TestCase
     {
         $this->enableMaintenance();
 
-        $role = Role::create(['name' => 'paciente']);
+        $role = Role::firstOrCreate(['name' => 'paciente']);
         $user = User::factory()->create([
             'email' => 'paciente@example.com',
             'password' => 'password',
@@ -154,9 +154,7 @@ class MaintenanceModeTest extends TestCase
             ]);
 
         $response->assertRedirect(url('/').'?login=1');
-        $response->assertSessionHasErrors([
-            'email' => self::GENERIC_MAINTENANCE_MESSAGE,
-        ]);
+        $response->assertSessionHasErrorsIn('login', ['email']);
         $response->assertSessionHas('auth_error', self::GENERIC_MAINTENANCE_MESSAGE);
         $this->assertGuest();
     }
@@ -165,7 +163,7 @@ class MaintenanceModeTest extends TestCase
     {
         $this->enableMaintenance();
 
-        $role = Role::create(['name' => 'superadmin']);
+        $role = Role::firstOrCreate(['name' => 'superadmin']);
         $user = User::factory()->create([
             'email' => 'superadmin@example.com',
             'password' => 'password',

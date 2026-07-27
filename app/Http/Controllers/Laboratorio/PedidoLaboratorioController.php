@@ -18,8 +18,15 @@ class PedidoLaboratorioController extends Controller
     public function index(Request $request)
     {
         $estado = strtolower(trim((string) $request->query('estado', 'all')));
-        
-        $pedidos = PedidoLaboratorio::with(['paciente', 'doctor'])
+
+        $pedidos = PedidoLaboratorio::with([
+                'paciente',
+                'doctor',
+                'resultados' => function ($query) {
+                    $query->orderByDesc('version');
+                },
+                'resultados.laboratorio',
+            ])
             ->when($estado !== 'all', function ($query) use ($estado) {
                 $query->where('estado', $estado);
             })

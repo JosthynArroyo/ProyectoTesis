@@ -106,7 +106,7 @@
                   <form method="POST" action="{{ route('superadmin.solicitudes.personalizacion.revocar', $req) }}">
                     @csrf
                     @method('PATCH')
-                    <button class="btn btn-outline" type="submit" onclick="return confirm('Revocar acceso de {{ $req->user->name }}');">
+                    <button class="btn btn-outline" type="submit" data-confirm-title="Revocar permiso" data-confirm-message="¿Estás seguro de que deseas revocar el acceso a personalización de {{ $req->user->name }}?" data-confirm-action="revocar" data-confirm-btn="Sí, revocar">
                       <i class="ri-forbid-line"></i> Revocar
                     </button>
                   </form>

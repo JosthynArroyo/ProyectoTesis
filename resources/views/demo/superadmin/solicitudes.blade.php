@@ -93,7 +93,7 @@
                   <form method="GET" action="{{ route('demo.superadmin.solicitudes') }}">
                     <input type="hidden" name="simulated_action" value="revoked">
                     <input type="hidden" name="req_id" value="{{ $req['id'] }}">
-                    <button class="btn btn-outline" type="submit" onclick="return confirm('Revocar acceso de {{ $req['admin'] }}');">
+                    <button class="btn btn-outline" type="submit" data-confirm-title="Revocar permiso" data-confirm-message="¿Estás seguro de que deseas revocar el acceso de {{ $req['admin'] }}?" data-confirm-action="revocar" data-confirm-btn="Sí, revocar">
                       <i class="ri-forbid-line"></i> Revocar
                     </button>
                   </form>

@@ -23,6 +23,8 @@ class LayoutMetricsService
 
     private const PATIENT_PAYMENT_BLOCK_CACHE_SECONDS = 180;
 
+    private array $memo = [];
+
     public function adminNotifications(?User $user): array
     {
         if (! $this->userHasRole($user, 'administrador')) {
@@ -72,6 +74,27 @@ class LayoutMetricsService
         ];
     }
 
+    public function forgetFeatureStatus(int $userId, string $feature): void
+    {
+        if ($userId < 1 || trim($feature) === '') {
+            return;
+        }
+
+        Cache::forget($this->featureStatusCacheKey($userId, $feature));
+        unset($this->memo[$this->featureStatusCacheKey($userId, $feature)]);
+    }
+
+    public function forgetPendingFeatureRequests(string $feature): void
+    {
+        $feature = trim($feature);
+        if ($feature === '') {
+            return;
+        }
+
+        Cache::forget($this->pendingFeatureRequestsCacheKey($feature));
+        unset($this->memo[$this->pendingFeatureRequestsCacheKey($feature)]);
+    }
+
     public function featureStatus(?User $user, string $feature): array
     {
         if (! $user) {
@@ -86,7 +109,7 @@ class LayoutMetricsService
             ];
         }
 
-        return $this->remember("layout:feature-status:{$feature}:user:{$user->id}", self::FEATURE_STATUS_CACHE_SECONDS, function () use ($user, $feature): array {
+        return $this->remember($this->featureStatusCacheKey($user->id, $feature), self::FEATURE_STATUS_CACHE_SECONDS, function () use ($user, $feature): array {
             $pending = FeatureAccessRequest::query()
                 ->where('user_id', $user->id)
                 ->forFeature($feature)
@@ -96,13 +119,11 @@ class LayoutMetricsService
             $approved = FeatureAccessRequest::query()
                 ->where('user_id', $user->id)
                 ->forFeature($feature)
-                ->where('status', 'approved')
-                ->whereNull('revoked_at')
+                ->approvedActive()
                 ->latest('reviewed_at')
                 ->first(['approved_until']);
 
-            $canAccess = $approved !== null
-                && ($approved->approved_until === null || $approved->approved_until->isFuture());
+            $canAccess = $approved !== null;
 
             return [
                 'can_access' => $canAccess,
@@ -118,7 +139,7 @@ class LayoutMetricsService
             return 0;
         }
 
-        return $this->remember('layout:superadmin:personalizacion:pending', self::SUPERADMIN_PENDING_CACHE_SECONDS, fn (): int => (int) FeatureAccessRequest::query()
+        return $this->remember($this->pendingFeatureRequestsCacheKey('personalizacion'), self::SUPERADMIN_PENDING_CACHE_SECONDS, fn (): int => (int) FeatureAccessRequest::query()
             ->forFeature('personalizacion')
             ->pending()
             ->count());
@@ -130,11 +151,37 @@ class LayoutMetricsService
             return false;
         }
 
+        if ($user && ($cached = $this->requestCachedPatientPaymentBlock($user->id)) !== null) {
+            return $cached;
+        }
+
         return $this->remember(
             "layout:patient:{$user->id}:payment-block",
             self::PATIENT_PAYMENT_BLOCK_CACHE_SECONDS,
             fn (): bool => app(PagoService::class)->pacienteTieneBloqueo((int) $user->id)
         );
+    }
+
+    public function cachePatientPaymentBlockForRequest(int $userId, bool $value): void
+    {
+        if ($userId < 1 || ! app()->bound('request')) {
+            return;
+        }
+
+        app('request')->attributes->set($this->patientPaymentBlockRequestKey($userId), $value);
+    }
+
+    public function forgetPatientPaymentBlock(int $userId): void
+    {
+        if ($userId < 1) {
+            return;
+        }
+
+        Cache::forget($this->patientPaymentBlockCacheKey($userId));
+
+        if (app()->bound('request')) {
+            app('request')->attributes->remove($this->patientPaymentBlockRequestKey($userId));
+        }
     }
 
     private function adminRecordatoriosPendientes(): int
@@ -168,10 +215,48 @@ class LayoutMetricsService
 
     private function remember(string $key, int $seconds, Closure $callback): mixed
     {
-        try {
-            return Cache::remember($key, now()->addSeconds($seconds), $callback);
-        } catch (Throwable) {
-            return $callback();
+        if (array_key_exists($key, $this->memo)) {
+            return $this->memo[$key];
         }
+
+        try {
+            return $this->memo[$key] = Cache::remember($key, now()->addSeconds($seconds), $callback);
+        } catch (Throwable) {
+            return $this->memo[$key] = $callback();
+        }
+    }
+
+    private function featureStatusCacheKey(int $userId, string $feature): string
+    {
+        return "layout:feature-status:{$feature}:user:{$userId}";
+    }
+
+    private function patientPaymentBlockRequestKey(int $userId): string
+    {
+        return "layout:patient:{$userId}:payment-block";
+    }
+
+    private function patientPaymentBlockCacheKey(int $userId): string
+    {
+        return "layout:patient:{$userId}:payment-block";
+    }
+
+    private function requestCachedPatientPaymentBlock(int $userId): ?bool
+    {
+        if (! app()->bound('request')) {
+            return null;
+        }
+
+        $request = app('request');
+        $key = $this->patientPaymentBlockRequestKey($userId);
+
+        return $request->attributes->has($key)
+            ? (bool) $request->attributes->get($key)
+            : null;
+    }
+
+    private function pendingFeatureRequestsCacheKey(string $feature): string
+    {
+        return "layout:superadmin:{$feature}:pending";
     }
 }

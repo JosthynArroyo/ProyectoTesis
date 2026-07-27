@@ -142,7 +142,7 @@
                   $redirectTo = route('admin.citas.prioridad.edit', $cita).'?redirect_to='.urlencode(request()->fullUrl());
                 @endphp
                 <tr>
-                  <td data-label="Paciente">{{ optional($cita->paciente)->name ?? 'Sin paciente' }}</td>
+                  <td data-label="Paciente">{{ $cita->nombrePacienteReal() }}</td>
                   <td data-label="Doctor">{{ optional($cita->doctor)->name ?? 'Sin asignar' }}</td>
                   <td data-label="Estado">
                     <x-ui.badge :tone="$cita->estado === 'cancelada' ? 'danger' : ($cita->estado === 'pendiente' ? 'warning' : 'success')">

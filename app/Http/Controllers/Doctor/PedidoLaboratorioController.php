@@ -125,6 +125,12 @@ class PedidoLaboratorioController extends Controller
         }
 
         $pedidos = PedidoLaboratorio::with(['paciente', 'cita'])
+            ->with([
+                'resultados' => function ($query) {
+                    $query->orderByDesc('version');
+                },
+                'resultados.laboratorio',
+            ])
             ->where('doctor_id', $doctor->id)
             ->latest()
             ->paginate(10);
@@ -215,6 +221,25 @@ class PedidoLaboratorioController extends Controller
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="pedido_laboratorio_'.$pedido->id.'.pdf"',
         ]);
+    }
+
+    public function downloadResultado(PedidoLaboratorio $pedido)
+    {
+        abort_unless($pedido->doctor_id === Auth::id(), 403);
+
+        $resultado = $pedido->resultados()
+            ->where('estado', 'publicado')
+            ->orderByDesc('version')
+            ->first();
+
+        if (! $resultado || ! $resultado->pdf_path || ! Storage::disk('local')->exists($resultado->pdf_path)) {
+            return back()->withErrors(['error' => 'El informe de resultados aún no está disponible.']);
+        }
+
+        return Storage::disk('local')->download(
+            $resultado->pdf_path,
+            'resultado_laboratorio_'.$pedido->id.'_v'.$resultado->version.'.pdf'
+        );
     }
 
     public function resend(PedidoLaboratorio $pedido)

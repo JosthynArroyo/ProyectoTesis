@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
+﻿document.addEventListener('DOMContentLoaded', () => {
   initSoapStepper();
   initDiagnosticos();
   initEvolucionSignos();
@@ -364,6 +364,7 @@ function initAgendarControl() {
   const planUrl = page.dataset.planUrl || '';
   const slotsUrlTemplate = page.dataset.slotsUrlTemplate || '';
   const doctorId = page.dataset.doctorId || '';
+  const actionLock = window.ActionLock || null;
 
   if (!planUrl || !slotsUrlTemplate || !doctorId) {
     help.textContent = 'No fue posible cargar la configuracion de agenda para esta consulta.';
@@ -430,6 +431,19 @@ function initAgendarControl() {
     const original = agendarBtn.innerHTML;
     agendarBtn.disabled = true;
     agendarBtn.innerHTML = '<i class="ri-loader-4-line"></i> Agendando...';
+    const copy = actionLock?.resolveCopyFromButton
+      ? actionLock.resolveCopyFromButton(agendarBtn)
+      : {
+          title: agendarBtn.textContent && agendarBtn.textContent.toLowerCase().includes('reagendar')
+            ? 'Reagendando control...'
+            : 'Agendando control...',
+          description: 'Por favor, espera. No cierres esta pÃ¡gina.',
+          mode: 'operation',
+        };
+    let keepLocked = false;
+    if (actionLock?.startOperation) {
+      keepLocked = actionLock.startOperation(copy);
+    }
 
     try {
       const res = await fetch(planUrl, {
@@ -456,6 +470,17 @@ function initAgendarControl() {
         help.textContent = data.msg || 'No se pudo agendar el control con los datos seleccionados.';
       } else if (res.status === 419) {
         help.textContent = 'La sesión expiró. Recarga la página para continuar.';
+        keepLocked = true;
+        if (actionLock?.startNavigation) {
+          actionLock.startNavigation({
+            title: 'Cargando sección...',
+            description: 'Por favor, espera mientras cargamos esta sección.',
+            mode: 'navigation',
+          });
+        }
+        if (loginUrl) {
+          window.location.href = loginUrl;
+        }
       } else {
         help.textContent = 'No se pudo agendar el control en este momento.';
       }
@@ -464,6 +489,9 @@ function initAgendarControl() {
     } finally {
       agendarBtn.innerHTML = original;
       agendarBtn.disabled = !horaSelect.value;
+      if (actionLock?.unlock && !keepLocked) {
+        actionLock.unlock();
+      }
     }
   });
 }
@@ -535,3 +563,4 @@ async function safeJson(response) {
     return {};
   }
 }
+

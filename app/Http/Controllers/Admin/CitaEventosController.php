@@ -74,8 +74,8 @@ class CitaEventosController extends Controller
                 $createdStr,
                 $r->tipo,
                 '#'.$r->cita_id,
-                optional($r->cita->paciente)->name,
-                optional($r->cita->doctor)->name,
+                optional($r->cita?->paciente)->name,
+                optional($r->cita?->doctor)->name,
                 $deEstado,
                 $aEstado,
                 $r->valor_anterior,
@@ -147,7 +147,14 @@ class CitaEventosController extends Controller
     {
         ['tipo' => $tipo, 'estado' => $estado, 'doctorId' => $doctorId, 'paciente' => $paciente, 'desde' => $desde, 'hasta' => $hasta, 'q' => $q] = $this->normalizeFilters($request);
 
-        return CitaEvento::with(['cita.paciente', 'cita.doctor'])
+        return CitaEvento::query()
+            ->whereHas('cita')
+            ->with([
+                'cita' => fn ($cita) => $cita->with([
+                    'paciente:id,name,email,dni',
+                    'doctor:id,name',
+                ]),
+            ])
             ->when($tipo !== '', fn ($qq) => $qq->where('tipo', $tipo))
             ->when($estado !== '', function ($qq) use ($estado) {
                 $qq->where(function ($w) use ($estado) {

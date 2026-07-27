@@ -112,7 +112,7 @@
 
           <div>
             <label class="inline-flex items-center gap-2 text-sm text-gray-700">
-              <input type="checkbox" name="alergias_no_conocidas" value="1" @checked($alergiasNoConocidasChecked) @if($isSigned) disabled @endif>
+              <input type="checkbox" name="alergias_no_conocidas" value="1" class="soap-allergy-checkbox" @checked($alergiasNoConocidasChecked) @if($isSigned) disabled @endif>
               Sin alergias conocidas
             </label>
             @error('alergias_no_conocidas')
@@ -256,7 +256,7 @@
           </div>
 
           @if(!empty($signosPrevios))
-            <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
+            <div class="soap-soft-note rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
               Últimos signos previos: TA {{ $signosPrevios['ta'] ?? '---' }} mmHg, FC {{ $signosPrevios['fc'] ?? '---' }} lpm, FR {{ $signosPrevios['fr'] ?? '---' }} rpm, Temp {{ $signosPrevios['temp'] ?? '---' }} °C.
             </div>
           @endif
@@ -365,7 +365,7 @@
           @enderror
         </div>
 
-        <div class="rounded-2xl border border-gray-200 bg-white/80 p-4" id="plan-control-box">
+        <div class="soap-plan-control-box rounded-2xl border border-gray-200 bg-white/80 p-4" id="plan-control-box">
           @if($isSigned && $controlCita)
             <div class="flex flex-wrap items-start justify-between gap-3">
               <div>
@@ -382,7 +382,7 @@
               </div>
               <form method="POST" action="{{ route('doctor.citas.proxima.cancelar', ['cita' => $cita->id, 'control' => $controlCita->id]) }}">
                 @csrf
-                <button class="btn btn-danger btn-sm" type="submit" onclick="return confirm('Cancelar el control agendado no elimina la nota clinica, pero deja la cita sin vigencia. ¿Deseas continuar?')">Cancelar control</button>
+                <button class="btn btn-danger btn-sm" type="submit" data-confirm-title="Cancelar control agendado" data-confirm-message="¿Estás seguro de que deseas cancelar el control agendado para este paciente?" data-confirm-consequence="Cancelar el control agendado no elimina la nota clínica, pero deja la cita sin vigencia." data-confirm-action="anular" data-confirm-btn="Sí, anular" data-action-lock-title="Cancelando control..." data-action-lock-description="Por favor, espera. No cierres esta página.">Cancelar control</button>
               </form>
             </div>
 
@@ -398,7 +398,7 @@
                 </select>
               </div>
               <div class="flex items-end">
-                <button class="btn btn-outline w-full lg:w-auto" type="button" id="btn-agendar-control" disabled>Reagendar control</button>
+                <button class="btn btn-outline w-full lg:w-auto" type="button" id="btn-agendar-control" disabled data-action-lock-title="Reagendando control..." data-action-lock-description="Por favor, espera. No cierres esta página.">Reagendar control</button>
               </div>
             </div>
             <p id="control-help" class="mt-2 text-xs text-gray-500">Selecciona una nueva fecha para consultar horarios disponibles.</p>
@@ -423,7 +423,7 @@
                   </select>
                 </div>
                 <div class="flex items-end">
-                  <button class="btn btn-outline w-full lg:w-auto" type="button" id="btn-agendar-control" disabled>Agendar control</button>
+                  <button class="btn btn-outline w-full lg:w-auto" type="button" id="btn-agendar-control" disabled data-action-lock-title="Agendando control..." data-action-lock-description="Por favor, espera. No cierres esta página.">Agendar control</button>
                 </div>
               </div>
               <p id="control-help" class="mt-2 text-xs text-gray-500">Selecciona una fecha para consultar horarios disponibles.</p>
@@ -464,10 +464,10 @@
 
     <section class="card p-6 space-y-4">
       <h3 class="text-lg font-semibold text-gray-900">Enmiendas y aclaraciones</h3>
-      @if(collect($nota?->enmiendas ?? [])->isNotEmpty())
+          @if(collect($nota?->enmiendas ?? [])->isNotEmpty())
         <div class="space-y-3">
           @foreach(($nota?->enmiendas ?? []) as $enmienda)
-            <div class="rounded-xl border border-gray-200 bg-white/90 px-3 py-3 text-sm text-gray-700">
+            <div class="soap-enmienda-card rounded-xl border border-gray-200 bg-white/90 px-3 py-3 text-sm text-gray-700">
               <div class="font-semibold text-gray-900">{{ $enmienda->motivo }}</div>
               <p class="mt-2">{{ $enmienda->contenido }}</p>
               <div class="mt-2 text-xs text-gray-500">{{ $enmienda->autor?->name ?? 'Usuario' }} | {{ $enmienda->created_at?->format('Y-m-d H:i') }}</div>
@@ -490,6 +490,90 @@
     </section>
   @endif
 </div>
+
+@push('styles')
+  <style>
+    html.dashboard-root.panel-theme-dark #soap-page .soap-action-bar {
+      border-color: #334155;
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.98) 0%, rgba(17, 24, 39, 0.98) 100%);
+      box-shadow: 0 -12px 30px rgba(2, 6, 23, 0.36);
+    }
+
+    html.dashboard-root.panel-theme-dark #soap-page .soap-plan-control-box,
+    html.dashboard-root.panel-theme-dark #soap-page .soap-enmienda-card,
+    html.dashboard-root.panel-theme-dark #soap-page .soap-soft-note {
+      border-color: #334155;
+      background: rgba(15, 23, 42, 0.92);
+      color: #e2e8f0;
+    }
+
+    html.dashboard-root.panel-theme-dark #soap-page .text-gray-900 {
+      color: #f8fafc;
+    }
+
+    html.dashboard-root.panel-theme-dark #soap-page .text-gray-800 {
+      color: #e2e8f0;
+    }
+
+    html.dashboard-root.panel-theme-dark #soap-page .text-gray-700 {
+      color: #d1d5db;
+    }
+
+    html.dashboard-root.panel-theme-dark #soap-page .text-gray-600 {
+      color: #94a3b8;
+    }
+
+    html.dashboard-root.panel-theme-dark #soap-page .text-gray-500 {
+      color: #64748b;
+    }
+
+    html.dashboard-root.panel-theme-dark #soap-page .border-gray-200 {
+      border-color: #334155;
+    }
+
+    html.dashboard-root.panel-theme-dark #soap-page .soap-allergy-checkbox {
+      appearance: none;
+      -webkit-appearance: none;
+      display: inline-grid;
+      place-content: center;
+      flex: none;
+      width: 1rem;
+      height: 1rem;
+      margin: 0;
+      border: 1px solid #475569;
+      border-radius: 0.25rem;
+      background: #0f172a;
+      box-shadow: inset 0 1px 2px rgba(2, 6, 23, 0.32);
+      color: #14b8a6;
+      cursor: pointer;
+    }
+
+    html.dashboard-root.panel-theme-dark #soap-page .soap-allergy-checkbox:checked {
+      border-color: #14b8a6;
+      background-color: #14b8a6;
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: 0.75rem 0.75rem;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M3.5 8.5l3 3 6-6' stroke='%23fff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    }
+
+    html.dashboard-root.panel-theme-dark #soap-page .soap-allergy-checkbox:focus-visible {
+      outline: 2px solid rgba(20, 184, 166, 0.45);
+      outline-offset: 2px;
+    }
+
+    html.dashboard-root.panel-theme-dark #soap-page .soap-allergy-checkbox:disabled {
+      cursor: not-allowed;
+      opacity: 0.75;
+    }
+
+    @media (max-width: 768px) {
+      html.dashboard-root.panel-theme-dark #soap-page .soap-action-bar {
+        box-shadow: 0 -10px 24px rgba(2, 6, 23, 0.42);
+      }
+    }
+  </style>
+@endpush
 
 @push('scripts')
   @vite('resources/js/doctor/soap.js')

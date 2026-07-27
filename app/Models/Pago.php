@@ -33,12 +33,46 @@ class Pago extends Model
 
     public const ESTADO_ANULADO = 'anulado';
 
+    public const ADMIN_ACTION_APROBAR = 'aprobar';
+
+    public const ADMIN_ACTION_RECHAZAR = 'rechazar';
+
+    public const ADMIN_ACTION_ANULAR = 'anular';
+
     public const ESTADOS = [
         self::ESTADO_PENDIENTE,
         self::ESTADO_EN_VERIFICACION,
         self::ESTADO_PAGADO,
         self::ESTADO_RECHAZADO,
         self::ESTADO_ANULADO,
+    ];
+
+    public const ADMINISTRATIVE_TRANSITIONS = [
+        self::ESTADO_PENDIENTE => [
+            self::ADMIN_ACTION_APROBAR => self::ESTADO_PAGADO,
+            self::ADMIN_ACTION_RECHAZAR => self::ESTADO_RECHAZADO,
+            self::ADMIN_ACTION_ANULAR => self::ESTADO_ANULADO,
+        ],
+        self::ESTADO_EN_VERIFICACION => [
+            self::ADMIN_ACTION_APROBAR => self::ESTADO_PAGADO,
+            self::ADMIN_ACTION_RECHAZAR => self::ESTADO_RECHAZADO,
+            self::ADMIN_ACTION_ANULAR => self::ESTADO_ANULADO,
+        ],
+        self::ESTADO_PAGADO => [],
+        self::ESTADO_RECHAZADO => [],
+        self::ESTADO_ANULADO => [],
+    ];
+
+    public const ADMIN_ACTION_LABELS = [
+        self::ADMIN_ACTION_APROBAR => 'Aprobar pago',
+        self::ADMIN_ACTION_RECHAZAR => 'Rechazar pago',
+        self::ADMIN_ACTION_ANULAR => 'Anular pago',
+    ];
+
+    public const ADMIN_ACTION_TONES = [
+        self::ADMIN_ACTION_APROBAR => 'primary',
+        self::ADMIN_ACTION_RECHAZAR => 'danger',
+        self::ADMIN_ACTION_ANULAR => 'ghost',
     ];
 
     public const ESTADOS_BLOQUEANTES_AGENDAMIENTO = [
@@ -157,5 +191,45 @@ class Pago extends Model
             self::ESTADO_PENDIENTE,
             self::ESTADO_RECHAZADO,
         ], true);
+    }
+
+    public function availableAdministrativeActions(): array
+    {
+        return array_keys(self::ADMINISTRATIVE_TRANSITIONS[$this->estado] ?? []);
+    }
+
+    public function canPerformAdministrativeAction(string $action): bool
+    {
+        return array_key_exists($action, self::ADMINISTRATIVE_TRANSITIONS[$this->estado] ?? []);
+    }
+
+    public function administrativeTargetState(string $action): ?string
+    {
+        return self::ADMINISTRATIVE_TRANSITIONS[$this->estado][$action] ?? null;
+    }
+
+    public function isAdministrativeTerminalState(): bool
+    {
+        return empty($this->availableAdministrativeActions());
+    }
+
+    public function administrativeStateMessage(): string
+    {
+        return match ($this->estado) {
+            self::ESTADO_PAGADO => 'Este pago ya fue aprobado y no admite más acciones administrativas.',
+            self::ESTADO_RECHAZADO => 'Este pago ya fue rechazado y no admite más acciones administrativas.',
+            self::ESTADO_ANULADO => 'Este pago ya fue anulado y no admite más acciones administrativas.',
+            default => 'Este pago todavía admite revisión administrativa.',
+        };
+    }
+
+    public static function administrativeActionLabel(string $action): string
+    {
+        return self::ADMIN_ACTION_LABELS[$action] ?? ucfirst(str_replace('_', ' ', $action));
+    }
+
+    public static function administrativeActionTone(string $action): string
+    {
+        return self::ADMIN_ACTION_TONES[$action] ?? 'primary';
     }
 }

@@ -19,6 +19,10 @@ class AppointmentSlotHoldTest extends TestCase
     {
         parent::setUp();
         Carbon::setTestNow(Carbon::parse('2026-05-01 10:00:00', 'America/Guayaquil'));
+        $this->withoutMiddleware([
+            \App\Http\Middleware\EnsureCaptchaVerified::class,
+            \App\Http\Middleware\EnsureChatbotIdentityVerified::class,
+        ]);
     }
 
     protected function tearDown(): void

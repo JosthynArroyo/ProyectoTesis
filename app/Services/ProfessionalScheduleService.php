@@ -261,6 +261,144 @@ class ProfessionalScheduleService
         ];
     }
 
+    public function getFormattedClinicSchedule(?array $customClinicHours = null): array
+    {
+        $dayNames = [
+            1 => 'Lunes',
+            2 => 'Martes',
+            3 => 'Miércoles',
+            4 => 'Jueves',
+            5 => 'Viernes',
+            6 => 'Sábado',
+            7 => 'Domingo',
+        ];
+
+        $daysData = [];
+        for ($d = 1; $d <= 7; $d++) {
+            if ($customClinicHours && isset($customClinicHours[$d])) {
+                $status = (int) ($customClinicHours[$d]['status'] ?? 0);
+                $opening = substr((string) ($customClinicHours[$d]['opening'] ?? '08:00'), 0, 5);
+                $closing = substr((string) ($customClinicHours[$d]['closing'] ?? '18:00'), 0, 5);
+                $daysData[$d] = [
+                    'status' => $status,
+                    'opening' => $opening,
+                    'closing' => $closing,
+                ];
+            } else {
+                $daysData[$d] = $this->getClinicHours($d);
+            }
+        }
+
+        $groups = [];
+        foreach ($daysData as $day => $data) {
+            if ($data['status'] === 0) {
+                $key = 'closed';
+            } else {
+                $key = $data['opening'] . '–' . $data['closing'];
+            }
+            $groups[$key][] = $day;
+        }
+
+        if (isset($groups['closed']) && count($groups['closed']) === 7) {
+            return [
+                'summary' => 'Temporalmente cerrado',
+                'is_all_closed' => true,
+                'lines' => [
+                    [
+                        'label' => 'Lunes a domingo',
+                        'hours' => 'Cerrado',
+                        'is_closed' => true,
+                    ]
+                ],
+            ];
+        }
+
+        $formatDaysLabel = function (array $days) use ($dayNames): string {
+            sort($days);
+            $count = count($days);
+            if ($count === 0) return '';
+            if ($count === 1) return $dayNames[$days[0]];
+
+            $isConsecutive = true;
+            for ($i = 1; $i < $count; $i++) {
+                if ($days[$i] !== $days[$i - 1] + 1) {
+                    $isConsecutive = false;
+                    break;
+                }
+            }
+
+            if ($isConsecutive && $count >= 3) {
+                $first = $dayNames[$days[0]];
+                $last = mb_strtolower($dayNames[$days[$count - 1]]);
+                return "{$first} a {$last}";
+            }
+
+            if ($count === 2) {
+                $first = $dayNames[$days[0]];
+                $second = mb_strtolower($dayNames[$days[1]]);
+                return "{$first} y {$second}";
+            }
+
+            $names = array_map(fn($d) => $dayNames[$d], $days);
+            $last = mb_strtolower(array_pop($names));
+            $firstN = array_shift($names);
+            $middle = array_map(fn($n) => mb_strtolower($n), $names);
+            return "{$firstN}, " . implode(', ', $middle) . " y {$last}";
+        };
+
+        $lines = [];
+        $closedDays = $groups['closed'] ?? [];
+        unset($groups['closed']);
+
+        $sortedKeys = array_keys($groups);
+        usort($sortedKeys, function($a, $b) use ($groups) {
+            return min($groups[$a]) <=> min($groups[$b]);
+        });
+
+        foreach ($sortedKeys as $key) {
+            $days = $groups[$key];
+            $label = $formatDaysLabel($days);
+            $lines[] = [
+                'label' => $label,
+                'hours' => $key,
+                'is_closed' => false,
+            ];
+        }
+
+        if (!empty($closedDays)) {
+            $closedLabel = $formatDaysLabel($closedDays);
+            $lines[] = [
+                'label' => $closedLabel,
+                'hours' => 'Cerrado',
+                'is_closed' => true,
+            ];
+        }
+
+        if (count($sortedKeys) === 1) {
+            $openKey = $sortedKeys[0];
+            $openDays = $groups[$openKey];
+            $openLabel = $formatDaysLabel($openDays);
+
+            if (count($openDays) === 7 || (count($openDays) >= 2 && (max($openDays) - min($openDays) === count($openDays) - 1))) {
+                $summary = "{$openLabel}, {$openKey}";
+            } else {
+                $summary = "{$openLabel}: {$openKey}";
+            }
+        } else {
+            $summaryParts = [];
+            foreach ($lines as $line) {
+                $summaryParts[] = "{$line['label']}: {$line['hours']}";
+            }
+            $summary = implode(' | ', $summaryParts);
+        }
+
+        return [
+            'summary' => $summary,
+            'is_all_closed' => false,
+            'lines' => $lines,
+        ];
+    }
+
     public function checkTimeWithinClinicHours(string $fecha, string $hi, string $hf): ?string
     {
         $day = Carbon::parse($fecha)->isoWeekday();

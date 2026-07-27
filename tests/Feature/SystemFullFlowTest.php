@@ -53,7 +53,7 @@ class SystemFullFlowTest extends TestCase
         $this->get('/')->assertOk();
         $this->get('/servicios')->assertOk();
         $this->get('/contacto')->assertOk();
-        $this->get('/login')->assertRedirect('/?login=1');
+        $this->get('/login')->assertOk();
 
         $superadmin = User::query()->where('email', 'superadmin@clinic.test')->firstOrFail();
         $this->loginThroughForm($superadmin, 'superadmin1234');
@@ -103,20 +103,20 @@ class SystemFullFlowTest extends TestCase
         $patientPayload = $this->adminUserPayload('paciente', [
             'email' => 'paciente.panel@clinic.test',
             'telefono' => '0990000002',
-            'dni' => '1000000002',
+            'dni' => '0912345675',
             'cronico' => '1',
         ]);
         $doctorPayload = $this->adminUserPayload('doctor', [
             'email' => 'doctor.panel@clinic.test',
             'telefono' => '0990000003',
-            'dni' => '1000000003',
+            'dni' => '1721543285',
             'especialidad_id' => (string) $doctorSpecialty->id,
             'precio_consulta' => '35.50',
         ]);
         $labPayload = $this->adminUserPayload('laboratorio', [
             'email' => 'laboratorio.panel@clinic.test',
             'telefono' => '0990000004',
-            'dni' => '1000000004',
+            'dni' => '1104328905',
             'precio_consulta' => '18.00',
         ]);
 
@@ -429,7 +429,7 @@ class SystemFullFlowTest extends TestCase
             'password' => 'admin1234*',
             'password_confirmation' => 'admin1234*',
             'telefono' => '0990000001',
-            'dni' => '1000000001',
+            'dni' => '0923456789',
             'direccion' => 'Calle Admin 123',
             'fecha_nacimiento' => '1990-01-10',
             'sexo' => 'Masculino',
@@ -446,7 +446,7 @@ class SystemFullFlowTest extends TestCase
             'password' => 'admin1234*',
             'password_confirmation' => 'admin1234*',
             'telefono' => '0990000099',
-            'dni' => '1000000099',
+            'dni' => '1712345675',
             'direccion' => 'Av. Principal 100',
             'fecha_nacimiento' => '1992-06-15',
             'sexo' => 'Femenino',

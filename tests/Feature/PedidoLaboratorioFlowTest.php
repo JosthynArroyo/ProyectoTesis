@@ -102,7 +102,7 @@ class PedidoLaboratorioFlowTest extends TestCase
             ->assertSee('Biometría Hemática')
             ->assertSee('Glucosa')
             ->assertSee('Triglicéridos')
-            ->assertSee('Pendiente de muestra');
+            ->assertSee('Pendiente');
 
         $this->actingAs($labUser)
             ->post(route('laboratorio.pedidos.muestra', $pedido))

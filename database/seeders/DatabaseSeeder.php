@@ -16,7 +16,9 @@ class DatabaseSeeder extends Seeder
             LabTestsSeeder::class,
         ]);
 
-        $this->seedSuperadmin();
+        if (config('app.env') !== 'production' && env('APP_ENV') !== 'production') {
+            $this->seedSuperadmin();
+        }
     }
 
     private function seedSuperadmin(): void

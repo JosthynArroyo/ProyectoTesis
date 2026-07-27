@@ -32,6 +32,16 @@ function bindBackButton(backButton, fallbackUrl) {
   backButton.addEventListener('click', (event) => {
     event.preventDefault();
 
+    const actionLock = window.ActionLock || null;
+    const copy = actionLock?.resolveNavigationCopy ? actionLock.resolveNavigationCopy(backButton.closest('[data-panel-back-anchor]')) : {
+      title: 'Cargando sección...',
+      description: 'Por favor, espera mientras cargamos esta sección.',
+      mode: 'navigation',
+    };
+    if (actionLock?.startNavigation) {
+      actionLock.startNavigation(copy);
+    }
+
     if (shouldUseHistoryBack(fallbackUrl)) {
       window.history.back();
       return;

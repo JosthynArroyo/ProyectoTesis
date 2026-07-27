@@ -244,8 +244,11 @@ class PersonalizacionController extends Controller
         foreach ($newHours as $day => $hours) {
             $payload["clinic_hours.{$day}.status"] = $hours['status'];
             $payload["clinic_hours.{$day}.opening"] = $hours['opening'] ?? '08:00';
-            $payload["clinic_hours.{$day}.closing"] = $hours['closing'] ?? ($day == 6 ? '13:00' : '18:00');
+            $payload["clinic_hours.{$day}.closing"] = $hours['closing'] ?? '18:00';
         }
+
+        $formattedSchedule = $scheduleService->getFormattedClinicSchedule($newHours);
+        $payload['contact.hours'] = $formattedSchedule['summary'];
 
         DB::transaction(function () use ($settings, $payload) {
             $meta = [];
@@ -254,6 +257,15 @@ class PersonalizacionController extends Controller
             }
             $settings->setMany($payload, $meta);
         });
+
+        $settings->forgetCache();
+
+        // Audit log for clinic hours configuration changes
+        \Illuminate\Support\Facades\Log::info("Auditoria: Horario de atencion de la clinica actualizado por usuario ID {$request->user()->id}", [
+            'user_id' => $request->user()->id,
+            'clinic_hours' => $newHours,
+            'conflicts' => $conflicts,
+        ]);
 
         // Clear cache only after successful transaction
         $settings->forgetCache();

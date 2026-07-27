@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const submitButton = modal.querySelector('[data-personalizacion-request-submit]');
   const pendingState = modal.querySelector('[data-personalizacion-pending-state]');
   const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+  const actionLock = window.ActionLock || null;
 
   const open = () => {
     modal.classList.add('is-open');
@@ -73,37 +74,58 @@ document.addEventListener('DOMContentLoaded', () => {
   form?.addEventListener('submit', async (event) => {
     event.preventDefault();
 
+    if (form.checkValidity && !form.checkValidity()) {
+      form.reportValidity?.();
+      return;
+    }
+
     const originalHtml = submitButton?.innerHTML ?? '';
     if (submitButton) {
       submitButton.disabled = true;
       submitButton.innerHTML = '<i class="ri-loader-4-line animate-spin"></i> Enviando...';
     }
 
+    const copy = {
+      title: 'Enviando información...',
+      description: 'Por favor, espera. No cierres esta página.',
+      mode: 'operation',
+    };
+
+    const execute = async () => {
+      try {
+        const response = await fetch(form.action, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': csrfToken,
+          },
+          body: new FormData(form),
+        });
+
+        const data = await response.json().catch(() => null);
+        if (!response.ok || !data?.ok) {
+          throw new Error(data?.message || 'No se pudo enviar la solicitud.');
+        }
+
+        if (data.status === 'pending_created' || data.status === 'already_pending') {
+          markAsPending();
+        }
+
+        close();
+        showToast(data.message || 'Solicitud enviada al superadmin.');
+      } catch (error) {
+        showToast(error.message || 'No se pudo enviar la solicitud.', 'warn');
+      }
+    };
+
     try {
-      const response = await fetch(form.action, {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: {
-          'Accept': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest',
-          'X-CSRF-TOKEN': csrfToken,
-        },
-        body: new FormData(form),
-      });
-
-      const data = await response.json().catch(() => null);
-      if (!response.ok || !data?.ok) {
-        throw new Error(data?.message || 'No se pudo enviar la solicitud.');
+      if (actionLock?.run) {
+        await actionLock.run(copy, execute);
+        return;
       }
-
-      if (data.status === 'pending_created' || data.status === 'already_pending') {
-        markAsPending();
-      }
-
-      close();
-      showToast(data.message || 'Solicitud enviada al superadmin.');
-    } catch (error) {
-      showToast(error.message || 'No se pudo enviar la solicitud.', 'warn');
+      await execute();
     } finally {
       if (submitButton) {
         submitButton.disabled = false;

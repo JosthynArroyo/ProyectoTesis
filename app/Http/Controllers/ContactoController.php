@@ -31,7 +31,7 @@ class ContactoController extends Controller
             return back()->with('success', 'Tu mensaje ha sido enviado correctamente.');
         }
 
-        $datos = $request->validate([
+        $datos = $request->validateWithBag('contacto', [
             'nombre' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255'],
             'telefono' => ['required', 'digits:10'],

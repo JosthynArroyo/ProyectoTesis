@@ -3,6 +3,12 @@
 @section('header-title', 'Cobro de cita #'.$pago->cita_id)
 @section('header-subtitle', 'Pago #'.$pago->id.' | Validacion, orden y recibo')
 
+@php
+  $administrativeActions = $pago->availableAdministrativeActions();
+  $canReviewPayment = ! empty($administrativeActions);
+  $administrativeMessage = $pago->administrativeStateMessage();
+@endphp
+
 @section('main')
 <div class="space-y-6">
   <div class="panel-action-bar">
@@ -15,6 +21,9 @@
   @if($errors->any())
     <x-ui.alert tone="error">{{ $errors->first() }}</x-ui.alert>
   @endif
+  @if(! $canReviewPayment)
+    <x-ui.alert tone="warning">{{ $administrativeMessage }}</x-ui.alert>
+  @endif
 
   <div class="grid gap-6 lg:grid-cols-2">
     <section class="card p-6 space-y-4">
@@ -22,7 +31,10 @@
       <div class="space-y-2 break-words text-sm text-gray-700">
         <p><strong>Folio orden:</strong> {{ $pago->folio_unico ?: 'SIN FOLIO' }}</p>
         <p><strong>Token público:</strong> {{ $pago->token_publico ?: 'N/D' }}</p>
-        <p><strong>Paciente:</strong> {{ $pago->paciente?->name }} ({{ $pago->paciente?->dni }})</p>
+        <p><strong>Paciente:</strong> {{ $pago->cita ? $pago->cita->nombrePacienteReal() : ($pago->paciente?->name ?? '-') }} ({{ $pago->cita ? $pago->cita->dniPacienteReal() : ($pago->paciente?->dni ?? 'N/D') }})</p>
+        @if($pago->cita && $pago->cita->dependiente_id)
+          <p><strong>Representante (Responsable de pago):</strong> {{ $pago->paciente?->name }} ({{ $pago->paciente?->dni }})</p>
+        @endif
         <p><strong>Correo:</strong> {{ $pago->paciente?->email }}</p>
         <p><strong>Monto:</strong> {{ number_format((float)$pago->monto, 2) }} {{ $pago->moneda }}</p>
         <p><strong>Metodo:</strong> {{ $pago->metodo_pago ? strtoupper((string)$pago->metodo_pago) : 'SIN DEFINIR' }}</p>
@@ -117,28 +129,40 @@
     <h2 class="text-lg font-semibold text-gray-900">Acciones administrativas</h2>
     <p class="mt-1 text-sm text-gray-500">Rechazar y anular requieren observacion obligatoria.</p>
 
-    <div class="mt-4 grid gap-4 lg:grid-cols-3">
-      <form method="POST" action="{{ route('admin.pagos.aprobar', $pago) }}" class="space-y-2 rounded-xl border border-gray-200 bg-gray-100 p-4">
-        @csrf
-        <label class="form-label" for="approve_obs">Observacion (opcional)</label>
-        <textarea id="approve_obs" name="observacion_admin" class="form-input" rows="3">{{ old('observacion_admin') }}</textarea>
-        <button type="submit" class="btn btn-primary w-full">Aprobar pago</button>
-      </form>
+    @if($canReviewPayment)
+      <div class="mt-4 grid gap-4 lg:grid-cols-3">
+        @if(in_array('aprobar', $administrativeActions, true))
+          <form method="POST" action="{{ route('admin.pagos.aprobar', $pago) }}" class="space-y-2 rounded-xl border border-gray-200 bg-gray-100 p-4" data-action-lock>
+            @csrf
+            <label class="form-label" for="approve_obs">Observacion (opcional)</label>
+            <textarea id="approve_obs" name="observacion_admin" class="form-input" rows="3">{{ old('observacion_admin') }}</textarea>
+            <button type="submit" class="btn btn-primary w-full">Aprobar pago</button>
+          </form>
+        @endif
 
-      <form method="POST" action="{{ route('admin.pagos.rechazar', $pago) }}" class="space-y-2 rounded-xl border border-rose-200 bg-rose-50 p-4">
-        @csrf
-        <label class="form-label" for="reject_obs">Observacion (obligatoria)</label>
-        <textarea id="reject_obs" name="observacion_admin" class="form-input" rows="3" required>{{ old('observacion_admin') }}</textarea>
-        <button type="submit" class="btn btn-danger w-full">Rechazar pago</button>
-      </form>
+        @if(in_array('rechazar', $administrativeActions, true))
+          <form method="POST" action="{{ route('admin.pagos.rechazar', $pago) }}" class="space-y-2 rounded-xl border border-rose-200 bg-rose-50 p-4" data-action-lock>
+            @csrf
+            <label class="form-label" for="reject_obs">Observacion (obligatoria)</label>
+            <textarea id="reject_obs" name="observacion_admin" class="form-input" rows="3" required>{{ old('observacion_admin') }}</textarea>
+            <button type="submit" class="btn btn-danger w-full">Rechazar pago</button>
+          </form>
+        @endif
 
-      <form method="POST" action="{{ route('admin.pagos.anular', $pago) }}" class="space-y-2 rounded-xl border border-gray-300 bg-gray-100 p-4">
-        @csrf
-        <label class="form-label" for="void_obs">Motivo de anulacion</label>
-        <textarea id="void_obs" name="observacion_admin" class="form-input" rows="3" required>{{ old('observacion_admin') }}</textarea>
-        <button type="submit" class="btn btn-ghost w-full">Anular pago</button>
-      </form>
-    </div>
+        @if(in_array('anular', $administrativeActions, true))
+          <form method="POST" action="{{ route('admin.pagos.anular', $pago) }}" class="space-y-2 rounded-xl border border-gray-300 bg-gray-100 p-4" data-action-lock>
+            @csrf
+            <label class="form-label" for="void_obs">Motivo de anulacion</label>
+            <textarea id="void_obs" name="observacion_admin" class="form-input" rows="3" required>{{ old('observacion_admin') }}</textarea>
+            <button type="submit" class="btn btn-ghost w-full">Anular pago</button>
+          </form>
+        @endif
+      </div>
+    @else
+      <div class="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700">
+        {{ $administrativeMessage }}
+      </div>
+    @endif
   </section>
 
   <section class="card p-6">

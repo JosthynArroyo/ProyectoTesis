@@ -3,11 +3,14 @@
 namespace App\Services;
 
 use App\Support\ImageUrl;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
 
 class ClinicIdentityService
 {
+    private const LOGO_CACHE_SECONDS = 86400;
+
     public function __construct(
         private readonly SiteSettingsService $settings,
         private readonly ImageUrl $imageUrl,
@@ -112,7 +115,10 @@ class ClinicIdentityService
             return null;
         }
 
-        return $this->buildDataUri($path);
+        return $this->rememberLogoDataUri(
+            cacheKey: $this->logoCacheKey($path, 'plain'),
+            resolver: fn () => $this->buildDataUri($path)
+        );
     }
 
     public function logoBase64ForPdf(): ?string
@@ -126,15 +132,20 @@ class ClinicIdentityService
         $mime = strtolower((string) (mime_content_type($path) ?: ''));
         $extension = strtolower((string) pathinfo($path, PATHINFO_EXTENSION));
 
-        if ($mime === 'image/webp' || $extension === 'webp') {
-            if (function_exists('imagecreatefromwebp')) {
-                return $this->buildDataUri($path, 'image/webp');
+        return $this->rememberLogoDataUri(
+            cacheKey: $this->logoCacheKey($path, 'pdf'),
+            resolver: function () use ($path, $mime, $extension) {
+                if ($mime === 'image/webp' || $extension === 'webp') {
+                    if (function_exists('imagecreatefromwebp')) {
+                        return $this->buildDataUri($path, 'image/webp');
+                    }
+
+                    return $this->convertWebpToPngDataUri($path);
+                }
+
+                return $this->buildDataUri($path, $mime !== '' ? $mime : null);
             }
-
-            return $this->convertWebpToPngDataUri($path);
-        }
-
-        return $this->buildDataUri($path, $mime !== '' ? $mime : null);
+        );
     }
 
     private function buildDataUri(string $path, ?string $mime = null): ?string
@@ -234,6 +245,29 @@ class ClinicIdentityService
         $publicPath = public_path($path);
 
         return is_file($publicPath) ? $publicPath : null;
+    }
+
+    private function rememberLogoDataUri(string $cacheKey, callable $resolver): ?string
+    {
+        $cached = Cache::get($cacheKey);
+        if (is_string($cached) && $cached !== '') {
+            return $cached;
+        }
+
+        $data = $resolver();
+        if (is_string($data) && $data !== '') {
+            Cache::put($cacheKey, $data, now()->addSeconds(self::LOGO_CACHE_SECONDS));
+        }
+
+        return $data;
+    }
+
+    private function logoCacheKey(string $path, string $variant): string
+    {
+        $mtime = @filemtime($path) ?: 0;
+        $size = @filesize($path) ?: 0;
+
+        return 'clinic-identity:logo:'.$variant.':'.sha1($path.'|'.$mtime.'|'.$size);
     }
 }
 

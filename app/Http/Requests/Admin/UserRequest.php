@@ -40,6 +40,12 @@ class UserRequest extends FormRequest
             'email' => ValidationRules::emailUnique('users', $id),
             'password' => $id ? ValidationRules::passwordOptional() : ValidationRules::passwordRequired(),
             'telefono' => ValidationRules::telefono(),
+            'tipo_documento' => ['nullable', 'in:cedula,pasaporte'],
+            'nacionalidad' => ['required_if:tipo_documento,pasaporte', 'nullable', 'string', function ($attribute, $value, $fail) {
+                if ($this->input('tipo_documento') === 'pasaporte' && (! $value || ! \App\Support\CountryCatalog::isValidCode($value))) {
+                    $fail('La nacionalidad es obligatoria cuando el documento es pasaporte.');
+                }
+            }],
             'dni' => ValidationRules::cedulaUnique('users', $id),
             'direccion' => ['required', 'string', 'max:255'],
             'fecha_nacimiento' => ValidationRules::birthDate(),

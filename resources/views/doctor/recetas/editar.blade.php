@@ -8,7 +8,7 @@
 <div class="rx-wrap space-y-6" @if(session('ask_resend')) data-ask-resend="1" @endif>
   <div class="panel-action-bar panel-action-bar--between">
     <div class="panel-action-bar__meta">
-      <strong>Paciente:</strong> {{ optional($cita->paciente)->name ?? '-' }}
+      <strong>Paciente:</strong> {{ $cita->nombrePacienteReal() }}
       &nbsp;|&nbsp;
       <strong>Fecha cita:</strong> {{ \Carbon\Carbon::parse($cita->fecha)->format('d/m/Y') }} {{ \Carbon\Carbon::parse($cita->hora)->format('H:i') }}
       @if($receta->enviado_en)

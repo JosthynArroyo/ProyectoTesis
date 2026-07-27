@@ -56,11 +56,7 @@
         <input class="form-input" id="telefono" name="telefono" value="{{ old('telefono', $u->telefono) }}" inputmode="numeric" pattern="\d{10}" minlength="10" maxlength="10" data-digits="10" required>
         @error('telefono')<small class="text-xs text-rose-600">{{ $message }}</small>@enderror
       </div>
-      <div>
-        <label for="dni" class="form-label">Cédula</label>
-        <input class="form-input" id="dni" name="dni" value="{{ old('dni', $u->dni) }}" inputmode="numeric" pattern="\d{10}" minlength="10" maxlength="10" data-digits="10" required>
-        @error('dni')<small class="text-xs text-rose-600">{{ $message }}</small>@enderror
-      </div>
+      <x-ui.document-fields :model="$u" />
       <div class="col-span-full">
         <label for="direccion" class="form-label">Dirección</label>
         <input class="form-input" id="direccion" name="direccion" value="{{ old('direccion', $u->direccion) }}" required>

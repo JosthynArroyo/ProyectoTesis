@@ -147,7 +147,7 @@
                             <i class="ri-check-line"></i> Aceptar cita
                           </button>
                         </form>
-                        <form action="{{ route('doctor.citas.rechazar',$cita->id) }}" method="POST" onsubmit="return confirm('Rechazar cita');" role="none">
+                        <form action="{{ route('doctor.citas.rechazar',$cita->id) }}" method="POST" data-confirm-title="Rechazar cita" data-confirm-message="¿Estás seguro de que deseas rechazar esta cita médica?" data-confirm-action="rechazar" data-confirm-btn="Sí, rechazar" role="none">
                           @csrf
                           <button class="btn btn-ghost btn-sm justify-start" type="submit" role="menuitem">
                             <i class="ri-close-line"></i> Rechazar cita

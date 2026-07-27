@@ -177,6 +177,11 @@
         <p class="text-xs uppercase tracking-widest text-gray-500 dark:text-gray-450">Horario Institucional</p>
         <h3 class="mt-2 text-lg font-semibold text-gray-900 dark:text-white">Horario operativo de la clínica</h3>
         <p class="text-sm text-gray-500 dark:text-gray-400">Configura los límites de atención institucionales. Los horarios de los doctores y laboratorios se validan e intersectan contra estas franjas.</p>
+      <div class="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-4 dark:border-gray-800">
+        <p class="text-xs text-gray-500 dark:text-gray-400">Marca los días laborables y configura el horario de apertura y cierre de cada uno.</p>
+        <button type="button" onclick="copyMondayScheduleToOpenDays()" class="btn btn-ghost btn-sm text-xs">
+          <i class="ri-file-copy-line"></i> Copiar horario de Lunes a días abiertos
+        </button>
       </div>
 
       <div class="mt-6 space-y-4">
@@ -208,18 +213,21 @@
             <div class="col-span-4 flex items-center gap-3">
               <input type="hidden" name="clinic_hours[{{ $i }}][status]" value="0">
               <input type="checkbox" id="clinic_hours_{{ $i }}_status" name="clinic_hours[{{ $i }}][status]" value="1" class="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500 dark:border-gray-700 dark:bg-gray-800" @checked($status == '1') onchange="toggleClinicHoursRow({{ $i }})">
-              <label for="clinic_hours_{{ $i }}_status" class="text-sm font-medium text-gray-900 dark:text-white">
-                {{ $diaNombre }}
+              <label for="clinic_hours_{{ $i }}_status" class="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-2 cursor-pointer">
+                <span>{{ $diaNombre }}</span>
+                <span id="badge_clinic_hours_{{ $i }}" class="badge text-xs {{ $status == '1' ? 'badge-success' : 'badge-neutral' }}">
+                  {{ $status == '1' ? 'Abierto' : 'Cerrado' }}
+                </span>
               </label>
             </div>
             <div class="col-span-4">
               <label class="form-label md:hidden">Hora de apertura</label>
-              <input type="time" id="clinic_hours_{{ $i }}_opening" name="clinic_hours[{{ $i }}][opening]" value="{{ $opening }}" class="form-input" @disabled($status != '1')>
+              <input type="time" id="clinic_hours_{{ $i }}_opening" name="clinic_hours[{{ $i }}][opening]" value="{{ $opening }}" class="form-input" @disabled($status != '1') required>
               @error("clinic_hours.{$i}.opening")<div class="text-xs text-rose-600 dark:text-rose-450 mt-1">{{ $message }}</div>@enderror
             </div>
             <div class="col-span-4">
               <label class="form-label md:hidden">Hora de cierre</label>
-              <input type="time" id="clinic_hours_{{ $i }}_closing" name="clinic_hours[{{ $i }}][closing]" value="{{ $closing }}" class="form-input" @disabled($status != '1')>
+              <input type="time" id="clinic_hours_{{ $i }}_closing" name="clinic_hours[{{ $i }}][closing]" value="{{ $closing }}" class="form-input" @disabled($status != '1') required>
               @error("clinic_hours.{$i}.closing")<div class="text-xs text-rose-600 dark:text-rose-450 mt-1">{{ $message }}</div>@enderror
             </div>
           </div>
@@ -232,9 +240,35 @@
         const checkbox = document.getElementById(`clinic_hours_${day}_status`);
         const opening = document.getElementById(`clinic_hours_${day}_opening`);
         const closing = document.getElementById(`clinic_hours_${day}_closing`);
+        const badge = document.getElementById(`badge_clinic_hours_${day}`);
         if (checkbox && opening && closing) {
           opening.disabled = !checkbox.checked;
           closing.disabled = !checkbox.checked;
+          opening.required = checkbox.checked;
+          closing.required = checkbox.checked;
+          if (badge) {
+            if (checkbox.checked) {
+              badge.textContent = 'Abierto';
+              badge.className = 'badge text-xs badge-success';
+            } else {
+              badge.textContent = 'Cerrado';
+              badge.className = 'badge text-xs badge-neutral';
+            }
+          }
+        }
+      }
+
+      function copyMondayScheduleToOpenDays() {
+        const monOpening = document.getElementById('clinic_hours_1_opening')?.value || '08:00';
+        const monClosing = document.getElementById('clinic_hours_1_closing')?.value || '18:00';
+        for (let i = 2; i <= 7; i++) {
+          const checkbox = document.getElementById(`clinic_hours_${i}_status`);
+          if (checkbox && checkbox.checked) {
+            const op = document.getElementById(`clinic_hours_${i}_opening`);
+            const cl = document.getElementById(`clinic_hours_${i}_closing`);
+            if (op) op.value = monOpening;
+            if (cl) cl.value = monClosing;
+          }
         }
       }
     </script>

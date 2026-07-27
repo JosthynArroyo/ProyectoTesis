@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Cita;
 use App\Models\LaboratorioOrden;
 use App\Models\LabOrder;
+use App\Models\PedidoLaboratorio;
 use App\Models\Pago;
 use App\Services\CitaNoShowService;
 use App\Services\ProfileAvatarService;
@@ -166,6 +167,18 @@ class AdminController extends Controller
             ->limit(3)
             ->get(['id', 'patient_id', 'source', 'status', 'created_at']);
 
+        $pedidosLaboratorio = PedidoLaboratorio::with([
+                'doctor',
+                'resultados' => function ($query) {
+                    $query->orderByDesc('version');
+                },
+                'resultados.laboratorio',
+            ])
+            ->where('paciente_id', $user->id)
+            ->latest()
+            ->limit(3)
+            ->get();
+
         return view('paciente.dashboard', compact(
             'user',
             'citas',
@@ -187,7 +200,8 @@ class AdminController extends Controller
             'labResultadoDestacado',
             'labVentanaAtencion',
             'labEsperaEstimada',
-            'labOrders'
+            'labOrders',
+            'pedidosLaboratorio'
         ));
     }
 
@@ -207,6 +221,12 @@ class AdminController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ValidationRules::emailUnique('users', $user->id),
             'telefono' => ValidationRules::telefono(),
+            'tipo_documento' => ['nullable', 'in:cedula,pasaporte'],
+            'nacionalidad' => ['required_if:tipo_documento,pasaporte', 'nullable', 'string', function ($attribute, $value, $fail) use ($request) {
+                if ($request->input('tipo_documento') === 'pasaporte' && (! $value || ! \App\Support\CountryCatalog::isValidCode($value))) {
+                    $fail('La nacionalidad es obligatoria cuando el documento es pasaporte.');
+                }
+            }],
             'dni' => ValidationRules::cedulaUnique('users', $user->id),
             'direccion' => ['required', 'string', 'max:255'],
             'fecha_nacimiento' => ValidationRules::birthDate(),
@@ -229,6 +249,8 @@ class AdminController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'telefono' => $request->telefono,
+            'tipo_documento' => $request->input('tipo_documento', 'cedula'),
+            'nacionalidad' => $request->input('tipo_documento') === 'pasaporte' ? $request->input('nacionalidad') : null,
             'dni' => $request->dni,
             'direccion' => $request->direccion,
             'fecha_nacimiento' => $request->fecha_nacimiento,

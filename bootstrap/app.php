@@ -30,6 +30,7 @@ return Application::configure(basePath: dirname(__DIR__))
             PreventRequestsDuringMaintenance::class,
             PreventBackHistory::class,
             EnsureAccountActive::class,
+            \App\Http\Middleware\CheckMustChangePassword::class,
         ]);
         $middleware->alias([
             'auth' => Authenticate::class,
@@ -37,6 +38,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => EnsureUserRole::class,
             'feature' => EnsureFeatureAccess::class,
             'no_pending_payments' => EnsureNoPendingPaymentsForBooking::class,
+            'captcha_verified' => \App\Http\Middleware\EnsureCaptchaVerified::class,
+            'chatbot_identity' => \App\Http\Middleware\EnsureChatbotIdentityVerified::class,
             // Aislamiento global de todas las rutas /demo.
             'demo.isolation' => DemoIsolation::class,
         ]);

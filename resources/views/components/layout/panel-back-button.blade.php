@@ -11,7 +11,13 @@
 @endphp
 
 @if($shouldRender)
-    <div class="panel-back-anchor" data-panel-back-anchor data-panel-back-fallback="{{ $fallbackUrl }}">
+    <div
+        class="panel-back-anchor"
+        data-panel-back-anchor
+        data-panel-back-fallback="{{ $fallbackUrl }}"
+        data-action-lock-nav-title="Cargando sección..."
+        data-action-lock-nav-description="Por favor, espera mientras cargamos esta sección."
+    >
         <button type="button" class="panel-back-button" data-panel-back-button aria-label="Volver a la vista anterior">
             <span class="panel-back-button__icon">
                 <i class="ri-arrow-left-line"></i>

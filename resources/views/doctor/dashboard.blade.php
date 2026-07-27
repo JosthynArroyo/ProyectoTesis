@@ -105,7 +105,7 @@
                         <tbody id="tbody-citas">
                             @forelse($citas as $c)
                                 <tr>
-                                    <td data-label="Paciente">{{ optional($c->paciente)->name ?? 'Sin paciente' }}</td>
+                                    <td data-label="Paciente">{{ $c->nombrePacienteReal() }}</td>
                                     <td data-label="Estado">
                                         <x-ui.badge :tone="$c->estado === 'pendiente' ? 'warning' : ($c->estado === 'realizada' ? 'success' : ($c->estado === 'confirmada' ? 'info' : 'danger'))">
                                             {{ $c->estado === 'no_se_presento' ? 'No se presento' : ucfirst($c->estado) }}

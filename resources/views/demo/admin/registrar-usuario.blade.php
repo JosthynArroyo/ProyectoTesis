@@ -174,8 +174,8 @@
     </div>
 
     <div class="flex flex-wrap items-center justify-end gap-3">
-      <button class="btn btn-primary" type="submit" aria-label="Crear usuario">
-        <i class="ri-save-line"></i> Crear
+      <button class="btn btn-primary" type="submit" aria-label="Registrar usuario">
+        <i class="ri-save-line"></i> Registrar
       </button>
       <button class="btn btn-ghost" type="reset">
         <i class="ri-refresh-line"></i> Limpiar

@@ -41,6 +41,8 @@ class User extends Authenticatable
         'password',
         'active',
         'telefono',
+        'tipo_documento',
+        'nacionalidad',
         'dni',
         'direccion',
         'fecha_nacimiento',
@@ -54,12 +56,19 @@ class User extends Authenticatable
         'last_activity_at',
         'suspended_until',
         'deactivation_reason',
+        'must_change_password',
     ];
 
     protected $hidden = [
         'password',
         'remember_token',
     ];
+
+    public function setDniAttribute($value): void
+    {
+        $tipo = $this->attributes['tipo_documento'] ?? 'cedula';
+        $this->attributes['dni'] = \App\Services\IdentityDocumentService::normalize($value, $tipo);
+    }
 
     protected $casts = [
         'active' => 'boolean',
@@ -71,10 +80,22 @@ class User extends Authenticatable
         'last_login_at' => 'datetime',
         'last_activity_at' => 'datetime',
         'suspended_until' => 'datetime',
+        'must_change_password' => 'boolean',
     ];
 
     protected static function booted(): void
     {
+        static::saved(function (User $user): void {
+            if (filled($user->dni)) {
+                app(\App\Services\IdentityDocumentService::class)->sync(
+                    $user,
+                    $user->dni,
+                    $user->tipo_documento ?? 'cedula',
+                    $user->nacionalidad
+                );
+            }
+        });
+
         static::saving(function (self $user): void {
             $statusDirty = $user->isDirty('status');
             $activeDirty = $user->isDirty('active');
@@ -98,6 +119,58 @@ class User extends Authenticatable
 
             if ($status !== self::STATUS_ACTIVE && ! $user->isDirty('suspended_until')) {
                 $user->suspended_until = null;
+            }
+        });
+
+        static::updating(function (self $user): void {
+            if ($user->isDirty('status') && $user->status !== self::STATUS_ACTIVE && $user->hasRole('superadmin')) {
+                $activeCount = self::whereHas('roles', function ($q) {
+                    $q->where('name', 'superadmin');
+                })->where('status', self::STATUS_ACTIVE)->where('id', '!=', $user->id)->count();
+
+                if ($activeCount === 0) {
+                    \Illuminate\Support\Facades\Log::warning('AUDIT_REJECTED: Attempt to block/deactivate the last active superadmin', [
+                        'action' => 'prevent_last_superadmin_deactivation',
+                        'timestamp' => now()->toIso8601String(),
+                        'channel' => app()->runningInConsole() ? 'console' : 'web',
+                        'actor' => auth()->id() ?? 'system',
+                        'target_user_id' => $user->id,
+                        'reason' => 'No se puede bloquear o desactivar el único superadministrador activo.',
+                    ]);
+                    throw new \RuntimeException('No se puede desactivar o bloquear el único superadministrador activo del sistema.');
+                }
+            }
+        });
+
+        static::deleting(function (self $user): void {
+            if ($user->hasRole('superadmin')) {
+                if (auth()->check() && auth()->id() === $user->id) {
+                    \Illuminate\Support\Facades\Log::warning('AUDIT_REJECTED: Superadmin tried to delete themselves', [
+                        'action' => 'prevent_self_deletion',
+                        'timestamp' => now()->toIso8601String(),
+                        'channel' => 'web',
+                        'actor' => auth()->id(),
+                        'target_user_id' => $user->id,
+                        'reason' => 'No puedes eliminarte a ti mismo.',
+                    ]);
+                    throw new \RuntimeException('No puedes eliminarte a ti mismo.');
+                }
+
+                $activeCount = self::whereHas('roles', function ($q) {
+                    $q->where('name', 'superadmin');
+                })->where('status', self::STATUS_ACTIVE)->count();
+
+                if ($activeCount <= 1 && $user->status === self::STATUS_ACTIVE) {
+                    \Illuminate\Support\Facades\Log::warning('AUDIT_REJECTED: Attempt to delete the last active superadmin', [
+                        'action' => 'prevent_last_superadmin_deletion',
+                        'timestamp' => now()->toIso8601String(),
+                        'channel' => app()->runningInConsole() ? 'console' : 'web',
+                        'actor' => auth()->id() ?? 'system',
+                        'target_user_id' => $user->id,
+                        'reason' => 'No se puede eliminar el único superadministrador activo.',
+                    ]);
+                    throw new \RuntimeException('No se puede eliminar el único superadministrador activo del sistema.');
+                }
             }
         });
     }
@@ -286,6 +359,31 @@ class User extends Authenticatable
     public function featureAccessRequests()
     {
         return $this->hasMany(FeatureAccessRequest::class);
+    }
+
+    public function etiquetaTipoDocumento(): string
+    {
+        return strtolower($this->tipo_documento ?? 'cedula') === 'pasaporte' ? 'Pasaporte' : 'Cédula';
+    }
+
+    public function etiquetaNacionalidad(): string
+    {
+        if (strtolower($this->tipo_documento ?? 'cedula') !== 'pasaporte' || ! $this->nacionalidad) {
+            return '';
+        }
+        return \App\Support\CountryCatalog::getDemonym($this->nacionalidad);
+    }
+
+    public function etiquetaDocumentoCompleta(): string
+    {
+        if (! $this->dni) {
+            return 'Documento no registrado';
+        }
+        if (strtolower($this->tipo_documento ?? 'cedula') === 'pasaporte') {
+            $nac = $this->etiquetaNacionalidad();
+            return 'Pasaporte: ' . strtoupper($this->dni) . ($nac ? " ({$nac})" : '');
+        }
+        return 'Cédula: ' . $this->dni;
     }
 
     public function sendPasswordResetNotification($token): void

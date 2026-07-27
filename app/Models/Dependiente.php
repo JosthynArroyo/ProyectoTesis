@@ -26,6 +26,8 @@ class Dependiente extends Model
     protected $fillable = [
         'user_id',
         'nombre',
+        'tipo_documento',
+        'nacionalidad',
         'dni',
         'fecha_nacimiento',
         'sexo',
@@ -39,6 +41,26 @@ class Dependiente extends Model
         'fecha_nacimiento' => 'date',
         'activo' => 'boolean',
     ];
+
+    public function setDniAttribute($value): void
+    {
+        $tipo = $this->attributes['tipo_documento'] ?? 'cedula';
+        $this->attributes['dni'] = \App\Services\IdentityDocumentService::normalize($value, $tipo);
+    }
+
+    protected static function booted(): void
+    {
+        static::saved(function (Dependiente $dep): void {
+            if (filled($dep->dni)) {
+                app(\App\Services\IdentityDocumentService::class)->sync(
+                    $dep,
+                    $dep->dni,
+                    $dep->tipo_documento ?? 'cedula',
+                    $dep->nacionalidad
+                );
+            }
+        });
+    }
 
     /* ============================================================
      * Relaciones
@@ -124,5 +146,30 @@ class Dependiente extends Model
     public function scopeActivos($query)
     {
         return $query->where('activo', true);
+    }
+
+    public function etiquetaTipoDocumento(): string
+    {
+        return strtolower($this->tipo_documento ?? 'cedula') === 'pasaporte' ? 'Pasaporte' : 'Cédula';
+    }
+
+    public function etiquetaNacionalidad(): string
+    {
+        if (strtolower($this->tipo_documento ?? 'cedula') !== 'pasaporte' || ! $this->nacionalidad) {
+            return '';
+        }
+        return \App\Support\CountryCatalog::getDemonym($this->nacionalidad);
+    }
+
+    public function etiquetaDocumentoCompleta(): string
+    {
+        if (! $this->dni) {
+            return 'Documento no registrado';
+        }
+        if (strtolower($this->tipo_documento ?? 'cedula') === 'pasaporte') {
+            $nac = $this->etiquetaNacionalidad();
+            return 'Pasaporte: ' . strtoupper($this->dni) . ($nac ? " ({$nac})" : '');
+        }
+        return 'Cédula: ' . $this->dni;
     }
 }

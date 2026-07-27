@@ -67,6 +67,8 @@ class PagoService
                     motivo: 'Creacion automatica de orden de pago tras concluir la cita.'
                 );
 
+                $this->invalidatePatientPaymentBlock((int) $pago->paciente_id);
+
                 return $pago->refresh();
             }, self::TRANSACTION_ATTEMPTS);
         } catch (QueryException $e) {
@@ -89,8 +91,6 @@ class PagoService
             $actor,
             'Orden de cobro generada automaticamente al concluir la cita.'
         );
-
-        $this->obtenerOGenerarOrdenPdf($pago, $actor);
 
         return $pago->refresh();
     }
@@ -297,6 +297,8 @@ class PagoService
             $this->emitirReciboParaPago($actualizado, $actor, $motivo);
         }
 
+        $this->invalidatePatientPaymentBlock((int) $actualizado->paciente_id);
+
         return $actualizado->refresh();
     }
 
@@ -449,5 +451,14 @@ class PagoService
             || in_array($driverCode, ['1062', '1555', '2067'], true)
             || str_contains($message, 'duplicate')
             || str_contains($message, 'unique constraint');
+    }
+
+    protected function invalidatePatientPaymentBlock(int $pacienteId): void
+    {
+        if ($pacienteId < 1) {
+            return;
+        }
+
+        app(LayoutMetricsService::class)->forgetPatientPaymentBlock($pacienteId);
     }
 }

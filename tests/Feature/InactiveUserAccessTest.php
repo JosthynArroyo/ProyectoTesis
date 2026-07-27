@@ -25,7 +25,7 @@ class InactiveUserAccessTest extends TestCase
             'remember' => '0',
         ])
             ->assertRedirect('/?login=1')
-            ->assertSessionHasErrors('email');
+            ->assertSessionHasErrorsIn('login', ['email']);
 
         $this->assertGuest();
         $this->assertFalse($user->fresh()->active);
@@ -51,7 +51,7 @@ class InactiveUserAccessTest extends TestCase
 
         $this->get(route('paciente.dashboard'))
             ->assertRedirect('/?login=1')
-            ->assertSessionHasErrors('email');
+            ->assertSessionHasErrorsIn('login', ['email']);
 
         $this->assertGuest();
         $this->assertFalse($user->fresh()->active);

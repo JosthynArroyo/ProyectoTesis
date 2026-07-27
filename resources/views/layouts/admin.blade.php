@@ -105,6 +105,7 @@
 
 @stack('modals')
 @include('partials.legal-modals')
+<x-ui.global-action-lock />
 @stack('scripts')
 @vite('resources/js/admin/personalizacion-modal.js')
 </body>

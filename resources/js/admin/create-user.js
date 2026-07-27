@@ -1,10 +1,61 @@
 document.addEventListener('DOMContentLoaded', () => {
-  const form = document.querySelector('form.form');
+  const form = document.querySelector('form.form') || document.querySelector('form[action*="usuarios"]');
   if (!form) {
     return;
   }
 
-  form.addEventListener('submit', () => {
+  let isSubmitting = false;
+  const submitBtn = form.querySelector('button[type="submit"]') || form.querySelector('#btn-registrar-usuario');
+  const resetBtn = form.querySelector('button[type="reset"]') || form.querySelector('#btn-limpiar-usuario');
+  const originalSubmitHtml = submitBtn ? submitBtn.innerHTML : '<i class="ri-save-line"></i> Registrar';
+
+  const restoreButtons = () => {
+    isSubmitting = false;
+    form.dataset.isSubmitting = 'false';
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.removeAttribute('disabled');
+      submitBtn.removeAttribute('aria-disabled');
+      submitBtn.classList.remove('opacity-50', 'pointer-events-none', 'cursor-not-allowed');
+      submitBtn.innerHTML = originalSubmitHtml;
+    }
+    if (resetBtn) {
+      resetBtn.disabled = false;
+      resetBtn.removeAttribute('disabled');
+      resetBtn.removeAttribute('aria-disabled');
+      resetBtn.removeAttribute('tabindex');
+      resetBtn.classList.remove('opacity-50', 'pointer-events-none', 'cursor-not-allowed');
+    }
+  };
+
+  const preventIfSubmitting = (e) => {
+    if (isSubmitting || form.dataset.isSubmitting === 'true') {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.stopImmediatePropagation) {
+        e.stopImmediatePropagation();
+      }
+      return false;
+    }
+  };
+
+  if (resetBtn) {
+    resetBtn.addEventListener('click', preventIfSubmitting, true);
+  }
+
+  form.addEventListener('reset', preventIfSubmitting, true);
+
+  form.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      if (isSubmitting || form.dataset.isSubmitting === 'true') {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+      }
+    }
+  }, true);
+
+  form.addEventListener('submit', (e) => {
     form.querySelectorAll('input, select, textarea').forEach((el) => {
       if (!el.checkValidity()) {
         el.setAttribute('aria-invalid', 'true');
@@ -12,6 +63,40 @@ document.addEventListener('DOMContentLoaded', () => {
         el.removeAttribute('aria-invalid');
       }
     });
+
+    if (!form.checkValidity()) {
+      restoreButtons();
+      return;
+    }
+
+    if (isSubmitting || form.dataset.isSubmitting === 'true') {
+      e.preventDefault();
+      e.stopPropagation();
+      return false;
+    }
+
+    isSubmitting = true;
+    form.dataset.isSubmitting = 'true';
+
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.setAttribute('disabled', 'disabled');
+      submitBtn.setAttribute('aria-disabled', 'true');
+      submitBtn.classList.add('opacity-50', 'pointer-events-none', 'cursor-not-allowed');
+      submitBtn.innerHTML = '<i class="ri-loader-4-line animate-spin"></i> Registrando...';
+    }
+
+    if (resetBtn) {
+      resetBtn.disabled = true;
+      resetBtn.setAttribute('disabled', 'disabled');
+      resetBtn.setAttribute('aria-disabled', 'true');
+      resetBtn.setAttribute('tabindex', '-1');
+      resetBtn.classList.add('opacity-50', 'pointer-events-none', 'cursor-not-allowed');
+    }
+  });
+
+  window.addEventListener('pageshow', () => {
+    restoreButtons();
   });
 
   form.addEventListener('input', (event) => {

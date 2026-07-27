@@ -20,10 +20,10 @@
     @include('admin.users.form', ['user'=>null,'roles'=>$roles,'especialidades'=>$especialidades])
 
     <div class="flex flex-wrap items-center justify-end gap-3">
-      <button class="btn btn-primary" type="submit" aria-label="Crear usuario">
-        <i class="ri-save-line"></i> Crear
+      <button class="btn btn-primary" type="submit" id="btn-registrar-usuario" aria-label="Registrar usuario">
+        <i class="ri-save-line"></i> Registrar
       </button>
-      <button class="btn btn-ghost" type="reset">
+      <button class="btn btn-ghost" type="reset" id="btn-limpiar-usuario">
         <i class="ri-refresh-line"></i> Limpiar
       </button>
     </div>

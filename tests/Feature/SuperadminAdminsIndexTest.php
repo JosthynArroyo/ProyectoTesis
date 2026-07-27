@@ -14,8 +14,8 @@ class SuperadminAdminsIndexTest extends TestCase
 
     public function test_superadmin_admins_index_renders(): void
     {
-        $superadminRole = Role::create(['name' => 'superadmin']);
-        $adminRole = Role::create(['name' => 'administrador']);
+        $superadminRole = Role::firstOrCreate(['name' => 'superadmin']);
+        $adminRole = Role::firstOrCreate(['name' => 'administrador']);
 
         $superadmin = User::factory()->create(['status' => 'active']);
         $superadmin->roles()->attach($superadminRole->id);
@@ -35,8 +35,8 @@ class SuperadminAdminsIndexTest extends TestCase
 
     public function test_superadmin_admin_creation_redirects_back_to_admins_index_with_success_message(): void
     {
-        $superadminRole = Role::create(['name' => 'superadmin']);
-        $adminRole = Role::create(['name' => 'administrador']);
+        $superadminRole = Role::firstOrCreate(['name' => 'superadmin']);
+        $adminRole = Role::firstOrCreate(['name' => 'administrador']);
 
         $superadmin = User::factory()->create([
             'status' => 'active',

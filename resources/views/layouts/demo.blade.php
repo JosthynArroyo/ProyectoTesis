@@ -67,5 +67,6 @@
 
 @stack('modals')
 @include('demo.partials.action-blocked-modal')
+<x-ui.global-action-lock />
 </body>
 </html>

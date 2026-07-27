@@ -361,9 +361,15 @@
     <div class="summary-grid">
         <div class="summary-card">
             <span class="summary-label">Paciente</span>
-            <div class="summary-value">{{ $pedido->paciente->name ?? '-' }}</div>
-            <div class="summary-value">Documento: {{ $pedido->paciente->dni ?? 'N/D' }}</div>
-            <div class="summary-value">Telefono: {{ $pedido->paciente->telefono ?? 'N/D' }}</div>
+            @if(isset($cita) && $cita && $cita->dependiente_id)
+                <div class="summary-value">{{ $cita->nombrePacienteReal() }}</div>
+                <div class="summary-value">Documento: {{ $cita->dniPacienteReal() }}</div>
+                <div class="summary-value">Representante: {{ $pedido->paciente->name ?? '-' }} (C.I. {{ $pedido->paciente->dni ?? '-' }})</div>
+            @else
+                <div class="summary-value">{{ $pedido->paciente->name ?? '-' }}</div>
+                <div class="summary-value">Documento: {{ $pedido->paciente->dni ?? 'N/D' }}</div>
+                <div class="summary-value">Telefono: {{ $pedido->paciente->telefono ?? 'N/D' }}</div>
+            @endif
         </div>
         <div class="summary-card">
             <span class="summary-label">Medico solicitante</span>

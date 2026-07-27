@@ -16,6 +16,6 @@ class GenerarComprobanteCita
             return;
         }
 
-        $this->comprobanteService->sincronizarComprobante($cita);
+        $this->comprobanteService->asegurarComprobante($cita);
     }
 }

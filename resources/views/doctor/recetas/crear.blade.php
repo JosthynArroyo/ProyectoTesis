@@ -8,7 +8,7 @@
 <div class="rx-wrap space-y-6">
   <div class="panel-action-bar panel-action-bar--between">
     <div class="panel-action-bar__meta">
-      <strong>Paciente:</strong> {{ optional($cita->paciente)->name ?? '-' }} |
+      <strong>Paciente:</strong> {{ $cita->nombrePacienteReal() }} |
       <strong>Fecha cita:</strong> {{ \Carbon\Carbon::parse($cita->fecha)->format('d/m/Y') }} {{ \Carbon\Carbon::parse($cita->hora)->format('H:i') }}
     </div>
   </div>

@@ -16,10 +16,6 @@ class CaptchaImage extends Model
     {
         $path = ltrim((string) $this->image_path, '/\\');
 
-        if (str_starts_with($path, 'captcha_animals/')) {
-            return public_path($path);
-        }
-
-        return base_path($path);
+        return \Illuminate\Support\Facades\Storage::disk('local')->path($path);
     }
 }

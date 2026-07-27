@@ -73,6 +73,13 @@ class AdminsController extends Controller
     public function edit(User $admin)
     {
         if (! auth()->user()->can('manage', $admin)) {
+            \Illuminate\Support\Facades\Log::warning('AUDIT_REJECTED: Unauthorized admin edit attempt', [
+                'action' => 'edit_unauthorized_admin',
+                'timestamp' => now()->toIso8601String(),
+                'channel' => 'web',
+                'actor' => auth()->id(),
+                'target_user_id' => $admin->id,
+            ]);
             return redirect()->route('superadmin.admins.index')
                 ->withErrors(['Solo puedes editar cuentas con rol Administrador.']);
         }
@@ -83,6 +90,13 @@ class AdminsController extends Controller
     public function update(Request $request, User $admin)
     {
         if (! auth()->user()->can('manage', $admin)) {
+            \Illuminate\Support\Facades\Log::warning('AUDIT_REJECTED: Unauthorized admin update attempt', [
+                'action' => 'update_unauthorized_admin',
+                'timestamp' => now()->toIso8601String(),
+                'channel' => 'web',
+                'actor' => auth()->id(),
+                'target_user_id' => $admin->id,
+            ]);
             return redirect()->route('superadmin.admins.index')
                 ->withErrors(['Solo puedes editar cuentas con rol Administrador.']);
         }
@@ -113,6 +127,13 @@ class AdminsController extends Controller
         }
 
         if (! auth()->user()->can('manage', $admin)) {
+            \Illuminate\Support\Facades\Log::warning('AUDIT_REJECTED: Unauthorized admin deletion attempt', [
+                'action' => 'delete_unauthorized_admin',
+                'timestamp' => now()->toIso8601String(),
+                'channel' => 'web',
+                'actor' => auth()->id(),
+                'target_user_id' => $admin->id,
+            ]);
             return back()->withErrors(['Solo puedes eliminar cuentas con rol Administrador.']);
         }
 
@@ -125,6 +146,13 @@ class AdminsController extends Controller
     public function block(User $admin)
     {
         if (! $this->canManage($admin)) {
+            \Illuminate\Support\Facades\Log::warning('AUDIT_REJECTED: Unauthorized admin block attempt', [
+                'action' => 'block_unauthorized_admin',
+                'timestamp' => now()->toIso8601String(),
+                'channel' => 'web',
+                'actor' => auth()->id(),
+                'target_user_id' => $admin->id,
+            ]);
             return back()->withErrors(['No puedes bloquear esta cuenta.']);
         }
 
@@ -140,6 +168,13 @@ class AdminsController extends Controller
     public function suspend(Request $request, User $admin)
     {
         if (! $this->canManage($admin)) {
+            \Illuminate\Support\Facades\Log::warning('AUDIT_REJECTED: Unauthorized admin suspension attempt', [
+                'action' => 'suspend_unauthorized_admin',
+                'timestamp' => now()->toIso8601String(),
+                'channel' => 'web',
+                'actor' => auth()->id(),
+                'target_user_id' => $admin->id,
+            ]);
             return back()->withErrors(['No puedes suspender esta cuenta.']);
         }
 
@@ -161,6 +196,13 @@ class AdminsController extends Controller
     public function activate(User $admin)
     {
         if (! $this->canManage($admin)) {
+            \Illuminate\Support\Facades\Log::warning('AUDIT_REJECTED: Unauthorized admin activation attempt', [
+                'action' => 'activate_unauthorized_admin',
+                'timestamp' => now()->toIso8601String(),
+                'channel' => 'web',
+                'actor' => auth()->id(),
+                'target_user_id' => $admin->id,
+            ]);
             return back()->withErrors(['No puedes reactivar esta cuenta.']);
         }
 
@@ -176,6 +218,13 @@ class AdminsController extends Controller
     public function deactivate(User $admin)
     {
         if (! $this->canManage($admin)) {
+            \Illuminate\Support\Facades\Log::warning('AUDIT_REJECTED: Unauthorized admin deactivation attempt', [
+                'action' => 'deactivate_unauthorized_admin',
+                'timestamp' => now()->toIso8601String(),
+                'channel' => 'web',
+                'actor' => auth()->id(),
+                'target_user_id' => $admin->id,
+            ]);
             return back()->withErrors(['No puedes desactivar esta cuenta.']);
         }
 

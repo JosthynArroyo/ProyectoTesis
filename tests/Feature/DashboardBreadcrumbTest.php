@@ -39,7 +39,7 @@ class DashboardBreadcrumbTest extends TestCase
 
     private function createUserWithRole(string $roleName): User
     {
-        $role = Role::create(['name' => $roleName]);
+        $role = Role::firstOrCreate(['name' => $roleName]);
         $user = User::factory()->create(['status' => 'active']);
         $user->roles()->attach($role->id);
 

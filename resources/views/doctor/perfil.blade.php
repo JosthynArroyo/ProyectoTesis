@@ -86,14 +86,7 @@
                 <div class="text-xs text-gray-500">Formato: 10 dígitos.</div>
                 @error('telefono')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
               </div>
-              <div>
-                <label class="form-label">Cédula</label>
-                <input class="form-input" type="text" name="dni" value="{{ old('dni', $user->dni) }}"
-                       inputmode="numeric" pattern="\d{10}" minlength="10" maxlength="10" data-digits="10"
-                       placeholder="1723456789" title="Debe contener exactamente 10 dígitos" required>
-                <div class="text-xs text-gray-500">Exactamente 10 dígitos.</div>
-                @error('dni')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
-              </div>
+              <x-ui.document-fields :model="$user" />
             </div>
           </section>
 

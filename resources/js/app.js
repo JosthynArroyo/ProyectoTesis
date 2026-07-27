@@ -1,6 +1,7 @@
 import '../css/app.css';
 import './bootstrap';
 import './action-lock';
+import './global-confirm-modal';
 
 const hasElement = (selector) => document.querySelector(selector) !== null;
 

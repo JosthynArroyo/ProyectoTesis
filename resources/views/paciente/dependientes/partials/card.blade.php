@@ -26,7 +26,7 @@
         <div class="mt-4 space-y-2 text-sm text-gray-600">
             <div class="flex items-center gap-2">
                 <i class="ri-id-card-line text-gray-400"></i>
-                <span>Cédula: <strong>{{ $dep->dni }}</strong></span>
+                <span><strong>{{ $dep->etiquetaDocumentoCompleta() }}</strong></span>
             </div>
             <div class="flex items-center gap-2">
                 <i class="ri-calendar-event-line text-gray-400"></i>
@@ -68,7 +68,12 @@
     <form
         action="{{ route('paciente.dependientes.destroy', $dep->id) }}"
         method="POST"
-        onsubmit="return confirm('Eliminar este dependiente es una accion definitiva y distinta de desactivar. Solo continuara si no tiene historial medico asociado. ¿Deseas continuar?');"
+        data-confirm-title="Eliminar dependiente"
+        data-confirm-target="{{ $dep->nombre_completo ?? '' }}"
+        data-confirm-message="¿Estás seguro de que deseas eliminar este dependiente? Esta acción es definitiva."
+        data-confirm-consequence="Solo continuará si el dependiente no tiene historial médico asociado."
+        data-confirm-action="eliminar"
+        data-confirm-btn="Sí, eliminar"
     >
         @csrf
         @method('DELETE')

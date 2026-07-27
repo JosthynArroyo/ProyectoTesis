@@ -47,8 +47,16 @@ class CitaComprobanteFlowTest extends TestCase
 
         $this->assertNotEmpty($cita->folio_cita);
         $this->assertNotEmpty($cita->token_validacion);
-        $this->assertNotEmpty($cita->comprobante_pdf_path);
         $this->assertTrue($cita->tieneComprobanteCita());
+        $this->assertEmpty($cita->comprobante_pdf_path);
+
+        $this->actingAs($paciente)
+            ->get(route('paciente.citas.comprobante.pdf', $cita))
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf');
+
+        $cita->refresh();
+        $this->assertNotEmpty($cita->comprobante_pdf_path);
         Storage::disk('local')->assertExists($cita->comprobante_pdf_path);
     }
 
@@ -76,6 +84,7 @@ class CitaComprobanteFlowTest extends TestCase
 
         event(new CitaAgendada($cita));
 
+        app(CitaComprobanteService::class)->obtenerOGenerarPdf($cita);
         $emitidoInicial = $cita->fresh()->comprobante_actualizado_en;
 
         Carbon::setTestNow(Carbon::parse('2026-03-10 09:30:00', 'America/Guayaquil'));
@@ -86,10 +95,18 @@ class CitaComprobanteFlowTest extends TestCase
             'estado' => Cita::ESTADO_PENDIENTE,
         ])->save();
 
-        app(CitaComprobanteService::class)->sincronizarComprobante($cita);
+        app(CitaComprobanteService::class)->obtenerOGenerarPdf($cita);
 
         $cita->refresh();
 
+        $this->actingAs($paciente)
+            ->get(route('paciente.citas.comprobante.pdf', $cita))
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf');
+
+        $cita->refresh();
+        $this->assertNotEmpty($cita->comprobante_pdf_path);
+        Storage::disk('local')->assertExists($cita->comprobante_pdf_path);
         $this->actingAs($paciente)
             ->get(route('citas.comprobante.show', $cita->token_validacion))
             ->assertOk()
@@ -111,7 +128,7 @@ class CitaComprobanteFlowTest extends TestCase
             'hora' => '10:30:00',
         ])->save();
 
-        app(CitaComprobanteService::class)->sincronizarComprobante($cita);
+        app(CitaComprobanteService::class)->obtenerOGenerarPdf($cita);
 
         $this->assertDatabaseMissing('pagos', [
             'cita_id' => $cita->id,
@@ -130,7 +147,7 @@ class CitaComprobanteFlowTest extends TestCase
             'activo' => false,
         ])->save();
 
-        app(CitaComprobanteService::class)->sincronizarComprobante($cita);
+        app(CitaComprobanteService::class)->obtenerOGenerarPdf($cita);
 
         $this->actingAs($paciente)
             ->get(route('citas.comprobante.show', $cita->fresh()->token_validacion))
@@ -158,6 +175,14 @@ class CitaComprobanteFlowTest extends TestCase
         $this->assertNotNull($pago);
         $this->assertNotEmpty($pago->folio_unico);
         $this->assertNotEmpty($pago->token_publico);
+        $this->assertEmpty($pago->orden_pdf_path);
+
+        $this->actingAs($paciente)
+            ->get(route('paciente.pagos.orden.pdf', $pago))
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf');
+
+        $pago->refresh();
         $this->assertNotEmpty($pago->orden_pdf_path);
         Storage::disk('local')->assertExists($pago->orden_pdf_path);
 
