@@ -493,10 +493,17 @@
 
 @push('styles')
   <style>
+    #soap-page .soap-action-bar {
+      --soap-action-bar-bg: rgba(255, 255, 255, 0.94);
+      --soap-action-bar-border: #e5e7eb;
+      --soap-action-bar-shadow: 0 -12px 30px rgba(17, 24, 39, 0.08);
+      --soap-action-bar-backdrop: blur(10px);
+    }
+
     html.dashboard-root.panel-theme-dark #soap-page .soap-action-bar {
-      border-color: #334155;
-      background: linear-gradient(180deg, rgba(15, 23, 42, 0.98) 0%, rgba(17, 24, 39, 0.98) 100%);
-      box-shadow: 0 -12px 30px rgba(2, 6, 23, 0.36);
+      --soap-action-bar-bg: linear-gradient(180deg, rgba(15, 23, 42, 0.98) 0%, rgba(17, 24, 39, 0.98) 100%);
+      --soap-action-bar-border: #334155;
+      --soap-action-bar-shadow: 0 -12px 30px rgba(2, 6, 23, 0.36);
     }
 
     html.dashboard-root.panel-theme-dark #soap-page .soap-plan-control-box,
@@ -569,7 +576,7 @@
 
     @media (max-width: 768px) {
       html.dashboard-root.panel-theme-dark #soap-page .soap-action-bar {
-        box-shadow: 0 -10px 24px rgba(2, 6, 23, 0.42);
+        --soap-action-bar-shadow: 0 -10px 24px rgba(2, 6, 23, 0.42);
       }
     }
   </style>

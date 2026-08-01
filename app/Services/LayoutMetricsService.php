@@ -199,9 +199,7 @@ class LayoutMetricsService
             return false;
         }
 
-        $user->loadMissing('roles:id,name');
-
-        return $user->roles->contains('name', $role);
+        return $user->hasRole($role);
     }
 
     private function emptyFeatureStatus(): array

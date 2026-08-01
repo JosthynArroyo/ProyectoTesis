@@ -9,7 +9,17 @@
     $heroTitle = $siteSettings->get('services.title', 'Especialidades y servicios disponibles');
     $heroSubtitle = $siteSettings->get('services.subtitle', 'Explora las opciones de la clinica y agenda una cita segun los horarios registrados en el sistema.');
     $heroImagePath = $siteSettings->get('services.hero_image', ServicePageCatalog::heroImagePath());
-    $heroImage = $imageUrl->variants($heroImagePath, 'services', 'banner');
+    // Only substitute the local static fallback when the DB value is empty or
+    // equals the static local asset path exactly.
+    // Any path under images/services/ is a real R2 upload — do NOT replace it.
+    $heroIsLocalDefault = (
+        empty($heroImagePath)
+        || $heroImagePath === ServicePageCatalog::heroImagePath()
+    );
+    if ($heroIsLocalDefault) {
+        $heroImagePath = ServicePageCatalog::heroImagePath();
+    }
+    $heroImage = $imageUrl->variants($heroImagePath, 'services', 'banner', 'public_hero');
     $serviceCatalog = ServicePageCatalog::catalog();
     $fallbackMeta = ServicePageCatalog::fallback();
 @endphp
@@ -59,12 +69,13 @@
                             <div class="h-full min-h-[260px] px-5 pb-5 pt-0 sm:min-h-[320px] sm:px-6 sm:pb-6 lg:min-h-full lg:p-6">
                                 <div class="h-full overflow-hidden rounded-[1.75rem] bg-white shadow-[0_18px_45px_rgba(15,23,42,0.12)]">
                                     <img
-                                        src="{{ $heroImage['thumb'] }}"
+                                        src="{{ $heroImage['medium'] }}"
                                         @if($heroImage['srcset']) srcset="{{ $heroImage['srcset'] }}" sizes="(min-width: 1024px) 40vw, 100vw" @endif
                                         alt="Equipo medico atendiendo a una paciente en la seccion de servicios"
                                         class="h-full w-full object-cover object-center"
-                                        loading="lazy"
+                                        loading="eager"
                                         decoding="async"
+                                        fetchpriority="high"
                                     >
                                 </div>
                             </div>
@@ -118,7 +129,7 @@
                             $meta = $serviceCatalog[$normalizedName] ?? $fallbackMeta;
                             $icon = $esp->icono ?? $meta['icon'];
                             $serviceImagePath = $siteSettings->get("services.specialty_image.{$esp->id}", $meta['image_path']);
-                            $serviceImage = $imageUrl->variants($serviceImagePath, 'services', 'banner');
+                            $serviceImage = $imageUrl->variants($serviceImagePath, 'services', 'banner', 'public_card');
                         @endphp
 
                         <article class="card flex h-full min-w-0 flex-col overflow-hidden rounded-[1.5rem] border border-gray-200/80 bg-white shadow-[0_18px_44px_rgba(15,23,42,0.08)]">
@@ -143,7 +154,7 @@
 
                                 <h3 class="mt-3.5 text-lg font-semibold text-gray-900">{{ $esp->nombre }}</h3>
                                 <p class="mt-2 min-h-[4.5rem] line-clamp-3 text-sm leading-6 text-gray-500">
-                                    {{ $esp->descripcion }}
+                                    {{ $esp->descripcion ?: ($meta['descripcion'] ?? '') }}
                                 </p>
 
                                 <div class="mt-3.5 flex flex-wrap gap-2">

@@ -2,7 +2,35 @@
   $settings = $settings ?? [];
   $welcomeSiteSettings = $welcomeSiteSettings ?? [];
   $slidesInput = is_array(old('slides', $slides ?? [])) ? array_values(old('slides', $slides ?? [])) : [];
+  $previewSlides = collect($slidesInput)->map(function ($slide, $index) use ($imageUrl) {
+    $slidePath = $slide['image_path'] ?? null;
+    $slideImage = $imageUrl->variants($slidePath, 'banners', 'banner', 'public_hero');
+
+    return [
+      'image_url' => $slideImage['thumb'] ?? $slideImage['src'] ?? '',
+      'image_srcset' => $slideImage['srcset'] ?? '',
+      'image_sizes' => '(max-width: 640px) 100vw, 50vw',
+      'alt' => $slide['alt'] ?? ('Imagen '.($index + 1)),
+      'title' => $slide['title'] ?? '',
+      'subtitle' => $slide['subtitle'] ?? '',
+      'text' => $slide['text'] ?? '',
+      'is_active' => (bool) ($slide['is_active'] ?? true),
+      'sort_order' => (int) ($slide['sort_order'] ?? 0),
+    ];
+  })->values();
   $doctorsInput = is_array(old('doctors', $doctors ?? [])) ? array_values(old('doctors', $doctors ?? [])) : [];
+  $previewDoctors = collect($doctorsInput)->map(function ($doctor, $index) use ($imageUrl) {
+    $doctorPath = $doctor['photo_path'] ?? null;
+    $doctorImage = $imageUrl->variants($doctorPath, 'doctors', 'doctor', 'public_doctor');
+
+    return [
+      'key' => filled($doctor['id'] ?? null) ? (string) $doctor['id'] : 'doctor-'.$index,
+      'image_url' => $doctorImage['thumb'] ?? $doctorImage['src'] ?? '',
+      'image_srcset' => $doctorImage['srcset'] ?? '',
+      'image_sizes' => '176px',
+      'alt' => $doctor['name'] ?? ('Doctor '.($index + 1)),
+    ];
+  })->values();
   $pricesInput = is_array(old('prices', $prices ?? [])) ? array_values(old('prices', $prices ?? [])) : [];
   $featuredInput = old('featured_specialties', $featuredIds ?? []);
   $featuredInput = is_array($featuredInput) ? array_values(array_filter($featuredInput)) : [];
@@ -415,6 +443,7 @@
       z-index: 1;
       width: min(1440px, 100%);
       height: min(92vh, 980px);
+      max-height: calc(100dvh - 2rem);
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -433,7 +462,10 @@
     .welcome-cms-preview-scroll {
       flex: 1;
       padding: 1rem;
-      overflow: auto;
+      overflow-y: auto;
+      overflow-x: hidden;
+      min-width: 0;
+      overscroll-behavior: contain;
       background:
         radial-gradient(circle at top left, rgba(191, 219, 254, 0.26), transparent 32%),
         radial-gradient(circle at top right, rgba(167, 243, 208, 0.2), transparent 24%),
@@ -452,22 +484,33 @@
       --preview-desktop-width: 1180px;
       --preview-frame-height: 0px;
       width: 100%;
+      min-width: 0;
       margin: 0 auto;
       display: flex;
+      align-items: flex-start;
       justify-content: center;
-      transition: transform 180ms ease;
+      overflow-x: hidden;
     }
 
     .welcome-cms-preview-scale {
+      position: relative;
+      display: flex;
+      justify-content: center;
       width: calc(var(--preview-desktop-width) * var(--preview-scale));
       height: calc(var(--preview-frame-height) * var(--preview-scale));
       min-height: calc(var(--preview-frame-height) * var(--preview-scale));
+      flex: none;
+      margin-inline: auto;
     }
 
     .welcome-cms-preview-frame {
+      position: absolute;
+      top: 0;
+      left: 0;
       width: var(--preview-desktop-width);
       transform: scale(var(--preview-scale));
-      transform-origin: top center;
+      transform-origin: top left;
+      will-change: transform;
     }
 
     .welcome-cms-preview-device.is-active {
@@ -1043,7 +1086,7 @@
 @endif
 
 <input type="hidden" name="active_tab" value="{{ $activeTab }}" data-active-tab-input>
-<div class="welcome-cms-editor space-y-6" data-bienvenida-form data-asset-base="{{ $assetBase }}" data-storage-base="{{ $storageBase }}" data-current-year="{{ now()->year }}" data-initial-tab="{{ $activeTab }}">
+<div class="welcome-cms-editor space-y-6" data-bienvenida-form data-asset-base="{{ $assetBase }}" data-storage-base="{{ $storageBase }}" data-r2-url="{{ rtrim(config('filesystems.disks.r2_public.url', ''), '/') }}" data-current-year="{{ now()->year }}" data-initial-tab="{{ $activeTab }}">
   <section class="card overflow-hidden border border-gray-200/80 bg-white/95 dark:border-gray-800/80 dark:bg-gray-900/95">
     <div class="border-b border-gray-200/80 bg-gradient-to-r from-gray-50 via-white to-gray-100/40 px-6 py-5 dark:border-gray-800/80 dark:bg-gradient-to-r dark:from-gray-950/70 dark:via-gray-900/40 dark:to-gray-950/70">
       <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
@@ -1127,7 +1170,7 @@
               <div class="rounded-3xl border border-gray-200 bg-gray-50/70 p-4 dark:border-gray-800 dark:bg-gray-800/40">
                 <p class="text-sm font-semibold text-gray-900 dark:text-white">Logo principal del header</p>
                 <div class="mt-4 flex h-36 items-center justify-center rounded-2xl border border-dashed border-gray-300 bg-white dark:border-gray-700 dark:bg-gray-950/20">
-                  @php($headerLogoPreview = $imageUrl->variants($headerLogoPath, 'branding', 'banner'))
+                  @php($headerLogoPreview = $imageUrl->variants($headerLogoPath, 'branding', 'banner', 'branding_asset'))
                   <img src="{{ $headerLogoPreview['thumb'] }}" @if($headerLogoPreview['srcset']) srcset="{{ $headerLogoPreview['srcset'] }}" sizes="180px" @endif alt="Logo principal" class="max-h-20 w-auto" loading="lazy" decoding="async" data-form-preview-image="header-logo">
                 </div>
                 <input type="hidden" name="header_logo_path" value="{{ $headerLogoPath }}">
@@ -1140,7 +1183,7 @@
                 <div class="mt-4 flex h-36 items-center justify-center rounded-2xl border border-dashed border-gray-300 bg-white dark:border-gray-700 dark:bg-gray-950/20">
                   <div data-form-preview-favicon-wrap>
                     @if($faviconPath)
-                      @php($faviconPreview = $imageUrl->variants($faviconPath, 'branding', 'banner'))
+                      @php($faviconPreview = $imageUrl->variants($faviconPath, 'branding', 'banner', 'branding_asset'))
                       <img src="{{ $faviconPreview['thumb'] }}" alt="Favicon" class="h-14 w-14 rounded-2xl object-cover" loading="lazy" decoding="async" data-form-preview-image="favicon">
                     @else
                       <div class="flex h-14 w-14 items-center justify-center rounded-2xl border border-gray-200 bg-gray-50 text-gray-400 dark:border-gray-750 dark:bg-gray-800">
@@ -1311,7 +1354,7 @@
                     <div class="flex flex-col sm:flex-row items-start gap-5 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-950/20">
                       <div class="w-full sm:w-[240px] shrink-0">
                         <div class="welcome-cms-media-frame welcome-cms-media-frame--slide" data-inline-image-preview data-preview-icon="ri-image-line" data-preview-placeholder="Vista previa del slide">
-                          @php($slideImage = $imageUrl->variants($slidePath, 'banners', 'banner'))
+                          @php($slideImage = $imageUrl->variants($slidePath, 'banners', 'banner', 'public_hero'))
                           @if($slidePath)
                             <img src="{{ $slideImage['thumb'] }}" @if($slideImage['srcset']) srcset="{{ $slideImage['srcset'] }}" sizes="(max-width: 640px) 100vw, 240px" @endif alt="Slide" loading="lazy" decoding="async">
                           @else
@@ -1519,10 +1562,10 @@
             <div class="mt-4 grid gap-4" data-doctor-list data-next-index="{{ count($doctorsInput) }}">
               @foreach($doctorsInput as $index => $doctor)
                 @php($doctorPhoto = $doctor['photo_path'] ?? null)
-                <div class="rounded-3xl border border-gray-200 bg-gray-50/70 p-4 dark:border-gray-800 dark:bg-gray-800/40" data-doctor-row data-row-key="doctor-{{ $index }}">
+                <div class="rounded-3xl border border-gray-200 bg-gray-50/70 p-4 dark:border-gray-800 dark:bg-gray-800/40" data-doctor-row data-row-key="doctor-{{ $index }}" data-doctor-id="{{ $doctor['id'] ?? '' }}">
                   <div class="grid gap-4 xl:grid-cols-[176px_minmax(0,1fr)]">
                     <div class="welcome-cms-media-frame welcome-cms-media-frame--doctor" data-inline-image-preview data-preview-icon="ri-user-3-line" data-preview-placeholder="Vista previa del doctor">
-                      @php($doctorImage = $imageUrl->variants($doctorPhoto, 'doctors', 'doctor'))
+                      @php($doctorImage = $imageUrl->variants($doctorPhoto, 'doctors', 'doctor', 'public_doctor'))
                       @if($doctorPhoto)
                         <img src="{{ $doctorImage['thumb'] }}" @if($doctorImage['srcset']) srcset="{{ $doctorImage['srcset'] }}" sizes="176px" @endif alt="Doctor" loading="lazy" decoding="async">
                       @else
@@ -1549,6 +1592,7 @@
                       <div class="lg:col-span-2">
                         <label class="form-label">Foto</label>
                         <input class="form-input" type="file" name="doctors[{{ $index }}][photo]" accept="image/*">
+                        <input type="hidden" name="doctors[{{ $index }}][id]" value="{{ $doctor['id'] ?? '' }}">
                         <input type="hidden" name="doctors[{{ $index }}][photo_path]" value="{{ $doctorPhoto }}">
                       </div>
                       <div><label class="form-label">Experiencia</label><input class="form-input" name="doctors[{{ $index }}][experience_label]" value="{{ $doctor['experience_label'] ?? '' }}"></div>
@@ -1791,7 +1835,7 @@
   </template>
 
   <template data-doctor-template>
-    <div class="rounded-3xl border border-gray-200 bg-gray-50/70 p-4 dark:border-gray-800 dark:bg-gray-800/40" data-doctor-row data-row-key="doctor-__INDEX__">
+    <div class="rounded-3xl border border-gray-200 bg-gray-50/70 p-4 dark:border-gray-800 dark:bg-gray-800/40" data-doctor-row data-row-key="doctor-__INDEX__" data-doctor-id="">
       <div class="grid gap-4 xl:grid-cols-[176px_minmax(0,1fr)]">
         <div class="welcome-cms-media-frame welcome-cms-media-frame--doctor" data-inline-image-preview data-preview-icon="ri-user-3-line" data-preview-placeholder="Vista previa del doctor">
           <div class="welcome-cms-media-placeholder">
@@ -1813,6 +1857,7 @@
           <div class="lg:col-span-2">
             <label class="form-label">Foto</label>
             <input class="form-input" type="file" name="doctors[__INDEX__][photo]" accept="image/*">
+            <input type="hidden" name="doctors[__INDEX__][id]" value="">
             <input type="hidden" name="doctors[__INDEX__][photo_path]" value="">
           </div>
           <div><label class="form-label">Experiencia</label><input class="form-input" name="doctors[__INDEX__][experience_label]"></div>
@@ -1842,5 +1887,15 @@
   'descripcion' => $esp->descripcion,
   'icono' => $esp->icono,
 ])->values(), JSON_UNESCAPED_UNICODE) !!}
+  </script>
+  <script type="application/json" data-welcome-preview-config>
+{!! json_encode([
+  'slides' => $previewSlides,
+], JSON_UNESCAPED_UNICODE) !!}
+  </script>
+  <script type="application/json" data-welcome-doctors-preview-config>
+{!! json_encode([
+  'doctors' => $previewDoctors,
+], JSON_UNESCAPED_UNICODE) !!}
   </script>
 </div>

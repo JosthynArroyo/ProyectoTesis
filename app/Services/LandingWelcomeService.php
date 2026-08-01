@@ -31,6 +31,8 @@ class LandingWelcomeService
 
     private ?array $featuredIdsCache = null;
 
+    private bool $settingsLoaded = false;
+
     private array $defaults = [
         'header_logo' => null,
         'header_name' => 'Nombre de la clínica',
@@ -279,6 +281,7 @@ class LandingWelcomeService
                 : $this->statsCache;
         }
 
+        $startedAt = microtime(true);
         if (! Schema::hasTable('landing_welcome_stats')) {
             $this->statsCache = $this->defaultStats;
 
@@ -316,6 +319,7 @@ class LandingWelcomeService
             return $this->slidesCache;
         }
 
+        $startedAt = microtime(true);
         if (! Schema::hasTable('landing_welcome_slides')) {
             $this->slidesCache = $this->defaultSlides;
 
@@ -351,6 +355,7 @@ class LandingWelcomeService
                 : $this->infoCardsCache;
         }
 
+        $startedAt = microtime(true);
         if (! Schema::hasTable('landing_welcome_info_cards')) {
             $this->infoCardsCache = $this->defaultInfoCards;
 
@@ -391,6 +396,7 @@ class LandingWelcomeService
                 : $this->doctorsCache;
         }
 
+        $startedAt = microtime(true);
         if (! Schema::hasTable('landing_welcome_doctors')) {
             $this->doctorsCache = $this->defaultDoctors;
 
@@ -434,6 +440,7 @@ class LandingWelcomeService
                 : $this->pricesCache;
         }
 
+        $startedAt = microtime(true);
         if (! Schema::hasTable('landing_welcome_prices')) {
             $this->pricesCache = $this->defaultPrices;
 
@@ -468,6 +475,7 @@ class LandingWelcomeService
             return $this->featuredIdsCache;
         }
 
+        $startedAt = microtime(true);
         if (! Schema::hasTable('landing_welcome_featured_specialties')) {
             $this->featuredIdsCache = [];
 
@@ -631,9 +639,11 @@ class LandingWelcomeService
 
     private function settings(): ?LandingWelcomeSetting
     {
-        if ($this->settings !== null) {
+        if ($this->settingsLoaded) {
             return $this->settings;
         }
+
+        $this->settingsLoaded = true;
 
         if (! Schema::hasTable('landing_welcome_settings')) {
             return null;

@@ -9,7 +9,6 @@
 
 @php
     $user = $user ?? Auth::user();
-    $user?->loadMissing('roles');
     $avatarFolder = 'users';
     $avatarEntity = 'user';
     if ($user && ($user->hasRole('doctor') || $user->hasRole('laboratorio'))) {

@@ -72,6 +72,15 @@ return [
             'after_commit' => false,
         ],
 
+        'media' => [
+            'driver' => env('MEDIA_QUEUE_CONNECTION', env('QUEUE_CONNECTION', 'database')),
+            'connection' => env('DB_QUEUE_CONNECTION'),
+            'table' => env('DB_QUEUE_TABLE', 'jobs'),
+            'queue' => env('MEDIA_QUEUE', 'media'),
+            'retry_after' => (int) env('MEDIA_QUEUE_RETRY_AFTER', 300),
+            'after_commit' => true,
+        ],
+
     ],
 
     /*

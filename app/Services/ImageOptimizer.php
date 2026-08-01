@@ -2,10 +2,12 @@
 
 namespace App\Services;
 
+use Aws\S3\S3ClientInterface;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use League\Flysystem\AwsS3V3\AwsS3V3Adapter;
 use Intervention\Image\Drivers\Gd\Driver as GdDriver;
 use Intervention\Image\Drivers\Imagick\Driver as ImagickDriver;
 use Intervention\Image\ImageManager;
@@ -28,7 +30,9 @@ class ImageOptimizer
         string $folder,
         array $sizes = [],
         ?string $baseName = null,
-        bool $generateAvif = true
+        bool $generateAvif = true,
+        ?string $profile = null,
+        bool $storeOriginal = false
     ): string {
         $folder = $this->sanitizeFolder($folder);
         $baseName = $this->normalizeBaseName(
@@ -58,7 +62,9 @@ class ImageOptimizer
             extension: $extension,
             mime: $mime,
             sizes: $sizes,
-            generateAvif: $generateAvif
+            generateAvif: $generateAvif,
+            profile: $profile,
+            storeOriginal: $storeOriginal
         );
     }
 
@@ -66,14 +72,12 @@ class ImageOptimizer
         string $publicPath,
         string $folder,
         array $sizes = [],
-        ?string $baseName = null
+        ?string $baseName = null,
+        ?string $profile = null,
+        bool $storeOriginal = false
     ): ?string {
         $path = $this->normalizeStoredPath($publicPath);
         if (! $path || $this->isExternalPath($path)) {
-            return null;
-        }
-
-        if (! Storage::disk($this->disk())->exists($path)) {
             return null;
         }
 
@@ -83,7 +87,9 @@ class ImageOptimizer
             absolutePath: $absolutePath,
             folder: $folder,
             sizes: $sizes,
-            baseName: $baseName ?? pathinfo($path, PATHINFO_FILENAME)
+            baseName: $baseName ?? pathinfo($path, PATHINFO_FILENAME),
+            profile: $profile,
+            storeOriginal: $storeOriginal
         );
     }
 
@@ -91,7 +97,9 @@ class ImageOptimizer
         string $absolutePath,
         string $folder,
         array $sizes = [],
-        ?string $baseName = null
+        ?string $baseName = null,
+        ?string $profile = null,
+        bool $storeOriginal = false
     ): ?string {
         if (! is_file($absolutePath)) {
             return null;
@@ -124,30 +132,63 @@ class ImageOptimizer
             baseName: $baseName,
             extension: $extension,
             mime: $mime,
-            sizes: $sizes
+            sizes: $sizes,
+            profile: $profile,
+            storeOriginal: $storeOriginal
         );
     }
 
     public function deleteByStoredPath(?string $storedPath, ?string $folder = null): void
     {
-        $path = $this->normalizeStoredPath($storedPath);
-        if (! $path || $this->isExternalPath($path)) {
+        $this->deleteManyByStoredPaths([$storedPath], $folder);
+    }
+
+    /**
+     * @param  iterable<int, string|null>  $storedPaths
+     */
+    public function deleteManyByStoredPaths(iterable $storedPaths, ?string $folder = null): void
+    {
+        $paths = [];
+
+        foreach ($storedPaths as $storedPath) {
+            $path = $this->normalizeStoredPath($storedPath);
+            if (! $path || $this->isExternalPath($path)) {
+                continue;
+            }
+
+            $paths[] = $path;
+
+            [$resolvedFolder, $baseName] = $this->extractFolderAndBaseName($path, $folder);
+            if (! $resolvedFolder || ! $baseName) {
+                continue;
+            }
+
+            foreach (array_keys($this->sizes()) as $sizeName) {
+                $paths[] = $this->buildVariantPath($resolvedFolder, $sizeName, $baseName, 'webp');
+                $paths[] = $this->buildVariantPath($resolvedFolder, $sizeName, $baseName, 'avif');
+            }
+
+            foreach (['jpg', 'jpeg', 'png', 'webp'] as $originalExtension) {
+                $paths[] = $this->buildOriginalRasterPath($resolvedFolder, $baseName, $originalExtension);
+            }
+            $paths[] = $this->buildOriginalSvgPath($resolvedFolder, $baseName);
+        }
+
+        $paths = array_values(array_unique(array_filter($paths)));
+
+        if ($paths === []) {
             return;
         }
 
-        Storage::disk($this->disk())->delete($path);
+        $disk = Storage::disk($this->disk());
 
-        [$resolvedFolder, $baseName] = $this->extractFolderAndBaseName($path, $folder);
-        if (! $resolvedFolder || ! $baseName) {
+        if ($disk->getAdapter() instanceof AwsS3V3Adapter) {
+            $this->deleteManyViaS3Objects($paths);
+
             return;
         }
 
-        foreach (array_keys($this->sizes()) as $sizeName) {
-            Storage::disk($this->disk())->delete($this->buildVariantPath($resolvedFolder, $sizeName, $baseName, 'webp'));
-            Storage::disk($this->disk())->delete($this->buildVariantPath($resolvedFolder, $sizeName, $baseName, 'avif'));
-        }
-
-        Storage::disk($this->disk())->delete($this->buildOriginalSvgPath($resolvedFolder, $baseName));
+        $disk->delete($paths);
     }
 
     public function normalizeStoredPath(?string $path): ?string
@@ -237,7 +278,9 @@ class ImageOptimizer
         string $extension,
         string $mime,
         array $sizes = [],
-        bool $generateAvif = true
+        bool $generateAvif = true,
+        ?string $profile = null,
+        bool $storeOriginal = false
     ): string {
         $manager = $this->resolveManagerForRaster($mime, $extension);
         if (! $manager) {
@@ -246,12 +289,42 @@ class ImageOptimizer
                 folder: $folder,
                 baseName: $baseName,
                 extension: $extension,
-                reason: $this->unsupportedRasterReason($mime, $extension)
+                reason: $this->unsupportedRasterReason($mime, $extension),
+                storeOriginal: true
             );
         }
 
-        $definitions = $this->resolveSizes($sizes);
+        $definitions = $this->resolveSizes($sizes, $profile);
+        $profileDefinition = $this->resolveProfileDefinition($profile);
+        $generateAvif = array_key_exists('generate_avif', $profileDefinition)
+            ? (bool) $profileDefinition['generate_avif']
+            : $generateAvif;
+        $storeOriginal = $storeOriginal || (bool) ($profileDefinition['store_original'] ?? false);
+
+        if ($definitions === []) {
+            return $this->storeOriginalRaster(
+                absolutePath: $absolutePath,
+                folder: $folder,
+                baseName: $baseName,
+                extension: $extension,
+                reason: 'profile_without_sizes',
+                storeOriginal: true
+            );
+        }
+
+        if ($storeOriginal) {
+            $this->storeOriginalRaster(
+                absolutePath: $absolutePath,
+                folder: $folder,
+                baseName: $baseName,
+                extension: $extension,
+                reason: 'profile_original_fallback',
+                storeOriginal: true
+            );
+        }
+
         $image = $manager->read($absolutePath)->orient();
+        $preferredSize = $this->preferredSizeForProfile($profile, array_keys($definitions));
 
         foreach ($definitions as $sizeName => $definition) {
             $variant = clone $image;
@@ -270,7 +343,12 @@ class ImageOptimizer
             }
         }
 
-        return $this->buildVariantPath($folder, 'large', $baseName, 'webp');
+        return $this->buildVariantPath(
+            $folder,
+            $preferredSize ?? (array_key_last($definitions) ?: 'large'),
+            $baseName,
+            'webp'
+        );
     }
 
     private function applyResize(object $image, array $definition): object
@@ -307,7 +385,8 @@ class ImageOptimizer
         string $folder,
         string $baseName,
         string $extension,
-        string $reason
+        string $reason,
+        bool $storeOriginal = false
     ): string {
         $path = $this->buildOriginalRasterPath($folder, $baseName, $extension);
         $contents = @file_get_contents($absolutePath);
@@ -335,7 +414,7 @@ class ImageOptimizer
         if (preg_match('#^'.preg_quote(trim($this->basePath(), '/'), '#').'/([^/]+)/(thumb|medium|large)/([^/.]+)\.(webp|avif)$#i', $path, $matches)) {
             $folder = $this->sanitizeFolder((string) $matches[1]);
             $baseName = $this->normalizeBaseName((string) $matches[3]);
-        } elseif (preg_match('#^'.preg_quote(trim($this->basePath(), '/'), '#').'/([^/]+)/original/([^/.]+)\.svg$#i', $path, $matches)) {
+        } elseif (preg_match('#^'.preg_quote(trim($this->basePath(), '/'), '#').'/([^/]+)/original/([^/.]+)\.(svg|jpg|jpeg|png|webp)$#i', $path, $matches)) {
             $folder = $this->sanitizeFolder((string) $matches[1]);
             $baseName = $this->normalizeBaseName((string) $matches[2]);
         }
@@ -351,9 +430,9 @@ class ImageOptimizer
         return [$folder, $baseName];
     }
 
-    private function resolveSizes(array $sizes): array
+    private function resolveSizes(array $sizes, ?string $profile = null): array
     {
-        $defaults = $this->sizes();
+        $defaults = $profile ? $this->profileSizes($profile) : $this->sizes();
         if (empty($sizes)) {
             return $defaults;
         }
@@ -367,6 +446,67 @@ class ImageOptimizer
         }
 
         return $resolved;
+    }
+
+    public function profileSizes(?string $profile): array
+    {
+        $definition = $this->resolveProfileDefinition($profile);
+
+        return (array) ($definition['sizes'] ?? []);
+    }
+
+    public function profileGenerateAvif(?string $profile): bool
+    {
+        $definition = $this->resolveProfileDefinition($profile);
+
+        return (bool) ($definition['generate_avif'] ?? config('image_optimization.generate_avif', true));
+    }
+
+    public function profileStoresOriginal(?string $profile): bool
+    {
+        $definition = $this->resolveProfileDefinition($profile);
+
+        return (bool) ($definition['store_original'] ?? false);
+    }
+
+    public function defaultSizes(): array
+    {
+        return $this->sizes();
+    }
+
+    public function profilePreferredSize(?string $profile): ?string
+    {
+        $definition = $this->resolveProfileDefinition($profile);
+        $preferred = trim((string) ($definition['preferred_size'] ?? ''));
+
+        return $preferred !== '' ? $preferred : null;
+    }
+
+    private function resolveProfileDefinition(?string $profile): array
+    {
+        $profile = trim((string) $profile);
+        if ($profile === '') {
+            return [];
+        }
+
+        $profiles = (array) config('image_optimization.profiles', []);
+        $definition = $profiles[$profile] ?? [];
+
+        return is_array($definition) ? $definition : [];
+    }
+
+    private function preferredSizeForProfile(?string $profile, array $sizeNames): ?string
+    {
+        if ($sizeNames === []) {
+            return null;
+        }
+
+        $preferred = $this->profilePreferredSize($profile);
+        if ($preferred && in_array($preferred, $sizeNames, true)) {
+            return $preferred;
+        }
+
+        return $sizeNames[0] ?? null;
     }
 
     private function sanitizeFolder(string $folder): string
@@ -545,7 +685,7 @@ class ImageOptimizer
         return true;
     }
 
-    private function disk(): string
+    public function disk(): string
     {
         return (string) config('image_optimization.disk', 'public');
     }
@@ -571,5 +711,65 @@ class ImageOptimizer
         $sizes = config('image_optimization.sizes', []);
 
         return $sizes;
+    }
+
+    /**
+     * @param  array<int, string>  $paths
+     */
+    private function deleteManyViaS3Objects(array $paths): bool
+    {
+        $disk = Storage::disk($this->disk());
+        $adapter = $disk->getAdapter();
+
+        if (! $adapter instanceof AwsS3V3Adapter) {
+            return false;
+        }
+
+        try {
+            $client = $this->readAdapterProperty($adapter, 'client');
+            $bucket = $this->readAdapterProperty($adapter, 'bucket');
+            $prefixer = $this->readAdapterProperty($adapter, 'prefixer');
+
+            if (! $client instanceof S3ClientInterface || ! is_string($bucket) || ! is_object($prefixer) || ! method_exists($prefixer, 'prefixPath')) {
+                return false;
+            }
+
+            $objects = array_map(
+                fn (string $path) => ['Key' => $prefixer->prefixPath($path)],
+                $paths
+            );
+
+            $client->deleteObjects([
+                'Bucket' => $bucket,
+                'Delete' => [
+                    'Objects' => $objects,
+                    'Quiet' => true,
+                ],
+            ]);
+
+            return true;
+        } catch (Throwable $exception) {
+            Log::warning('Batch delete of optimized images failed.', [
+                'disk' => $this->disk(),
+                'count' => count($paths),
+                'error' => $exception->getMessage(),
+            ]);
+
+            return false;
+        }
+    }
+
+    private function readAdapterProperty(object $adapter, string $property): mixed
+    {
+        $reflection = new \ReflectionClass($adapter);
+
+        if (! $reflection->hasProperty($property)) {
+            return null;
+        }
+
+        $reflectionProperty = $reflection->getProperty($property);
+        $reflectionProperty->setAccessible(true);
+
+        return $reflectionProperty->getValue($adapter);
     }
 }

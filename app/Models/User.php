@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Log;
 
 class User extends Authenticatable
 {
@@ -63,6 +64,8 @@ class User extends Authenticatable
         'password',
         'remember_token',
     ];
+
+    protected ?array $resolvedRoleNames = null;
 
     public function setDniAttribute($value): void
     {
@@ -233,17 +236,15 @@ class User extends Authenticatable
             return false;
         }
 
-        $this->loadMissing('roles');
-
-        return $this->roles->contains('name', $roleName);
+        return in_array($roleName, $this->resolvedRoleNames(), true);
     }
 
     public function primaryRoleName(): ?string
     {
-        $this->loadMissing('roles');
+        $roleNames = $this->resolvedRoleNames();
 
         foreach (array_keys(self::DASHBOARD_PATHS_BY_ROLE) as $roleName) {
-            if ($this->roles->contains('name', $roleName)) {
+            if (in_array($roleName, $roleNames, true)) {
                 return $roleName;
             }
         }
@@ -389,5 +390,39 @@ class User extends Authenticatable
     public function sendPasswordResetNotification($token): void
     {
         $this->notify(new CustomResetPasswordNotification($token));
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function resolvedRoleNames(): array
+    {
+        if ($this->resolvedRoleNames !== null) {
+            return $this->resolvedRoleNames;
+        }
+
+        if ($this->relationLoaded('roles')) {
+            $this->resolvedRoleNames = $this->roles
+                ->pluck('name')
+                ->filter()
+                ->map(fn ($name) => trim((string) $name))
+                ->filter()
+                ->values()
+                ->all();
+
+            return $this->resolvedRoleNames;
+        }
+
+        $startedAt = microtime(true);
+        $this->resolvedRoleNames = $this->roles()
+            ->orderBy('name')
+            ->pluck('roles.name')
+            ->filter()
+            ->map(fn ($name) => trim((string) $name))
+            ->filter()
+            ->values()
+            ->all();
+
+        return $this->resolvedRoleNames;
     }
 }

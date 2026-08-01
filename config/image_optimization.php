@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'disk' => 'public',
+    'disk' => env('IMAGE_STORAGE_DISK', 'public'),
     'base_path' => 'images',
 
     'quality' => [
@@ -24,6 +24,62 @@ return [
         'large' => [
             'mode' => 'max_width',
             'width' => 1200,
+        ],
+    ],
+
+    'profiles' => [
+        'branding_asset' => [
+            'sizes' => [],
+            'generate_avif' => false,
+            'store_original' => true,
+            'preferred_size' => 'original',
+        ],
+        'public_hero' => [
+            'sizes' => [
+                'medium' => [
+                    'mode' => 'max_width',
+                    'width' => 600,
+                ],
+                'large' => [
+                    'mode' => 'max_width',
+                    'width' => 1200,
+                ],
+            ],
+            'generate_avif' => false,
+            'store_original' => true,
+            'preferred_size' => 'medium',
+        ],
+        'public_card' => [
+            'sizes' => [
+                'thumb' => [
+                    'mode' => 'cover',
+                    'width' => 150,
+                    'height' => 150,
+                ],
+                'medium' => [
+                    'mode' => 'max_width',
+                    'width' => 600,
+                ],
+            ],
+            'generate_avif' => false,
+            'store_original' => true,
+            'preferred_size' => 'thumb',
+        ],
+        'public_doctor' => [
+            'sizes' => [
+                'thumb' => [
+                    'mode' => 'cover',
+                    'width' => 150,
+                    'height' => 150,
+                ],
+                'medium' => [
+                    'mode' => 'max_width',
+                    'width' => 600,
+                ],
+            ],
+            'generate_avif' => false,
+            'store_original' => true,
+            'preferred_size' => 'thumb',
         ],
     ],
 

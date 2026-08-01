@@ -830,7 +830,7 @@
       $specialtyKey = $normalizeDoctorSpecialty($displaySpecialty);
 
       $doctorPhotoPath = data_get($doctor, 'photo_path');
-      $doctorPhoto = $imageUrl->variants($doctorPhotoPath, 'doctors', 'doctor');
+      $doctorPhoto = $imageUrl->variants($doctorPhotoPath, 'doctors', 'doctor', 'public_doctor');
       $doctorPhotoThumb = data_get($doctorPhoto, 'thumb', $imageUrl->fallback('doctor'));
       $doctorPhotoSrcset = data_get($doctorPhoto, 'srcset');
       $featuredLabel = trim((string) data_get($doctor, 'featured_label', ''));
@@ -949,7 +949,7 @@
           <div class="wh-gallery__track" data-carousel-track>
             @foreach($heroSlides as $index => $slide)
               @php
-                $slideImage = $imageUrl->variants($slide['image_path'] ?? null, 'banners', 'banner');
+                $slideImage = $imageUrl->variants($slide['image_path'] ?? null, 'banners', 'banner', 'public_hero');
                 $defaultSlideCopy = $heroSlideCopy[$index % count($heroSlideCopy)];
                 $slideCopy = [
                   'title' => filled($slide['title'] ?? null) ? $slide['title'] : $defaultSlideCopy['title'],
@@ -959,7 +959,7 @@
               @endphp
               <div class="wh-gallery__slide">
                 <img
-                  src="{{ $slideImage['thumb'] }}"
+                  src="{{ $slideImage['medium'] }}"
                   @if($slideImage['srcset']) srcset="{{ $slideImage['srcset'] }}" sizes="(max-width:640px) 100vw,50vw" @endif
                   alt="{{ $slide['alt'] ?? 'Imagen clínica' }}"
                   class="wh-gallery__img"

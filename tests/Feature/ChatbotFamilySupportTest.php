@@ -32,6 +32,12 @@ class ChatbotFamilySupportTest extends TestCase
     protected function tearDown(): void
     {
         \Illuminate\Support\Facades\File::deleteDirectory(\Illuminate\Support\Facades\Storage::disk('local')->path('captcha_animals'));
+        foreach (config('captcha.classes', ['giraffe', 'horse', 'koala', 'kangaroo']) as $class) {
+            $fixturePath = base_path("ai/dataset/val/{$class}/test-captcha.jpg");
+            if (File::exists($fixturePath)) {
+                File::delete($fixturePath);
+            }
+        }
         parent::tearDown();
     }
 
@@ -58,15 +64,7 @@ class ChatbotFamilySupportTest extends TestCase
     {
         $classes = config('captcha.classes', ['giraffe', 'horse', 'koala', 'kangaroo']);
         foreach ($classes as $class) {
-            $dir = \Illuminate\Support\Facades\Storage::disk('local')->path("captcha_animals/{$class}");
-            File::ensureDirectoryExists($dir);
-            File::put("{$dir}/img.jpg", 'dummy image content');
-
-            CaptchaImage::create([
-                'class_key' => $class,
-                'dataset_split' => 'public',
-                'image_path' => "captcha_animals/{$class}/img.jpg"
-            ]);
+            $this->seedCaptchaFixture($class);
         }
 
         $response = $this->getJson(route('captcha.challenge'));
@@ -90,15 +88,7 @@ class ChatbotFamilySupportTest extends TestCase
     {
         $classes = config('captcha.classes', ['giraffe', 'horse', 'koala', 'kangaroo']);
         foreach ($classes as $class) {
-            $dir = \Illuminate\Support\Facades\Storage::disk('local')->path("captcha_animals/{$class}");
-            File::ensureDirectoryExists($dir);
-            File::put("{$dir}/img.jpg", 'dummy image content');
-
-            CaptchaImage::create([
-                'class_key' => $class,
-                'dataset_split' => 'public',
-                'image_path' => "captcha_animals/{$class}/img.jpg"
-            ]);
+            $this->seedCaptchaFixture($class);
         }
 
         $response = $this->getJson(route('captcha.challenge'));
@@ -120,15 +110,7 @@ class ChatbotFamilySupportTest extends TestCase
     {
         $classes = config('captcha.classes', ['giraffe', 'horse', 'koala', 'kangaroo']);
         foreach ($classes as $class) {
-            $dir = \Illuminate\Support\Facades\Storage::disk('local')->path("captcha_animals/{$class}");
-            File::ensureDirectoryExists($dir);
-            File::put("{$dir}/img.jpg", 'dummy image content');
-
-            CaptchaImage::create([
-                'class_key' => $class,
-                'dataset_split' => 'public',
-                'image_path' => "captcha_animals/{$class}/img.jpg"
-            ]);
+            $this->seedCaptchaFixture($class);
         }
 
         $this->getJson(route('captcha.challenge'));
@@ -178,6 +160,25 @@ class ChatbotFamilySupportTest extends TestCase
 
         $response->assertStatus(422);
         $response->assertJsonFragment(['error' => 'otp_invalidated']);
+    }
+
+    private function seedCaptchaFixture(string $class): void
+    {
+        $filename = 'test-captcha.jpg';
+        $storageDir = \Illuminate\Support\Facades\Storage::disk('local')->path("captcha_animals/{$class}");
+        $aiDir = base_path("ai/dataset/val/{$class}");
+
+        File::ensureDirectoryExists($storageDir);
+        File::ensureDirectoryExists($aiDir);
+
+        File::put("{$storageDir}/{$filename}", 'dummy image content');
+        File::put("{$aiDir}/{$filename}", 'dummy image content');
+
+        CaptchaImage::create([
+            'class_key' => $class,
+            'dataset_split' => 'public',
+            'image_path' => "captcha_animals/{$class}/{$filename}",
+        ]);
     }
 
     /** @test */

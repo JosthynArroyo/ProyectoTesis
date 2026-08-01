@@ -41,6 +41,7 @@ use App\Http\Controllers\Paciente\PagoController as PacientePagoController;
 use App\Http\Controllers\DependienteController;
 use App\Http\Controllers\PagoLookupController;
 use App\Http\Controllers\PanelThemeController;
+use App\Http\Controllers\FaviconController;
 use App\Http\Controllers\PublicPageController;
 use App\Http\Controllers\Superadmin\AdminsController as SuperadminAdminsController;
 use App\Http\Controllers\Superadmin\DashboardController as SuperadminDashboardController;
@@ -48,6 +49,9 @@ use App\Http\Controllers\Superadmin\MaintenanceController as SuperadminMaintenan
 use App\Http\Controllers\Superadmin\PersonalizacionController as SuperadminPersonalizacionController;
 use App\Http\Controllers\Superadmin\PersonalizacionRequestController as SuperadminPersonalizacionRequestController;
 use Illuminate\Support\Facades\Route;
+
+// Dynamic favicon endpoint (Root favicon)
+Route::get('/favicon.ico', FaviconController::class)->name('favicon.ico');
 
 // API tarifas
 Route::get('/api/tarifa/doctor/{id}', [TarifaController::class, 'precioDoctor'])
@@ -330,6 +334,9 @@ Route::middleware(['auth', 'role:administrador'])
         Route::put('/personalizacion/servicios', [AdminPersonalizacionController::class, 'serviciosUpdate'])
             ->middleware('feature:personalizacion')
             ->name('personalizacion.servicios.update');
+        Route::get('/personalizacion/servicios/batch/{uuid}', [AdminPersonalizacionController::class, 'serviciosBatchStatus'])
+            ->middleware('feature:personalizacion')
+            ->name('personalizacion.servicios.batch');
         Route::get('/personalizacion/contacto', [AdminPersonalizacionController::class, 'contactoEdit'])
             ->middleware('feature:personalizacion')
             ->name('personalizacion.contacto.edit');
@@ -449,6 +456,8 @@ Route::middleware(['auth', 'role:superadmin'])
             ->name('personalizacion.servicios.edit');
         Route::put('/personalizacion/servicios', [SuperadminPersonalizacionController::class, 'serviciosUpdate'])
             ->name('personalizacion.servicios.update');
+        Route::get('/personalizacion/servicios/batch/{uuid}', [SuperadminPersonalizacionController::class, 'serviciosBatchStatus'])
+            ->name('personalizacion.servicios.batch');
         Route::get('/personalizacion/contacto', [SuperadminPersonalizacionController::class, 'contactoEdit'])
             ->name('personalizacion.contacto.edit');
         Route::put('/personalizacion/contacto', [SuperadminPersonalizacionController::class, 'contactoUpdate'])

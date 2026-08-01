@@ -45,8 +45,10 @@ class PublicPageController extends Controller
             $tipo = 'all';
         }
 
+        $hasActive = Especialidad::query()->where('activo', true)->exists();
+
         $especialidades = Especialidad::query()
-            ->where('activo', true)
+            ->when($hasActive, fn ($query) => $query->where('activo', true))
             ->when($q !== '', function ($query) use ($q) {
                 $like = '%'.$q.'%';
                 $query->where(function ($inner) use ($like) {

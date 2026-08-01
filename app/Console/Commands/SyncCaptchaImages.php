@@ -15,7 +15,7 @@ class SyncCaptchaImages extends Command
         $this->info('Sincronizando imágenes de CAPTCHA...');
 
         try {
-            $total = $synchronizer->synchronize(function (string $msg, string $type) {
+            $total = $synchronizer->ensureSynchronized(function (string $msg, string $type) {
                 if ($type === 'error') {
                     $this->error($msg);
                 } elseif ($type === 'warning') {

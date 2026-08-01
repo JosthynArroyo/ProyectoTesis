@@ -7,6 +7,17 @@
   $serviceCatalog = ServicePageCatalog::catalog();
   $fallbackCatalog = ServicePageCatalog::fallback();
   $heroImagePath = old('services_hero_image_path', $serviceSettings['services.hero_image'] ?? ServicePageCatalog::heroImagePath());
+  // Only substitute the local static fallback when the DB value is empty or
+  // equals the static local asset path exactly.
+  // Any path under images/services/ (with or without UUID) is a real R2 upload
+  // and must be left untouched — even if the object no longer exists in R2.
+  $heroIsLocalDefault = (
+      empty($heroImagePath)
+      || $heroImagePath === ServicePageCatalog::heroImagePath()
+  );
+  if ($heroIsLocalDefault) {
+      $heroImagePath = ServicePageCatalog::heroImagePath();
+  }
   $footerName = $siteSettings->get('branding.institutional_name', $siteSettings->get('branding.name', 'Nombre de la clinica'));
   $footerText = str_replace('{year}', date('Y'), $siteSettings->get('branding.footer_text', '© {year} - Todos los derechos reservados.'));
   $navigationOrder = array_values(array_filter(array_map('trim', explode(',', (string) $siteSettings->get('header.navigation_order', 'home,services,contact')))));
@@ -35,6 +46,9 @@
     ['label' => $siteSettings->get('footer.contact_label', 'Contacto'), 'visible' => $siteSettings->getBool('footer.show_contact_link', true)],
     ['label' => $siteSettings->get('footer.assistant_label', 'Asistente virtual'), 'visible' => $siteSettings->getBool('footer.show_assistant_link', true)],
   ];
+  $batchStatusRouteName = request()->routeIs('superadmin.*')
+    ? 'superadmin.personalizacion.servicios.batch'
+    : 'admin.personalizacion.servicios.batch';
   $footerLegal = [
     ['label' => $siteSettings->get('footer.privacy_label', 'Politicas de privacidad'), 'visible' => $siteSettings->getBool('footer.show_privacy_link', true)],
     ['label' => $siteSettings->get('footer.terms_label', 'Terminos de servicio'), 'visible' => $siteSettings->getBool('footer.show_terms_link', true)],
@@ -56,17 +70,18 @@
       'links' => collect($footerLinks)->where('visible', true)->pluck('label')->values()->all(),
       'legal' => collect($footerLegal)->where('visible', true)->pluck('label')->values()->all(),
     ],
-    'catalog' => collect($serviceCatalog)->mapWithKeys(function ($meta, $key) {
+    'catalog' => collect($serviceCatalog)->mapWithKeys(function ($meta, $key) use ($imageUrl) {
       return [
         $key => array_merge($meta, [
-          'image_url' => asset($meta['image_path']),
+          // Use 'medium' (not 'thumb') so the preview modal renders cards at full quality.
+          'image_url' => $imageUrl->url($meta['image_path'], 'services', 'banner', 'medium', 'public_card'),
         ]),
       ];
     })->all(),
     'fallback' => array_merge($fallbackCatalog, [
-      'image_url' => asset($fallbackCatalog['image_path']),
+      'image_url' => $imageUrl->url($fallbackCatalog['image_path'], 'services', 'banner', 'medium', 'public_card'),
     ]),
-    'hero_image_url' => asset(ServicePageCatalog::heroImagePath()),
+    'hero_image_url' => $imageUrl->url($heroImagePath, 'services', 'banner', 'large', 'public_hero'),
   ];
 @endphp
 
@@ -77,8 +92,13 @@
   data-services-form
   data-asset-base="{{ asset('') }}"
   data-storage-base="{{ asset('storage') }}"
+  data-batch-status-url-template="{{ route($batchStatusRouteName, ['uuid' => '__UUID__']) }}"
 >
   <div class="personalizacion-public-surface space-y-6">
+    <div class="alert error mt-4" role="alert" aria-live="polite" tabindex="-1" data-upload-alert @unless($errors->has('services_upload_total')) hidden @endunless>
+      @error('services_upload_total'){{ $message }}@enderror
+    </div>
+
     <section class="card border border-gray-200/80 bg-white/95 p-6 dark:border-gray-800/80 dark:bg-gray-900/95" data-public-preview-trigger-card>
       <div class="flex flex-wrap items-center justify-between gap-4">
         <div class="min-w-0">
@@ -119,19 +139,25 @@
 
       <div class="mt-6">
         <div class="flex flex-col sm:flex-row items-start gap-5 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-950/20">
-          <div class="w-full sm:w-[280px] shrink-0">
-            <div class="overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-950" data-public-preview-inline-image>
-              @php
-                $heroPreview = $imageUrl->variants($heroImagePath, 'services', 'banner');
-              @endphp
-              <img
-                src="{{ $heroPreview['thumb'] }}"
+              <div class="w-full sm:w-[280px] shrink-0">
+                @php
+                  $heroPreview = $imageUrl->variants($heroImagePath, 'services', 'banner', 'public_hero');
+                @endphp
+                <div class="overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-950" 
+                     data-public-preview-inline-image
+                     data-current-url="{{ $heroPreview['src'] }}"
+                     data-current-medium-url="{{ $heroPreview['medium'] }}"
+                     data-current-large-url="{{ $heroPreview['large'] }}"
+                     data-current-srcset="{{ $heroPreview['srcset'] }}">
+                  <img
+                src="{{ $heroPreview['medium'] }}"
                 @if($heroPreview['srcset']) srcset="{{ $heroPreview['srcset'] }}" sizes="(max-width: 640px) 100vw, 280px" @endif
                 alt="Hero de servicios"
                 class="w-full aspect-[16/9] object-cover"
                 loading="lazy"
                 decoding="async"
                 data-services-inline-image="hero"
+                data-preview-id="services-hero"
               >
             </div>
           </div>
@@ -139,7 +165,7 @@
             <label class="form-label font-semibold text-gray-800 dark:text-white">Imagen principal del hero</label>
             <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">Formato valido: JPG, PNG, WEBP o SVG. La preview conserva la imagen anterior mientras no selecciones una nueva.</p>
             <input type="hidden" name="services_hero_image_path" value="{{ $heroImagePath }}">
-            <input class="form-input w-full" type="file" name="services_hero_image" accept="image/*">
+            <input class="form-input w-full" type="file" name="services_hero_image" accept="image/*" data-preview-target="services-hero">
             @error('services_hero_image')<div class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</div>@enderror
           </div>
         </div>
@@ -167,11 +193,20 @@
             $catalogMeta = $serviceCatalog[$normalizedName] ?? $fallbackCatalog;
             $serviceImageKey = "services.specialty_image.{$esp->id}";
             $serviceImagePath = old($oldPrefix.'.image_path', $serviceSettings[$serviceImageKey] ?? $catalogMeta['image_path']);
-            $serviceImage = $imageUrl->variants($serviceImagePath, 'services', 'banner');
+            $serviceImage = $imageUrl->variants($serviceImagePath, 'services', 'banner', 'public_card');
             $currentIcon = old($oldPrefix.'.icono', $esp->icono);
             $currentOption = collect($iconOptions)->firstWhere('id', $currentIcon);
           @endphp
-          <div class="rounded-3xl border border-gray-200 bg-gray-50/70 p-4 dark:border-gray-800 dark:bg-gray-800/40" data-especialidad-row data-service-id="{{ $esp->id }}" data-public-preview-row-card>
+          <div class="rounded-3xl border border-gray-200 bg-gray-50/70 p-4 dark:border-gray-800 dark:bg-gray-800/40" 
+               data-especialidad-row 
+               data-service-id="{{ $esp->id }}" 
+               data-preview-target="service-{{ $esp->id }}" 
+               data-current-url="{{ $serviceImage['src'] }}"
+               data-current-thumb-url="{{ $serviceImage['thumb'] }}"
+               data-current-medium-url="{{ $serviceImage['medium'] }}"
+               data-current-large-url="{{ $serviceImage['large'] }}"
+               data-current-srcset="{{ $serviceImage['srcset'] }}"
+               data-public-preview-row-card>
             <div class="grid gap-6">
               <div class="flex flex-col sm:flex-row items-start gap-5 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-955/20">
                 <div class="w-full sm:w-[240px] shrink-0">
@@ -184,6 +219,7 @@
                       loading="lazy"
                       decoding="async"
                       data-services-inline-image="service-{{ $esp->id }}"
+                      data-preview-id="service-{{ $esp->id }}"
                     >
                   </div>
                 </div>
@@ -191,7 +227,7 @@
                   <label class="form-label font-semibold text-gray-800 dark:text-white">Imagen de la card</label>
                   <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">La imagen se actualiza al instante en la vista previa. Se recomienda formato 4:3 para mantener la proporcion.</p>
                   <input type="hidden" name="{{ $prefix }}[image_path]" value="{{ $serviceImagePath }}">
-                  <input class="form-input w-full" type="file" name="{{ $prefix }}[image]" accept="image/*">
+                  <input class="form-input w-full" type="file" name="{{ $prefix }}[image]" accept="image/*" data-preview-target="service-{{ $esp->id }}">
                   @error($oldPrefix.'.image')<div class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</div>@enderror
                 </div>
               </div>
@@ -249,7 +285,7 @@
 
                 <div class="md:col-span-2">
                   <label class="form-label">Descripcion</label>
-                  <textarea class="form-textarea" name="{{ $prefix }}[descripcion]" rows="2">{{ old($oldPrefix.'.descripcion', $esp->descripcion) }}</textarea>
+                  <textarea class="form-textarea" name="{{ $prefix }}[descripcion]" rows="2">{{ old($oldPrefix.'.descripcion', $esp->descripcion ?: ($catalogMeta['descripcion'] ?? '')) }}</textarea>
                   @error($oldPrefix.'.descripcion')<div class="text-xs text-rose-600 dark:text-rose-400">{{ $message }}</div>@enderror
                 </div>
 
@@ -281,13 +317,14 @@
                   <div class="flex aspect-[4/3] w-full items-center justify-center text-gray-400 dark:text-gray-500">
                     <i class="ri-image-line text-3xl"></i>
                   </div>
+                  <div class="hidden" data-preview-id="service-new-__INDEX__"></div>
                 </div>
               </div>
               <div class="flex-1 w-full flex flex-col justify-center">
                 <label class="form-label font-semibold text-gray-800 dark:text-white">Imagen de la card</label>
                 <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">Puedes probar la imagen en preview antes de guardar la nueva especialidad. Se recomienda formato 4:3.</p>
                 <input type="hidden" name="nuevas[__INDEX__][image_path]" value="">
-                <input class="form-input w-full" type="file" name="nuevas[__INDEX__][image]" accept="image/*">
+                <input class="form-input w-full" type="file" name="nuevas[__INDEX__][image]" accept="image/*" data-preview-target="service-new-__INDEX__">
               </div>
             </div>
 
@@ -361,6 +398,43 @@
         </div>
       </template>
     </section>
+  </div>
+
+  <div
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm transition-opacity"
+    id="media-processing-overlay"
+    data-media-processing-overlay
+    hidden
+    style="display: none;"
+    aria-hidden="true"
+  >
+    <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-gray-900 border border-gray-100 dark:border-gray-800 text-center space-y-4">
+      <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-teal-50 text-teal-600 dark:bg-teal-950/60 dark:text-teal-400">
+        <i class="ri-loader-4-line animate-spin text-3xl" data-media-processing-spinner></i>
+        <i class="ri-checkbox-circle-line text-3xl text-emerald-500 hidden" data-media-processing-success-icon></i>
+        <i class="ri-error-warning-line text-3xl text-rose-500 hidden" data-media-processing-error-icon></i>
+      </div>
+      <div>
+        <h3 class="text-lg font-bold text-gray-900 dark:text-white" data-media-processing-title>
+          Preparando imágenes...
+        </h3>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400" data-media-processing-status-text>
+          Preparando imágenes...
+        </p>
+      </div>
+
+      <div class="w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800 h-3">
+        <div
+          class="h-full bg-teal-600 transition-all duration-300 dark:bg-teal-500 rounded-full"
+          style="width: 0%"
+          data-media-processing-progress-bar
+        ></div>
+      </div>
+
+      <div class="text-xs text-gray-400 dark:text-gray-500" data-media-processing-percentage-text>
+        0% completado
+      </div>
+    </div>
   </div>
 
   @include('shared.personalizacion-public-preview-modal', [

@@ -21,19 +21,19 @@
 
   <section class="grid gap-4 lg:grid-cols-3">
     <article class="card p-5">
-      <p class="text-xs uppercase tracking-widest text-gray-500">Paciente</p>
-      <p class="mt-2 font-semibold text-gray-900">{{ $cita->paciente?->name ?? '-' }}</p>
-      <p class="text-sm text-gray-600">{{ $cita->paciente?->dni ?: 'Documento no registrado' }}</p>
+      <p class="text-xs uppercase tracking-widest text-gray-500 dark:text-gray-400">Paciente</p>
+      <p class="mt-2 font-semibold text-gray-900 dark:text-slate-50">{{ $cita->paciente?->name ?? '-' }}</p>
+      <p class="text-sm text-gray-600 dark:text-slate-300">{{ $cita->paciente?->dni ?: 'Documento no registrado' }}</p>
     </article>
     <article class="card p-5">
-      <p class="text-xs uppercase tracking-widest text-gray-500">Cita</p>
-      <p class="mt-2 font-semibold text-gray-900">#{{ $cita->id }}</p>
-      <p class="text-sm text-gray-600">Fecha: {{ \Carbon\Carbon::parse($cita->fecha)->format('d/m/Y') }}</p>
+      <p class="text-xs uppercase tracking-widest text-gray-500 dark:text-gray-400">Cita</p>
+      <p class="mt-2 font-semibold text-gray-900 dark:text-slate-50">#{{ $cita->id }}</p>
+      <p class="text-sm text-gray-600 dark:text-slate-300">Fecha: {{ \Carbon\Carbon::parse($cita->fecha)->format('d/m/Y') }}</p>
     </article>
     <article class="card p-5">
-      <p class="text-xs uppercase tracking-widest text-gray-500">Doctor</p>
-      <p class="mt-2 font-semibold text-gray-900">{{ $cita->doctor?->name ?? '-' }}</p>
-      <p class="text-sm text-gray-600">La orden incluirá CSV y QR de verificación.</p>
+      <p class="text-xs uppercase tracking-widest text-gray-500 dark:text-gray-400">Doctor</p>
+      <p class="mt-2 font-semibold text-gray-900 dark:text-slate-50">{{ $cita->doctor?->name ?? '-' }}</p>
+      <p class="text-sm text-gray-600 dark:text-slate-300">La orden incluirá CSV y QR de verificación.</p>
     </article>
   </section>
 
@@ -41,8 +41,8 @@
     @csrf
 
     <div>
-      <h3 class="text-lg font-semibold text-gray-900">Seleccionar Exámenes</h3>
-      <p class="text-sm text-gray-500">Marca los exámenes que deseas solicitar para el paciente.</p>
+      <h3 class="text-lg font-semibold text-gray-900 dark:text-slate-50">Seleccionar Exámenes</h3>
+      <p class="text-sm text-gray-500 dark:text-slate-400">Marca los exámenes que deseas solicitar para el paciente.</p>
     </div>
 
     @php
@@ -142,15 +142,15 @@
 
     <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
       @foreach($categorias as $categoria => $items)
-        <div class="rounded-2xl border border-gray-200 bg-gray-50/70 p-4">
-          <h4 class="mb-3 flex items-center gap-2 border-b border-gray-200 pb-2 font-bold text-gray-800">
-            <i class="ri-flask-line text-emerald-600"></i> {{ $categoria }}
+        <div class="rounded-2xl border border-gray-200 bg-gray-50/70 dark:bg-slate-900/90 dark:border-slate-700 p-4">
+          <h4 class="mb-3 flex items-center gap-2 border-b border-gray-200 dark:border-slate-700 pb-2 font-bold text-gray-800 dark:text-slate-100">
+            <i class="ri-flask-line text-emerald-600 dark:text-emerald-400"></i> {{ $categoria }}
           </h4>
           <div class="space-y-2">
             @foreach($items as $key => $label)
               <label class="flex cursor-pointer items-start gap-2 text-sm">
-                <input type="checkbox" name="examenes[]" value="{{ $key }}" class="mt-0.5 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" @checked(isset($pedido) && is_array($pedido->examenes) && in_array($key, $pedido->examenes))>
-                <span class="text-gray-700">{{ $label }}</span>
+                <input type="checkbox" name="examenes[]" value="{{ $key }}" class="mt-0.5 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 dark:border-slate-600 dark:bg-slate-900 dark:text-emerald-400 dark:focus:ring-emerald-500/30" @checked(isset($pedido) && is_array($pedido->examenes) && in_array($key, $pedido->examenes))>
+                <span class="text-gray-700 dark:text-slate-300">{{ $label }}</span>
               </label>
             @endforeach
           </div>
@@ -158,7 +158,7 @@
       @endforeach
     </div>
 
-    <div class="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4 text-sm text-emerald-900">
+    <div class="rounded-2xl border border-emerald-100 bg-emerald-50/60 dark:border-emerald-900/40 dark:bg-emerald-950/30 p-4 text-sm text-emerald-900 dark:text-emerald-100">
       El PDF final incluirá un CSV único y un código QR para verificación pública.
     </div>
 

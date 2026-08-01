@@ -14,7 +14,7 @@ class LoginController extends Controller
 {
     use AuthenticatesUsers;
 
-    private const MAINTENANCE_LOGIN_MESSAGE = 'El sistema está en mantenimiento. Intenta nuevamente más tarde.';
+    private const MAINTENANCE_LOGIN_MESSAGE = 'El sistema estÃ¡ en mantenimiento. Intenta nuevamente mÃ¡s tarde.';
 
     public function __construct()
     {
@@ -37,13 +37,13 @@ class LoginController extends Controller
                 'remember' => 'required|boolean',
             ],
             [
-                $this->username().'.required' => 'Ingrese su correo electrónico.',
-                $this->username().'.email' => 'Ingrese un correo electrónico válido.',
-                'password.required' => 'Ingrese su contraseña.',
+                $this->username().'.required' => 'Ingrese su correo electrÃ³nico.',
+                $this->username().'.email' => 'Ingrese un correo electrÃ³nico vÃ¡lido.',
+                'password.required' => 'Ingrese su contraseÃ±a.',
             ],
             [
-                $this->username() => 'correo electrónico',
-                'password' => 'contraseña',
+                $this->username() => 'correo electrÃ³nico',
+                'password' => 'contraseÃ±a',
             ]
         );
     }
@@ -78,8 +78,8 @@ class LoginController extends Controller
             $target = url('/').'?login=1';
 
             return redirect($target)
-                ->withErrors(['email' => 'Tu cuenta está deshabilitada o suspendida.'], 'login')
-                ->with('auth_error', 'Tu cuenta está deshabilitada o suspendida.');
+                ->withErrors(['email' => 'Tu cuenta estÃ¡ deshabilitada o suspendida.'], 'login')
+                ->with('auth_error', 'Tu cuenta estÃ¡ deshabilitada o suspendida.');
         }
 
         return redirect($user->dashboardPath());
@@ -112,7 +112,7 @@ class LoginController extends Controller
         $seconds = $this->limiter()->availableIn($this->throttleKey($request));
 
         throw ValidationException::withMessages([
-            $this->username() => ['Demasiados intentos. Inténtelo nuevamente en '.$seconds.' segundos.'],
+            $this->username() => ['Demasiados intentos. IntÃ©ntelo nuevamente en '.$seconds.' segundos.'],
         ])->status(429)->errorBag('login');
     }
 }

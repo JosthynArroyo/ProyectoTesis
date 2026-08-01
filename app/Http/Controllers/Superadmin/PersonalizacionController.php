@@ -14,6 +14,12 @@ use App\Services\SiteSettingsService;
 use App\Services\ProfessionalScheduleService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
+use Throwable;
+
+use App\Models\MediaProcessingBatch;
+use App\Services\ServicesPersonalizationAsyncService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class PersonalizacionController extends Controller
 {
@@ -67,123 +73,72 @@ class PersonalizacionController extends Controller
     public function serviciosUpdate(
         PersonalizacionServiciosRequest $request,
         SiteSettingsService $settings,
-        ImageOptimizer $imageOptimizer
-    )
+        ServicesPersonalizationAsyncService $asyncService
+    ) {
+        try {
+            $batch = $asyncService->createAndDispatchBatch($request, $request->user(), $settings);
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'ok' => true,
+                    'batch_uuid' => $batch->uuid,
+                    'total' => $batch->total_items,
+                    'message' => 'Imágenes recibidas. Estamos procesando los cambios.',
+                    'status_url' => route('superadmin.personalizacion.servicios.batch', ['uuid' => $batch->uuid]),
+                ], 202);
+            }
+
+            return back()
+                ->with('success', 'Imágenes recibidas. Estamos procesando los cambios.');
+        } catch (Throwable $exception) {
+            report($exception);
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'ok' => false,
+                    'message' => $exception->getMessage() ?: 'No se pudieron guardar los cambios de imagen. Intenta nuevamente.',
+                ], 422);
+            }
+
+            return back()
+                ->withInput()
+                ->with('error', $exception->getMessage() ?: 'No se pudieron guardar los cambios de imagen. Intenta nuevamente.');
+        }
+    }
+
+    public function serviciosBatchStatus(string $uuid, Request $request): JsonResponse
     {
-        $data = $request->validated();
-        $meta = [
-            'services.title' => ['section' => 'services', 'type' => 'text'],
-            'services.subtitle' => ['section' => 'services', 'type' => 'text'],
-            'services.cta_text' => ['section' => 'services', 'type' => 'text'],
-            'services.hero_image' => ['section' => 'services', 'type' => 'image'],
-        ];
+        $batch = MediaProcessingBatch::query()->where('uuid', $uuid)->first();
 
-        $heroImagePath = $data['services_hero_image_path'] ?? $settings->get('services.hero_image');
-        $heroImageFile = $request->file('services_hero_image');
-        if ($heroImageFile) {
-            $previousHeroImage = $heroImagePath;
-            $heroImagePath = $imageOptimizer->optimizeAndStore($heroImageFile, 'services', baseName: 'services-hero');
-            if ($previousHeroImage && $previousHeroImage !== $heroImagePath) {
-                $imageOptimizer->deleteByStoredPath($previousHeroImage, 'services');
-            }
+        if (! $batch) {
+            return response()->json(['message' => 'Lote no encontrado.'], 404);
         }
 
-        $settingsPayload = [
-            'services.title' => $data['services_title'] ?? null,
-            'services.subtitle' => $data['services_subtitle'] ?? null,
-            'services.cta_text' => $data['services_cta_text'] ?? null,
-            'services.hero_image' => $heroImagePath,
-        ];
-
-        foreach (($data['especialidades'] ?? []) as $id => $payload) {
-            $especialidad = Especialidad::query()->find($id);
-            if (! $especialidad) {
-                continue;
-            }
-
-            $icono = $payload['icono'] ?? null;
-            $icono = is_string($icono) ? trim($icono) : $icono;
-            $icono = $icono === '' ? null : $icono;
-
-            $nombre = isset($payload['nombre']) ? trim((string) $payload['nombre']) : '';
-
-            if ($nombre !== '') {
-                $especialidad->nombre = $nombre;
-            }
-
-            $especialidad->descripcion = $payload['descripcion'] ?? null;
-            $especialidad->icono = $icono;
-            $especialidad->activo = array_key_exists('activo', $payload)
-                ? ! empty($payload['activo'])
-                : $especialidad->activo;
-            $especialidad->orden = array_key_exists('orden', $payload) && $payload['orden'] !== null && $payload['orden'] !== ''
-                ? (int) $payload['orden']
-                : $especialidad->orden;
-            $especialidad->save();
-
-            $imageKey = $this->serviceImageKey((int) $especialidad->id);
-            $currentImagePath = $payload['image_path'] ?? $settings->get($imageKey);
-            $imageFile = $request->file("especialidades.$id.image");
-
-            if ($imageFile) {
-                $previousImagePath = $currentImagePath;
-                $currentImagePath = $imageOptimizer->optimizeAndStore(
-                    $imageFile,
-                    'services',
-                    baseName: 'service-'.$especialidad->id,
-                );
-
-                if ($previousImagePath && $previousImagePath !== $currentImagePath) {
-                    $imageOptimizer->deleteByStoredPath($previousImagePath, 'services');
-                }
-            }
-
-            $settingsPayload[$imageKey] = $currentImagePath;
-            $meta[$imageKey] = ['section' => 'services', 'type' => 'image'];
+        if (! $batch->canBeAccessedBy($request->user())) {
+            return response()->json(['message' => 'No autorizado.'], 403);
         }
 
-        foreach (($data['nuevas'] ?? []) as $newIndex => $payload) {
-            $nombre = isset($payload['nombre']) ? trim((string) $payload['nombre']) : '';
-            $descripcion = isset($payload['descripcion']) ? trim((string) $payload['descripcion']) : '';
-            $icono = $payload['icono'] ?? null;
-            $icono = is_string($icono) ? trim($icono) : $icono;
-            $icono = $icono === '' ? null : $icono;
+        $elapsedSeconds = $batch->elapsed_seconds;
+        $waitingSeconds = $batch->waiting_seconds;
+        $processingSeconds = $batch->processing_seconds;
 
-            if ($nombre === '' && $descripcion === '' && $icono === null) {
-                continue;
-            }
+        $message = match ($batch->status) {
+            'completed' => 'Personalización guardada correctamente.',
+            'failed' => $batch->error_message ?: 'No pudimos procesar todas las imágenes. Tus imágenes anteriores se conservaron. Intenta nuevamente.',
+            'processing' => "Procesando imágenes {$batch->processed_items} de {$batch->total_items}…",
+            default => 'Preparando imágenes…',
+        };
 
-            if ($nombre === '') {
-                continue;
-            }
-
-            $especialidad = Especialidad::query()->create([
-                'nombre' => $nombre,
-                'descripcion' => $descripcion !== '' ? $descripcion : null,
-                'icono' => $icono,
-                'activo' => ! empty($payload['activo']),
-                'orden' => (int) ($payload['orden'] ?? 0),
-            ]);
-
-            $imageKey = $this->serviceImageKey((int) $especialidad->id);
-            $currentImagePath = $payload['image_path'] ?? null;
-            $imageFile = $request->file("nuevas.$newIndex.image");
-
-            if ($imageFile) {
-                $currentImagePath = $imageOptimizer->optimizeAndStore(
-                    $imageFile,
-                    'services',
-                    baseName: 'service-'.$especialidad->id,
-                );
-            }
-
-            $settingsPayload[$imageKey] = $currentImagePath;
-            $meta[$imageKey] = ['section' => 'services', 'type' => 'image'];
-        }
-
-        $settings->setMany($settingsPayload, $meta);
-
-        return back()->with('success', 'Servicios actualizados correctamente.');
+        return response()->json([
+            'status' => $batch->status,
+            'total' => $batch->total_items,
+            'processed' => $batch->processed_items,
+            'percentage' => $batch->percentage,
+            'message' => $message,
+            'elapsed_seconds' => $elapsedSeconds,
+            'waiting_seconds' => $waitingSeconds,
+            'processing_seconds' => $processingSeconds,
+        ]);
     }
 
     public function contactoEdit(SiteSettingsService $settings)

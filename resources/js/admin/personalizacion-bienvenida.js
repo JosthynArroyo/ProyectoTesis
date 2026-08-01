@@ -7,16 +7,31 @@ document.addEventListener('DOMContentLoaded', () => {
   const livePreviewStage = formRoot.querySelector('[data-live-preview-stage]');
   const livePreviewFrame = formRoot.querySelector('[data-live-preview-frame]');
   const livePreviewSurface = formRoot.querySelector('[data-live-preview-surface]');
+  const previewScroll = formRoot.querySelector('.welcome-cms-preview-scroll');
   const previewModal = formRoot.querySelector('[data-preview-modal]');
   const previewOpenButtons = Array.from(formRoot.querySelectorAll('[data-preview-open]'));
   const previewCloseButtons = Array.from(formRoot.querySelectorAll('[data-preview-close]'));
   const activeTabInput = formRoot.querySelector('[data-active-tab-input]');
+  const previewConfig = parseJson(
+    formRoot.querySelector('[data-welcome-preview-config]')?.textContent || '{}',
+  );
+  const previewSlides = Array.isArray(previewConfig.slides) ? previewConfig.slides : [];
+  const previewDoctorsConfig = parseJson(
+    formRoot.querySelector('[data-welcome-doctors-preview-config]')?.textContent || '{}',
+  );
+  const previewDoctors = new Map(
+    Array.isArray(previewDoctorsConfig.doctors)
+      ? previewDoctorsConfig.doctors.map((doctor) => [String(doctor.key || ''), doctor])
+      : [],
+  );
   const featuredOptions = parseFeaturedOptions(
     formRoot.querySelector('[data-featured-options]')?.textContent || '[]',
   );
   const featuredOptionsById = new Map(featuredOptions.map((option) => [String(option.id), option]));
   const filePreviews = new Map();
   const currentYear = formRoot.dataset.currentYear || String(new Date().getFullYear());
+  let previewSyncToken = null;
+  let previewResizeObserver = null;
 
   const defaults = {
     brandingName: 'Nombre de la clínica',
@@ -231,16 +246,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const resolveImageUrl = (path) => {
     if (!path) return '';
-    if (/^(https?:|data:)/i.test(path)) return path;
+    if (/^(https?:|data:|blob:)/i.test(path)) return path;
 
     const assetBase = formRoot.dataset.assetBase || '';
     const storageBase = formRoot.dataset.storageBase || '';
+    const r2Url = formRoot.dataset.r2Url || '';
+    const normalizedPath = String(path).replace(/^\//, '');
 
-    if (path.startsWith('img/') || path.startsWith('storage/')) {
-      return `${assetBase}${path}`;
+    if (r2Url && normalizedPath.startsWith('images/')) {
+      return `${r2Url}/${normalizedPath}`;
     }
 
-    return `${storageBase}/${path.replace(/^\//, '')}`;
+    if (normalizedPath.startsWith('img/') || normalizedPath.startsWith('storage/')) {
+      return `${assetBase}${normalizedPath}`;
+    }
+
+    return `${storageBase}/${normalizedPath}`;
   };
 
   const sortByOrder = (items) =>
@@ -255,9 +276,17 @@ document.addEventListener('DOMContentLoaded', () => {
       return left.sortOrder - right.sortOrder;
     });
 
-  const mediaMarkup = (url, alt, icon = 'ri-image-line', placeholder = '') => {
-    if (url) {
-      return `<img src="${escapeHtml(url)}" alt="${escapeHtml(alt)}">`;
+  const mediaMarkup = (source, alt, icon = 'ri-image-line', placeholder = '') => {
+    const normalizedSource =
+      source && typeof source === 'object'
+        ? source
+        : { url: source || '', srcset: '', sizes: '', alt };
+
+    if (normalizedSource.url) {
+      const srcset = normalizedSource.srcset ? ` srcset="${escapeHtml(normalizedSource.srcset)}"` : '';
+      const sizes = normalizedSource.sizes ? ` sizes="${escapeHtml(normalizedSource.sizes)}"` : '';
+
+      return `<img src="${escapeHtml(normalizedSource.url)}"${srcset}${sizes} alt="${escapeHtml(alt)}">`;
     }
 
     return `
@@ -268,14 +297,52 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
   };
 
-  const scheduleRender = () => {
-    if (!livePreviewRoot || renderToken !== null) return;
+  const getSlideKeyIndex = (row) => {
+    const key = String(row?.dataset?.rowKey || '');
+    const match = key.match(/^slide-(\d+)$/);
 
-    renderToken = window.requestAnimationFrame(() => {
-      renderToken = null;
-      renderLivePreview();
-      window.requestAnimationFrame(syncPreviewScale);
-    });
+    return match ? Number.parseInt(match[1], 10) : Number.NaN;
+  };
+
+  const getPreviewSlide = (row) => {
+    const slideIndex = getSlideKeyIndex(row);
+
+    if (!Number.isFinite(slideIndex)) {
+      return {};
+    }
+
+    return previewSlides[slideIndex] || {};
+  };
+
+  const getDoctorKey = (row) => {
+    const idField = row?.querySelector('input[type="hidden"][name$="[id]"]');
+    const rowId = String(idField?.value || row?.dataset?.doctorId || '').trim();
+
+    if (rowId !== '') {
+      return rowId;
+    }
+
+    return String(row?.dataset?.rowKey || '');
+  };
+
+  const getPreviewDoctor = (row) => {
+    const key = getDoctorKey(row);
+
+    if (!key) {
+      return {};
+    }
+
+    return previewDoctors.get(key) || {};
+  };
+
+  const getPersistedRowImage = (row) => {
+    const rowKey = String(row?.dataset?.rowKey || '');
+
+    if (/^slide-\d+$/.test(rowKey)) {
+      return getPreviewSlide(row)?.image_url || '';
+    }
+
+    return getPreviewDoctor(row)?.image_url || '';
   };
 
   const syncPreviewScale = () => {
@@ -289,12 +356,36 @@ document.addEventListener('DOMContentLoaded', () => {
     const frameHeight = Math.max(
       livePreviewSurface.scrollHeight,
       livePreviewSurface.offsetHeight,
-      livePreviewRoot.scrollHeight,
+      livePreviewRoot?.scrollHeight || 0,
+      760,
     );
 
     livePreviewStage.style.setProperty('--preview-desktop-width', `${desktopWidth}px`);
     livePreviewStage.style.setProperty('--preview-scale', `${scale}`);
     livePreviewStage.style.setProperty('--preview-frame-height', `${frameHeight}px`);
+
+    if (previewScroll) {
+      previewScroll.scrollLeft = 0;
+    }
+  };
+
+  const schedulePreviewScale = () => {
+    if (previewSyncToken !== null) return;
+
+    previewSyncToken = window.requestAnimationFrame(() => {
+      previewSyncToken = null;
+      syncPreviewScale();
+    });
+  };
+
+  const scheduleRender = () => {
+    if (!livePreviewRoot || renderToken !== null) return;
+
+    renderToken = window.requestAnimationFrame(() => {
+      renderToken = null;
+      renderLivePreview();
+      schedulePreviewScale();
+    });
   };
 
   const syncColorPreview = (input) => {
@@ -369,11 +460,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const handleFileInput = (input) => {
     const file = input.files?.[0];
-    if (!file) return;
-
     const row = input.closest('[data-row-key]');
-    const key = row ? row.dataset.rowKey || '' : input.name;
-    if (!key) return;
+    const key = row ? getDoctorKey(row) || row.dataset.rowKey || '' : input.name;
+    if (!key) {
+      return;
+    }
+
+    if (!file) {
+      if (row) {
+        filePreviews.delete(key);
+        updateInlineImagePreview(input, getPersistedRowImage(row));
+        scheduleRender();
+      }
+      return;
+    }
 
     const reader = new FileReader();
     reader.onload = () => {
@@ -423,12 +523,39 @@ document.addEventListener('DOMContentLoaded', () => {
   const initPreviewModal = () => {
     if (!previewModal) return;
 
+    const ensurePreviewObserver = () => {
+      if (previewResizeObserver || !('ResizeObserver' in window)) {
+        return;
+      }
+
+      previewResizeObserver = new ResizeObserver(() => {
+        schedulePreviewScale();
+      });
+
+      if (livePreviewRoot) {
+        previewResizeObserver.observe(livePreviewRoot);
+      }
+
+      if (livePreviewSurface) {
+        previewResizeObserver.observe(livePreviewSurface);
+      }
+    };
+
     const openModal = () => {
       previewModal.hidden = false;
       document.body.classList.add('overflow-hidden');
       renderLivePreview();
+      ensurePreviewObserver();
+      if (previewScroll) {
+        previewScroll.scrollTo({ left: 0, top: 0, behavior: 'auto' });
+      }
       window.requestAnimationFrame(() => {
-        window.requestAnimationFrame(syncPreviewScale);
+        window.requestAnimationFrame(() => {
+          schedulePreviewScale();
+          if (previewScroll) {
+            previewScroll.scrollTo({ left: 0, top: 0, behavior: 'auto' });
+          }
+        });
       });
     };
 
@@ -451,11 +578,14 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    window.addEventListener('resize', () => {
+    const handleViewportResize = () => {
       if (!previewModal.hidden) {
-        syncPreviewScale();
+        schedulePreviewScale();
       }
-    });
+    };
+
+    window.addEventListener('resize', handleViewportResize, { passive: true });
+    window.addEventListener('orientationchange', handleViewportResize, { passive: true });
   };
 
   const initRepeater = ({
@@ -496,7 +626,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const row = removeButton.closest(rowSelector);
       if (!row) return;
 
-      filePreviews.delete(row.dataset.rowKey || '');
+      filePreviews.delete(getDoctorKey(row) || row.dataset.rowKey || '');
       row.remove();
       if (typeof afterRemove === 'function') {
         afterRemove();
@@ -594,7 +724,7 @@ document.addEventListener('DOMContentLoaded', () => {
           rowValue(row, '[cta_text]') ||
           rowValue(row, '[pill_text]') ||
           rowHiddenValue(row, '[photo_path]') ||
-          filePreviews.get(row.dataset.rowKey || ''),
+          filePreviews.get(getDoctorKey(row) || row.dataset.rowKey || ''),
       );
     }).length;
 
@@ -638,17 +768,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const slides = sortByOrder(
       Array.from(formRoot.querySelectorAll('[data-slide-row]'))
-        .map((row) => ({
-          alt: rowValue(row, '[alt]', 'Imagen de bienvenida'),
-          title: rowValue(row, '[title]'),
-          subtitle: rowValue(row, '[subtitle]'),
-          text: rowValue(row, '[text]'),
-          imageUrl:
-            filePreviews.get(row.dataset.rowKey || '') ||
-            resolveImageUrl(rowHiddenValue(row, '[image_path]')),
-          sortOrder: parseNumber(rowValue(row, '[sort_order]', '0')),
-          isActive: rowChecked(row, '[is_active]', true),
-        }))
+        .map((row) => {
+          const key = String(row.dataset.rowKey || '');
+          const previewImage = getPreviewSlide(row);
+          const imageUrl = filePreviews.get(key) || previewImage.image_url || '';
+
+          return {
+            alt: rowValue(row, '[alt]', previewImage.alt || 'Imagen de bienvenida'),
+            title: rowValue(row, '[title]', previewImage.title || ''),
+            subtitle: rowValue(row, '[subtitle]', previewImage.subtitle || ''),
+            text: rowValue(row, '[text]', previewImage.text || ''),
+            imageUrl,
+            imageSrcset: filePreviews.get(key) ? '' : previewImage.image_srcset || '',
+            imageSizes: filePreviews.get(key)
+              ? ''
+              : previewImage.image_sizes || '(max-width: 640px) 100vw, 50vw',
+            sortOrder: parseNumber(rowValue(row, '[sort_order]', '0')),
+            isActive: rowChecked(row, '[is_active]', true),
+          };
+        })
         .filter((item) => item.isActive),
     );
 
@@ -688,7 +826,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const visibleDoctors = sortByOrder(
       Array.from(formRoot.querySelectorAll('[data-doctor-row]'))
         .map((row) => {
+          const key = getDoctorKey(row);
+          const previewDoctor = getPreviewDoctor(row);
           const specialty = rowValue(row, '[specialty]');
+          const localPhoto = filePreviews.get(key) || '';
           return {
             name: rowValue(row, '[name]'),
             specialty,
@@ -698,9 +839,11 @@ document.addEventListener('DOMContentLoaded', () => {
             availabilityLabel: rowValue(row, '[availability_label]', 'Agenda disponible'),
             ctaText: rowValue(row, '[cta_text]', defaults.heroPrimaryText),
             pillText: rowValue(row, '[pill_text]', defaults.doctorsPill),
-            imageUrl:
-              filePreviews.get(row.dataset.rowKey || '') ||
-              resolveImageUrl(rowHiddenValue(row, '[photo_path]')),
+            image: {
+              url: localPhoto || previewDoctor.image_url || '',
+              srcset: localPhoto ? '' : previewDoctor.image_srcset || '',
+              sizes: localPhoto ? '' : previewDoctor.image_sizes || '176px',
+            },
             icon:
               serviceIconMap[normalizeKey(specialty)] ||
               'ri-user-heart-line',
@@ -806,7 +949,11 @@ document.addEventListener('DOMContentLoaded', () => {
       const copy = heroSlideCopy[index % heroSlideCopy.length];
 
       return {
-        imageUrl: slide?.imageUrl || '',
+        image: {
+          url: slide?.imageUrl || '',
+          srcset: slide?.imageSrcset || '',
+          sizes: slide?.imageSizes || '(max-width: 640px) 100vw, 50vw',
+        },
         alt: slide?.alt || `Imagen ${index + 1}`,
         title: slide?.title || copy.title,
         subtitle: slide?.subtitle || copy.subtitle || '',
@@ -822,7 +969,7 @@ document.addEventListener('DOMContentLoaded', () => {
           }">
             <div class="welcome-live-preview__hero-gallery-media">
               ${mediaMarkup(
-                slide.imageUrl,
+                slide.image,
                 slide.alt || slide.title || `Imagen ${index + 1}`,
                 'ri-image-line',
                 `Imagen ${index + 1}`,
@@ -914,7 +1061,7 @@ document.addEventListener('DOMContentLoaded', () => {
               <article class="welcome-live-preview__doctor-card">
                 <div class="welcome-live-preview__doctor-image">
                   ${mediaMarkup(
-                    doctor.imageUrl,
+                    doctor.image,
                     doctor.name || 'Doctor',
                     'ri-user-3-line',
                     'Foto de doctor',
@@ -1250,5 +1397,14 @@ function parseFeaturedOptions(rawJson) {
     return JSON.parse(rawJson);
   } catch (_error) {
     return [];
+  }
+}
+
+function parseJson(rawJson, fallback = {}) {
+  try {
+    const value = JSON.parse(rawJson);
+    return value && typeof value === 'object' ? value : fallback;
+  } catch (_error) {
+    return fallback;
   }
 }

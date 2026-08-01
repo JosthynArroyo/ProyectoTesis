@@ -11,7 +11,7 @@
     <x-ui.alert tone="success">{{ session('success') }}</x-ui.alert>
   @endif
 
-  <form class="form space-y-6" method="POST" action="{{ route('superadmin.personalizacion.servicios.update') }}" enctype="multipart/form-data" data-draft-key="superadmin.personalizacion.servicios">
+  <form class="form space-y-6" method="POST" action="{{ route('superadmin.personalizacion.servicios.update') }}" enctype="multipart/form-data" data-draft-key="superadmin.personalizacion.servicios" data-upload-limits-enabled="1" data-upload-max-file-bytes="10485760" data-upload-max-total-bytes="52428800">
     @csrf
     @method('PUT')
     @include('shared.personalizacion-servicios-form', ['especialidades' => $especialidades])

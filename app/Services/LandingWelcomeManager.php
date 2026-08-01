@@ -12,10 +12,24 @@ use App\Models\LandingWelcomeSetting;
 use App\Models\LandingWelcomeSlide;
 use App\Models\LandingWelcomeStat;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
+use Throwable;
 
 class LandingWelcomeManager
 {
+    private const PROTECTED_KEYWORDS = [
+        'hero1', 'hero2', 'hero3',
+        'doctor1', 'doctor2', 'doctora1',
+    ];
+
+    private const MANAGED_FOLDERS = [
+        'images/banners',
+        'images/doctors',
+    ];
+
     public function __construct(
         private readonly ImageOptimizer $imageOptimizer,
         private readonly SiteSettingsService $siteSettings
@@ -23,63 +37,104 @@ class LandingWelcomeManager
 
     public function update(LandingWelcomeRequest $request): void
     {
-        $settings = LandingWelcomeSetting::query()->first() ?? new LandingWelcomeSetting;
-        $headerLogoPath = $request->input('header_logo_path');
-        $headerLogoFile = $request->file('header_logo');
-        if ($headerLogoFile) {
-            $baseName = $headerLogoPath
-                ? pathinfo((string) $headerLogoPath, PATHINFO_FILENAME)
-                : 'branding-header-logo';
+        $previousSlidePaths = LandingWelcomeSlide::query()->pluck('image_path')->filter()->all();
+        $previousDoctorPaths = LandingWelcomeDoctor::query()->pluck('photo_path')->filter()->all();
 
-            $headerLogoPath = $this->imageOptimizer->optimizeAndStore(
-                $headerLogoFile,
-                'branding',
-                baseName: $baseName
-            );
+        $newlyUploadedPaths = [];
+        $headerLogoPath = $request->input('header_logo_path');
+
+        try {
+            DB::transaction(function () use ($request, &$newlyUploadedPaths, &$headerLogoPath) {
+                $headerLogoFile = $request->file('header_logo');
+                if ($headerLogoFile) {
+                    $baseName = $headerLogoPath
+                        ? pathinfo((string) $headerLogoPath, PATHINFO_FILENAME)
+                        : 'branding-header-logo';
+
+                    $headerLogoPath = $this->imageOptimizer->optimizeAndStore(
+                        $headerLogoFile,
+                        'branding',
+                        baseName: $baseName,
+                        generateAvif: false,
+                        profile: 'branding_asset',
+                        storeOriginal: true
+                    );
+                    if ($headerLogoPath) {
+                        $newlyUploadedPaths[] = $headerLogoPath;
+                    }
+                }
+
+                $settings = LandingWelcomeSetting::query()->first() ?? new LandingWelcomeSetting;
+
+                $settings->fill($this->filterExistingColumns('landing_welcome_settings', [
+                    'header_logo' => $headerLogoPath,
+                    'header_name' => $request->input('branding_name'),
+                    'header_login_text' => $request->input('header_login_text'),
+                    'hero_title' => $request->input('hero_title'),
+                    'hero_subtitle' => $request->input('hero_subtitle'),
+                    'hero_primary_text' => $request->input('hero_primary_text'),
+                    'hero_secondary_text' => $request->input('hero_secondary_text'),
+                    'hero_show_primary' => $request->boolean('hero_show_primary'),
+                    'hero_show_secondary' => $request->boolean('hero_show_secondary'),
+                    'intro_badge' => $request->input('intro_badge'),
+                    'intro_feature_1_title' => $request->input('intro_feature_1_title'),
+                    'intro_feature_1_text' => $request->input('intro_feature_1_text'),
+                    'intro_feature_4_title' => $request->input('intro_feature_4_title'),
+                    'intro_feature_4_text' => $request->input('intro_feature_4_text'),
+                    'services_badge' => $request->input('services_badge'),
+                    'services_title' => $request->input('services_title'),
+                    'services_subtitle' => $request->input('services_subtitle'),
+                    'services_button_text' => $request->input('services_button_text'),
+                    'prices_badge' => $request->input('prices_badge'),
+                    'prices_title' => $request->input('prices_title'),
+                    'prices_subtitle' => $request->input('prices_subtitle'),
+                    'prices_highlight_title' => $request->input('prices_highlight_title'),
+                    'prices_highlight_subtitle' => $request->input('prices_highlight_subtitle'),
+                    'prices_visit_title' => $request->input('prices_visit_title'),
+                    'prices_visit_subtitle' => $request->input('prices_visit_subtitle'),
+                    'doctors_badge' => $request->input('doctors_badge'),
+                    'doctors_title' => $request->input('doctors_title'),
+                    'doctors_subtitle' => $request->input('doctors_subtitle'),
+                    'doctors_pill' => $request->input('doctors_pill'),
+                    'show_services_block' => $request->boolean('show_services_block'),
+                ]));
+
+                $settings->save();
+
+                $this->syncSiteSettings($request, $headerLogoPath);
+                $this->syncStats($request);
+                $this->syncSlides($request, $newlyUploadedPaths);
+                $this->syncInfoCards($request);
+                $this->syncDoctors($request, $newlyUploadedPaths);
+                $this->syncPrices($request);
+                $this->syncFeaturedSpecialties($request);
+            });
+        } catch (Throwable $e) {
+            foreach ($newlyUploadedPaths as $newPath) {
+                try {
+                    $this->imageOptimizer->deleteByStoredPath($newPath);
+                } catch (Throwable $cleanupError) {
+                    Log::warning('Failed to cleanup newly uploaded image on transaction rollback', [
+                        'path' => $newPath,
+                        'error' => $cleanupError->getMessage(),
+                    ]);
+                }
+            }
+
+            throw $e;
         }
 
-        $settings->fill($this->filterExistingColumns('landing_welcome_settings', [
-            'header_logo' => $headerLogoPath,
-            'header_name' => $request->input('branding_name'),
-            'header_login_text' => $request->input('header_login_text'),
-            'hero_title' => $request->input('hero_title'),
-            'hero_subtitle' => $request->input('hero_subtitle'),
-            'hero_primary_text' => $request->input('hero_primary_text'),
-            'hero_secondary_text' => $request->input('hero_secondary_text'),
-            'hero_show_primary' => $request->boolean('hero_show_primary'),
-            'hero_show_secondary' => $request->boolean('hero_show_secondary'),
-            'intro_badge' => $request->input('intro_badge'),
-            'intro_feature_1_title' => $request->input('intro_feature_1_title'),
-            'intro_feature_1_text' => $request->input('intro_feature_1_text'),
-            'intro_feature_4_title' => $request->input('intro_feature_4_title'),
-            'intro_feature_4_text' => $request->input('intro_feature_4_text'),
-            'services_badge' => $request->input('services_badge'),
-            'services_title' => $request->input('services_title'),
-            'services_subtitle' => $request->input('services_subtitle'),
-            'services_button_text' => $request->input('services_button_text'),
-            'prices_badge' => $request->input('prices_badge'),
-            'prices_title' => $request->input('prices_title'),
-            'prices_subtitle' => $request->input('prices_subtitle'),
-            'prices_highlight_title' => $request->input('prices_highlight_title'),
-            'prices_highlight_subtitle' => $request->input('prices_highlight_subtitle'),
-            'prices_visit_title' => $request->input('prices_visit_title'),
-            'prices_visit_subtitle' => $request->input('prices_visit_subtitle'),
-            'doctors_badge' => $request->input('doctors_badge'),
-            'doctors_title' => $request->input('doctors_title'),
-            'doctors_subtitle' => $request->input('doctors_subtitle'),
-            'doctors_pill' => $request->input('doctors_pill'),
-            'show_services_block' => $request->boolean('show_services_block'),
-        ]));
+        $finalSlidePaths = LandingWelcomeSlide::query()->pluck('image_path')->filter()->all();
+        $finalDoctorPaths = LandingWelcomeDoctor::query()->pluck('photo_path')->filter()->all();
 
-        $settings->save();
+        $allPrevious = array_unique(array_merge($previousSlidePaths, $previousDoctorPaths));
+        $allFinal = array_unique(array_merge($finalSlidePaths, $finalDoctorPaths));
 
-        $this->syncSiteSettings($request, $headerLogoPath);
-        $this->syncStats($request);
-        $this->syncSlides($request);
-        $this->syncInfoCards($request);
-        $this->syncDoctors($request);
-        $this->syncPrices($request);
-        $this->syncFeaturedSpecialties($request);
+        $obsoletePaths = array_diff($allPrevious, $allFinal);
+
+        foreach ($obsoletePaths as $obsoletePath) {
+            $this->safelyDeleteObsoletePath($obsoletePath);
+        }
     }
 
     private function syncSiteSettings(LandingWelcomeRequest $request, ?string $headerLogoPath): void
@@ -87,14 +142,15 @@ class LandingWelcomeManager
         $faviconPath = $request->input('branding_favicon_path');
         $faviconFile = $request->file('branding_favicon');
         if ($faviconFile) {
-            $baseName = $faviconPath
-                ? pathinfo((string) $faviconPath, PATHINFO_FILENAME)
-                : 'branding-favicon';
+            $baseName = 'favicon-'.Str::uuid()->toString();
 
             $faviconPath = $this->imageOptimizer->optimizeAndStore(
                 $faviconFile,
                 'branding',
-                baseName: $baseName
+                baseName: $baseName,
+                generateAvif: false,
+                profile: 'branding_asset',
+                storeOriginal: true
             );
         }
 
@@ -178,7 +234,7 @@ class LandingWelcomeManager
         }
     }
 
-    private function syncSlides(LandingWelcomeRequest $request): void
+    private function syncSlides(LandingWelcomeRequest $request, array &$newlyUploadedPaths): void
     {
         $items = $this->normalizeList($request->input('slides', []));
         LandingWelcomeSlide::query()->delete();
@@ -187,8 +243,17 @@ class LandingWelcomeManager
             $path = $item['image_path'] ?? null;
             $file = $request->file("slides.$index.image");
             if ($file) {
-                $baseName = $path ? pathinfo((string) $path, PATHINFO_FILENAME) : null;
-                $path = $this->imageOptimizer->optimizeAndStore($file, 'banners', baseName: $baseName);
+                $path = $this->imageOptimizer->optimizeAndStore(
+                    $file,
+                    'banners',
+                    baseName: null,
+                    generateAvif: false,
+                    profile: 'public_hero',
+                    storeOriginal: true
+                );
+                if ($path) {
+                    $newlyUploadedPaths[] = $path;
+                }
             }
 
             if (! $path) {
@@ -227,7 +292,7 @@ class LandingWelcomeManager
         }
     }
 
-    private function syncDoctors(LandingWelcomeRequest $request): void
+    private function syncDoctors(LandingWelcomeRequest $request, array &$newlyUploadedPaths): void
     {
         $items = $this->normalizeList($request->input('doctors', []));
         LandingWelcomeDoctor::query()->delete();
@@ -236,8 +301,17 @@ class LandingWelcomeManager
             $path = $item['photo_path'] ?? null;
             $file = $request->file("doctors.$index.photo");
             if ($file) {
-                $baseName = $path ? pathinfo((string) $path, PATHINFO_FILENAME) : null;
-                $path = $this->imageOptimizer->optimizeAndStore($file, 'doctors', baseName: $baseName);
+                $path = $this->imageOptimizer->optimizeAndStore(
+                    $file,
+                    'doctors',
+                    baseName: null,
+                    generateAvif: false,
+                    profile: 'public_doctor',
+                    storeOriginal: true
+                );
+                if ($path) {
+                    $newlyUploadedPaths[] = $path;
+                }
             }
 
             if (! $path) {
@@ -309,6 +383,92 @@ class LandingWelcomeManager
                         : null,
                 ]);
         }
+    }
+
+    private function safelyDeleteObsoletePath(string $path): void
+    {
+        if (! $this->isDeletableManagedPath($path)) {
+            return;
+        }
+
+        if ($this->isPathReferencedInDatabase($path)) {
+            return;
+        }
+
+        try {
+            $this->imageOptimizer->deleteByStoredPath($path);
+        } catch (Throwable $e) {
+            Log::warning('Failed to delete obsolete image after transaction commit', [
+                'path' => $path,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    public function isDeletableManagedPath(string $path): bool
+    {
+        $path = ltrim(str_replace('\\', '/', trim($path)), '/');
+
+        if ($path === '' || str_contains($path, '..')) {
+            return false;
+        }
+
+        if (preg_match('#^(https?:|data:|blob:)#i', $path)) {
+            return false;
+        }
+
+        if (Str::startsWith($path, 'img/') || Str::startsWith($path, 'public/')) {
+            return false;
+        }
+
+        $isManaged = false;
+        foreach (self::MANAGED_FOLDERS as $folder) {
+            if (Str::startsWith($path, $folder)) {
+                $isManaged = true;
+                break;
+            }
+        }
+
+        if (! $isManaged) {
+            return false;
+        }
+
+        $filename = strtolower(pathinfo($path, PATHINFO_FILENAME));
+        foreach (self::PROTECTED_KEYWORDS as $protected) {
+            if (str_contains($filename, strtolower($protected))) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function isPathReferencedInDatabase(string $path): bool
+    {
+        $normalizedPath = $this->imageOptimizer->normalizeStoredPath($path);
+        if (! $normalizedPath) {
+            return false;
+        }
+
+        $baseName = pathinfo($normalizedPath, PATHINFO_FILENAME);
+
+        $inSlides = LandingWelcomeSlide::query()
+            ->where('image_path', 'like', '%'.$baseName.'%')
+            ->exists();
+
+        if ($inSlides) {
+            return true;
+        }
+
+        $inDoctors = LandingWelcomeDoctor::query()
+            ->where('photo_path', 'like', '%'.$baseName.'%')
+            ->exists();
+
+        if ($inDoctors) {
+            return true;
+        }
+
+        return false;
     }
 
     private function normalizeList(array $items): array

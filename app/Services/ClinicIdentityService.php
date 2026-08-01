@@ -96,7 +96,7 @@ class ClinicIdentityService
     {
         $path = $this->logoPath();
 
-        return $path ? $this->imageUrl->url($path, 'branding', 'banner', $size) : null;
+        return $path ? $this->imageUrl->url($path, 'branding', 'banner', $size, 'branding_asset') : null;
     }
 
     public function faviconUrl(): string
@@ -104,48 +104,132 @@ class ClinicIdentityService
         $path = $this->faviconPath();
 
         return $path
-            ? $this->imageUrl->url($path, 'branding', 'banner', 'thumb')
+            ? $this->imageUrl->url($path, 'branding', 'banner', 'thumb', 'branding_asset')
             : asset('img/placeholders/default.svg');
     }
 
     public function logoBase64(): ?string
     {
-        $path = $this->absolutePath($this->logoPath());
-        if (! $path || ! is_file($path)) {
+        $logoData = $this->getLogoData($this->logoPath());
+        if (! $logoData) {
             return null;
         }
 
-        return $this->rememberLogoDataUri(
-            cacheKey: $this->logoCacheKey($path, 'plain'),
-            resolver: fn () => $this->buildDataUri($path)
+        $result = $this->rememberLogoDataUri(
+            cacheKey: 'clinic-identity:logo:plain:'.$logoData['cache_key_suffix'],
+            resolver: fn () => $this->buildDataUriFromContents($logoData['contents'], $logoData['mime'])
         );
+
+        return $result;
     }
 
     public function logoBase64ForPdf(): ?string
     {
-        $path = $this->absolutePath($this->logoPath()) ?: public_path('img/placeholders/default.svg');
+        $logoData = $this->getLogoData($this->logoPath()) ?? $this->getLogoData('img/placeholders/default.svg');
 
-        if (! is_file($path)) {
+        if (! $logoData) {
             return null;
         }
 
-        $mime = strtolower((string) (mime_content_type($path) ?: ''));
-        $extension = strtolower((string) pathinfo($path, PATHINFO_EXTENSION));
+        $result = $this->rememberLogoDataUri(
+            cacheKey: 'clinic-identity:logo:pdf:'.$logoData['cache_key_suffix'],
+            resolver: function () use ($logoData) {
+                $mime = $logoData['mime'];
+                $extension = $logoData['extension'];
+                $contents = $logoData['contents'];
 
-        return $this->rememberLogoDataUri(
-            cacheKey: $this->logoCacheKey($path, 'pdf'),
-            resolver: function () use ($path, $mime, $extension) {
                 if ($mime === 'image/webp' || $extension === 'webp') {
                     if (function_exists('imagecreatefromwebp')) {
-                        return $this->buildDataUri($path, 'image/webp');
+                        return $this->buildDataUriFromContents($contents, 'image/webp');
                     }
 
-                    return $this->convertWebpToPngDataUri($path);
+                    return $this->convertWebpContentsToPngDataUri($contents);
                 }
 
-                return $this->buildDataUri($path, $mime !== '' ? $mime : null);
+                return $this->buildDataUriFromContents($contents, $mime !== '' ? $mime : null);
             }
         );
+
+        return $result;
+    }
+
+    private function getLogoData(?string $rawPath): ?array
+    {
+        $path = $rawPath ? ltrim(str_replace('\\', '/', trim($rawPath)), '/') : null;
+        if (! $path) {
+            return null;
+        }
+
+        $publicPath = public_path($path);
+        if (is_file($publicPath)) {
+            $contents = @file_get_contents($publicPath);
+            if ($contents === false || $contents === '') {
+                return null;
+            }
+            $extension = strtolower(pathinfo($publicPath, PATHINFO_EXTENSION));
+            $mime = strtolower((string) (mime_content_type($publicPath) ?: $this->mimeFromExtension($extension)));
+            $mtime = @filemtime($publicPath) ?: 0;
+
+            return [
+                'contents' => $contents,
+                'mime' => $mime,
+                'extension' => $extension,
+                'cache_key_suffix' => sha1('public:'.$path.'|'.$mtime),
+                'source' => 'public',
+            ];
+        }
+
+        $storagePath = str_starts_with($path, 'storage/') ? substr($path, 8) : $path;
+        $disk = (string) config('image_optimization.disk', 'public');
+
+        try {
+            if (Storage::disk($disk)->exists($storagePath)) {
+                $contents = Storage::disk($disk)->get($storagePath);
+                if ($contents === null || $contents === '') {
+                    return null;
+                }
+                $extension = strtolower(pathinfo($storagePath, PATHINFO_EXTENSION));
+                $mime = strtolower((string) (Storage::disk($disk)->mimeType($storagePath) ?: $this->mimeFromExtension($extension)));
+                $mtime = 0;
+                try {
+                    $mtime = Storage::disk($disk)->lastModified($storagePath) ?: 0;
+                } catch (Throwable) {
+                }
+
+                return [
+                    'contents' => $contents,
+                    'mime' => $mime,
+                    'extension' => $extension,
+                    'cache_key_suffix' => sha1($disk.':'.$storagePath.'|'.$mtime),
+                    'source' => $disk,
+                ];
+            }
+        } catch (Throwable) {
+            return null;
+        }
+
+        return null;
+    }
+
+    private function mimeFromExtension(string $extension): string
+    {
+        return match (strtolower($extension)) {
+            'jpg', 'jpeg' => 'image/jpeg',
+            'png' => 'image/png',
+            'gif' => 'image/gif',
+            'webp' => 'image/webp',
+            'svg' => 'image/svg+xml',
+            'avif' => 'image/avif',
+            default => 'image/png',
+        };
+    }
+
+    private function buildDataUriFromContents(string $contents, ?string $mime = null): ?string
+    {
+        $mime = $mime ?: 'image/png';
+        $data = base64_encode($contents);
+
+        return $data === '' ? null : "data:{$mime};base64,{$data}";
     }
 
     private function buildDataUri(string $path, ?string $mime = null): ?string
@@ -159,6 +243,38 @@ class ClinicIdentityService
         $data = base64_encode($contents);
 
         return $data === '' ? null : "data:{$mime};base64,{$data}";
+    }
+
+    private function convertWebpContentsToPngDataUri(string $contents): ?string
+    {
+        if (extension_loaded('imagick') && class_exists(\Imagick::class)) {
+            try {
+                $image = new \Imagick();
+                $image->readImageBlob($contents);
+                $image->setImageFormat('png');
+                $blob = $image->getImageBlob();
+                $image->clear();
+                $image->destroy();
+
+                return $blob !== '' ? 'data:image/png;base64,'.base64_encode($blob) : null;
+            } catch (Throwable) {
+                return null;
+            }
+        }
+
+        if (function_exists('imagecreatefromstring') && function_exists('imagepng')) {
+            $resource = @imagecreatefromstring($contents);
+            if ($resource) {
+                ob_start();
+                imagepng($resource);
+                $png = (string) ob_get_clean();
+                imagedestroy($resource);
+
+                return $png !== '' ? 'data:image/png;base64,'.base64_encode($png) : null;
+            }
+        }
+
+        return null;
     }
 
     private function convertWebpToPngDataUri(string $path): ?string

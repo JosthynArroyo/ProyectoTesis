@@ -21,6 +21,8 @@
       align-items: center;
       justify-content: center;
       padding: 1rem;
+      overflow: hidden;
+      overscroll-behavior: contain;
       color-scheme: light;
     }
 
@@ -38,6 +40,7 @@
       flex-direction: column;
       width: min(1440px, 100%);
       height: min(92vh, 980px);
+      max-height: calc(100dvh - 2rem);
       overflow: hidden;
       border-radius: 2rem;
       border: 1px solid rgba(226, 232, 240, 0.96);
@@ -78,7 +81,9 @@
     .personalizacion-public-preview-scroll {
       flex: 1;
       padding: 1rem;
-      overflow: auto;
+      overflow-y: auto;
+      overflow-x: hidden;
+      overscroll-behavior: contain;
       background:
         radial-gradient(circle at top left, rgba(191, 219, 254, 0.28), transparent 34%),
         radial-gradient(circle at top right, rgba(167, 243, 208, 0.22), transparent 26%),
@@ -97,21 +102,33 @@
       --public-preview-width: 1180px;
       --public-preview-height: 0px;
       display: flex;
+      align-items: flex-start;
       justify-content: center;
       width: 100%;
+      min-width: 0;
       margin: 0 auto;
+      overflow-x: hidden;
     }
 
     .personalizacion-public-preview-scale {
+      position: relative;
+      display: flex;
+      justify-content: center;
       width: calc(var(--public-preview-width) * var(--public-preview-scale));
       min-height: calc(var(--public-preview-height) * var(--public-preview-scale));
       height: calc(var(--public-preview-height) * var(--public-preview-scale));
+      flex: none;
+      margin-inline: auto;
     }
 
     .personalizacion-public-preview-frame {
+      position: absolute;
+      top: 0;
+      left: 0;
       width: var(--public-preview-width);
       transform: scale(var(--public-preview-scale));
-      transform-origin: top center;
+      transform-origin: top left;
+      will-change: transform;
     }
 
     .personalizacion-public-preview-surface {
@@ -679,11 +696,16 @@
 
       .personalizacion-public-preview-dialog {
         height: min(94vh, 980px);
+        max-height: calc(100dvh - 1.5rem);
         border-radius: 1.35rem;
       }
 
       .personalizacion-public-preview-header {
         padding: 1rem;
+      }
+
+      .personalizacion-public-preview-scroll {
+        padding-bottom: calc(1rem + env(safe-area-inset-bottom));
       }
 
       .public-site-preview__cards-grid,

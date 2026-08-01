@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const log   = document.getElementById('chat-log');
   const form  = document.getElementById('chatbot-form');
   const input = document.getElementById('chatbot-input');
+  const sendBtn = document.getElementById('chatbot-send-btn');
 
   if (!log || !form || !input) return;
 
@@ -120,7 +121,7 @@ document.addEventListener('DOMContentLoaded', function () {
     buffer: initialBuffer(),
     citasEncontradas: [],
     dependientes: [],
-    retoHumano: { token: '', targetLabelEs: '', images: [], verifying: false },
+    retoHumano: { token: '', targetLabelEs: '', images: [], verifying: false, loading: false, element: null, statusElement: null, requestId: 0 },
   };
 
   const limpiarCedula = (value) => String(value || '').replace(/\s+/g, '');
@@ -161,6 +162,93 @@ document.addEventListener('DOMContentLoaded', function () {
 
   function scrollBottom() { log.scrollTop = log.scrollHeight; }
 
+  function setComposerDisabled(disabled) {
+    const isDisabled = Boolean(disabled);
+
+    if (input) {
+      input.disabled = isDisabled;
+    }
+
+    if (sendBtn) {
+      sendBtn.disabled = isDisabled;
+    }
+  }
+
+  function resolveSameOriginUrl(path) {
+    const value = String(path || '');
+
+    try {
+      const url = new URL(value, window.location.origin);
+      return `${window.location.origin}${url.pathname}${url.search}${url.hash}`;
+    } catch (error) {
+      const sanitizedPath = value.startsWith('/') ? value : `/${value}`;
+      return `${window.location.origin}${sanitizedPath}`;
+    }
+  }
+
+  function preloadCaptchaImage(src) {
+    return new Promise((resolve, reject) => {
+      const image = new Image();
+      image.decoding = 'async';
+      image.onload = () => resolve(src);
+      image.onerror = () => {
+        const error = new Error(`No se pudo cargar la imagen del CAPTCHA: ${src}`);
+        error.name = 'CaptchaImageLoadError';
+        reject(error);
+      };
+      image.src = src;
+    });
+  }
+
+  async function preloadCaptchaImages(images) {
+    const resolvedUrls = (Array.isArray(images) ? images : []).map((image) => resolveSameOriginUrl(image.url));
+    await Promise.all(resolvedUrls.map((src) => preloadCaptchaImage(src)));
+    return resolvedUrls;
+  }
+
+  function clearCaptchaStatus() {
+    if (state.retoHumano.statusElement && state.retoHumano.statusElement.parentNode) {
+      state.retoHumano.statusElement.parentNode.removeChild(state.retoHumano.statusElement);
+    }
+
+    state.retoHumano.statusElement = null;
+  }
+
+  function renderCaptchaStatus(text, loading = true) {
+    clearCaptchaStatus();
+
+    const wrap = document.createElement('div');
+    wrap.className = 'chat-message chat-message--status';
+
+    const bubble = document.createElement('div');
+    bubble.className = 'chat-bubble chat-bubble--bot chat-bubble--status';
+
+    const copy = document.createElement('div');
+    copy.className = 'chat-status-copy';
+    copy.textContent = text;
+    bubble.appendChild(copy);
+
+    if (loading) {
+      const indicator = document.createElement('div');
+      indicator.className = 'chat-status-indicator';
+
+      for (let index = 0; index < 3; index++) {
+        const dot = document.createElement('span');
+        dot.className = 'chat-status-dot';
+        indicator.appendChild(dot);
+      }
+
+      bubble.appendChild(indicator);
+    }
+
+    wrap.appendChild(bubble);
+    log.appendChild(wrap);
+    state.retoHumano.statusElement = wrap;
+    scrollBottom();
+
+    return wrap;
+  }
+
   function hasRegisteredSession() {
     return state.session.type === 'registered' && state.autenticado;
   }
@@ -178,6 +266,81 @@ document.addEventListener('DOMContentLoaded', function () {
     state.identidad = { id:null, nombre:'', cedula:'', email:'', telefono:'' };
     state.session = initialSession();
     state.dependientes = [];
+    resetRetoHumanoState({ invalidatePending: true });
+  }
+
+  function clearRetoHumano() {
+    if (state.retoHumano.element && state.retoHumano.element.parentNode) {
+      state.retoHumano.element.parentNode.removeChild(state.retoHumano.element);
+    }
+    state.retoHumano.element = null;
+    clearCaptchaStatus();
+  }
+
+  function resetRetoHumanoState(options = {}) {
+    const invalidatePending = Boolean(options.invalidatePending);
+    const nextRequestId = invalidatePending ? state.retoHumano.requestId + 1 : state.retoHumano.requestId;
+
+    clearRetoHumano();
+    state.retoHumano = {
+      token: '',
+      targetLabelEs: '',
+      images: [],
+      verifying: false,
+      loading: false,
+      element: null,
+      statusElement: null,
+      requestId: nextRequestId || 0,
+    };
+  }
+
+  function renderCaptchaChallenge(reto) {
+    clearRetoHumano();
+
+    const wrap = document.createElement('div');
+    wrap.className = 'chat-message';
+
+    const bubble = document.createElement('div');
+    bubble.className = 'chat-bubble chat-bubble--bot';
+
+    const title = document.createElement('div');
+    title.className = 'chat-verificacion-text';
+    title.textContent = `Para verificar que no eres un robot, selecciona la imagen de: ${reto.targetLabelEs}.`;
+
+    const grid = document.createElement('div');
+    grid.className = 'chat-verificacion-grid';
+
+    reto.images.forEach((image, idx) => {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'chat-verificacion-item';
+      item.setAttribute('aria-label', `Seleccionar opcion ${idx + 1}`);
+      item.addEventListener('click', () => {
+        procesarRespuestaRetoHumano(idx + 1);
+      });
+
+      const img = document.createElement('img');
+      const resolvedUrl = resolveSameOriginUrl(image.url);
+      img.src = resolvedUrl;
+      img.alt = `Opcion ${idx + 1}`;
+      img.loading = 'eager';
+      img.decoding = 'async';
+
+      const numero = document.createElement('div');
+      numero.className = 'chat-verificacion-numero';
+      numero.textContent = String(idx + 1);
+
+      item.appendChild(img);
+      item.appendChild(numero);
+      grid.appendChild(item);
+    });
+
+    bubble.appendChild(title);
+    bubble.appendChild(grid);
+    wrap.appendChild(bubble);
+    log.appendChild(wrap);
+    state.retoHumano.element = wrap;
+    scrollBottom();
   }
 
   function issueHoldToken() {
@@ -282,12 +445,10 @@ document.addEventListener('DOMContentLoaded', function () {
       });
 
       const img = document.createElement('img');
-      const resolvedUrl = /^https?:\/\//i.test(image.url)
-        ? image.url
-        : `${baseUrl}${String(image.url || '').startsWith('/') ? '' : '/'}${image.url}`;
+      const resolvedUrl = resolveSameOriginUrl(image.url);
       img.src = resolvedUrl;
       img.alt = `Opcion ${idx + 1}`;
-      img.loading = 'lazy';
+      img.loading = 'eager';
       img.decoding = 'async';
 
       const numero = document.createElement('div');
@@ -322,7 +483,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     challengeAbortController = new AbortController();
 
-    const res = await fetch(`${baseUrl}/captcha/challenge`, {
+    const res = await fetch('/captcha/challenge', {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
@@ -347,7 +508,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   async function verificarRetoHumano(token, position) {
-    const res = await fetch(`${baseUrl}/captcha/verify`, {
+    const res = await fetch('/captcha/verify', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -364,17 +525,25 @@ document.addEventListener('DOMContentLoaded', function () {
     return {
       ok: res.ok && data.ok !== false && data.verified === true,
       message: data.message || '',
+      challenge: data.challenge ? {
+        token: String(data.challenge.token || ''),
+        targetLabelEs: String(data.challenge.target_label_es || ''),
+        images: Array.isArray(data.challenge.images) ? data.challenge.images.map((img) => ({
+          position: Number(img.position),
+          url: String(img.url || ''),
+        })) : [],
+      } : null,
     };
   }
 
-  async function mostrarRetoHumano() {
+  async function mostrarRetoHumanoLegacy() {
     try {
       const reto = await obtenerRetoHumano();
       if (!reto.token || reto.images.length !== 4) {
         throw new Error('No se pudo preparar el captcha.');
       }
       state.retoHumano = reto;
-      addRetoHumano(state.retoHumano);
+      renderCaptchaChallenge(state.retoHumano);
     } catch (error) {
       if (error.name !== 'AbortError') {
         console.error(error);
@@ -383,7 +552,23 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
-  async function procesarRespuestaRetoHumano(respuesta) {
+  async function mostrarRetoHumano() {
+    try {
+      const reto = await obtenerRetoHumano();
+      if (!reto.token || reto.images.length !== 4) {
+        throw new Error('No se pudo preparar el reto CAPTCHA.');
+      }
+      state.retoHumano = reto;
+      renderCaptchaChallenge(state.retoHumano);
+    } catch (error) {
+      if (error.name !== 'AbortError') {
+        console.error(error);
+        addMessage('bot', error.message || 'No se pudo preparar el reto CAPTCHA.');
+      }
+    }
+  }
+
+  async function procesarRespuestaRetoHumanoLegacy(respuesta) {
     const seleccion = parseInt(respuesta, 10);
 
     if (!state.retoHumano.token || !Array.isArray(state.retoHumano.images) || state.retoHumano.images.length !== 4) {
@@ -419,6 +604,210 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
       }
 
+      state.step = 'cedula';
+      addMessage('bot', 'Validación completada.\n\nIngresa tu número de cédula (10 dígitos, solo números):');
+    } finally {
+      state.retoHumano.verifying = false;
+    }
+  }
+
+  async function procesarRespuestaRetoHumano(respuesta) {
+    const seleccion = parseInt(respuesta, 10);
+
+    if (!state.retoHumano.token || !Array.isArray(state.retoHumano.images) || state.retoHumano.images.length !== 4) {
+      addMessage('bot', 'Generando un nuevo reto...');
+      await mostrarRetoHumano();
+      return;
+    }
+
+    if (!seleccion || seleccion < 1 || seleccion > state.retoHumano.images.length) {
+      addMessage('bot', 'Escribe el numero correspondiente al animal solicitado (1-4) o haz clic en la imagen.');
+      return;
+    }
+
+    const selected = state.retoHumano.images[seleccion - 1];
+    if (!selected || selected.position === undefined || selected.position === null) {
+      addMessage('bot', 'No se pudo leer la opcion seleccionada. Intentaremos de nuevo.');
+      await mostrarRetoHumano();
+      return;
+    }
+
+    if (state.retoHumano.verifying) {
+      return;
+    }
+
+    state.retoHumano.verifying = true;
+
+    try {
+      addMessage('bot', 'Validando seleccion...');
+      const resultado = await verificarRetoHumano(state.retoHumano.token, selected.position);
+      if (!resultado.ok) {
+        addMessage('bot', resultado.message || 'Seleccion incorrecta. Intenta nuevamente.');
+        if (resultado.challenge && resultado.challenge.token && resultado.challenge.images.length === 4) {
+          state.retoHumano = {
+            ...resultado.challenge,
+            verifying: false,
+            element: null,
+          };
+          renderCaptchaChallenge(state.retoHumano);
+          return;
+        }
+        await mostrarRetoHumano();
+        return;
+      }
+
+      clearRetoHumano();
+      state.retoHumano = { token: '', targetLabelEs: '', images: [], verifying: false, element: null };
+      state.step = 'cedula';
+      addMessage('bot', 'Validacion completada.\n\nIngresa tu numero de cedula (10 digitos, solo numeros):');
+    } finally {
+      state.retoHumano.verifying = false;
+    }
+  }
+
+  async function mostrarRetoHumano(options = {}) {
+    const loadingText = options.loadingText || 'Preparando la verificación, un momento…';
+
+    if (state.retoHumano.loading) {
+      return false;
+    }
+
+    const requestId = state.retoHumano.requestId + 1;
+    state.retoHumano.requestId = requestId;
+
+    state.retoHumano.loading = true;
+    state.retoHumano.verifying = false;
+    setComposerDisabled(true);
+    renderCaptchaStatus(loadingText, true);
+
+    if (challengeAbortController) {
+      challengeAbortController.abort();
+    }
+    challengeAbortController = new AbortController();
+
+    try {
+      const res = await fetch('/captcha/challenge', {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+        signal: challengeAbortController.signal,
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.message || 'No se pudo generar el captcha.');
+      }
+
+      const images = Array.isArray(data.images) ? data.images : [];
+      const reto = {
+        token: String(data.token || ''),
+        targetLabelEs: String(data.target_label_es || ''),
+        images: images.map((img) => ({
+          position: Number(img.position),
+          url: String(img.url || ''),
+        })),
+        verifying: false,
+        loading: false,
+        element: null,
+        statusElement: null,
+        requestId,
+      };
+
+      if (requestId !== state.retoHumano.requestId) {
+        return false;
+      }
+
+      if (!reto.token || reto.images.length !== 4) {
+        throw new Error('No se pudo preparar el reto CAPTCHA.');
+      }
+
+      renderCaptchaStatus('Cargando imágenes de verificación…', true);
+      await preloadCaptchaImages(reto.images);
+
+      if (requestId !== state.retoHumano.requestId) {
+        return false;
+      }
+
+      clearCaptchaStatus();
+      state.retoHumano = reto;
+      renderCaptchaChallenge(state.retoHumano);
+      return true;
+    } catch (error) {
+      if (error.name !== 'AbortError' && requestId === state.retoHumano.requestId) {
+        console.error(error);
+        clearCaptchaStatus();
+        resetRetoHumanoState();
+        state.step = 'espera_saludo';
+        if (error.name === 'CaptchaImageLoadError') {
+          addMessage('bot', 'No pudimos cargar las imágenes de verificación. Escribe «hola» para intentarlo nuevamente.');
+        } else {
+          addMessage('bot', 'No pudimos iniciar la verificación en este momento. Escribe «hola» para intentarlo nuevamente.');
+        }
+      }
+
+      return false;
+    } finally {
+      if (requestId === state.retoHumano.requestId) {
+        state.retoHumano.loading = false;
+        setComposerDisabled(false);
+        challengeAbortController = null;
+      }
+    }
+  }
+
+  async function procesarRespuestaRetoHumano(respuesta) {
+    const seleccion = parseInt(respuesta, 10);
+
+    if (state.retoHumano.loading) {
+      return;
+    }
+
+    if (!state.retoHumano.token || !Array.isArray(state.retoHumano.images) || state.retoHumano.images.length !== 4) {
+      return mostrarRetoHumano({ loadingText: 'Generando un nuevo reto…' });
+    }
+
+    if (!seleccion || seleccion < 1 || seleccion > state.retoHumano.images.length) {
+      return addMessage('bot', 'Escribe el número correspondiente al animal solicitado (1-4) o haz clic en la imagen.');
+    }
+
+    const selected = state.retoHumano.images[seleccion - 1];
+    if (!selected || selected.position === undefined || selected.position === null) {
+      addMessage('bot', 'No se pudo leer la opción seleccionada. Intentaremos de nuevo.');
+      return mostrarRetoHumano({ loadingText: 'Generando un nuevo reto…' });
+    }
+
+    if (state.retoHumano.verifying) {
+      return;
+    }
+
+    state.retoHumano.verifying = true;
+
+    try {
+      addMessage('bot', 'Validando selección...');
+      const resultado = await verificarRetoHumano(state.retoHumano.token, selected.position);
+      if (!resultado.ok) {
+        addMessage('bot', resultado.message || 'Selección incorrecta. Intenta nuevamente.');
+
+        if (resultado.challenge && resultado.challenge.token && resultado.challenge.images.length === 4) {
+          state.retoHumano = {
+            ...resultado.challenge,
+            verifying: false,
+            loading: false,
+            element: null,
+            statusElement: null,
+            requestId: state.retoHumano.requestId,
+          };
+          clearCaptchaStatus();
+          renderCaptchaChallenge(state.retoHumano);
+          return;
+        }
+
+        return mostrarRetoHumano({ loadingText: 'Generando un nuevo reto…' });
+      }
+
+      clearRetoHumano();
+      resetRetoHumanoState();
       state.step = 'cedula';
       addMessage('bot', 'Validación completada.\n\nIngresa tu número de cédula (10 dígitos, solo números):');
     } finally {
@@ -522,6 +911,7 @@ document.addEventListener('DOMContentLoaded', function () {
       state.buffer = initialBuffer();
       resetRegistro();
     }
+    setComposerDisabled(false);
     state.mode = 'identidad';
     state.step = 'espera_saludo';
     addMessage('bot','Hola, soy el asistente virtual de la clínica.\n\nEscribe "hola" para comenzar.');
@@ -534,7 +924,8 @@ document.addEventListener('DOMContentLoaded', function () {
       mode: 'operation',
     }, async () => {
       log.innerHTML = '';
-      state.retoHumano = { token: '', targetLabelEs: '', images: [], verifying: false };
+      resetRetoHumanoState({ invalidatePending: true });
+      setComposerDisabled(false);
 
       // Explicitly call finalized on backend to purge session data
       try {

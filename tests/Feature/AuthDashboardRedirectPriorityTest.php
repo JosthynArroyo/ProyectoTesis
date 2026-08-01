@@ -39,6 +39,30 @@ class AuthDashboardRedirectPriorityTest extends TestCase
         }
     }
 
+    public function test_first_login_loads_the_target_dashboard_for_each_role(): void
+    {
+        $cases = [
+            ['roles' => ['superadmin'], 'expected' => '/superadmin/dashboard'],
+            ['roles' => ['administrador'], 'expected' => '/admin/dashboard'],
+            ['roles' => ['doctor'], 'expected' => '/doctor/dashboard'],
+            ['roles' => ['laboratorio'], 'expected' => '/laboratorio/dashboard'],
+            ['roles' => ['paciente'], 'expected' => '/paciente/dashboard'],
+        ];
+
+        foreach ($cases as $index => $case) {
+            $user = $this->createUserWithRoles($case['roles'], 'first-login-'.$index.'@example.com');
+
+            $this->post(route('login'), [
+                'email' => $user->email,
+                'password' => 'password',
+                'remember' => '0',
+            ])->assertRedirect($case['expected']);
+
+            $this->get($case['expected'])->assertOk();
+            $this->post(route('salir'));
+        }
+    }
+
     public function test_superadmin_login_ignores_intended_patient_dashboard_redirect(): void
     {
         $user = $this->createUserWithRoles(['superadmin'], 'superadmin@example.com');

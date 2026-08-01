@@ -2439,16 +2439,20 @@
     }
 
     .soap-action-bar {
+        --soap-action-bar-bg: rgba(255, 255, 255, 0.94);
+        --soap-action-bar-border: #e5e7eb;
+        --soap-action-bar-shadow: 0 -12px 30px rgba(17, 24, 39, 0.08);
+        --soap-action-bar-backdrop: blur(10px);
         position: sticky;
         bottom: 0;
         z-index: 20;
         margin-top: 1rem;
         padding: 1rem;
-        border: 1px solid #e5e7eb;
+        border: 1px solid var(--soap-action-bar-border);
         border-radius: 1.25rem;
-        background: rgba(255, 255, 255, 0.94);
-        backdrop-filter: blur(10px);
-        box-shadow: 0 -12px 30px rgba(17, 24, 39, 0.08);
+        background: var(--soap-action-bar-bg);
+        backdrop-filter: var(--soap-action-bar-backdrop);
+        box-shadow: var(--soap-action-bar-shadow);
     }
 
     @media (max-width: 1024px) {
@@ -2475,6 +2479,7 @@
             margin-inline: -0.25rem;
             border-radius: 1rem 1rem 0 0;
             padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+            --soap-action-bar-shadow: 0 -10px 24px rgba(17, 24, 39, 0.1);
         }
     }
 

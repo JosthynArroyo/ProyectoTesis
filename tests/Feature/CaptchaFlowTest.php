@@ -4,8 +4,14 @@ namespace Tests\Feature;
 
 use App\Models\CaptchaChallenge;
 use App\Models\CaptchaImage;
+use App\Models\Role;
+use App\Models\User;
+use App\Services\CaptchaImageSynchronizer;
 use App\Support\ChatbotSessionKeys;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class CaptchaFlowTest extends TestCase
@@ -16,83 +22,252 @@ class CaptchaFlowTest extends TestCase
     {
         parent::setUp();
 
-        // Populate database with images for classes
-        $classes = config('captcha.classes', ['giraffe', 'horse', 'koala', 'kangaroo']);
-        foreach ($classes as $class) {
-            CaptchaImage::create([
-                'class_key' => $class,
-                'dataset_split' => 'public',
-                'image_path' => "captcha_animals/{$class}/img.jpg"
-            ]);
+        Mail::fake();
+        $this->bindCaptchaSynchronizerMock();
+        $this->seedCaptchaImagesFromDataset();
+    }
+
+    protected function tearDown(): void
+    {
+        File::deleteDirectory(Storage::disk('local')->path('captcha_animals'));
+        parent::tearDown();
+    }
+
+    public function test_writing_hola_generates_a_valid_captcha_challenge(): void
+    {
+        $response = $this->getJson('/captcha/challenge');
+
+        $response->assertOk();
+        $response->assertJsonStructure([
+            'challenge_id',
+            'token',
+            'target_label_es',
+            'images' => [
+                '*' => ['position', 'url'],
+            ],
+        ]);
+
+        $token = (string) $response->json('token');
+        $this->assertSame(40, strlen($token));
+        $this->assertCount(4, $response->json('images'));
+
+        foreach ($response->json('images') as $image) {
+            $this->assertStringStartsWith('/captcha/challenge/', (string) $image['url']);
+            $this->assertStringNotContainsString('localhost', (string) $image['url']);
+            $this->assertStringNotContainsString('127.0.0.1', (string) $image['url']);
         }
     }
 
-    public function test_captcha_can_be_verified_with_the_correct_image(): void
+    public function test_captcha_images_come_only_from_ai_dataset(): void
     {
-        // 1. Get challenge
-        $response = $this->getJson(route('captcha.challenge'));
-        $response->assertOk();
-        
-        $token = $response->json('token');
-        
-        // 2. Find correct position using the DB record
-        $challenge = CaptchaChallenge::query()->orderBy('id', 'desc')->firstOrFail();
-        $targetKey = $challenge->target_key;
-        
-        $correctImageId = CaptchaImage::query()
-            ->whereIn('id', $challenge->option_image_ids)
-            ->where('class_key', $targetKey)
-            ->value('id');
-            
-        $correctPosition = array_search($correctImageId, $challenge->option_image_ids);
+        $response = $this->getJson('/captcha/challenge');
+        $challenge = CaptchaChallenge::query()->latest('id')->firstOrFail();
 
-        // 3. Verify
-        $verifyResponse = $this->postJson(route('captcha.verify'), [
-            'token' => $token,
+        foreach ($challenge->option_image_ids as $imageId) {
+            $image = CaptchaImage::query()->findOrFail($imageId);
+            $this->assertStringStartsWith('captcha_animals/', $image->image_path);
+
+            $sourcePath = base_path('ai/dataset/val/' . $image->class_key . '/' . basename($image->image_path));
+            $this->assertFileExists($sourcePath);
+        }
+
+        $response->assertOk();
+    }
+
+    public function test_correct_answer_verifies_the_session_and_allows_the_chatbot_flow_to_continue(): void
+    {
+        $patient = $this->createPacienteFixture();
+
+        $challengeResponse = $this->getJson('/captcha/challenge');
+        $challenge = CaptchaChallenge::query()->latest('id')->firstOrFail();
+        $correctPosition = $this->findCorrectPosition($challenge);
+
+        $verifyResponse = $this->postJson('/captcha/verify', [
+            'token' => $challengeResponse->json('token'),
             'position' => $correctPosition,
         ]);
 
         $verifyResponse->assertOk()
             ->assertJsonPath('ok', true)
-            ->assertJsonPath('verified', true)
-            ->assertSessionHas(ChatbotSessionKeys::SESSION_VERIFIED, true);
+            ->assertJsonPath('verified', true);
 
-        $this->assertNotNull($challenge->refresh()->verified_at);
+        $this->assertTrue((bool) session(ChatbotSessionKeys::SESSION_VERIFIED));
+        $this->assertNotNull(session(ChatbotSessionKeys::SESSION_VERIFIED_AT));
+        $this->assertNull(session(ChatbotSessionKeys::SESSION_CHALLENGE_ID));
+        $this->assertNull(session(ChatbotSessionKeys::SESSION_CHALLENGE_TOKEN));
+
+        $chatbotResponse = $this->postJson('/chatbot/verificar-paciente', [
+            'cedula' => $patient->dni,
+        ]);
+
+        $chatbotResponse->assertOk();
     }
 
-    public function test_captcha_rejects_an_incorrect_image_and_consumes_an_attempt(): void
+    public function test_wrong_answer_blocks_progress_and_rotates_the_challenge_and_token(): void
     {
-        // 1. Get challenge
-        $response = $this->getJson(route('captcha.challenge'));
-        $response->assertOk();
-        
-        $token = $response->json('token');
-        
-        // 2. Find incorrect position
-        $challenge = CaptchaChallenge::query()->orderBy('id', 'desc')->firstOrFail();
-        $targetKey = $challenge->target_key;
-        
-        $wrongImageId = CaptchaImage::query()
-            ->whereIn('id', $challenge->option_image_ids)
-            ->where('class_key', '!=', $targetKey)
-            ->value('id');
-            
-        $wrongPosition = array_search($wrongImageId, $challenge->option_image_ids);
+        $challengeResponse = $this->getJson('/captcha/challenge');
+        $challenge = CaptchaChallenge::query()->latest('id')->firstOrFail();
+        $wrongPosition = $this->findWrongPosition($challenge);
 
-        // 3. Verify incorrect selection
-        $verifyResponse = $this->postJson(route('captcha.verify'), [
-            'token' => $token,
+        $verifyResponse = $this->postJson('/captcha/verify', [
+            'token' => $challengeResponse->json('token'),
             'position' => $wrongPosition,
         ]);
 
         $verifyResponse->assertStatus(422)
             ->assertJsonPath('ok', false)
             ->assertJsonPath('verified', false)
-            ->assertJsonPath('message', 'CAPTCHA incorrecto.')
-            ->assertJsonPath('attempts', 1)
-            ->assertJsonPath('remaining_attempts', 4);
+            ->assertJsonPath('challenge.images.0.position', 0);
 
-        $this->assertSame(1, $challenge->refresh()->attempts);
-        $this->assertNull($challenge->verified_at);
+        $newToken = (string) $verifyResponse->json('challenge.token');
+        $newChallenge = CaptchaChallenge::query()->latest('id')->firstOrFail();
+
+        $this->assertNotSame($challengeResponse->json('token'), $newToken);
+        $this->assertSame(40, strlen($newToken));
+        $this->assertNotSame($challenge->target_key, $newChallenge->target_key);
+        $this->assertSame($newToken, session(ChatbotSessionKeys::SESSION_CHALLENGE_TOKEN));
+    }
+
+    public function test_previous_captcha_cannot_be_reused_after_a_wrong_attempt(): void
+    {
+        $challengeResponse = $this->getJson('/captcha/challenge');
+        $challenge = CaptchaChallenge::query()->latest('id')->firstOrFail();
+        $wrongPosition = $this->findWrongPosition($challenge);
+
+        $this->postJson('/captcha/verify', [
+            'token' => $challengeResponse->json('token'),
+            'position' => $wrongPosition,
+        ])->assertStatus(422);
+
+        $reuseResponse = $this->postJson('/captcha/verify', [
+            'token' => $challengeResponse->json('token'),
+            'position' => $wrongPosition,
+        ]);
+
+        $reuseResponse->assertStatus(403);
+    }
+
+    public function test_manipulated_captcha_submission_is_rejected_by_the_server(): void
+    {
+        $challengeResponse = $this->getJson('/captcha/challenge');
+        $challenge = CaptchaChallenge::query()->latest('id')->firstOrFail();
+
+        $manipulatedResponse = $this->postJson('/captcha/verify', [
+            'token' => str_repeat('a', 40),
+            'position' => $this->findCorrectPosition($challenge),
+        ]);
+
+        $manipulatedResponse->assertStatus(403);
+    }
+
+    public function test_local_network_requests_do_not_emit_localhost_urls(): void
+    {
+        $response = $this->withServerVariables([
+            'HTTP_HOST' => '192.168.18.60:8000',
+        ])->getJson('/captcha/challenge');
+
+        $response->assertOk();
+
+        foreach ($response->json('images') as $image) {
+            $this->assertStringStartsWith('/captcha/challenge/', (string) $image['url']);
+            $this->assertStringNotContainsString('localhost', (string) $image['url']);
+            $this->assertStringNotContainsString('127.0.0.1', (string) $image['url']);
+        }
+    }
+
+    public function test_captcha_image_endpoint_returns_real_image_content_type(): void
+    {
+        $response = $this->getJson('/captcha/challenge');
+        $response->assertOk();
+
+        $imageResponse = $this->get(route('captcha.image.show', [
+            'token' => (string) $response->json('token'),
+            'position' => 0,
+        ]));
+
+        $imageResponse->assertOk();
+        $this->assertStringStartsWith('image/', (string) $imageResponse->headers->get('Content-Type'));
+    }
+
+    public function test_the_cached_image_index_can_be_reused_without_rescanning_files(): void
+    {
+        $synchronizer = new CaptchaImageSynchronizer();
+        $first = $synchronizer->ensureSynchronized();
+        $this->assertGreaterThan(0, $first);
+
+        File::partialMock();
+        File::shouldReceive('files')->never();
+
+        $second = $synchronizer->ensureSynchronized();
+        $this->assertSame($first, $second);
+    }
+
+    private function bindCaptchaSynchronizerMock(): void
+    {
+        $mock = \Mockery::mock(CaptchaImageSynchronizer::class);
+        $mock->shouldReceive('ensureSynchronized')->andReturn(1);
+        $this->app->instance(CaptchaImageSynchronizer::class, $mock);
+    }
+
+    private function seedCaptchaImagesFromDataset(): void
+    {
+        $classes = config('captcha.classes', []);
+
+        foreach ($classes as $class) {
+            $sourceDir = base_path('ai/dataset/val/' . $class);
+            $files = array_values(array_filter(File::files($sourceDir), static fn ($file) => in_array(strtolower($file->getExtension()), ['jpg', 'jpeg', 'png', 'webp'], true)));
+            $selectedFiles = array_slice($files, 0, 2);
+
+            foreach ($selectedFiles as $index => $file) {
+                $destDir = Storage::disk('local')->path('captcha_animals/' . $class);
+                File::ensureDirectoryExists($destDir);
+                $destPath = $destDir . DIRECTORY_SEPARATOR . $file->getFilename();
+                File::copy($file->getPathname(), $destPath);
+
+                CaptchaImage::create([
+                    'class_key' => $class,
+                    'dataset_split' => 'public',
+                    'image_path' => 'captcha_animals/' . $class . '/' . $file->getFilename(),
+                ]);
+            }
+        }
+    }
+
+    private function createPacienteFixture(): User
+    {
+        $role = Role::firstOrCreate(['name' => 'paciente']);
+
+        $user = User::factory()->create([
+            'dni' => '1234567890',
+            'email' => 'paciente.captcha@test.com',
+            'status' => 'active',
+        ]);
+        $user->roles()->attach($role->id);
+
+        return $user;
+    }
+
+    private function findCorrectPosition(CaptchaChallenge $challenge): int
+    {
+        $imageId = CaptchaImage::query()
+            ->whereIn('id', $challenge->option_image_ids)
+            ->where('class_key', $challenge->target_key)
+            ->value('id');
+
+        $position = array_search($imageId, $challenge->option_image_ids, true);
+
+        return $position === false ? 0 : (int) $position;
+    }
+
+    private function findWrongPosition(CaptchaChallenge $challenge): int
+    {
+        $imageId = CaptchaImage::query()
+            ->whereIn('id', $challenge->option_image_ids)
+            ->where('class_key', '!=', $challenge->target_key)
+            ->value('id');
+
+        $position = array_search($imageId, $challenge->option_image_ids, true);
+
+        return $position === false ? 0 : (int) $position;
     }
 }

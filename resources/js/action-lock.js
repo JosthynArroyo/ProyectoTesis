@@ -220,39 +220,48 @@ function setInert(active) {
   }
 
   const supportsInert = 'inert' in HTMLElement.prototype;
-  state.lockedNodes = [];
 
-  Array.from(document.body.children).forEach((node) => {
-    if (node === state.overlay) {
-      return;
-    }
+  if (active) {
+    state.lockedNodes = [];
 
-    const previous = {
-      node,
-      inert: supportsInert ? Boolean(node.inert) : null,
-      ariaHidden: node.getAttribute('aria-hidden'),
-    };
+    Array.from(document.body.children).forEach((node) => {
+      if (node === state.overlay) {
+        return;
+      }
 
-    if (active) {
+      state.lockedNodes.push({
+        node,
+        inert: supportsInert ? Boolean(node.inert) : null,
+        ariaHidden: node.getAttribute('aria-hidden'),
+      });
+
       if (supportsInert) {
         node.inert = true;
       } else {
         node.setAttribute('aria-hidden', 'true');
       }
+    });
 
-      state.lockedNodes.push(previous);
+    return;
+  }
+
+  const lockedNodes = state.lockedNodes.slice();
+  state.lockedNodes = [];
+
+  lockedNodes.forEach((previous) => {
+    if (!previous.node || !document.body.contains(previous.node)) {
       return;
     }
 
     if (supportsInert && previous.inert !== null) {
-      node.inert = previous.inert;
+      previous.node.inert = previous.inert;
     }
 
     if (!supportsInert) {
       if (previous.ariaHidden === null) {
-        node.removeAttribute('aria-hidden');
+        previous.node.removeAttribute('aria-hidden');
       } else {
-        node.setAttribute('aria-hidden', previous.ariaHidden);
+        previous.node.setAttribute('aria-hidden', previous.ariaHidden);
       }
     }
   });

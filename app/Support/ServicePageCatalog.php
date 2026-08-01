@@ -23,6 +23,7 @@ class ServicePageCatalog
                 'badge2' => 'Segun disponibilidad',
                 'image_path' => 'images/servicios/dermatologia.jpg',
                 'image_class' => 'object-cover object-[center_22%]',
+                'descripcion' => 'Salud de la piel, cabello y uñas.',
             ],
             'ginecologia' => [
                 'tag' => 'especialidad',
@@ -32,6 +33,7 @@ class ServicePageCatalog
                 'badge2' => 'Segun disponibilidad',
                 'image_path' => 'images/servicios/ginecologia.jpg',
                 'image_class' => 'object-cover object-[center_24%]',
+                'descripcion' => 'Atención integral de salud femenina y controles preventivos.',
             ],
             Especialidad::normalizedLaboratorioClinico() => [
                 'tag' => 'diagnostico',
@@ -41,6 +43,7 @@ class ServicePageCatalog
                 'badge2' => 'Resultados en el sistema',
                 'image_path' => 'images/servicios/laboratorio.jpg',
                 'image_class' => 'object-cover object-center',
+                'descripcion' => 'Exámenes de rutina y perfiles especializados con resultados oportunos.',
             ],
             'medicina general' => [
                 'tag' => 'general',
@@ -50,6 +53,7 @@ class ServicePageCatalog
                 'badge2' => 'Segun disponibilidad',
                 'image_path' => 'images/servicios/medicina-general.jpg',
                 'image_class' => 'object-cover object-[center_18%]',
+                'descripcion' => 'Atención primaria integral para adultos.',
             ],
             'odontologia' => [
                 'tag' => 'procedimiento',
@@ -59,6 +63,7 @@ class ServicePageCatalog
                 'badge2' => 'Segun disponibilidad',
                 'image_path' => 'images/servicios/odontologia.jpg',
                 'image_class' => 'object-cover object-[center_28%]',
+                'descripcion' => 'Prevención, diagnóstico y tratamiento de problemas dentales y de salud bucal.',
             ],
             'pediatria' => [
                 'tag' => 'especialidad',
@@ -68,6 +73,7 @@ class ServicePageCatalog
                 'badge2' => 'Segun disponibilidad',
                 'image_path' => 'images/servicios/pediatria.jpg',
                 'image_class' => 'object-cover object-[center_24%]',
+                'descripcion' => 'Atención médica de niños y adolescentes.',
             ],
         ];
     }
@@ -82,6 +88,7 @@ class ServicePageCatalog
             'badge2' => 'Segun disponibilidad',
             'image_path' => 'images/servicios/medicina-general.jpg',
             'image_class' => 'object-cover object-[center_18%]',
+            'descripcion' => 'Servicio médico especializado.',
         ];
     }
 

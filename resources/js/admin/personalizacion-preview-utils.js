@@ -28,15 +28,19 @@ export const escapeSelector = (value) => {
 
 export const resolveImageUrl = (formRoot, path) => {
   if (!path) return '';
-  if (/^(https?:|data:)/i.test(path)) return path;
+  if (/^(https?:|data:|blob:)/i.test(path)) return path;
 
   const assetBase = formRoot.dataset.assetBase || '';
   const storageBase = formRoot.dataset.storageBase || '';
+  const r2Url = formRoot.dataset.r2Url || '';
   const normalizedPath = String(path).replace(/^\//, '');
+
+  if (r2Url && normalizedPath.startsWith('images/')) {
+    return `${r2Url}/${normalizedPath}`;
+  }
 
   if (
     normalizedPath.startsWith('img/') ||
-    normalizedPath.startsWith('images/') ||
     normalizedPath.startsWith('storage/')
   ) {
     return `${assetBase}${normalizedPath}`;
@@ -86,12 +90,16 @@ export const createPreviewModalController = (formRoot, { desktopWidth = 1180 } =
   const previewStage = formRoot.querySelector('[data-public-preview-stage]');
   const previewSurface = formRoot.querySelector('[data-public-preview-surface]');
   const previewRoot = formRoot.querySelector('[data-public-preview-root]');
+  const previewScroll = previewModal?.querySelector('.personalizacion-public-preview-scroll');
   const openers = Array.from(formRoot.querySelectorAll('[data-public-preview-open]'));
   const closers = Array.from(formRoot.querySelectorAll('[data-public-preview-close]'));
 
   if (!previewModal || !previewStage || !previewSurface || !previewRoot) {
     return null;
   }
+
+  let previewResizeObserver = null;
+  let previewSyncToken = null;
 
   const syncScale = () => {
     const availableWidth = previewStage.clientWidth;
@@ -103,6 +111,32 @@ export const createPreviewModalController = (formRoot, { desktopWidth = 1180 } =
     previewStage.style.setProperty('--public-preview-width', `${desktopWidth}px`);
     previewStage.style.setProperty('--public-preview-scale', `${scale}`);
     previewStage.style.setProperty('--public-preview-height', `${frameHeight}px`);
+
+    if (previewScroll) {
+      previewScroll.scrollLeft = 0;
+    }
+  };
+
+  const scheduleSyncScale = () => {
+    if (previewSyncToken !== null) return;
+
+    previewSyncToken = window.requestAnimationFrame(() => {
+      previewSyncToken = null;
+      syncScale();
+    });
+  };
+
+  const ensureResizeObserver = () => {
+    if (previewResizeObserver || !('ResizeObserver' in window)) {
+      return;
+    }
+
+    previewResizeObserver = new ResizeObserver(() => {
+      scheduleSyncScale();
+    });
+
+    previewResizeObserver.observe(previewStage);
+    previewResizeObserver.observe(previewSurface);
   };
 
   const openModal = (onOpen) => {
@@ -111,8 +145,17 @@ export const createPreviewModalController = (formRoot, { desktopWidth = 1180 } =
     if (typeof onOpen === 'function') {
       onOpen();
     }
+    ensureResizeObserver();
+    if (previewScroll) {
+      previewScroll.scrollTo({ left: 0, top: 0, behavior: 'auto' });
+    }
     window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(syncScale);
+      window.requestAnimationFrame(() => {
+        scheduleSyncScale();
+        if (previewScroll) {
+          previewScroll.scrollTo({ left: 0, top: 0, behavior: 'auto' });
+        }
+      });
     });
   };
 
@@ -137,7 +180,7 @@ export const createPreviewModalController = (formRoot, { desktopWidth = 1180 } =
 
   window.addEventListener('resize', () => {
     if (!previewModal.hidden) {
-      syncScale();
+      scheduleSyncScale();
     }
   });
 

@@ -340,11 +340,14 @@ class SiteSettingsService
                 self::ALL_CACHE_KEY,
                 now()->addSeconds(self::CACHE_TTL_SECONDS),
                 function (): array {
+                    $queryStartedAt = microtime(true);
                     if (! Schema::hasTable('site_settings')) {
                         return [];
                     }
 
-                    return SiteSetting::query()->pluck('value', 'key')->toArray();
+                    $settings = SiteSetting::query()->pluck('value', 'key')->toArray();
+
+                    return $settings;
                 }
             );
         } catch (Throwable) {
