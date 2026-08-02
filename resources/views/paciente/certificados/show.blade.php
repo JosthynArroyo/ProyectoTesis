@@ -12,7 +12,7 @@
       <x-slot:left>
         <a href="{{ route('paciente.historial') }}" class="btn btn-ghost">Volver al historial</a>
       </x-slot>
-      <a href="{{ route('paciente.certificados.download', $certificado) }}" class="btn btn-primary">
+      <a href="{{ route('paciente.certificados.download', $certificado) }}" class="btn btn-primary" download data-action-lock-ignore data-skip-page-loader>
         <i class="ri-download-2-line"></i> Descargar certificado
       </a>
     </x-ui.form-actions>

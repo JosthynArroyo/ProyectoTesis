@@ -232,10 +232,10 @@
                         @endif
 
                         @if($cita->certificadoMedico)
-                          <a class="btn btn-ghost btn-sm justify-start" href="{{ route('doctor.certificados.show', $cita->certificadoMedico) }}" role="menuitem">
+                          <a class="btn btn-ghost btn-sm justify-start" href="{{ route('doctor.certificados.show', $cita->certificadoMedico) }}" role="menuitem" data-action-lock-ignore data-skip-page-loader>
                             <i class="ri-file-shield-2-line"></i> Ver certificado medico
                           </a>
-                          <a class="btn btn-ghost btn-sm justify-start" href="{{ route('doctor.certificados.download', $cita->certificadoMedico) }}" role="menuitem">
+                          <a class="btn btn-ghost btn-sm justify-start" href="{{ route('doctor.certificados.download', $cita->certificadoMedico) }}" role="menuitem" download data-action-lock-ignore data-skip-page-loader>
                             <i class="ri-download-2-line"></i> Descargar certificado
                           </a>
                         @else

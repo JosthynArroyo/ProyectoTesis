@@ -22,14 +22,12 @@ class CertificadoMedicoController extends Controller
 
     public function download(CertificadoMedico $certificado, CertificadoMedicoPdfService $pdfs)
     {
-        $certificado->loadMissing(['cita.especialidad', 'paciente', 'doctor.especialidades']);
-        $this->ensureCanView($certificado);
+        $docService = app(\App\Services\MedicalCertificateDocumentService::class);
+        $docService->ensureUserCanView($certificado);
 
-        $path = $pdfs->obtenerOGenerar($certificado);
+        $pdfs->obtenerOGenerar($certificado);
 
-        return Storage::disk('local')->download($path, $certificado->nombreDescarga(), [
-            'Content-Type' => 'application/pdf',
-        ]);
+        return $docService->streamDownload($certificado);
     }
 
     private function ensureCanView(CertificadoMedico $certificado): void

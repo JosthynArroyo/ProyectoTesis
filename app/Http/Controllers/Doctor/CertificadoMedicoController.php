@@ -106,22 +106,21 @@ class CertificadoMedicoController extends Controller
 
     public function download(CertificadoMedico $certificado, CertificadoMedicoPdfService $pdfs)
     {
-        $certificado->loadMissing(['cita.especialidad', 'paciente', 'doctor.especialidades']);
-        $this->ensureCanView($certificado);
+        $docService = app(\App\Services\MedicalCertificateDocumentService::class);
+        $docService->ensureUserCanView($certificado);
 
-        $path = $pdfs->obtenerOGenerar($certificado);
+        $pdfs->obtenerOGenerar($certificado);
 
-        return Storage::disk('local')->download($path, $certificado->nombreDescarga(), [
-            'Content-Type' => 'application/pdf',
-        ]);
+        return $docService->streamDownload($certificado);
     }
 
     public function resend(CertificadoMedico $certificado, CertificadoMedicoPdfService $pdfs)
     {
-        $certificado->loadMissing(['cita.especialidad', 'paciente', 'dependiente.responsable', 'doctor.especialidades']);
-        $this->ensureCanView($certificado);
+        $docService = app(\App\Services\MedicalCertificateDocumentService::class);
+        $docService->ensureUserCanView($certificado);
 
-        if (! $certificado->pdf_path || ! Storage::disk('local')->exists($certificado->pdf_path)) {
+        $diskName = $docService->resolveDisk($certificado->pdf_disk);
+        if (! $certificado->pdf_path || ! Storage::disk($diskName)->exists($certificado->pdf_path)) {
             $pdfs->generarYGuardar($certificado);
         }
 

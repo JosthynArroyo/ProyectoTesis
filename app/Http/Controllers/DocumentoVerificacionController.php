@@ -36,6 +36,10 @@ class DocumentoVerificacionController extends Controller
             return app(\App\Services\RecipeDocumentService::class)->streamInline($documento['receta'], $documento['nombre_descarga']);
         }
 
+        if (($documento['tipo'] ?? null) === 'certificado_medico' && isset($documento['certificado'])) {
+            return app(\App\Services\MedicalCertificateDocumentService::class)->streamInline($documento['certificado'], $documento['nombre_descarga']);
+        }
+
         if (! Storage::disk('local')->exists($documento['pdf_path'])) {
             abort(404);
         }

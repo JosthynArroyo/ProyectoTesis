@@ -13,8 +13,10 @@ class CertificadoMedicoPdfService
     public function obtenerOGenerar(CertificadoMedico $certificado): string
     {
         $path = (string) $certificado->pdf_path;
+        $docService = app(MedicalCertificateDocumentService::class);
+        $diskName = $docService->resolveDisk($certificado->pdf_disk);
 
-        if ($path === '' || ! Storage::disk('local')->exists($path)) {
+        if ($path === '' || ! Storage::disk($diskName)->exists($path)) {
             return $this->generarYGuardar($certificado);
         }
 
@@ -23,44 +25,23 @@ class CertificadoMedicoPdfService
 
     public function generarYGuardar(CertificadoMedico $certificado): string
     {
-        $certificado->loadMissing([
-            'cita.especialidad',
-            'paciente',
-            'doctor.especialidades',
-            'clinicalRecord',
-        ]);
+        $docService = app(MedicalCertificateDocumentService::class);
+        [$pdfOutput, $csv] = $docService->generatePdfOutput($certificado);
 
-        $identity = app(ClinicIdentityService::class);
-        $csvService = app(DocumentoCsvService::class);
-        $csv = $csvService->ensureCsv($certificado);
+        $oldPath = (string) $certificado->getRawOriginal('pdf_path');
+        $oldDisk = (string) $certificado->getRawOriginal('pdf_disk');
 
-        $html = view('pdf.certificado-medico', [
-            'certificado' => $certificado,
-            'clinica' => $identity->institutionalName(),
-            'logoBase64' => $identity->logoBase64ForPdf(),
-            'pdfCss' => $this->loadPdfCss('certificado-medico-pdf.css'),
+        $storage = $docService->storeCertificatePdf($certificado, $pdfOutput);
+
+        $certificado->forceFill([
             'csv' => $csv,
-            'verificationUrl' => $csvService->verificationUrl($csv),
-            'qrDataUri' => $csvService->qrDataUri($csv),
-        ])->render();
+            'pdf_path' => $storage['pdf_path'],
+            'pdf_disk' => $storage['pdf_disk'],
+        ])->saveQuietly();
 
-        $pdfOutput = $this->renderizarPdf($html);
+        $docService->cleanupOldPdf($oldPath, $oldDisk);
 
-        $folder = 'certificados-medicos';
-        if (! Storage::disk('local')->exists($folder)) {
-            Storage::disk('local')->makeDirectory($folder);
-        }
-
-        $fileName = Str::slug($certificado->codigo, '_').'.pdf';
-        $path = $folder.'/'.$fileName;
-
-        Storage::disk('local')->put($path, $pdfOutput);
-
-        if ($certificado->pdf_path !== $path) {
-            $certificado->forceFill(['pdf_path' => $path])->saveQuietly();
-        }
-
-        return $path;
+        return $storage['pdf_path'];
     }
 
     protected function renderizarPdf(string $html): string

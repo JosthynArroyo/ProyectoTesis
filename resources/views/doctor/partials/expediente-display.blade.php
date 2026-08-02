@@ -331,8 +331,8 @@
                         <span class="mr-sidebar-item__title">{{ $cert->codigo }} · {{ $cert->fecha_emision?->format('d/m/Y') ?? '—' }}</span>
                         <span class="mr-sidebar-item__meta">{{ $cert->dias_reposo > 0 ? 'Reposo '.$cert->dias_reposo.' día(s)' : Str::limit($cert->texto_constancia, 60) }}</span>
                         <div class="mr-sidebar-item__actions">
-                            @if($certUrl)<a href="{{ $certUrl }}" class="mr-sidebar-link"><i class="ri-eye-line"></i> Ver</a>@endif
-                            @if($certPdf)<a href="{{ $certPdf }}" class="mr-sidebar-link"><i class="ri-download-2-line"></i> PDF</a>@endif
+                            @if($certUrl)<a href="{{ $certUrl }}" class="mr-sidebar-link" data-action-lock-ignore data-skip-page-loader><i class="ri-eye-line"></i> Ver</a>@endif
+                            @if($certPdf)<a href="{{ $certPdf }}" class="mr-sidebar-link" download data-action-lock-ignore data-skip-page-loader><i class="ri-download-2-line"></i> PDF</a>@endif
                         </div>
                     </div>
                 @endforeach

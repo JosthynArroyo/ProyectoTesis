@@ -89,6 +89,7 @@ class DocumentoCsvService
                 'titulo' => 'Certificado médico',
                 'pdf_path' => $certificado->pdf_path,
                 'nombre_descarga' => $certificado->nombreDescarga(),
+                'certificado' => $certificado,
             ];
         }
 

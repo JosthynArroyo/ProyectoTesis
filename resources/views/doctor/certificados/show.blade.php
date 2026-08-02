@@ -28,7 +28,7 @@
           </button>
         </form>
       @endif
-      <a href="{{ route('doctor.certificados.download', $certificado) }}" class="btn btn-primary">
+      <a href="{{ route('doctor.certificados.download', $certificado) }}" class="btn btn-primary" download data-action-lock-ignore data-skip-page-loader>
         <i class="ri-download-2-line"></i> Descargar certificado
       </a>
     </x-ui.form-actions>

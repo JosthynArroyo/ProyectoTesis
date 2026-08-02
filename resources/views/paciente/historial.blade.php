@@ -55,8 +55,8 @@
               </span>
             </div>
             <div class="mt-4 flex flex-wrap justify-end gap-2">
-              <a href="{{ route('paciente.certificados.show', $certificado) }}" class="btn btn-outline">Ver certificado</a>
-              <a href="{{ route('paciente.certificados.download', $certificado) }}" class="btn btn-primary">Descargar</a>
+              <a href="{{ route('paciente.certificados.show', $certificado) }}" class="btn btn-outline" data-action-lock-ignore data-skip-page-loader>Ver certificado</a>
+              <a href="{{ route('paciente.certificados.download', $certificado) }}" class="btn btn-primary" download data-action-lock-ignore data-skip-page-loader>Descargar</a>
             </div>
           </article>
         @endforeach

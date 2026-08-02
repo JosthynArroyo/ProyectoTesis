@@ -33,12 +33,11 @@ class CertificadoMedicoMail extends Mailable
                 'doctor' => $this->certificado->doctor,
             ]);
 
-        if ($this->relativePath && Storage::disk('local')->exists($this->relativePath)) {
-            $mail->attachData(
-                Storage::disk('local')->get($this->relativePath),
-                $this->fileName,
-                ['mime' => 'application/pdf']
-            );
+        $docService = app(\App\Services\MedicalCertificateDocumentService::class);
+        $attachment = $docService->getMailAttachment($this->certificado, $this->fileName);
+
+        if ($attachment) {
+            $mail->attach($attachment);
         }
 
         return $mail;

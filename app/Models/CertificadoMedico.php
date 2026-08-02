@@ -27,6 +27,7 @@ class CertificadoMedico extends Model
         'observaciones',
         'csv',
         'pdf_path',
+        'pdf_disk',
         'enviado_a',
         'enviado_en',
         'envio_estado',
