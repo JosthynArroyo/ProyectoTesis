@@ -39,9 +39,11 @@ class PedidoLaboratorioMail extends Mailable
                 'doctor' => $this->pedido->doctor,
             ]);
 
-        if ($this->relativePath && Storage::disk('local')->exists($this->relativePath)) {
-            $pdfContent = Storage::disk('local')->get($this->relativePath);
-            $email->attachData($pdfContent, $this->fileName, ['mime' => 'application/pdf']);
+        $docService = app(\App\Services\LaboratoryOrderDocumentService::class);
+        $attachment = $docService->getMailAttachment($this->pedido, $this->fileName);
+
+        if ($attachment) {
+            $email->attach($attachment);
         }
 
         return $email;

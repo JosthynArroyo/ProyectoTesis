@@ -78,9 +78,10 @@ class PedidoLaboratorioController extends Controller
             'examenes.min' => 'Debe seleccionar al menos un examen de laboratorio.',
         ]);
 
-        $csvService = app(DocumentoCsvService::class);
-        $oldPath = $pedido->pdf_path;
-        $relativePath = null;
+        $docService = app(\App\Services\LaboratoryOrderDocumentService::class);
+        $oldPath = $pedido->getRawOriginal('pdf_path');
+        $oldDisk = $pedido->getRawOriginal('pdf_disk');
+        $st = null;
 
         DB::beginTransaction();
         try {
@@ -88,19 +89,21 @@ class PedidoLaboratorioController extends Controller
                 'examenes' => $validated['examenes'],
             ]);
 
-            $relativePath = $this->generatePdf($pedido, $csvService);
-            $pedido->update(['pdf_path' => $relativePath]);
+            [$pdfBinary] = $docService->generatePdfOutput($pedido);
+            $st = $docService->storeOrderPdf($pedido, $pdfBinary);
+            $pedido->update([
+                'pdf_path' => $st['pdf_path'],
+                'pdf_disk' => $st['pdf_disk'],
+            ]);
 
             DB::commit();
 
-            if ($oldPath && $oldPath !== $relativePath && Storage::disk('local')->exists($oldPath)) {
-                Storage::disk('local')->delete($oldPath);
-            }
+            $docService->cleanupOldPdf($oldPath, $oldDisk);
         } catch (\Throwable $e) {
             DB::rollBack();
 
-            if ($relativePath && Storage::disk('local')->exists($relativePath)) {
-                Storage::disk('local')->delete($relativePath);
+            if ($st && isset($st['pdf_path'])) {
+                $docService->deleteQuietly($st['pdf_path'], $st['pdf_disk']);
             }
 
             return back()->withErrors(['error' => 'Error al modificar el pedido de laboratorio: ' . $e->getMessage()])->withInput();
@@ -159,8 +162,9 @@ class PedidoLaboratorioController extends Controller
         }
 
         $csvService = app(DocumentoCsvService::class);
+        $docService = app(\App\Services\LaboratoryOrderDocumentService::class);
         $csv = $csvService->generateCsv();
-        $relativePath = null;
+        $st = null;
 
         DB::beginTransaction();
         try {
@@ -189,15 +193,19 @@ class PedidoLaboratorioController extends Controller
                 'envio_intentos' => 0,
             ]);
 
-            $relativePath = $this->generatePdf($pedido, $csvService);
-            $pedido->update(['pdf_path' => $relativePath]);
+            [$pdfBinary] = $docService->generatePdfOutput($pedido);
+            $st = $docService->storeOrderPdf($pedido, $pdfBinary);
+            $pedido->update([
+                'pdf_path' => $st['pdf_path'],
+                'pdf_disk' => $st['pdf_disk'],
+            ]);
 
             DB::commit();
         } catch (\Throwable $e) {
             DB::rollBack();
 
-            if ($relativePath && Storage::disk('local')->exists($relativePath)) {
-                Storage::disk('local')->delete($relativePath);
+            if ($st && isset($st['pdf_path'])) {
+                $docService->deleteQuietly($st['pdf_path'], $st['pdf_disk']);
             }
 
             return back()->withErrors(['error' => 'Error al generar el pedido de laboratorio: ' . $e->getMessage()])->withInput();
@@ -211,16 +219,10 @@ class PedidoLaboratorioController extends Controller
 
     public function download(PedidoLaboratorio $pedido)
     {
-        abort_unless($pedido->doctor_id === Auth::id(), 403);
+        $docService = app(\App\Services\LaboratoryOrderDocumentService::class);
+        $docService->ensureUserCanView($pedido);
 
-        if (! $pedido->pdf_path || ! Storage::disk('local')->exists($pedido->pdf_path)) {
-            return back()->with('error', 'El documento del pedido de laboratorio no existe.');
-        }
-
-        return response()->file(Storage::disk('local')->path($pedido->pdf_path), [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="pedido_laboratorio_'.$pedido->id.'.pdf"',
-        ]);
+        return $docService->streamInline($pedido, "pedido_laboratorio_{$pedido->id}.pdf");
     }
 
     public function downloadResultado(PedidoLaboratorio $pedido)
@@ -244,11 +246,17 @@ class PedidoLaboratorioController extends Controller
 
     public function resend(PedidoLaboratorio $pedido)
     {
-        abort_unless($pedido->doctor_id === Auth::id(), 403);
+        $docService = app(\App\Services\LaboratoryOrderDocumentService::class);
+        $docService->ensureUserCanView($pedido);
 
-        if (! $pedido->pdf_path || ! Storage::disk('local')->exists($pedido->pdf_path)) {
-            $csvService = app(DocumentoCsvService::class);
-            $pedido->update(['pdf_path' => $this->generatePdf($pedido, $csvService)]);
+        $diskName = $docService->resolveDisk($pedido->pdf_disk);
+        if (! $pedido->pdf_path || ! Storage::disk($diskName)->exists($pedido->pdf_path)) {
+            [$pdfBinary] = $docService->generatePdfOutput($pedido);
+            $st = $docService->storeOrderPdf($pedido, $pdfBinary);
+            $pedido->update([
+                'pdf_path' => $st['pdf_path'],
+                'pdf_disk' => $st['pdf_disk'],
+            ]);
         }
 
         $pedido->forceFill([
@@ -256,7 +264,7 @@ class PedidoLaboratorioController extends Controller
             'envio_error' => null,
         ])->saveQuietly();
 
-        EnviarPedidoLaboratorioJob::dispatch($pedido->id);
+        EnviarPedidoLaboratorioJob::dispatch($pedido->id, forceResend: true);
 
         return back()->with('success', 'Se reintentara el envio del pedido de laboratorio.');
     }

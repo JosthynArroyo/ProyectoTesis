@@ -71,7 +71,7 @@
 
         <div class="mt-5 flex flex-wrap gap-3">
           @if($pedido->pdf_path)
-            <a class="btn btn-outline" href="{{ route('doctor.pedidos-laboratorio.download', $pedido) }}">
+            <a class="btn btn-outline" href="{{ route('doctor.pedidos-laboratorio.download', $pedido) }}" download data-action-lock-ignore data-skip-page-loader>
               <i class="ri-file-shield-line"></i> Ver orden firmada
             </a>
           @endif

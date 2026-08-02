@@ -27,6 +27,7 @@ class PedidoLaboratorio extends Model
         'csv',
         'examenes',
         'pdf_path',
+        'pdf_disk',
         'estado',
         'resultado_path',
         'resultado_resumen',

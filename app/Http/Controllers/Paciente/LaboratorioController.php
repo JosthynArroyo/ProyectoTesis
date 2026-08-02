@@ -84,6 +84,22 @@ class LaboratorioController extends Controller
         );
     }
 
+    public function downloadOrdenPedidoInline(PedidoLaboratorio $pedido)
+    {
+        $docService = app(\App\Services\LaboratoryOrderDocumentService::class);
+        $docService->ensureUserCanView($pedido);
+
+        return $docService->streamInline($pedido, 'orden_medica_'.$pedido->id.'.pdf');
+    }
+
+    public function downloadOrdenPedidoAttachment(PedidoLaboratorio $pedido)
+    {
+        $docService = app(\App\Services\LaboratoryOrderDocumentService::class);
+        $docService->ensureUserCanView($pedido);
+
+        return $docService->streamDownload($pedido, 'orden_medica_'.$pedido->id.'.pdf');
+    }
+
     private function paginateTimeline(int $patientId, int $perPage): LengthAwarePaginator
     {
         $legacyRows = LaboratorioOrden::query()

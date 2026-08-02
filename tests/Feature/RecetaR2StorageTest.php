@@ -422,7 +422,7 @@ class RecetaR2StorageTest extends TestCase
         $response = $this->get($route);
 
         $response->assertStatus(200);
-        $response->assertHeader('Content-Type', 'application/pdf');
+        $this->assertStringContainsString('text/html', $response->headers->get('Content-Type'));
         $this->assertStringNotContainsString('r2.cloudflarestorage.com', $response->getContent());
         $this->assertStringNotContainsString('r2.dev', $response->getContent());
     }

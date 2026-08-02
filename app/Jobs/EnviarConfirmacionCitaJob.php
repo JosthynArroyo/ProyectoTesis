@@ -29,23 +29,29 @@ class EnviarConfirmacionCitaJob implements ShouldQueue
      */
     public function handle(): void
     {
-        $cita = Cita::with(['paciente', 'doctor', 'especialidad'])->findOrFail($this->cita->id);
+        $cita = Cita::with(['paciente', 'doctor', 'especialidad', 'dependiente.responsable'])->findOrFail($this->cita->id);
 
-        // Paciente (autor del agendamiento)
-        if ($cita->paciente && $cita->paciente->email) {
-            Mail::to($cita->paciente->email)
-                ->queue(new CambioEstadoCitaMail($cita, 'paciente', 'agendada', 'paciente'));
+        $recipientPaciente = trim((string) (
+            $cita->dependiente?->responsable?->email
+            ?: $cita->paciente?->email
+            ?: ''
+        ));
+
+        // Paciente / Representante (autor del agendamiento)
+        if ($recipientPaciente !== '') {
+            Mail::to($recipientPaciente)
+                ->send(new CambioEstadoCitaMail($cita, 'paciente', 'agendada', 'paciente'));
         }
 
         // Doctor (notificación de agenda)
         if ($cita->doctor && $cita->doctor->email) {
             Mail::to($cita->doctor->email)
-                ->queue(new CambioEstadoCitaMail($cita, 'doctor', 'agendada', 'paciente'));
+                ->send(new CambioEstadoCitaMail($cita, 'doctor', 'agendada', 'paciente'));
         }
 
         Log::info(sprintf(
-            'Notificaciones de cita AGENDADA enviadas. Paciente: %s <%s> | Doctor: %s <%s> | Cita ID: %d',
-            $cita->paciente?->name ?? '-', $cita->paciente?->email ?? '-',
+            'Notificaciones de cita AGENDADA enviadas. Receptor Paciente/Rep: <%s> | Doctor: %s <%s> | Cita ID: %d',
+            $recipientPaciente ?: '-',
             $cita->doctor?->name ?? '-', $cita->doctor?->email ?? '-',
             $cita->id
         ));

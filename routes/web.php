@@ -504,6 +504,10 @@ Route::middleware(['auth', 'role:paciente'])->prefix('paciente')->group(function
         ->whereNumber('orden')->name('paciente.laboratorio.download');
     Route::get('/laboratorio/pedidos/{pedido}/descargar', [PacienteLaboratorioController::class, 'downloadPedido'])
         ->whereNumber('pedido')->name('paciente.laboratorio.pedido.download');
+    Route::get('/laboratorio/pedidos/{pedido}/orden/ver', [PacienteLaboratorioController::class, 'downloadOrdenPedidoInline'])
+        ->whereNumber('pedido')->name('paciente.laboratorio.pedido.orden.ver');
+    Route::get('/laboratorio/pedidos/{pedido}/orden/descargar', [PacienteLaboratorioController::class, 'downloadOrdenPedidoAttachment'])
+        ->whereNumber('pedido')->name('paciente.laboratorio.pedido.orden.descargar');
     Route::get('/laboratorio/solicitudes/{order}/descargar', [PacienteLaboratorioController::class, 'downloadAutoOrder'])
         ->whereNumber('order')->name('paciente.lab-orders.download');
     Route::get('/historial', [PacienteHistorialController::class, 'index'])->name('paciente.historial');
@@ -647,6 +651,7 @@ Route::middleware(['auth', 'role:laboratorio'])->prefix('laboratorio')->name('la
     Route::post('/pedidos-mvp/{pedido}/muestra', [\App\Http\Controllers\Laboratorio\PedidoLaboratorioController::class, 'marcarMuestra'])->name('pedidos.muestra');
     Route::post('/pedidos-mvp/{pedido}/resultado', [\App\Http\Controllers\Laboratorio\PedidoLaboratorioController::class, 'subirResultado'])->name('pedidos.resultado');
     Route::get('/pedidos-mvp/{pedido}/download-orden', [\App\Http\Controllers\Laboratorio\PedidoLaboratorioController::class, 'downloadOrden'])->name('pedidos.download-orden');
+    Route::get('/pedidos-mvp/{pedido}/descargar-orden', [\App\Http\Controllers\Laboratorio\PedidoLaboratorioController::class, 'downloadOrdenAttachment'])->name('pedidos.descargar-orden');
     Route::get('/pedidos-mvp/{pedido}/download-resultado', [\App\Http\Controllers\Laboratorio\PedidoLaboratorioController::class, 'downloadResultado'])->name('pedidos.download-resultado');
 
     Route::get('/pedidos/{pedido}/resultados', [LaboratorioPedidoResultadoController::class, 'create'])

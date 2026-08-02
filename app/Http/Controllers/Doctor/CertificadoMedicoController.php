@@ -129,7 +129,7 @@ class CertificadoMedicoController extends Controller
             'envio_error' => null,
         ])->saveQuietly();
 
-        EnviarCertificadoMedicoJob::dispatch($certificado->id);
+        EnviarCertificadoMedicoJob::dispatch($certificado->id, forceResend: true);
 
         return back()->with('success', 'Se reintentara el envio del certificado por correo.');
     }

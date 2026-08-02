@@ -24,6 +24,7 @@ class PedidoLaboratorioFlowTest extends TestCase
         parent::setUp();
 
         Storage::fake('local');
+        Storage::fake('r2_private');
         Mail::fake();
     }
 
@@ -89,7 +90,7 @@ class PedidoLaboratorioFlowTest extends TestCase
         $this->assertSame($patient->email, $pedido->fresh()->enviado_a);
 
         $this->assertNotNull($pedido->pdf_path);
-        Storage::disk('local')->assertExists($pedido->pdf_path);
+        Storage::disk($pedido->pdf_disk ?: 'local')->assertExists($pedido->pdf_path);
 
         Mail::assertSent(PedidoLaboratorioMail::class, function ($mail) use ($patient) {
             return $mail->hasTo($patient->email) && ! empty($mail->relativePath);

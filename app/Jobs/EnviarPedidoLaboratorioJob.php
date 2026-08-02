@@ -18,25 +18,35 @@ class EnviarPedidoLaboratorioJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public function __construct(public int $pedidoId)
+    public bool $forceResend = false;
+
+    public function __construct(public int $pedidoId, bool $forceResend = false)
     {
+        $this->forceResend = $forceResend;
+        $this->afterCommit = true;
     }
 
     public function handle(DocumentoCsvService $csvService): void
     {
-        $pedido = PedidoLaboratorio::with(['paciente', 'doctor', 'cita.especialidad'])->find($this->pedidoId);
+        $pedido = PedidoLaboratorio::with([
+            'paciente',
+            'doctor',
+            'cita.especialidad',
+            'cita.dependiente.responsable',
+            'cita.paciente',
+        ])->find($this->pedidoId);
 
         if (! $pedido) {
             return;
         }
 
-        $recipient = trim((string) ($pedido->paciente?->email ?? ''));
-        if ($recipient === '') {
+        $recipient = $this->resolveRecipient($pedido);
+        if (! $recipient) {
             $this->markFailed($pedido, 'No hay un correo registrado para enviar el pedido de laboratorio.');
             return;
         }
 
-        if ($pedido->envio_estado === 'sent' && $pedido->enviado_a === $recipient) {
+        if (! $this->forceResend && $pedido->envio_estado === 'sent' && $pedido->enviado_a === $recipient) {
             return;
         }
 
@@ -48,8 +58,10 @@ class EnviarPedidoLaboratorioJob implements ShouldQueue
         ])->saveQuietly();
 
         try {
+            $docService = app(\App\Services\LaboratoryOrderDocumentService::class);
+            $diskName = $docService->resolveDisk($pedido->pdf_disk);
             $relativePath = $pedido->pdf_path;
-            if (! $relativePath || ! Storage::disk('local')->exists($relativePath)) {
+            if (! $relativePath || ! Storage::disk($diskName)->exists($relativePath)) {
                 $relativePath = null;
             }
 
@@ -58,7 +70,7 @@ class EnviarPedidoLaboratorioJob implements ShouldQueue
             }
 
             Mail::to($recipient)->send(new PedidoLaboratorioMail(
-                $pedido->fresh(['paciente', 'doctor']),
+                $pedido->fresh(['paciente', 'doctor', 'cita.dependiente.responsable', 'cita.paciente']),
                 $relativePath ?? '',
                 $relativePath ? basename($relativePath) : ''
             ));
@@ -78,6 +90,16 @@ class EnviarPedidoLaboratorioJob implements ShouldQueue
                 'error' => $e->getMessage(),
             ]);
         }
+    }
+
+    private function resolveRecipient(PedidoLaboratorio $pedido): ?string
+    {
+        $email = $pedido->cita?->dependiente?->responsable?->email;
+        if (! $email) {
+            $email = $pedido->paciente?->email ?: $pedido->cita?->paciente?->email;
+        }
+
+        return trim((string) $email) ?: null;
     }
 
     private function markFailed(PedidoLaboratorio $pedido, string $message): void

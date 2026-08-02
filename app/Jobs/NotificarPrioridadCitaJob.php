@@ -37,7 +37,7 @@ class NotificarPrioridadCitaJob implements ShouldQueue
         }
 
         if ($cita->doctor && $cita->doctor->email) {
-            Mail::to($cita->doctor->email)->queue(
+            Mail::to($cita->doctor->email)->send(
                 new CambioEstadoCitaMail($cita, 'doctor', 'prioridad', 'sistema')
             );
         }

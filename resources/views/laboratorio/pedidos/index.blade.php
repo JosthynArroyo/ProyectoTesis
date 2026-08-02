@@ -118,9 +118,38 @@
             <i class="ri-file-list-3-line"></i> {{ $actionLabel }}
           </a>
 
+          {{-- Orden médica firmada por el doctor --}}
+          @if($pedido->pdf_path)
+            <a
+              class="btn btn-outline"
+              href="{{ route('laboratorio.pedidos.download-orden', $pedido) }}"
+              target="_blank"
+              rel="noopener"
+              data-action-lock-ignore
+              data-skip-page-loader
+            >
+              <i class="ri-file-pdf-line"></i> Ver orden médica
+            </a>
+            <a
+              class="btn btn-outline"
+              href="{{ route('laboratorio.pedidos.descargar-orden', $pedido) }}"
+              download
+              data-action-lock-ignore
+              data-skip-page-loader
+            >
+              <i class="ri-download-line"></i> Descargar orden médica
+            </a>
+          @endif
+
+          {{-- Resultado publicado --}}
           @if($resultadoPublicado && $resultadoPublicado->pdf_path)
-            <a class="btn btn-outline" href="{{ route('laboratorio.pedidos.resultados.download', $pedido) }}">
-              <i class="ri-download-line"></i> Descargar PDF
+            <a
+              class="btn btn-outline"
+              href="{{ route('laboratorio.pedidos.resultados.download', $pedido) }}"
+              data-action-lock-ignore
+              data-skip-page-loader
+            >
+              <i class="ri-download-line"></i> Descargar resultado
             </a>
             <form method="POST" action="{{ route('laboratorio.pedidos.resultados.resend', $pedido) }}">
               @csrf
@@ -129,7 +158,14 @@
               </button>
             </form>
             @if($resultadoPublicado->csv)
-              <a class="btn btn-ghost" href="{{ route('documentos.verificar.show', $resultadoPublicado->csv) }}" target="_blank" rel="noopener">
+              <a
+                class="btn btn-ghost"
+                href="{{ route('documentos.verificar.show', $resultadoPublicado->csv) }}"
+                target="_blank"
+                rel="noopener"
+                data-action-lock-ignore
+                data-skip-page-loader
+              >
                 <i class="ri-qr-code-line"></i> Verificación pública
               </a>
             @endif

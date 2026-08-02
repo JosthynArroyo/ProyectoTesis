@@ -138,13 +138,48 @@
                 @endif
               </div>
               <div class="flex flex-wrap gap-2">
+                {{-- Ver/descargar la orden médica emitida por el doctor --}}
+                @if($pedido->pdf_path)
+                  <a
+                    class="btn btn-outline btn-sm"
+                    href="{{ route('paciente.laboratorio.pedido.orden.ver', $pedido) }}"
+                    target="_blank"
+                    rel="noopener"
+                    data-action-lock-ignore
+                    data-skip-page-loader
+                  >
+                    <i class="ri-file-pdf-line"></i> Ver orden médica
+                  </a>
+                  <a
+                    class="btn btn-outline btn-sm"
+                    href="{{ route('paciente.laboratorio.pedido.orden.descargar', $pedido) }}"
+                    download
+                    data-action-lock-ignore
+                    data-skip-page-loader
+                  >
+                    <i class="ri-download-line"></i> Descargar orden médica
+                  </a>
+                @endif
+                {{-- Descargar el resultado publicado --}}
                 @if($resultadoPublicado && $resultadoPublicado->pdf_path)
-                  <a class="btn btn-primary btn-sm" href="{{ route('paciente.laboratorio.pedido.download', $pedido) }}">
+                  <a
+                    class="btn btn-primary btn-sm"
+                    href="{{ route('paciente.laboratorio.pedido.download', $pedido) }}"
+                    data-action-lock-ignore
+                    data-skip-page-loader
+                  >
                     <i class="ri-download-line"></i> Descargar PDF
                   </a>
                 @endif
                 @if($resultadoPublicado?->csv)
-                  <a class="btn btn-outline btn-sm" href="{{ route('documentos.verificar.show', $resultadoPublicado->csv) }}" target="_blank" rel="noopener">
+                  <a
+                    class="btn btn-outline btn-sm"
+                    href="{{ route('documentos.verificar.show', $resultadoPublicado->csv) }}"
+                    target="_blank"
+                    rel="noopener"
+                    data-action-lock-ignore
+                    data-skip-page-loader
+                  >
                     <i class="ri-qr-code-line"></i> Verificación
                   </a>
                 @endif

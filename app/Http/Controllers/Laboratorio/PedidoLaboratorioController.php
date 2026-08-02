@@ -89,18 +89,25 @@ class PedidoLaboratorioController extends Controller
     }
 
     /**
-     * Descarga la orden médica firmada por el doctor.
+     * Descarga la orden médica firmada por el doctor (vista inline).
      */
     public function downloadOrden(PedidoLaboratorio $pedido)
     {
-        if (!$pedido->pdf_path || !Storage::disk('local')->exists($pedido->pdf_path)) {
-            return back()->withErrors(['error' => 'El documento de la orden no está disponible.']);
-        }
+        $docService = app(\App\Services\LaboratoryOrderDocumentService::class);
+        $docService->ensureUserCanView($pedido);
 
-        return response()->file(Storage::disk('local')->path($pedido->pdf_path), [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="orden_medica_' . $pedido->id . '.pdf"'
-        ]);
+        return $docService->streamInline($pedido, 'orden_medica_' . $pedido->id . '.pdf');
+    }
+
+    /**
+     * Descarga la orden médica firmada por el doctor (attachment/descarga).
+     */
+    public function downloadOrdenAttachment(PedidoLaboratorio $pedido)
+    {
+        $docService = app(\App\Services\LaboratoryOrderDocumentService::class);
+        $docService->ensureUserCanView($pedido);
+
+        return $docService->streamDownload($pedido, 'orden_medica_' . $pedido->id . '.pdf');
     }
 
     /**

@@ -249,7 +249,7 @@
                         </a>
 
                         @if($cita->pedidoLaboratorio)
-                          <a class="btn btn-ghost btn-sm justify-start" href="{{ route('doctor.pedidos-laboratorio.download', $cita->pedidoLaboratorio) }}" role="menuitem">
+                          <a class="btn btn-ghost btn-sm justify-start" href="{{ route('doctor.pedidos-laboratorio.download', $cita->pedidoLaboratorio) }}" role="menuitem" download data-action-lock-ignore data-skip-page-loader>
                             <i class="ri-file-shield-line"></i> Descargar Pedido Lab MVP
                           </a>
                         @endif

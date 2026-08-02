@@ -100,6 +100,7 @@ class DocumentoCsvService
                 'titulo' => 'Pedido de laboratorio',
                 'pdf_path' => $pedido->pdf_path,
                 'nombre_descarga' => 'pedido_laboratorio_'.$pedido->id.'.pdf',
+                'pedido' => $pedido,
             ];
         }
 

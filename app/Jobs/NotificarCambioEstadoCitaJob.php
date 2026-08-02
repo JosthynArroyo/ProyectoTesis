@@ -46,11 +46,15 @@ class NotificarCambioEstadoCitaJob implements ShouldQueue
 
     public function handle(): void
     {
-        $cita = Cita::with(['paciente', 'doctor', 'especialidad'])->findOrFail($this->cita->id);
+        $cita = Cita::with(['paciente', 'doctor', 'especialidad', 'dependiente.responsable'])->findOrFail($this->cita->id);
 
         // Definir destinatarios (siempre ambas partes)
-        $paraPaciente = $cita->paciente->email;
-        $paraDoctor = $cita->doctor->email;
+        $paraPaciente = trim((string) (
+            $cita->dependiente?->responsable?->email
+            ?: $cita->paciente?->email
+            ?: ''
+        ));
+        $paraDoctor = $cita->doctor?->email;
 
         if (! $paraPaciente && ! $paraDoctor) {
             Log::warning("NotificarCambioEstadoCitaJob: Cita {$cita->id} sin correos de paciente/doctor.");
@@ -58,16 +62,16 @@ class NotificarCambioEstadoCitaJob implements ShouldQueue
             return;
         }
 
-        // Enviar a paciente
-        if ($paraPaciente) {
-            Mail::to($paraPaciente)->queue(
+        // Enviar a paciente / representante
+        if ($paraPaciente !== '') {
+            Mail::to($paraPaciente)->send(
                 new CambioEstadoCitaMail($cita, 'paciente', $this->evento, $this->quien)
             );
         }
 
         // Enviar a doctor
         if ($paraDoctor) {
-            Mail::to($paraDoctor)->queue(
+            Mail::to($paraDoctor)->send(
                 new CambioEstadoCitaMail($cita, 'doctor', $this->evento, $this->quien)
             );
         }

@@ -37,5 +37,10 @@
         <env name="APP_SERVICES_CACHE" value="bootstrap/cache/services-testing.php"/>
         <env name="APP_EVENTS_CACHE" value="bootstrap/cache/events-testing.php"/>
         <env name="APP_ROUTES_CACHE" value="bootstrap/cache/routes-testing.php"/>
+        <env name="R2_ACCESS_KEY_ID" value="testing_key"/>
+        <env name="R2_SECRET_ACCESS_KEY" value="testing_secret"/>
+        <env name="R2_PRIVATE_BUCKET" value="r2-private-test-bucket"/>
+        <env name="R2_PUBLIC_BUCKET" value="r2-public-test-bucket"/>
+        <env name="R2_ENDPOINT" value="https://testing.r2.cloudflarestorage.com"/>
     </php>
 </phpunit>

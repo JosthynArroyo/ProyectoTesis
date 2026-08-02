@@ -17,8 +17,12 @@ class EnviarCertificadoMedicoJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public function __construct(public int $certificadoId)
+    public bool $forceResend = false;
+
+    public function __construct(public int $certificadoId, bool $forceResend = false)
     {
+        $this->forceResend = $forceResend;
+        $this->afterCommit = true;
     }
 
     public function handle(CertificadoMedicoPdfService $pdfs): void
@@ -28,6 +32,8 @@ class EnviarCertificadoMedicoJob implements ShouldQueue
             'dependiente.responsable',
             'doctor',
             'cita.especialidad',
+            'cita.dependiente.responsable',
+            'cita.paciente',
         ])->find($this->certificadoId);
 
         if (! $certificado) {
@@ -40,7 +46,7 @@ class EnviarCertificadoMedicoJob implements ShouldQueue
             return;
         }
 
-        if ($certificado->envio_estado === 'sent' && $certificado->enviado_a === $recipient) {
+        if (! $this->forceResend && $certificado->envio_estado === 'sent' && $certificado->enviado_a === $recipient) {
             return;
         }
 
@@ -79,11 +85,15 @@ class EnviarCertificadoMedicoJob implements ShouldQueue
 
     private function resolveRecipient(CertificadoMedico $certificado): ?string
     {
-        return trim((string) (
-            $certificado->dependiente?->responsable?->email
-            ?: $certificado->paciente?->email
-            ?: ''
-        )) ?: null;
+        $email = $certificado->dependiente?->responsable?->email;
+        if (! $email && $certificado->cita?->dependiente_id) {
+            $email = $certificado->cita?->dependiente?->responsable?->email;
+        }
+        if (! $email) {
+            $email = $certificado->paciente?->email ?: $certificado->cita?->paciente?->email;
+        }
+
+        return trim((string) $email) ?: null;
     }
 
     private function markFailed(CertificadoMedico $certificado, string $message): void
