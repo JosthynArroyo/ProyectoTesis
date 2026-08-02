@@ -125,7 +125,7 @@ class AdminController extends Controller
             'direccion' => ['required', 'string', 'max:255'],
             'fecha_nacimiento' => ValidationRules::birthDate(),
             'sexo' => ['required', 'in:Masculino,Femenino,Otro'],
-            'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,svg', 'max:2048'],
+            'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'precio_consulta' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
             'moneda' => ['required', 'in:USD'],
 

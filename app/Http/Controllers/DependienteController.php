@@ -4,18 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\ClinicalRecord;
 use App\Models\Dependiente;
-use Carbon\Carbon;
+use App\Services\ProfileAvatarService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class DependienteController extends Controller
 {
-    public function __construct()
-    {
-        $this->middleware('auth');
-    }
-
     public function index()
     {
         $dependientes = $this->ownedDependientesQuery()->orderBy('nombre')->get();
@@ -29,7 +24,7 @@ class DependienteController extends Controller
         $dependientes = $this->ownedDependientesQuery()->get();
         if ($dependientes->count() >= Dependiente::MAX_POR_USUARIO) {
             return redirect()->route('paciente.dependientes.index')
-                ->with('error', 'Has alcanzado el lÃ­mite mÃ¡ximo de dependientes registrados.');
+                ->with('error', 'Has alcanzado el límite máximo de dependientes (10).');
         }
 
         $dependiente = new Dependiente();
@@ -42,7 +37,7 @@ class DependienteController extends Controller
         $user = Auth::user();
         if ($this->ownedDependientesQuery()->count() >= Dependiente::MAX_POR_USUARIO) {
             return redirect()->route('paciente.dependientes.index')
-                ->with('error', 'Has alcanzado el lÃ­mite mÃ¡ximo de dependientes registrados.');
+                ->with('error', 'Has alcanzado el límite máximo de dependientes registrados.');
         }
 
         $rules = \App\Support\ValidationRules::dependiente(false, null, $user->id);
@@ -52,12 +47,16 @@ class DependienteController extends Controller
             'fecha_nacimiento.required' => 'La fecha de nacimiento es obligatoria.',
             'parentesco.required' => 'El parentesco es obligatorio.',
             'parentesco.in' => 'El parentesco seleccionado no es válido.',
+            'avatar.image' => 'El archivo debe ser una imagen válida.',
+            'avatar.mimes' => 'Solo se aceptan imágenes JPG, PNG y WebP.',
+            'avatar.max' => 'La imagen no debe superar los 5 MB.',
         ]);
 
         try {
             DB::beginTransaction();
 
-            $dependiente = new Dependiente($request->all());
+            $data = $request->except(['avatar', '_token']);
+            $dependiente = new Dependiente($data);
             $dependiente->user_id = $user->id;
             $dependiente->activo = true;
             $dependiente->save();
@@ -68,6 +67,10 @@ class DependienteController extends Controller
                 'allergies_status' => ClinicalRecord::ALLERGIES_UNKNOWN,
             ]);
 
+            if ($request->hasFile('avatar')) {
+                app(ProfileAvatarService::class)->replaceForDependent($dependiente, $request->file('avatar'));
+            }
+
             DB::commit();
 
             return redirect()->route('paciente.dependientes.index')
@@ -75,7 +78,7 @@ class DependienteController extends Controller
         } catch (\Throwable $e) {
             DB::rollBack();
 
-            return back()->withInput()->withErrors(['error' => 'OcurriÃ³ un error al registrar al dependiente: ' . $e->getMessage()]);
+            return back()->withInput()->withErrors(['error' => 'Ocurrió un error al registrar al dependiente: ' . $e->getMessage()]);
         }
     }
 
@@ -97,10 +100,18 @@ class DependienteController extends Controller
             'fecha_nacimiento.required' => 'La fecha de nacimiento es obligatoria.',
             'parentesco.required' => 'El parentesco es obligatorio.',
             'parentesco.in' => 'El parentesco seleccionado no es válido.',
+            'avatar.image' => 'El archivo debe ser una imagen válida.',
+            'avatar.mimes' => 'Solo se aceptan imágenes JPG, PNG y WebP.',
+            'avatar.max' => 'La imagen no debe superar los 5 MB.',
         ]);
 
-        $dependiente->fill($request->all());
+        $data = $request->except(['avatar', '_token', '_method']);
+        $dependiente->fill($data);
         $dependiente->save();
+
+        if ($request->hasFile('avatar')) {
+            app(ProfileAvatarService::class)->replaceForDependent($dependiente, $request->file('avatar'));
+        }
 
         return redirect()->route('paciente.dependientes.index')
             ->with('success', 'Datos del dependiente actualizados.');
@@ -140,9 +151,26 @@ class DependienteController extends Controller
                 ->with('error', 'No se puede eliminar este dependiente porque tiene historial medico asociado: '.implode(', ', $blockers).'. Se mantendra desactivado.');
         }
 
+        // 1. Guardar en memoria la clave cruda del avatar antes del borrado
+        $previousAvatar = (string) $dependiente->getRawOriginal('avatar');
+
+        // 2. Eliminar dependiente en la BD primero
         DB::transaction(function () use ($dependiente): void {
             $dependiente->delete();
         });
+
+        // 3. Confirmada la eliminación de la BD, proceder con la limpieza R2 privada (capturando errores de R2)
+        if ($previousAvatar !== '') {
+            try {
+                app(ProfileAvatarService::class)->deleteDependentR2Avatar($previousAvatar);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Failed to clean up R2 avatar variants for deleted dependent', [
+                    'dependiente_id' => $id,
+                    'avatar_key' => $previousAvatar,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
 
         return redirect()->route('paciente.dependientes.index')
             ->with('success', 'Dependiente eliminado definitivamente.');
@@ -153,54 +181,28 @@ class DependienteController extends Controller
         return Dependiente::query()->where('user_id', Auth::id());
     }
 
-    /**
-     * @return array<int, string>
-     */
     private function dependienteDeleteBlockers(Dependiente $dependiente): array
     {
         $blockers = [];
 
-        if ($dependiente->citas()->exists()) {
-            $blockers[] = 'citas';
+        $hasAppointments = $dependiente->citas->isNotEmpty();
+        if ($hasAppointments) {
+            $blockers[] = 'citas medicas registradas';
         }
 
-        $record = $dependiente->clinicalRecord;
-        if ($record) {
-            if ($record->allergies()->exists()) {
-                $blockers[] = 'alergias';
-            }
-            if ($record->histories()->exists()) {
-                $blockers[] = 'antecedentes';
-            }
-            if ($record->problems()->exists()) {
-                $blockers[] = 'problemas clinicos';
-            }
-            if ($record->medications()->exists()) {
-                $blockers[] = 'medicacion';
-            }
-            if ($record->alerts()->exists()) {
-                $blockers[] = 'alertas';
-            }
-            if ($record->soapNotes()->exists()) {
-                $blockers[] = 'notas clinicas';
-            }
-            if ($record->recipes()->exists()) {
-                $blockers[] = 'recetas';
-            }
-            if ($record->medicalCertificates()->exists()) {
-                $blockers[] = 'certificados medicos';
-            }
-            if ($record->legacyLabOrders()->exists()) {
-                $blockers[] = 'ordenes de laboratorio';
-            }
-            if ($record->labOrders()->exists()) {
-                $blockers[] = 'pedidos de laboratorio';
-            }
-            if ($record->medicalOrders()->exists()) {
-                $blockers[] = 'solicitudes medicas';
+        if ($dependiente->clinicalRecord) {
+            $record = $dependiente->clinicalRecord;
+            $hasClinicalEntries = $record->problems()->exists()
+                || $record->medications()->exists()
+                || $record->allergies()->exists()
+                || $record->histories()->exists()
+                || $record->alerts()->exists();
+
+            if ($hasClinicalEntries) {
+                $blockers[] = 'registros en expediente clinico';
             }
         }
 
-        return array_values(array_unique($blockers));
+        return $blockers;
     }
 }

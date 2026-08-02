@@ -144,6 +144,7 @@ class ValidationRules
             'parentesco' => ['required', 'in:' . implode(',', \App\Models\Dependiente::PARENTESCOS)],
             'telefono_emergencia' => ['nullable', 'string', 'max:20'],
             'notas' => ['nullable', 'string'],
+            'avatar' => ['nullable', 'file', 'image', 'mimes:jpeg,jpg,png,webp', 'max:5120'],
         ];
     }
 }

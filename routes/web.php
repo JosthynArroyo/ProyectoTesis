@@ -42,6 +42,8 @@ use App\Http\Controllers\DependienteController;
 use App\Http\Controllers\PagoLookupController;
 use App\Http\Controllers\PanelThemeController;
 use App\Http\Controllers\FaviconController;
+use App\Http\Controllers\AvatarMediaController;
+use App\Http\Controllers\DependentAvatarMediaController;
 use App\Http\Controllers\PublicPageController;
 use App\Http\Controllers\Superadmin\AdminsController as SuperadminAdminsController;
 use App\Http\Controllers\Superadmin\DashboardController as SuperadminDashboardController;
@@ -52,6 +54,16 @@ use Illuminate\Support\Facades\Route;
 
 // Dynamic favicon endpoint (Root favicon)
 Route::get('/favicon.ico', FaviconController::class)->name('favicon.ico');
+
+// Private avatar endpoint
+Route::middleware(['auth'])->get('/media/avatars/{user}/{variant?}', AvatarMediaController::class)
+    ->where('variant', 'thumb|medium|original')
+    ->name('media.avatars.show');
+
+// Private dependent avatar endpoint
+Route::middleware(['auth'])->get('/media/dependent-avatars/{dependiente}/{variant?}', DependentAvatarMediaController::class)
+    ->where('variant', 'thumb|medium|original')
+    ->name('media.dependent-avatars.show');
 
 // API tarifas
 Route::get('/api/tarifa/doctor/{id}', [TarifaController::class, 'precioDoctor'])

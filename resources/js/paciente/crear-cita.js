@@ -216,15 +216,43 @@
     renderDoctorSpecialties(doctor.especialidades);
 
     if (doctorProfileAvatar) {
-      const avatarUrl = doctor.avatar_url || doctor.avatar_thumb || doctorProfileAvatar.dataset.fallbackSrc || '';
-      doctorProfileAvatar.src = avatarUrl;
-      doctorProfileAvatar.alt = doctor.name ? `Foto de ${doctor.name}` : 'Foto del doctor';
-      if (doctor.avatar_srcset) {
-        doctorProfileAvatar.srcset = doctor.avatar_srcset;
-        doctorProfileAvatar.sizes = '(max-width: 640px) 80px, 96px';
+      const avatarUrl = doctor.avatar_url || doctor.avatar_thumb || '';
+      const fallbackContainer = doctorProfileModal?.querySelector('[data-doctor-profile-fallback]');
+
+      const doctorInitial = doctor.name ? doctor.name.trim().charAt(0).toUpperCase() : 'D';
+
+      if (avatarUrl) {
+        doctorProfileAvatar.src = avatarUrl;
+        doctorProfileAvatar.alt = doctor.name ? `Foto de ${doctor.name}` : 'Foto del doctor';
+        doctorProfileAvatar.classList.remove('hidden');
+        if (fallbackContainer) {
+          fallbackContainer.classList.add('hidden');
+          fallbackContainer.classList.remove('flex');
+        }
+
+        doctorProfileAvatar.onerror = function() {
+          doctorProfileAvatar.classList.add('hidden');
+          if (fallbackContainer) {
+            fallbackContainer.textContent = doctorInitial;
+            fallbackContainer.classList.remove('hidden');
+            fallbackContainer.classList.add('flex');
+          }
+        };
+
+        if (doctor.avatar_srcset) {
+          doctorProfileAvatar.srcset = doctor.avatar_srcset;
+          doctorProfileAvatar.sizes = '(max-width: 640px) 80px, 96px';
+        } else {
+          doctorProfileAvatar.removeAttribute('srcset');
+          doctorProfileAvatar.removeAttribute('sizes');
+        }
       } else {
-        doctorProfileAvatar.removeAttribute('srcset');
-        doctorProfileAvatar.removeAttribute('sizes');
+        doctorProfileAvatar.classList.add('hidden');
+        if (fallbackContainer) {
+          fallbackContainer.textContent = doctorInitial;
+          fallbackContainer.classList.remove('hidden');
+          fallbackContainer.classList.add('flex');
+        }
       }
     }
   }

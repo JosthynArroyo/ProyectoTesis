@@ -35,7 +35,28 @@ class Dependiente extends Model
         'telefono_emergencia',
         'notas',
         'activo',
+        'avatar',
     ];
+
+    public function avatarUrl(string $variant = 'thumb'): string
+    {
+        return app(\App\Services\ProfileAvatarService::class)->dependentAvatarUrl($this, $variant);
+    }
+
+    public function getAvatarUrlAttribute(): string
+    {
+        return $this->avatarUrl('medium');
+    }
+
+    public function getAvatarThumbUrlAttribute(): string
+    {
+        return $this->avatarUrl('thumb');
+    }
+
+    public function getAvatarMediumUrlAttribute(): string
+    {
+        return $this->avatarUrl('medium');
+    }
 
     protected $casts = [
         'fecha_nacimiento' => 'date',

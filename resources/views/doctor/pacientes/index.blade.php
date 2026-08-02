@@ -97,9 +97,13 @@
                             <tr>
                                 <td data-label="Paciente">
                                     <div class="doctor-patient-cell">
-                                        <span class="doctor-patient-avatar doctor-patient-avatar--{{ $patient['avatar_tone'] }}">
-                                            {{ $patient['initials'] }}
-                                        </span>
+                                        @if(!empty($patient['avatar_thumb_url']))
+                                            <img src="{{ $patient['avatar_thumb_url'] }}" alt="{{ $patient['name'] }}" class="doctor-patient-avatar object-cover border border-gray-200" loading="lazy" decoding="async">
+                                        @else
+                                            <span class="doctor-patient-avatar doctor-patient-avatar--{{ $patient['avatar_tone'] }}">
+                                                {{ $patient['initials'] }}
+                                            </span>
+                                        @endif
                                         <div class="doctor-patient-cell__text">
                                             <strong>{{ $patient['name'] }}</strong>
                                             <p>ID: #{{ $patient['code'] }}</p>

@@ -44,6 +44,7 @@
         'telefono' => $isDependiente ? $record->dependiente->telefono_emergencia : ($record->patient->telefono ?? $paciente->telefono),
         'email' => $isDependiente ? null : ($record->patient->email ?? $paciente->email),
         'fecha_nacimiento' => $isDependiente ? $record->dependiente->fecha_nacimiento : ($record->patient->fecha_nacimiento ?? $paciente->fecha_nacimiento),
+        'avatar_medium_url' => $isDependiente ? ($record->dependiente?->avatar_medium_url ?? '') : ($record->patient?->avatar_medium_url ?? $paciente->avatar_medium_url),
     ];
     $age = $patient->fecha_nacimiento ? Carbon::parse($patient->fecha_nacimiento)->age : null;
     $patientInitials = collect(preg_split('/\s+/', trim((string) $patient->name)))

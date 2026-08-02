@@ -178,6 +178,26 @@ class User extends Authenticatable
         });
     }
 
+    public function avatarUrl(string $variant = 'thumb'): string
+    {
+        return app(\App\Services\ProfileAvatarService::class)->avatarUrl($this, $variant);
+    }
+
+    public function getAvatarUrlAttribute(): string
+    {
+        return $this->avatarUrl('medium');
+    }
+
+    public function getAvatarThumbUrlAttribute(): string
+    {
+        return $this->avatarUrl('thumb');
+    }
+
+    public function getAvatarMediumUrlAttribute(): string
+    {
+        return $this->avatarUrl('medium');
+    }
+
     public function roles()
     {
         return $this->belongsToMany(Role::class);

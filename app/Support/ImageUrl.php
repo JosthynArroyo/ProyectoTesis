@@ -24,6 +24,10 @@ class ImageUrl
             return $this->singleUrlVariants($path);
         }
 
+        if ($this->isAvatarPath($path)) {
+            return $this->avatarVariants($path, $entity);
+        }
+
         if ($this->isSvgPath($path) || $this->isOriginalRasterPath($path) || $this->isPublicAssetPath($path)) {
             return $this->singleUrlVariants($this->toUrl($path));
         }
@@ -274,5 +278,41 @@ class ImageUrl
             'banner', 'slide', 'hero' => 'banner',
             default => 'default',
         };
+    }
+
+    private function isAvatarPath(string $path): bool
+    {
+        $normalized = str_replace('\\', '/', strtolower(trim($path)));
+
+        return Str::startsWith($normalized, 'avatars/');
+    }
+
+    private function avatarVariants(string $path, string $entity): array
+    {
+        $normalized = str_replace('\\', '/', trim($path));
+
+        if (preg_match('#^avatars/(\d+)/#i', $normalized, $matches)) {
+            $userId = (int) $matches[1];
+            $version = substr(md5($path), 0, 8);
+
+            $thumb = route('media.avatars.show', ['user' => $userId, 'variant' => 'thumb', 'v' => $version]);
+            $medium = route('media.avatars.show', ['user' => $userId, 'variant' => 'medium', 'v' => $version]);
+
+            return [
+                'thumb' => $thumb,
+                'medium' => $medium,
+                'large' => $medium,
+                'src' => $medium,
+                'srcset' => "{$thumb} 150w, {$medium} 600w",
+                'is_placeholder' => false,
+            ];
+        }
+
+        $user = \App\Models\User::where('avatar', $path)->first();
+        if ($user) {
+            return $this->avatarVariants("avatars/{$user->id}/legacy/original.png", $entity);
+        }
+
+        return $this->placeholderVariants($entity);
     }
 }

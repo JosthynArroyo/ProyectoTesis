@@ -309,14 +309,22 @@
         <article class="card w-full max-w-3xl overflow-hidden">
             <div class="flex items-start justify-between gap-4 border-b border-gray-200 p-4 sm:p-6">
                 <div class="flex min-w-0 items-center gap-4">
-                    <img
-                        data-doctor-profile-avatar
-                        src="{{ app(\App\Support\ImageUrl::class)->fallback('doctor') }}"
-                        data-fallback-src="{{ app(\App\Support\ImageUrl::class)->fallback('doctor') }}"
-                        alt="Foto del doctor"
-                        class="doctor-avatar-photo h-20 w-20 flex-none rounded-lg border border-gray-200 sm:h-24 sm:w-24"
-                        loading="lazy"
-                        decoding="async">
+                    <div class="flex-none">
+                        <img
+                            id="doctorProfileAvatarImg"
+                            data-doctor-profile-avatar
+                            src=""
+                            alt="Foto del doctor"
+                            class="doctor-avatar-photo h-20 w-20 rounded-lg border border-gray-200 object-cover sm:h-24 sm:w-24"
+                            loading="lazy"
+                            decoding="async">
+                        <div
+                            id="doctorProfileAvatarFallback"
+                            data-doctor-profile-fallback
+                            class="hidden h-20 w-20 flex-none items-center justify-center rounded-lg bg-teal-100 text-2xl font-bold text-teal-800 border border-teal-200 sm:h-24 sm:w-24">
+                            D
+                        </div>
+                    </div>
                     <div class="min-w-0">
                         <p class="text-xs font-semibold uppercase tracking-widest text-gray-500">Perfil profesional</p>
                         <h2 id="doctorProfileTitle" class="mt-1 break-words text-xl font-semibold text-gray-900 sm:text-2xl" data-doctor-profile-name>Doctor</h2>

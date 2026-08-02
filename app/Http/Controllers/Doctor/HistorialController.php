@@ -105,6 +105,7 @@ class HistorialController extends Controller
                 $avatarTone = $this->avatarTone($dep->id);
                 $age = $patientDob ? Carbon::parse($patientDob)->age : null;
                 $avatarId = $dep->id;
+                $avatarThumbUrl = $dep->avatar_thumb_url;
             } else {
                 $user = $users->get($pair->paciente_id);
                 if (!$user) continue;
@@ -121,6 +122,7 @@ class HistorialController extends Controller
                 $avatarTone = $this->avatarTone($user->id);
                 $age = $patientDob ? Carbon::parse($patientDob)->age : null;
                 $avatarId = $user->id;
+                $avatarThumbUrl = $user->avatar_thumb_url;
             }
 
             // Filtrar citas correspondientes a este paciente/dependiente
@@ -156,6 +158,7 @@ class HistorialController extends Controller
                 'code' => $code,
                 'initials' => $initials,
                 'avatar_tone' => $avatarTone,
+                'avatar_thumb_url' => $avatarThumbUrl,
                 'age' => $age,
                 'email' => $patientEmail,
                 'phone' => $patientPhone,

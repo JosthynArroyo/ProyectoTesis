@@ -2,7 +2,11 @@
 
 {{-- ===== PATIENT HEADER ===== --}}
 <div class="mr-patient-header">
-    <div class="mr-patient-header__avatar" aria-hidden="true">{{ $patientInitials ?: 'P' }}</div>
+    @if(!empty($patient->avatar_medium_url))
+        <img src="{{ $patient->avatar_medium_url }}" alt="{{ $patient->name }}" class="mr-patient-header__avatar object-cover border border-gray-200" loading="lazy" decoding="async">
+    @else
+        <div class="mr-patient-header__avatar" aria-hidden="true">{{ $patientInitials ?: 'P' }}</div>
+    @endif
     <div class="mr-patient-header__info">
         <h2 class="mr-patient-header__name">{{ $patient->name }}</h2>
         <div class="mr-patient-header__meta">

@@ -231,7 +231,7 @@ class AdminController extends Controller
             'direccion' => ['required', 'string', 'max:255'],
             'fecha_nacimiento' => ValidationRules::birthDate(),
             'sexo' => ['required', 'in:Masculino,Femenino,Otro'],
-            'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,svg', 'max:2048'],
+            'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'current_password' => ['nullable', 'string'],
             'password' => array_merge(
                 ValidationRules::passwordOptional(),

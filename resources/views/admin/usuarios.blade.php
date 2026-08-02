@@ -141,14 +141,17 @@
               @csrf
               @method('PATCH')
               <input type="hidden" name="reason" value="Inactivación manual">
-            </form>
           @endunless
 
           <tr data-user-row>
             @if(in_array('usuario',$cols))
               <td data-label="Usuario">
                 <div class="flex items-start gap-3">
-                  <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-gray-100 text-sm font-semibold text-gray-600">{{ \Illuminate\Support\Str::substr($u->name,0,1) }}</div>
+                  @if($u->getRawOriginal('avatar'))
+                    <img src="{{ $u->avatar_thumb_url }}" alt="{{ $u->name }}" class="h-10 w-10 flex-none rounded-2xl object-cover border border-gray-200" loading="lazy" decoding="async">
+                  @else
+                    <div class="flex h-10 w-10 flex-none items-center justify-center rounded-2xl bg-gray-100 text-sm font-semibold text-gray-600">{{ \Illuminate\Support\Str::substr($u->name,0,1) }}</div>
+                  @endif
                   <div class="min-w-0 flex-1">
                     <p class="truncate text-sm font-semibold text-gray-900">{{ $u->name }}</p>
                     <div class="mt-2 flex flex-wrap items-center gap-3">

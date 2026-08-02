@@ -2,6 +2,7 @@
 
 return [
     'disk' => env('IMAGE_STORAGE_DISK', 'public'),
+    'avatar_disk' => env('AVATAR_STORAGE_DISK', 'r2_private'),
     'base_path' => 'images',
 
     'quality' => [

@@ -37,6 +37,7 @@
 
         <form method="POST" 
               action="{{ $dependiente->exists ? route('paciente.dependientes.update', $dependiente->id) : route('paciente.dependientes.store') }}" 
+              enctype="multipart/form-data"
               class="mt-6 space-y-6"
               id="dependienteForm">
             @csrf
@@ -45,6 +46,27 @@
             @endif
 
             <div class="grid gap-4 md:grid-cols-2">
+                <div class="md:col-span-2">
+                    <label class="form-label">Fotografía de perfil (Opcional)</label>
+                    <div class="mt-2 flex items-center gap-4">
+                        <div class="relative flex-none">
+                            @if($dependiente->getRawOriginal('avatar'))
+                                <img id="avatarPreview" src="{{ $dependiente->avatar_thumb_url }}" alt="Foto actual" class="h-16 w-16 rounded-2xl object-cover border border-gray-200">
+                            @else
+                                <div id="avatarFallback" class="flex h-16 w-16 items-center justify-center rounded-2xl bg-teal-100 text-xl font-bold text-teal-800 border border-teal-200">
+                                    {{ $dependiente->nombre ? \Illuminate\Support\Str::substr($dependiente->nombre, 0, 1) : 'F' }}
+                                </div>
+                                <img id="avatarPreview" src="" alt="Previsualización" class="hidden h-16 w-16 rounded-2xl object-cover border border-gray-200">
+                            @endif
+                        </div>
+                        <div class="flex-1">
+                            <input class="form-input text-xs" type="file" name="avatar" id="avatarInput" accept="image/jpeg,image/png,image/webp">
+                            <p class="mt-1 text-xs text-gray-500">Formatos aceptados: JPG, PNG, WebP. Tamaño máximo: 5 MB.</p>
+                            @error('avatar')<div class="text-xs text-rose-600 mt-1">{{ $message }}</div>@enderror
+                        </div>
+                    </div>
+                </div>
+
                 <div class="md:col-span-2">
                     <label class="form-label" for="nombre">Nombre Completo <span class="text-rose-500">*</span></label>
                     <input class="form-input" type="text" name="nombre" id="nombre" value="{{ old('nombre', $dependiente->nombre) }}" placeholder="Ej. Juan Pérez" required>
@@ -155,6 +177,27 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
         }
     });
+
+    // Instant Avatar Preview
+    const avatarInput = document.getElementById('avatarInput');
+    const avatarPreview = document.getElementById('avatarPreview');
+    const avatarFallback = document.getElementById('avatarFallback');
+
+    if (avatarInput) {
+        avatarInput.addEventListener('change', function() {
+            const file = this.files[0];
+            if (file) {
+                const url = URL.createObjectURL(file);
+                if (avatarPreview) {
+                    avatarPreview.src = url;
+                    avatarPreview.classList.remove('hidden');
+                }
+                if (avatarFallback) {
+                    avatarFallback.classList.add('hidden');
+                }
+            }
+        });
+    }
 
     // Run initially in case of validation back with old input
     validateAge();

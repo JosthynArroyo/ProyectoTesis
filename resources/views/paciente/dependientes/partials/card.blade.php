@@ -6,13 +6,17 @@
     <div>
         <div class="flex items-start justify-between gap-3">
             <div class="flex items-center gap-3 min-w-0">
-                <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl {{ $dep->esMenor() ? 'bg-blue-50 text-blue-600' : 'bg-amber-50 text-amber-600' }}">
-                    @if($dep->esMenor())
-                        <i class="ri-user-smile-line text-2xl"></i>
-                    @else
-                        <i class="ri-user-star-line text-2xl"></i>
-                    @endif
-                </div>
+                @if($dep->getRawOriginal('avatar'))
+                    <img src="{{ $dep->avatar_thumb_url }}" alt="{{ $dep->nombre }}" class="h-12 w-12 shrink-0 rounded-2xl object-cover border border-gray-200" loading="lazy" decoding="async">
+                @else
+                    <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl {{ $dep->esMenor() ? 'bg-blue-50 text-blue-600' : 'bg-amber-50 text-amber-600' }}">
+                        @if($dep->esMenor())
+                            <i class="ri-user-smile-line text-2xl"></i>
+                        @else
+                            <i class="ri-user-star-line text-2xl"></i>
+                        @endif
+                    </div>
+                @endif
                 <div class="min-w-0">
                     <h4 class="truncate font-semibold text-gray-900 leading-tight">{{ $dep->nombre }}</h4>
                     <span class="mt-1 inline-flex badge neutral text-xs">{{ ucfirst($dep->parentesco) }}</span>
