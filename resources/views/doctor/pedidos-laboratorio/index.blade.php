@@ -77,11 +77,34 @@
           @endif
 
           @if($resultadoPublicado && $resultadoPublicado->pdf_path)
-            <a class="btn btn-primary" href="{{ route('doctor.pedidos-laboratorio.resultado.download', $pedido) }}">
+            <a
+              class="btn btn-outline"
+              href="{{ route('doctor.pedidos-laboratorio.resultado.download', $pedido) }}?disposition=inline"
+              target="_blank"
+              rel="noopener"
+              data-action-lock-ignore
+              data-skip-page-loader
+            >
+              <i class="ri-file-pdf-line"></i> Ver informe
+            </a>
+            <a
+              class="btn btn-primary"
+              href="{{ route('doctor.pedidos-laboratorio.resultado.download', $pedido) }}?disposition=attachment"
+              download
+              data-action-lock-ignore
+              data-skip-page-loader
+            >
               <i class="ri-download-line"></i> Descargar informe
             </a>
             @if($resultadoPublicado->csv)
-              <a class="btn btn-ghost" href="{{ route('documentos.verificar.show', $resultadoPublicado->csv) }}" target="_blank" rel="noopener">
+              <a
+                class="btn btn-ghost"
+                href="{{ route('documentos.verificar.show', $resultadoPublicado->csv) }}"
+                target="_blank"
+                rel="noopener"
+                data-action-lock-ignore
+                data-skip-page-loader
+              >
                 <i class="ri-qr-code-line"></i> Verificación pública
               </a>
             @endif

@@ -104,13 +104,14 @@ class DocumentoCsvService
             ];
         }
 
-        $resultado = PedidoLaboratorioResultado::query()->where('csv', $csv)->first();
+        $resultado = PedidoLaboratorioResultado::query()->with(['pedido.paciente', 'pedido.doctor'])->where('csv', $csv)->first();
         if ($resultado) {
             return [
                 'tipo' => 'resultado_laboratorio',
                 'titulo' => 'Informe de resultados de laboratorio',
                 'pdf_path' => $resultado->pdf_path,
                 'nombre_descarga' => 'resultado_laboratorio_'.$resultado->pedido_laboratorio_id.'_v'.$resultado->version.'.pdf',
+                'resultado' => $resultado,
                 'metadata' => [
                     'pedido_id' => $resultado->pedido_laboratorio_id,
                     'version' => $resultado->version,

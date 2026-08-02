@@ -90,63 +90,104 @@ class PedidoLaboratorioResultadoController extends Controller
             return back()->with('info', 'Este resultado ya fue publicado. Usa la corrección versionada si necesitas cambiarlo.');
         }
 
-        $resultado = DB::transaction(function () use ($pedido, $validated, $pdfs, $catalog, $request) {
-            $pedido = $this->loadPedido(
-                PedidoLaboratorio::query()->with(['resultados', 'cita.paciente', 'cita.dependiente.responsable', 'cita.doctor', 'doctor', 'paciente'])->whereKey($pedido->id)->lockForUpdate()->firstOrFail()
-            );
+        $uuid = (string) \Illuminate\Support\Str::uuid();
+        $pdfPath = null;
+        $disk = Storage::disk('r2_private');
 
-            $latest = $pedido->resultados()->orderByDesc('version')->first();
-            if ($latest && $latest->estado === PedidoLaboratorioResultado::ESTADO_PUBLICADO && $pedido->resultado_publicado_at && ! $pedido->resultados()->where('estado', PedidoLaboratorioResultado::ESTADO_BORRADOR)->exists()) {
-                return $latest->fresh(['pedido']);
-            }
+        try {
+            $resultado = DB::transaction(function () use ($pedido, $validated, $pdfs, $catalog, $request, $uuid, $disk, &$pdfPath) {
+                $pedido = $this->loadPedido(
+                    PedidoLaboratorio::query()->with(['resultados', 'cita.paciente', 'cita.dependiente.responsable', 'cita.doctor', 'doctor', 'paciente'])->whereKey($pedido->id)->lockForUpdate()->firstOrFail()
+                );
 
-            $resultado = $this->editableResultado($pedido);
-            $previousPublished = $pedido->resultados()
-                ->where('estado', PedidoLaboratorioResultado::ESTADO_PUBLICADO)
-                ->orderByDesc('version')
-                ->lockForUpdate()
-                ->first();
+                $latest = $pedido->resultados()->orderByDesc('version')->first();
+                if ($latest && $latest->estado === PedidoLaboratorioResultado::ESTADO_PUBLICADO && $pedido->resultado_publicado_at && ! $pedido->resultados()->where('estado', PedidoLaboratorioResultado::ESTADO_BORRADOR)->exists()) {
+                    return $latest->fresh(['pedido']);
+                }
 
-            $this->fillResultado($resultado, $pedido, $validated, $catalog, PedidoLaboratorioResultado::ESTADO_PUBLICADO, $request->user());
+                $resultado = $this->editableResultado($pedido);
+                $previousPublished = $pedido->resultados()
+                    ->where('estado', PedidoLaboratorioResultado::ESTADO_PUBLICADO)
+                    ->orderByDesc('version')
+                    ->lockForUpdate()
+                    ->first();
 
-            if (! $resultado->csv) {
-                $resultado->csv = app(DocumentoCsvService::class)->generateCsv();
-            }
+                $this->fillResultado($resultado, $pedido, $validated, $catalog, PedidoLaboratorioResultado::ESTADO_PUBLICADO, $request->user());
 
-            $resultado->publicado_at = now('America/Guayaquil');
-            $resultado->envio_estado = 'pending';
-            $resultado->envio_error = null;
-            $resultado->envio_intentos = 0;
-            $resultado->save();
+                if (! $resultado->csv) {
+                    $resultado->csv = app(DocumentoCsvService::class)->generateCsv();
+                }
 
-            $path = $pdfs->generar($pedido, $resultado);
+                $resultado->publicado_at = now('America/Guayaquil');
+                $resultado->envio_estado = 'pending';
+                $resultado->envio_error = null;
+                $resultado->envio_intentos = 0;
+                $resultado->pdf_disk = 'r2_private';
+                $resultado->save();
 
-            $resultado->forceFill([
-                'pdf_path' => $path,
-            ])->saveQuietly();
+                // 1. Generar en memoria
+                $html = $pdfs->previewHtml($pedido, $resultado);
+                $pdfBytes = $pdfs->renderPdfOutput($html);
 
-            if ($previousPublished && $previousPublished->id !== $resultado->id) {
-                $previousPublished->forceFill([
-                    'estado' => PedidoLaboratorioResultado::ESTADO_REEMPLAZADO,
-                    'reemplaza_id' => $resultado->id,
+                // 2. Subir primero a R2
+                $key = "documents/laboratory-results/{$resultado->id}/{$uuid}.pdf";
+                $pdfPath = $key;
+
+                $uploaded = $disk->put($key, $pdfBytes);
+                if (!$uploaded) {
+                    throw new \RuntimeException("Fallo al subir el archivo PDF a r2_private.");
+                }
+
+                // 3. Verificar existencia, tamaño y cabecera
+                if (!$disk->exists($key)) {
+                    throw new \RuntimeException("El archivo subido no existe en r2_private.");
+                }
+                $size = $disk->size($key);
+                if ($size <= 0) {
+                    throw new \RuntimeException("El archivo subido en r2_private tiene tamaño cero.");
+                }
+                $stream = $disk->read($key);
+                $content = is_resource($stream) ? stream_get_contents($stream) : $stream;
+                if (substr((string)$content, 0, 4) !== '%PDF') {
+                    throw new \RuntimeException("El archivo subido no tiene una cabecera PDF válida.");
+                }
+
+                $resultado->forceFill([
+                    'pdf_path' => $key,
                 ])->saveQuietly();
+
+                if ($previousPublished && $previousPublished->id !== $resultado->id) {
+                    $previousPublished->forceFill([
+                        'estado' => PedidoLaboratorioResultado::ESTADO_REEMPLAZADO,
+                        'reemplaza_id' => $resultado->id,
+                    ])->saveQuietly();
+                }
+
+                $pedido->forceFill([
+                    'resultado_path' => $key,
+                    'resultado_resumen' => $resultado->observaciones_generales,
+                    'resultado_publicado_at' => $resultado->publicado_at,
+                    'resultado_enviado_at' => null,
+                    'estado' => PedidoLaboratorio::ESTADO_RESULTADO_LISTO,
+                ])->saveQuietly();
+
+                $this->audit($pedido, $resultado, $previousPublished ? 'corregido' : 'publicado', $request->user(), [
+                    'version' => $resultado->version,
+                    'path' => $key,
+                ]);
+
+                return $resultado->fresh(['pedido']);
+            });
+        } catch (\Throwable $e) {
+            if ($pdfPath && $disk->exists($pdfPath)) {
+                try {
+                    $disk->delete($pdfPath);
+                } catch (\Throwable $err) {
+                    \Illuminate\Support\Facades\Log::error("Error al limpiar objeto R2 tras fallar la transacción: " . $err->getMessage());
+                }
             }
-
-            $pedido->forceFill([
-                'resultado_path' => $path,
-                'resultado_resumen' => $resultado->observaciones_generales,
-                'resultado_publicado_at' => $resultado->publicado_at,
-                'resultado_enviado_at' => null,
-                'estado' => PedidoLaboratorio::ESTADO_RESULTADO_LISTO,
-            ])->saveQuietly();
-
-            $this->audit($pedido, $resultado, $previousPublished ? 'corregido' : 'publicado', $request->user(), [
-                'version' => $resultado->version,
-                'path' => $path,
-            ]);
-
-            return $resultado->fresh(['pedido']);
-        });
+            throw $e;
+        }
 
         EnviarResultadoPedidoLaboratorioJob::dispatch($resultado->id);
 
@@ -173,23 +214,21 @@ class PedidoLaboratorioResultadoController extends Controller
         return back()->with('success', 'Se reintentará el envío del correo solo al paciente.');
     }
 
-    public function download(PedidoLaboratorio $pedido)
+    public function download(Request $request, PedidoLaboratorio $pedido, PedidoLaboratorioPdfService $pdfs)
     {
-        abort_unless(Auth::user()?->hasRole('laboratorio'), 403);
-
         $resultado = $this->currentPublished($pedido);
-        if (! $resultado || ! $resultado->pdf_path || ! Storage::disk('local')->exists($resultado->pdf_path)) {
+        if (! $resultado) {
             return back()->withErrors(['error' => 'No hay resultados publicados para descargar.']);
         }
+
+        abort_unless($pdfs->usuarioAutorizadoParaResultado($pedido, $resultado, Auth::user()), 403);
 
         $this->audit($pedido, $resultado, 'descargado', Auth::user(), [
             'version' => $resultado->version,
         ]);
 
-        return Storage::disk('local')->download(
-            $resultado->pdf_path,
-            'resultado_laboratorio_'.$pedido->id.'_v'.$resultado->version.'.pdf'
-        );
+        $disposition = $request->query('disposition', 'attachment');
+        return $pdfs->streamResultadoFile($resultado, $disposition);
     }
 
     private function loadPedido(PedidoLaboratorio $pedido): PedidoLaboratorio

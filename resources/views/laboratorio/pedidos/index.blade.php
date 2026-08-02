@@ -145,7 +145,18 @@
           @if($resultadoPublicado && $resultadoPublicado->pdf_path)
             <a
               class="btn btn-outline"
-              href="{{ route('laboratorio.pedidos.resultados.download', $pedido) }}"
+              href="{{ route('laboratorio.pedidos.resultados.download', $pedido) }}?disposition=inline"
+              target="_blank"
+              rel="noopener"
+              data-action-lock-ignore
+              data-skip-page-loader
+            >
+              <i class="ri-file-pdf-line"></i> Ver resultado
+            </a>
+            <a
+              class="btn btn-outline"
+              href="{{ route('laboratorio.pedidos.resultados.download', $pedido) }}?disposition=attachment"
+              download
               data-action-lock-ignore
               data-skip-page-loader
             >

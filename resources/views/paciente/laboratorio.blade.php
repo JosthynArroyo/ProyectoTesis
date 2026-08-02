@@ -160,11 +160,22 @@
                     <i class="ri-download-line"></i> Descargar orden médica
                   </a>
                 @endif
-                {{-- Descargar el resultado publicado --}}
+                {{-- Ver/Descargar el resultado publicado --}}
                 @if($resultadoPublicado && $resultadoPublicado->pdf_path)
                   <a
+                    class="btn btn-outline btn-sm"
+                    href="{{ route('paciente.laboratorio.pedido.download', $pedido) }}?disposition=inline"
+                    target="_blank"
+                    rel="noopener"
+                    data-action-lock-ignore
+                    data-skip-page-loader
+                  >
+                    <i class="ri-file-pdf-line"></i> Ver PDF
+                  </a>
+                  <a
                     class="btn btn-primary btn-sm"
-                    href="{{ route('paciente.laboratorio.pedido.download', $pedido) }}"
+                    href="{{ route('paciente.laboratorio.pedido.download', $pedido) }}?disposition=attachment"
+                    download
                     data-action-lock-ignore
                     data-skip-page-loader
                   >

@@ -63,25 +63,21 @@ class LaboratorioController extends Controller
         return Storage::download($order->resultado_path, $name);
     }
 
-    public function downloadPedido(PedidoLaboratorio $pedido)
+    public function downloadPedido(\Illuminate\Http\Request $request, PedidoLaboratorio $pedido, \App\Services\PedidoLaboratorioPdfService $pdfs)
     {
-        if ((int) $pedido->paciente_id !== (int) Auth::id()) {
-            abort(403);
-        }
-
         $resultado = $pedido->resultados()
             ->where('estado', 'publicado')
             ->orderByDesc('version')
             ->first();
 
-        if (! $resultado || ! $resultado->pdf_path || ! Storage::disk('local')->exists($resultado->pdf_path)) {
+        if (! $resultado) {
             return back()->withErrors(['error' => 'No hay resultados publicados para descargar.']);
         }
 
-        return Storage::disk('local')->download(
-            $resultado->pdf_path,
-            'resultado_laboratorio_'.$pedido->id.'_v'.$resultado->version.'.pdf'
-        );
+        abort_unless($pdfs->usuarioAutorizadoParaResultado($pedido, $resultado, Auth::user()), 403);
+
+        $disposition = $request->query('disposition', 'attachment');
+        return $pdfs->streamResultadoFile($resultado, $disposition);
     }
 
     public function downloadOrdenPedidoInline(PedidoLaboratorio $pedido)

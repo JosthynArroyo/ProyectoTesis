@@ -27,6 +27,7 @@ class PedidoLaboratorioResultadosFlowTest extends TestCase
         parent::setUp();
 
         Storage::fake('local');
+        Storage::fake('r2_private');
         Mail::fake();
     }
 
@@ -103,7 +104,8 @@ class PedidoLaboratorioResultadosFlowTest extends TestCase
         $this->assertSame($resultadoPublicado->pdf_path, $pedido->resultado_path);
         $this->assertSame($dependiente->nombre, $pedido->nombrePacienteReal());
         $this->assertSame($titular->name, $pedido->representanteNombre());
-        Storage::disk('local')->assertExists($resultadoPublicado->pdf_path);
+        $diskName = $resultadoPublicado->pdf_disk ?: 'local';
+        Storage::disk($diskName)->assertExists($resultadoPublicado->pdf_path);
 
         Mail::assertSent(ResultadoPedidoLaboratorioMail::class, function ($mail) use ($titular, $doctor, $lab) {
             return $mail->hasTo($titular->email)
@@ -115,7 +117,7 @@ class PedidoLaboratorioResultadosFlowTest extends TestCase
         $this->get(route('documentos.verificar.show', $resultadoPublicado->csv))
             ->assertOk()
             ->assertSee('Informe de laboratorio verificado.')
-            ->assertSee('Publicado')
+            ->assertSee('Verificado')
             ->assertSee('V1');
 
         $this->actingAs($doctor)

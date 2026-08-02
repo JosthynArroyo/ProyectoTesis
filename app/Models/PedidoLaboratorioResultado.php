@@ -29,6 +29,7 @@ class PedidoLaboratorioResultado extends Model
         'laboratorio_id',
         'csv',
         'pdf_path',
+        'pdf_disk',
         'publicado_at',
         'enviado_a',
         'enviado_en',

@@ -86,20 +86,17 @@ class DocumentoVerificacionController extends Controller
                 ]);
 
             case 'resultado_laboratorio':
-                $meta = $documento['metadata'] ?? [];
+                $resultado = $documento['resultado'] ?? null;
+                $pacienteName = $resultado?->pedido?->paciente?->name;
+                $doctorName = $resultado?->pedido?->doctor?->name ?: ($resultado?->pedido?->cita?->doctor?->name ?? null);
+
                 return array_merge($base, [
                     'titulo'     => 'Informe de laboratorio',
-                    'doctor'     => null,
-                    'paciente'   => null,
-                    'version'    => isset($meta['version']) ? 'V'.$meta['version'] : null,
-                    'emitido_en' => $meta['publicado_at'] ?? null,
-                    'estado'     => match ($meta['estado'] ?? '') {
-                        'publicado'   => 'Publicado',
-                        'borrador'    => 'Borrador',
-                        'reemplazado' => 'Reemplazado',
-                        'anulado'     => 'Anulado',
-                        default       => 'Publicado',
-                    },
+                    'doctor'     => $doctorName,
+                    'paciente'   => $this->protectedName($pacienteName),
+                    'version'    => $resultado ? 'V'.$resultado->version : null,
+                    'emitido_en' => $resultado?->publicado_at,
+                    'estado'     => 'Verificado',
                 ]);
 
             default:

@@ -42,9 +42,23 @@ class ResultadoPedidoLaboratorioMail extends Mailable
             ? 'resultado_laboratorio_'.$this->resultado->pedido_laboratorio_id.'_v'.$this->resultado->version.'.pdf'
             : 'resultado_laboratorio_'.$this->resultado->id.'.pdf';
 
-        if ($pdfPath && Storage::disk('local')->exists($pdfPath)) {
-            $mail->attach(Storage::disk('local')->path($pdfPath), [
-                'as' => $fileName,
+        $diskName = 'local';
+        if ($this->resultado instanceof PedidoLaboratorioResultado) {
+            $diskName = $this->resultado->pdf_disk ?: 'local';
+        } else {
+            $latestResult = $this->resultado->resultados()
+                ->where('estado', 'publicado')
+                ->orderByDesc('version')
+                ->first();
+            if ($latestResult) {
+                $diskName = $latestResult->pdf_disk ?: 'local';
+            }
+        }
+
+        $disk = Storage::disk($diskName);
+        if ($pdfPath && $disk->exists($pdfPath)) {
+            $pdfBytes = $disk->get($pdfPath);
+            $mail->attachData($pdfBytes, $fileName, [
                 'mime' => 'application/pdf',
             ]);
         }
