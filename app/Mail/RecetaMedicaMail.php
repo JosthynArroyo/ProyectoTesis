@@ -3,6 +3,7 @@
 namespace App\Mail;
 
 use App\Models\Cita;
+use App\Models\Receta;
 use App\Services\ClinicIdentityService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
@@ -24,14 +25,16 @@ class RecetaMedicaMail extends Mailable
 
     public function __construct(
         Cita $cita,
-        string $relativePath,
-        string $pdfOutput,
-        string $fileName,
-        string $motivo = 'creacion'
+        ?string $relativePath = '',
+        ?string $pdfOutput = '',
+        ?string $fileName = '',
+        string $motivo = 'creacion',
+        ?Receta $receta = null
     ) {
-        $this->cita = $cita;
-        $this->relativePath = $relativePath;
-        $this->pdfOutput = $pdfOutput;
+        $this->cita = $cita->loadMissing(['paciente', 'doctor', 'especialidad', 'receta']);
+        $this->receta = $receta ?: $this->cita->receta;
+        $this->relativePath = (string) $relativePath;
+        $this->pdfOutput = (string) $pdfOutput;
         $this->fileName = $fileName ?: ('receta_'.$cita->id.'.pdf');
         $this->motivo = in_array($motivo, ['creacion', 'actualizacion'], true) ? $motivo : 'creacion';
     }

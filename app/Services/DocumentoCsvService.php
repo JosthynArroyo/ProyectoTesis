@@ -78,6 +78,7 @@ class DocumentoCsvService
                 'titulo' => 'Receta médica',
                 'pdf_path' => $receta->pdf_path,
                 'nombre_descarga' => 'receta_'.$receta->id.'.pdf',
+                'receta' => $receta,
             ];
         }
 

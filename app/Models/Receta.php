@@ -18,6 +18,7 @@ class Receta extends Model
         'indicaciones',
         'csv',
         'pdf_path',
+        'pdf_disk',
         'enviado_en',
     ];
 

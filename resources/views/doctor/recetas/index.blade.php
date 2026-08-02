@@ -27,7 +27,7 @@
               <td data-label="Hora">{{ \Carbon\Carbon::parse($receta->cita->hora)->format('H:i') }}</td>
               <td data-label="PDF">
                 @if($receta->pdf_path)
-                  <a class="btn btn-outline" href="{{ route('doctor.recetas.download', $receta->cita->id) }}">
+                  <a class="btn btn-outline" href="{{ route('doctor.recetas.download', $receta->cita->id) }}" download data-action-lock-ignore data-skip-page-loader>
                     <i class="ri-download-2-line"></i> Descargar
                   </a>
                 @else

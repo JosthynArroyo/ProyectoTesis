@@ -32,12 +32,8 @@ class DocumentoVerificacionController extends Controller
             abort(404);
         }
 
-        if (($documento['tipo'] ?? null) === 'resultado_laboratorio') {
-            return view('documentos.verificacion-laboratorio', [
-                'documento' => $documento,
-                'metadata' => $documento['metadata'] ?? [],
-                'downloadUrl' => null,
-            ]);
+        if (($documento['tipo'] ?? null) === 'receta' && isset($documento['receta'])) {
+            return app(\App\Services\RecipeDocumentService::class)->streamInline($documento['receta'], $documento['nombre_descarga']);
         }
 
         if (! Storage::disk('local')->exists($documento['pdf_path'])) {

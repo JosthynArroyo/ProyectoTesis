@@ -11,6 +11,7 @@ use App\Models\Receta;
 use App\Services\ClinicIdentityService;
 use App\Services\ClinicalRecordService;
 use App\Services\DocumentoCsvService;
+use Illuminate\Support\Facades\DB;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 use Illuminate\Http\Request;
@@ -95,9 +96,10 @@ class RecetaController extends Controller
         }
 
         $csvService = app(DocumentoCsvService::class);
+        $recipeService = app(\App\Services\RecipeDocumentService::class);
         $csv = $csvService->generateCsv();
 
-        [$relativePath, $pdfOutput, $fileName] = $this->generarPdfYGuardar(
+        [$pdfBinary, $csv] = $recipeService->generatePdfOutput(
             $cita,
             $data['diagnostico'],
             $data['medicamentos'],
@@ -108,21 +110,41 @@ class RecetaController extends Controller
 
         $record = app(ClinicalRecordService::class)->ensureForPatient($cita->paciente_id, Auth::id(), $cita->dependiente_id);
 
-        $receta = Receta::create([
-            'cita_id' => $cita->id,
-            'nota_soap_id' => $cita->notaSoap?->id,
-            'clinical_record_id' => $record->id,
-            'diagnostico' => $data['diagnostico'],
-            'medicamentos' => $data['medicamentos'],
-            'indicaciones' => $data['indicaciones'] ?? null,
-            'csv' => $csv,
-            'pdf_path' => $relativePath,
-            'enviado_en' => now('America/Guayaquil'),
-        ]);
+        $newStorage = null;
 
-        Mail::to($cita->paciente->email)->send(new RecetaMedicaMail(
-            $cita, $relativePath, $pdfOutput, $fileName, motivo: 'creacion'
-        ));
+        $receta = DB::transaction(function () use ($cita, $record, $data, $csv, $pdfBinary, $recipeService, &$newStorage) {
+            $receta = Receta::create([
+                'cita_id' => $cita->id,
+                'nota_soap_id' => $cita->notaSoap?->id,
+                'clinical_record_id' => $record->id,
+                'diagnostico' => $data['diagnostico'],
+                'medicamentos' => $data['medicamentos'],
+                'indicaciones' => $data['indicaciones'] ?? null,
+                'csv' => $csv,
+                'pdf_path' => '',
+                'pdf_disk' => null,
+                'enviado_en' => now('America/Guayaquil'),
+            ]);
+
+            $newStorage = $recipeService->storeRecipePdf($receta, $pdfBinary);
+
+            $receta->forceFill([
+                'pdf_path' => $newStorage['pdf_path'],
+                'pdf_disk' => $newStorage['pdf_disk'],
+            ])->saveQuietly();
+
+            return $receta;
+        });
+
+        $fileName = 'receta_'.$cita->id.'_'.now()->format('Ymd_His').'.pdf';
+
+        try {
+            Mail::to($cita->paciente->email)->send(new RecetaMedicaMail(
+                $cita, $newStorage['pdf_path'], $pdfBinary, $fileName, motivo: 'creacion', receta: $receta
+            ));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Failed sending prescription email: '.$e->getMessage());
+        }
 
         return redirect()->route('doctor.citas')->with('success', 'Receta generada y enviada al correo del paciente.');
     }
@@ -184,50 +206,69 @@ class RecetaController extends Controller
         }
 
         $receta = $cita->receta;
-        $receta->update([
-            'diagnostico' => $data['diagnostico'],
-            'medicamentos' => $data['medicamentos'],
-            'indicaciones' => $data['indicaciones'] ?? null,
-            'nota_soap_id' => $receta->nota_soap_id ?: $cita->notaSoap?->id,
-        ]);
-
+        $recipeService = app(\App\Services\RecipeDocumentService::class);
         $csvService = app(DocumentoCsvService::class);
         $csv = $this->obtenerCsv($receta, $csvService);
 
+        $oldDisk = $recipeService->resolveDisk($receta->pdf_disk);
         $needRegen = $request->boolean('regenerar_pdf')
             || $request->boolean('reenviar')
             || empty($receta->pdf_path)
-            || ! Storage::exists($receta->pdf_path);
+            || ! Storage::disk($oldDisk)->exists($receta->pdf_path);
 
-        $relativePath = $receta->pdf_path;
-        $pdfOutput = '';
+        $pdfBinary = null;
+        $newStorage = null;
         $fileName = 'receta_'.$cita->id.'_'.now()->format('Ymd_His').'.pdf';
 
         if ($needRegen) {
-            [$relativePath, $pdfOutput, $fileName] = $this->generarPdfYGuardar(
+            [$pdfBinary, $csv] = $recipeService->generatePdfOutput(
                 $cita,
-                $receta->diagnostico,
-                $receta->medicamentos,
-                $receta->indicaciones ?? '',
+                $data['diagnostico'],
+                $data['medicamentos'],
+                $data['indicaciones'] ?? '',
                 $csv,
                 $csvService
             );
 
+            $oldPdfPath = (string) $receta->getRawOriginal('pdf_path');
+            $oldPdfDisk = (string) $receta->getRawOriginal('pdf_disk');
+
+            DB::transaction(function () use ($receta, $data, $cita, $csv, $pdfBinary, $recipeService, &$newStorage) {
+                $receta->update([
+                    'diagnostico' => $data['diagnostico'],
+                    'medicamentos' => $data['medicamentos'],
+                    'indicaciones' => $data['indicaciones'] ?? null,
+                    'nota_soap_id' => $receta->nota_soap_id ?: $cita->notaSoap?->id,
+                    'csv' => $csv,
+                ]);
+
+                $newStorage = $recipeService->storeRecipePdf($receta, $pdfBinary);
+
+                $receta->forceFill([
+                    'pdf_path' => $newStorage['pdf_path'],
+                    'pdf_disk' => $newStorage['pdf_disk'],
+                ])->saveQuietly();
+            });
+
+            $recipeService->cleanupOldPdf($oldPdfPath, $oldPdfDisk);
+        } else {
             $receta->update([
-                'csv' => $csv,
-                'pdf_path' => $relativePath,
+                'diagnostico' => $data['diagnostico'],
+                'medicamentos' => $data['medicamentos'],
+                'indicaciones' => $data['indicaciones'] ?? null,
+                'nota_soap_id' => $receta->nota_soap_id ?: $cita->notaSoap?->id,
             ]);
         }
 
         if ($request->boolean('reenviar')) {
-            if (! $pdfOutput && $relativePath && Storage::exists($relativePath)) {
-                $pdfOutput = Storage::get($relativePath);
+            try {
+                Mail::to($cita->paciente->email)->send(new RecetaMedicaMail(
+                    $cita, $receta->pdf_path, $pdfBinary ?: '', $fileName, motivo: 'actualizacion', receta: $receta
+                ));
+                $receta->update(['enviado_en' => now('America/Guayaquil')]);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Failed resending prescription email: '.$e->getMessage());
             }
-
-            Mail::to($cita->paciente->email)->send(new RecetaMedicaMail(
-                $cita, $relativePath, $pdfOutput ?: '', $fileName, motivo: 'actualizacion'
-            ));
-            $receta->update(['enviado_en' => now('America/Guayaquil')]);
 
             return redirect()->route('doctor.recetas.edit', $cita->id)
                 ->with('success', 'Receta actualizada y reenviada al paciente.');
@@ -254,10 +295,11 @@ class RecetaController extends Controller
         }
 
         $receta = $cita->receta;
+        $recipeService = app(\App\Services\RecipeDocumentService::class);
         $csvService = app(DocumentoCsvService::class);
         $csv = $this->obtenerCsv($receta, $csvService);
 
-        [$relativePath, $pdfOutput, $fileName] = $this->generarPdfYGuardar(
+        [$pdfBinary, $csv] = $recipeService->generatePdfOutput(
             $cita,
             $receta->diagnostico,
             $receta->medicamentos,
@@ -266,52 +308,68 @@ class RecetaController extends Controller
             $csvService
         );
 
-        $receta->update([
-            'csv' => $csv,
-            'pdf_path' => $relativePath,
-            'enviado_en' => now('America/Guayaquil'),
-        ]);
+        $oldPdfPath = (string) $receta->getRawOriginal('pdf_path');
+        $oldPdfDisk = (string) $receta->getRawOriginal('pdf_disk');
 
-        Mail::to($cita->paciente->email)->send(new RecetaMedicaMail(
-            $cita, $relativePath, $pdfOutput, $fileName, motivo: 'actualizacion'
-        ));
+        $newStorage = $recipeService->storeRecipePdf($receta, $pdfBinary);
+
+        $receta->forceFill([
+            'csv' => $csv,
+            'pdf_path' => $newStorage['pdf_path'],
+            'pdf_disk' => $newStorage['pdf_disk'],
+            'enviado_en' => now('America/Guayaquil'),
+        ])->saveQuietly();
+
+        $recipeService->cleanupOldPdf($oldPdfPath, $oldPdfDisk);
+
+        $fileName = 'receta_'.$cita->id.'_'.now()->format('Ymd_His').'.pdf';
+
+        try {
+            Mail::to($cita->paciente->email)->send(new RecetaMedicaMail(
+                $cita, $newStorage['pdf_path'], $pdfBinary, $fileName, motivo: 'actualizacion', receta: $receta
+            ));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Failed resending prescription email: '.$e->getMessage());
+        }
 
         return back()->with('success', 'Receta actualizada y reenviada al paciente.');
     }
 
     public function download($citaId)
     {
-        $cita = Cita::with(['doctor', 'receta', 'notaSoap.clinicalRecord.medications'])->findOrFail($citaId);
+        $cita = Cita::with(['doctor', 'paciente', 'dependiente', 'receta'])->findOrFail($citaId);
 
-        if ($cita->doctor_id !== Auth::id()) {
-            abort(403);
-        }
+        $recipeService = app(\App\Services\RecipeDocumentService::class);
+        $recipeService->ensureUserCanView($cita);
 
         if (! $cita->receta || ! $cita->receta->pdf_path) {
             return back()->with('error', 'No hay PDF disponible para descargar.');
         }
 
-        $path = $cita->receta->pdf_path;
-        $csvService = app(DocumentoCsvService::class);
-        $csv = $this->obtenerCsv($cita->receta, $csvService);
+        $receta = $cita->receta;
+        $diskName = $recipeService->resolveDisk($receta->pdf_disk);
 
-        if (! Storage::exists($path)) {
-            [$path] = $this->generarPdfYGuardar(
+        if (! Storage::disk($diskName)->exists($receta->pdf_path)) {
+            $csvService = app(DocumentoCsvService::class);
+            $csv = $this->obtenerCsv($receta, $csvService);
+
+            [$pdfBinary, $csv] = $recipeService->generatePdfOutput(
                 $cita,
-                $cita->receta->diagnostico,
-                $cita->receta->medicamentos,
-                $cita->receta->indicaciones ?? '',
+                $receta->diagnostico,
+                $receta->medicamentos,
+                $receta->indicaciones ?? '',
                 $csv,
                 $csvService
             );
 
-            $cita->receta->update([
-                'csv' => $csv,
-                'pdf_path' => $path,
-            ]);
+            $newStorage = $recipeService->storeRecipePdf($receta, $pdfBinary);
+            $receta->forceFill([
+                'pdf_path' => $newStorage['pdf_path'],
+                'pdf_disk' => $newStorage['pdf_disk'],
+            ])->saveQuietly();
         }
 
-        return Storage::download($path, 'receta_'.$cita->id.'.pdf');
+        return $recipeService->streamDownload($receta, 'receta_'.$cita->id.'.pdf');
     }
 
     private function generarPdfYGuardar(

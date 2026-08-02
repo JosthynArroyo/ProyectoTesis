@@ -1034,6 +1034,9 @@ function openNavigation(event) {
     link.hasAttribute('download') ||
     link.hasAttribute('target') ||
     link.hasAttribute('data-action-lock-ignore') ||
+    link.hasAttribute('data-skip-page-loader') ||
+    link.hasAttribute('data-skip-loader') ||
+    link.hasAttribute('data-no-loader') ||
     link.hasAttribute('data-legal-open') ||
     link.hasAttribute('data-modal-toggle') ||
     link.hasAttribute('data-dropdown-toggle') ||

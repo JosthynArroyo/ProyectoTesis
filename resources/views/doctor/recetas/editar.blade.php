@@ -19,7 +19,7 @@
 
     <div class="panel-action-bar__actions">
       @if($receta->pdf_path)
-        <a class="btn btn-outline" href="{{ route('doctor.recetas.download', $cita->id) }}">
+        <a class="btn btn-outline" href="{{ route('doctor.recetas.download', $cita->id) }}" download data-action-lock-ignore data-skip-page-loader>
           <i class="ri-download-2-line"></i> Descargar PDF
         </a>
       @endif

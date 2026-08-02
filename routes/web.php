@@ -512,6 +512,8 @@ Route::middleware(['auth', 'role:paciente'])->prefix('paciente')->group(function
         ->name('paciente.certificados.show');
     Route::get('/certificados/{certificado}/descargar', [PacienteCertificadoMedicoController::class, 'download'])
         ->name('paciente.certificados.download');
+    Route::get('/recetas/{cita}/descargar', [RecetaController::class, 'download'])
+        ->name('paciente.recetas.download');
     Route::view('/mensajes', 'paciente.mensajes')->name('paciente.mensajes');
 
     // Dependientes routes
