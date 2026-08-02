@@ -24,12 +24,18 @@ class CambioEstadoCitaMail extends Mailable implements ShouldQueue
 
     public $asuntoResuelto;
 
-    public function __construct(Cita $cita, string $rolReceptor, string $evento, string $quien = 'sistema')
+    public $fechaAnterior;
+
+    public $horaAnterior;
+
+    public function __construct(Cita $cita, string $rolReceptor, string $evento, string $quien = 'sistema', ?string $fechaAnterior = null, ?string $horaAnterior = null)
     {
         $this->cita = $cita;
         $this->rolReceptor = $rolReceptor;
         $this->evento = $evento;
         $this->quien = $quien;
+        $this->fechaAnterior = $fechaAnterior;
+        $this->horaAnterior = $horaAnterior;
         $this->asuntoResuelto = $this->resolverAsunto();
     }
 
@@ -169,6 +175,8 @@ class CambioEstadoCitaMail extends Mailable implements ShouldQueue
                 'pillClass' => $evento,
                 'fechaCita' => $fechaCita,
                 'horaCita' => $horaCita,
+                'fechaAnterior' => $this->fechaAnterior,
+                'horaAnterior' => $this->horaAnterior,
             ]);
     }
 }

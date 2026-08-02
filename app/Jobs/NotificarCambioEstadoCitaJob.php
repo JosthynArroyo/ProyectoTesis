@@ -31,17 +31,23 @@ class NotificarCambioEstadoCitaJob implements ShouldQueue
      */
     public $quien;
 
+    public $fechaAnterior;
+
+    public $horaAnterior;
+ 
     /**
      * Crear un nuevo job de notificación.
      *
      * @param  string  $evento  'reagendada'|'cancelada'|'aceptada'
      * @param  string  $quien  'paciente'|'doctor'|'sistema'
      */
-    public function __construct(Cita $cita, string $evento, string $quien = 'sistema')
+    public function __construct(Cita $cita, string $evento, string $quien = 'sistema', ?string $fechaAnterior = null, ?string $horaAnterior = null)
     {
         $this->cita = $cita;
         $this->evento = $evento;
         $this->quien = $quien;
+        $this->fechaAnterior = $fechaAnterior;
+        $this->horaAnterior = $horaAnterior;
     }
 
     public function handle(): void
@@ -65,14 +71,14 @@ class NotificarCambioEstadoCitaJob implements ShouldQueue
         // Enviar a paciente / representante
         if ($paraPaciente !== '') {
             Mail::to($paraPaciente)->send(
-                new CambioEstadoCitaMail($cita, 'paciente', $this->evento, $this->quien)
+                new CambioEstadoCitaMail($cita, 'paciente', $this->evento, $this->quien, $this->fechaAnterior, $this->horaAnterior)
             );
         }
 
         // Enviar a doctor
         if ($paraDoctor) {
             Mail::to($paraDoctor)->send(
-                new CambioEstadoCitaMail($cita, 'doctor', $this->evento, $this->quien)
+                new CambioEstadoCitaMail($cita, 'doctor', $this->evento, $this->quien, $this->fechaAnterior, $this->horaAnterior)
             );
         }
 

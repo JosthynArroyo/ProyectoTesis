@@ -1130,9 +1130,26 @@ class CitaController extends Controller
             return response()->json(['ok' => false, 'msg' => 'Debes firmar la nota clinica antes de agendar el control.'], 422);
         }
 
-        $controlExistente = $nota->followUpCita && $this->controlPerteneceACita($cita, $nota->followUpCita)
-            ? $nota->followUpCita
-            : $this->controlPosteriorActivo($cita);
+        $controlExistente = null;
+        if ($nota->follow_up_cita_id) {
+            $controlExistente = Cita::find($nota->follow_up_cita_id);
+        } else {
+            $controlExistente = Cita::query()
+                ->where('source_nota_soap_id', $nota->id)
+                ->where('activo', true)
+                ->first();
+        }
+        if ($controlExistente && !$this->controlPerteneceACita($cita, $controlExistente)) {
+            $controlExistente = null;
+        }
+
+        $esReagendamiento = ($controlExistente !== null);
+        $fechaAnterior = null;
+        $horaAnterior = null;
+        if ($esReagendamiento) {
+            $fechaAnterior = $controlExistente->fecha ? Carbon::parse($controlExistente->fecha)->format('d/m/Y') : null;
+            $horaAnterior = $controlExistente->hora ? Carbon::parse($controlExistente->hora)->format('H:i') : null;
+        }
 
         $validationError = $scheduleService->validateBookingSlot(
             professionalId: (int) $cita->doctor_id,
@@ -1171,9 +1188,19 @@ class CitaController extends Controller
                     ->lockForUpdate()
                     ->firstOrFail();
 
-                $controlExistente = $nota->followUpCita && $this->controlPerteneceACita($cita, $nota->followUpCita)
-                    ? Cita::query()->whereKey($nota->followUpCita->id)->lockForUpdate()->firstOrFail()
-                    : $this->controlPosteriorActivo($cita);
+                $controlExistente = null;
+                if ($nota->follow_up_cita_id) {
+                    $controlExistente = Cita::query()->whereKey($nota->follow_up_cita_id)->lockForUpdate()->first();
+                } else {
+                    $controlExistente = Cita::query()
+                        ->where('source_nota_soap_id', $nota->id)
+                        ->where('activo', true)
+                        ->lockForUpdate()
+                        ->first();
+                }
+                if ($controlExistente && !$this->controlPerteneceACita($cita, $controlExistente)) {
+                    $controlExistente = null;
+                }
 
                 $control = $controlExistente
                     ? Cita::query()->whereKey($controlExistente->id)->lockForUpdate()->firstOrFail()
@@ -1230,10 +1257,16 @@ class CitaController extends Controller
             });
         } catch (\DomainException $e) {
             return response()->json(['ok' => false, 'msg' => $e->getMessage()], 422);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Error en proximaPlanificada: ' . $e->getMessage(), [
+                'exception' => $e,
+                'cita_id' => $cita->id,
+            ]);
+            return response()->json(['ok' => false, 'msg' => 'Ocurrió un error inesperado al procesar el control.'], 500);
         }
 
         // Dispatch notification jobs AFTER the transaction has committed.
-        if (! $result['existed']) {
+        if (! $esReagendamiento) {
             try {
                 event(new CitaAgendada($result['control']));
                 EnviarConfirmacionCitaJob::dispatchAfterResponse($result['control']);
@@ -1244,7 +1277,13 @@ class CitaController extends Controller
                 ]);
             }
         } else {
-            NotificarCambioEstadoCitaJob::dispatchAfterResponse($result['control'], 'reagendada', 'doctor');
+            NotificarCambioEstadoCitaJob::dispatchAfterResponse(
+                $result['control'],
+                'reagendada',
+                'doctor',
+                $fechaAnterior,
+                $horaAnterior
+            );
         }
 
         $control = $result['control'];

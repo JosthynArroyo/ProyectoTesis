@@ -1,4 +1,4 @@
-﻿document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', () => {
   initSoapStepper();
   initDiagnosticos();
   initEvolucionSignos();
@@ -466,6 +466,8 @@ function initAgendarControl() {
         return;
       }
 
+      keepLocked = false;
+
       if (res.status === 422) {
         help.textContent = data.msg || 'No se pudo agendar el control con los datos seleccionados.';
       } else if (res.status === 419) {
@@ -485,6 +487,7 @@ function initAgendarControl() {
         help.textContent = 'No se pudo agendar el control en este momento.';
       }
     } catch (error) {
+      keepLocked = false;
       help.textContent = 'No se pudo agendar el control en este momento.';
     } finally {
       agendarBtn.innerHTML = original;

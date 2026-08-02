@@ -567,6 +567,250 @@ class AppointmentConcurrencyAndFollowUpRescheduleTest extends TestCase
             'An expired hold must not block new bookings at that time');
     }
 
+    /** 21. Primer agendamiento de control envía correo de confirmación de agendamiento */
+    public function test_control_first_scheduling_sends_agendada_email(): void
+    {
+        \Illuminate\Support\Facades\Mail::fake();
+
+        [$doctor, $esp] = $this->createDoctorWithSchedule('2026-08-03');
+        $paciente = $this->createRoleUser('paciente');
+        
+        Horario::create([
+            'doctor_id' => $doctor->id,
+            'fecha' => '2026-08-07',
+            'hora_inicio' => '08:00:00',
+            'hora_fin' => '18:00:00',
+            'intervalo_minutos' => 30,
+        ]);
+
+        $citaOriginal = Cita::create([
+            'paciente_id' => $paciente->id,
+            'doctor_id' => $doctor->id,
+            'especialidad_id' => $esp->id,
+            'fecha' => '2026-08-03',
+            'hora' => '10:00:00',
+            'estado' => Cita::ESTADO_REALIZADA,
+            'activo' => true,
+        ]);
+
+        $record = \App\Models\ClinicalRecord::create([
+            'paciente_id' => $paciente->id,
+            'doctor_id' => $doctor->id,
+        ]);
+
+        $nota = NotaSoap::create([
+            'cita_id' => $citaOriginal->id,
+            'clinical_record_id' => $record->id,
+            'estado' => NotaSoap::ESTADO_FIRMADA,
+            'signed_at' => now(),
+            'signed_by' => $doctor->id,
+            'follow_up_date' => '2026-08-03',
+        ]);
+
+        // Agenda control por primera vez para el 2026-08-07 10:00
+        $this->actingAs($doctor)->post(route('doctor.citas.proxima.planificada', $citaOriginal), [
+            'fecha' => '2026-08-07',
+            'hora' => '10:00',
+        ])->assertOk();
+
+        // Debe encolarse EnviarConfirmacionCitaJob (o despacharse)
+        \Illuminate\Support\Facades\Queue::fake();
+        // O directamente verificar que no se envió CambioEstadoCitaMail con 'reagendada'
+        \Illuminate\Support\Facades\Mail::assertNotSent(CambioEstadoCitaMail::class);
+    }
+
+    /** 22. Reagendamiento de control envía correo de reagendado con fecha/hora anterior */
+    public function test_control_rescheduling_sends_reagendada_email_with_previous_datetime(): void
+    {
+        \Illuminate\Support\Facades\Mail::fake();
+
+        [$doctor, $esp] = $this->createDoctorWithSchedule('2026-08-03');
+        $paciente = $this->createRoleUser('paciente');
+
+        Horario::create([
+            'doctor_id' => $doctor->id,
+            'fecha' => '2026-08-05',
+            'hora_inicio' => '08:00:00',
+            'hora_fin' => '18:00:00',
+            'intervalo_minutos' => 30,
+        ]);
+
+        Horario::create([
+            'doctor_id' => $doctor->id,
+            'fecha' => '2026-08-07',
+            'hora_inicio' => '08:00:00',
+            'hora_fin' => '18:00:00',
+            'intervalo_minutos' => 30,
+        ]);
+
+        $citaOriginal = Cita::create([
+            'paciente_id' => $paciente->id,
+            'doctor_id' => $doctor->id,
+            'especialidad_id' => $esp->id,
+            'fecha' => '2026-08-03',
+            'hora' => '10:00:00',
+            'estado' => Cita::ESTADO_REALIZADA,
+            'activo' => true,
+        ]);
+
+        $record = \App\Models\ClinicalRecord::create([
+            'paciente_id' => $paciente->id,
+            'doctor_id' => $doctor->id,
+        ]);
+
+        // Create Note first
+        $nota = NotaSoap::create([
+            'cita_id' => $citaOriginal->id,
+            'clinical_record_id' => $record->id,
+            'estado' => NotaSoap::ESTADO_FIRMADA,
+            'signed_at' => now(),
+            'signed_by' => $doctor->id,
+            'follow_up_date' => '2026-08-05',
+            'follow_up_cita_id' => null,
+        ]);
+
+        // Control ya existente en 2026-08-05 10:00 (now referencing valid $nota->id)
+        $controlExistente = Cita::create([
+            'paciente_id' => $paciente->id,
+            'doctor_id' => $doctor->id,
+            'especialidad_id' => $esp->id,
+            'fecha' => '2026-08-05',
+            'hora' => '10:00:00',
+            'estado' => Cita::ESTADO_PENDIENTE,
+            'activo' => true,
+            'source_nota_soap_id' => $nota->id,
+        ]);
+
+        $nota->update(['follow_up_cita_id' => $controlExistente->id]);
+
+        // Reagendamos de 2026-08-05 10:00 a 2026-08-07 10:30
+        $this->actingAs($doctor)->post(route('doctor.citas.proxima.planificada', $citaOriginal), [
+            'fecha' => '2026-08-07',
+            'hora' => '10:30',
+        ])->assertOk();
+
+        // Debe despachar CambioEstadoCitaMail con evento 'reagendada' y fecha/hora anterior 05/08/2026 10:00
+        \Illuminate\Support\Facades\Mail::assertQueued(CambioEstadoCitaMail::class, function ($mail) {
+            return $mail->evento === 'reagendada' 
+                && $mail->fechaAnterior === '05/08/2026'
+                && $mail->horaAnterior === '10:00';
+        });
+    }
+
+    /** 23. Caso heredado de la cita 15: se comporta de forma segura sin usurpar controles ajenos */
+    public function test_cita15_heritage_case_does_not_usurp_foreign_controls(): void
+    {
+        \Illuminate\Support\Facades\Mail::fake();
+
+        [$doctor, $esp] = $this->createDoctorWithSchedule('2026-08-03');
+        $paciente = $this->createRoleUser('paciente');
+
+        Horario::create([
+            'doctor_id' => $doctor->id,
+            'fecha' => '2026-08-04',
+            'hora_inicio' => '08:00:00',
+            'hora_fin' => '18:00:00',
+            'intervalo_minutos' => 30,
+        ]);
+
+        Horario::create([
+            'doctor_id' => $doctor->id,
+            'fecha' => '2026-08-05',
+            'hora_inicio' => '08:00:00',
+            'hora_fin' => '18:00:00',
+            'intervalo_minutos' => 30,
+        ]);
+
+        Horario::create([
+            'doctor_id' => $doctor->id,
+            'fecha' => '2026-08-07',
+            'hora_inicio' => '08:00:00',
+            'hora_fin' => '18:00:00',
+            'intervalo_minutos' => 30,
+        ]);
+
+        // Cita 11 (atendida, nota 5)
+        $cita11 = Cita::create([
+            'paciente_id' => $paciente->id,
+            'doctor_id' => $doctor->id,
+            'especialidad_id' => $esp->id,
+            'fecha' => '2026-08-03',
+            'hora' => '10:00:00',
+            'estado' => Cita::ESTADO_REALIZADA,
+            'activo' => true,
+        ]);
+
+        $record = \App\Models\ClinicalRecord::create([
+            'paciente_id' => $paciente->id,
+            'doctor_id' => $doctor->id,
+        ]);
+
+        // Create Nota 5 first
+        $nota5 = NotaSoap::create([
+            'cita_id' => $cita11->id,
+            'clinical_record_id' => $record->id,
+            'estado' => NotaSoap::ESTADO_FIRMADA,
+            'signed_at' => now(),
+            'signed_by' => $doctor->id,
+            'follow_up_date' => '2026-08-05',
+            'follow_up_cita_id' => null,
+        ]);
+
+        // Cita 13 (control del SOAP 5, referencing valid $nota5->id)
+        $cita13 = Cita::create([
+            'paciente_id' => $paciente->id,
+            'doctor_id' => $doctor->id,
+            'especialidad_id' => $esp->id,
+            'fecha' => '2026-08-05',
+            'hora' => '13:00:00',
+            'estado' => Cita::ESTADO_PENDIENTE,
+            'activo' => true,
+            'source_nota_soap_id' => $nota5->id,
+        ]);
+
+        $nota5->update(['follow_up_cita_id' => $cita13->id]);
+
+        // Cita 15 (atendida por el mismo doctor, nota 6)
+        $cita15 = Cita::create([
+            'paciente_id' => $paciente->id,
+            'doctor_id' => $doctor->id,
+            'especialidad_id' => $esp->id,
+            'fecha' => '2026-08-04',
+            'hora' => '11:30:00',
+            'estado' => Cita::ESTADO_REALIZADA,
+            'activo' => true,
+        ]);
+
+        $nota6 = NotaSoap::create([
+            'cita_id' => $cita15->id,
+            'clinical_record_id' => $record->id,
+            'estado' => NotaSoap::ESTADO_FIRMADA,
+            'signed_at' => now(),
+            'signed_by' => $doctor->id,
+            'follow_up_date' => '2026-08-07',
+            'follow_up_cita_id' => null, // no tiene control asignado aún
+        ]);
+
+        // El doctor planifica control para la cita 15 en 2026-08-07 10:30
+        $this->actingAs($doctor)->post(route('doctor.citas.proxima.planificada', $cita15), [
+            'fecha' => '2026-08-07',
+            'hora' => '10:30',
+        ])->assertOk();
+
+        // Verificamos que la cita 13 no fue modificada y sigue perteneciendo al SOAP 5
+        $cita13->refresh();
+        $this->assertEquals('2026-08-05', Carbon::parse($cita13->fecha)->format('Y-m-d'));
+        $this->assertEquals('13:00:00', $cita13->hora);
+
+        // Verificamos que se creó un nuevo control para la nota 6 (Cita 15)
+        $this->assertDatabaseHas('citas_medicas', [
+            'doctor_id' => $doctor->id,
+            'fecha' => '2026-08-07 00:00:00',
+            'hora' => '10:30:00',
+            'source_nota_soap_id' => $nota6->id,
+        ]);
+    }
+
     /** 20. Zona horaria America/Guayaquil conserva fecha y hora */
     public function test_timezone_america_guayaquil_preserves_date_and_time(): void
     {

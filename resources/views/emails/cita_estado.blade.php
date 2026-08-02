@@ -82,6 +82,12 @@
             <td style="padding:14px 20px; border-bottom:1px solid #eef2f7; font-size:13px; font-weight:700; color:#64748b;">Especialidad</td>
             <td style="padding:14px 20px; border-bottom:1px solid #eef2f7; font-size:14px; font-weight:600; color:#0f172a;">{{ $citaObj?->especialidad?->nombre ?? '-' }}</td>
         </tr>
+        @if (!empty($fechaAnterior))
+        <tr>
+            <td style="padding:14px 20px; border-bottom:1px solid #eef2f7; font-size:13px; font-weight:700; color:#64748b;">Fecha anterior</td>
+            <td style="padding:14px 20px; border-bottom:1px solid #eef2f7; font-size:14px; font-weight:600; color:#94a3b8; text-decoration:line-through;">{{ trim($fechaAnterior.' '.($horaAnterior ?? '')) }}</td>
+        </tr>
+        @endif
         <tr>
             <td style="padding:14px 20px; border-bottom:1px solid #eef2f7; font-size:13px; font-weight:700; color:#64748b;">Fecha y hora</td>
             <td style="padding:14px 20px; border-bottom:1px solid #eef2f7; font-size:14px; font-weight:600; color:#0f172a;">{{ trim($fechaTxt.' '.$horaTxt) ?: 'Por confirmar' }}</td>
