@@ -56,21 +56,33 @@ class ProfessionalScheduleService
         ?string $exceptHoldToken = null
     ): bool
     {
-        $query = Cita::query()
+        $inicioNuevoStr = $slot->format('H:i:00');
+        $finNuevoStr = $slot->copy()->addMinutes($interval)->format('H:i:00');
+
+        $activeStates = [
+            Cita::ESTADO_PENDIENTE,
+            Cita::ESTADO_CONFIRMADA,
+            Cita::ESTADO_REALIZADA,
+        ];
+
+        $citas = Cita::query()
             ->where('doctor_id', $professionalId)
             ->whereDate('fecha', $date)
-            ->where('activo', true);
+            ->where('activo', true)
+            ->whereIn('estado', $activeStates)
+            ->when($exceptCitaId, fn ($q) => $q->where('id', '!=', $exceptCitaId))
+            ->get(['hora']);
 
-        if ($exceptCitaId) {
-            $query->where('id', '!=', $exceptCitaId);
-        }
+        foreach ($citas as $row) {
+            $inicioExistente = $this->parseFlexibleTime((string) $row->hora);
+            $finExistente = $inicioExistente->copy()->addMinutes($interval);
 
-        if ($query->get(['hora'])->contains(function ($row) use ($slot, $interval) {
-            $otro = $this->parseFlexibleTime((string) $row->hora);
+            $inicioExistenteStr = $inicioExistente->format('H:i:00');
+            $finExistenteStr = $finExistente->format('H:i:00');
 
-            return $otro->diffInMinutes($slot) <= ($interval - 1);
-        })) {
-            return true;
+            if ($inicioNuevoStr < $finExistenteStr && $finNuevoStr > $inicioExistenteStr) {
+                return true;
+            }
         }
 
         $holdQuery = AppointmentSlotHold::query()
@@ -82,11 +94,19 @@ class ProfessionalScheduleService
             $holdQuery->where('token', '!=', trim((string) $exceptHoldToken));
         }
 
-        return $holdQuery->get(['hora'])->contains(function ($row) use ($slot, $interval) {
-            $otro = $this->parseFlexibleTime((string) $row->hora);
+        foreach ($holdQuery->get(['hora']) as $row) {
+            $inicioExistente = $this->parseFlexibleTime((string) $row->hora);
+            $finExistente = $inicioExistente->copy()->addMinutes($interval);
 
-            return $otro->diffInMinutes($slot) <= ($interval - 1);
-        });
+            $inicioExistenteStr = $inicioExistente->format('H:i:00');
+            $finExistenteStr = $finExistente->format('H:i:00');
+
+            if ($inicioNuevoStr < $finExistenteStr && $finNuevoStr > $inicioExistenteStr) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function validateBookingSlot(

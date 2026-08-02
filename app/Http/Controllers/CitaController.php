@@ -7,6 +7,7 @@ use App\Events\CitaAtendida;
 use App\Jobs\EnviarConfirmacionCitaJob;
 use App\Jobs\NotificarCambioEstadoCitaJob;
 use App\Models\Cita;
+use App\Models\CitaEvento;
 use App\Models\Especialidad;
 use App\Models\NotaSoap;
 use App\Models\Horario;
@@ -350,47 +351,83 @@ class CitaController extends Controller
             return back()->withErrors([$validationError['field'] => $validationError['message']])->withInput();
         }
 
+        $citaResult = null;
         try {
-            DB::beginTransaction();
+            $citaResult = DB::transaction(function () use (
+                $request, $slot, $priorityEvaluator, $scheduleService, $slotHoldService,
+                $isLab, $prioridad, $preparacion, $motivoConsulta
+            ) {
+                // Acquire a stable single-row lock on the doctor before any reads/writes.
+                // This guarantees mutual exclusion even when there are no existing appointments
+                // for that day yet (an empty row-set lock would not block concurrent transactions).
+                User::query()->whereKey((int) $request->doctor_id)->lockForUpdate()->firstOrFail();
 
-            $cita = Cita::create([
-                'paciente_id' => Auth::id(),
-                'dependiente_id' => $request->dependiente_id,
-                'doctor_id' => $request->doctor_id,
-                'especialidad_id' => $request->especialidad_id,
-                'fecha' => $request->fecha,
-                'hora' => $slot->format('H:i:00'),
-                'motivo_consulta' => $motivoConsulta,
-                'estado' => Cita::ESTADO_PENDIENTE,
-                'activo' => true,
-            ]);
+                // Re-verify availability inside the serialised transaction.
+                // IMPORTANT: pass exceptHoldToken so the patient's own active hold is not
+                // counted as a conflict against themselves.
+                $slot = Carbon::createFromFormat('H:i', $request->hora);
+                $conflict = $scheduleService->hasConflict(
+                    professionalId: (int) $request->doctor_id,
+                    date: (string) $request->fecha,
+                    slot: $slot,
+                    interval: 30,
+                    exceptHoldToken: $request->input('hold_token')
+                );
 
-            $priorityEvaluator->apply($cita);
-            $cita->save();
+                if ($conflict) {
+                    throw new \DomainException(
+                        ($isLab
+                            ? 'El laboratorio ya tiene una cita en ese horario.'
+                            : 'Ese horario acaba de ser reservado por otro paciente. Selecciona otro horario disponible.')
+                    );
+                }
 
-            if ($isLab) {
-                LaboratorioOrden::create([
-                    'cita_id' => $cita->id,
-                    'solicitante_id' => Auth::id(),
-                    'origen' => 'paciente',
-                    'prioridad' => $prioridad,
-                    'tipo_examen' => $request->tipo_examen,
-                    'indicaciones' => null,
-                    'preparacion' => $preparacion,
-                    'estado' => LaboratorioOrden::ESTADO_CITA_PROGRAMADA,
+                $cita = Cita::create([
+                    'paciente_id' => Auth::id(),
+                    'dependiente_id' => $request->dependiente_id,
+                    'doctor_id' => $request->doctor_id,
+                    'especialidad_id' => $request->especialidad_id,
+                    'fecha' => $request->fecha,
+                    'hora' => $slot->format('H:i:00'),
+                    'motivo_consulta' => $motivoConsulta,
+                    'estado' => Cita::ESTADO_PENDIENTE,
+                    'activo' => true,
                 ]);
-            }
 
-            $slotHoldService->completeByToken(
+                $priorityEvaluator->apply($cita);
+                $cita->save();
+
+                if ($isLab) {
+                    LaboratorioOrden::create([
+                        'cita_id' => $cita->id,
+                        'solicitante_id' => Auth::id(),
+                        'origen' => 'paciente',
+                        'prioridad' => $prioridad,
+                        'tipo_examen' => $request->tipo_examen,
+                        'indicaciones' => null,
+                        'preparacion' => $preparacion,
+                        'estado' => LaboratorioOrden::ESTADO_CITA_PROGRAMADA,
+                    ]);
+                }
+
+                $slotHoldService->completeByToken(
+                    token: $request->input('hold_token'),
+                    professionalId: (int) $request->doctor_id,
+                    date: (string) $request->fecha,
+                    time: $slot->format('H:i:00')
+                );
+
+                return $cita;
+            });
+        } catch (\DomainException $e) {
+            $slotHoldService->releaseByToken(
                 token: $request->input('hold_token'),
                 professionalId: (int) $request->doctor_id,
                 date: (string) $request->fecha,
                 time: $slot->format('H:i:00')
             );
-
-            DB::commit();
+            return back()->withErrors(['error' => $e->getMessage()])->withInput();
         } catch (QueryException $e) {
-            DB::rollBack();
             $slotHoldService->releaseByToken(
                 token: $request->input('hold_token'),
                 professionalId: (int) $request->doctor_id,
@@ -404,6 +441,9 @@ class CitaController extends Controller
             return back()->withErrors(['error' => $msg])->withInput();
         }
 
+        $cita = $citaResult;
+
+        // Dispatch jobs AFTER the transaction has committed.
         try {
             event(new CitaAgendada($cita));
             EnviarConfirmacionCitaJob::dispatchAfterResponse($cita);
@@ -544,23 +584,43 @@ class CitaController extends Controller
             return back()->withErrors([$validationError['field'] => $validationError['message']])->withInput();
         }
 
+        $citaId = $cita->id;
         try {
-            DB::beginTransaction();
+            DB::transaction(function () use (&$cita, $request, $slot, $priorityEvaluator, $scheduleService, $motivoConsulta, $isLab) {
+                // Acquire stable single-row lock on the doctor before re-checking availability.
+                User::query()->whereKey((int) $cita->doctor_id)->lockForUpdate()->firstOrFail();
 
-            $cita->update([
-                'fecha' => $request->fecha,
-                'hora' => $slot->format('H:i:00'),
-                'motivo_consulta' => $motivoConsulta,
-                'estado' => Cita::ESTADO_PENDIENTE,
-                'activo' => true,
-            ]);
+                $conflict = $scheduleService->hasConflict(
+                    professionalId: (int) $cita->doctor_id,
+                    date: (string) $request->fecha,
+                    slot: $slot,
+                    interval: 30,
+                    exceptCitaId: (int) $cita->id
+                    // No hold_token on reschedule: holds are only issued on initial slot selection
+                );
 
-            $priorityEvaluator->apply($cita);
-            $cita->save();
+                if ($conflict) {
+                    throw new \DomainException(
+                        $isLab
+                            ? 'El laboratorio ya tiene una cita en ese horario.'
+                            : 'Ese horario acaba de ser reservado por otro paciente. Selecciona otro horario disponible.'
+                    );
+                }
 
-            DB::commit();
+                $cita->update([
+                    'fecha' => $request->fecha,
+                    'hora' => $slot->format('H:i:00'),
+                    'motivo_consulta' => $motivoConsulta,
+                    'estado' => Cita::ESTADO_PENDIENTE,
+                    'activo' => true,
+                ]);
+
+                $priorityEvaluator->apply($cita);
+                $cita->save();
+            });
+        } catch (\DomainException $e) {
+            return back()->withErrors(['error' => $e->getMessage()])->withInput();
         } catch (QueryException $e) {
-            DB::rollBack();
             $msg = $isLab
                 ? 'El laboratorio ya tiene una cita exactamente a esa hora.'
                 : 'El doctor ya tiene una cita exactamente a esa hora.';
@@ -568,6 +628,7 @@ class CitaController extends Controller
             return back()->withErrors(['error' => $msg])->withInput();
         }
 
+        // Dispatch AFTER transaction commits.
         NotificarCambioEstadoCitaJob::dispatchAfterResponse($cita, 'reagendada', 'paciente');
 
         return redirect()->route('paciente.citas')
@@ -1094,61 +1155,97 @@ class CitaController extends Controller
             return response()->json(['ok' => false, 'msg' => $validationError['message']], 422);
         }
 
-        $result = DB::transaction(function () use ($cita, $request, $slot, $priorityEvaluator, $nota) {
-            $cita = Cita::query()->whereKey($cita->id)->lockForUpdate()->firstOrFail();
-            $nota = NotaSoap::query()
-                ->whereKey($nota->id)
-                ->with(['followUpCita'])
-                ->lockForUpdate()
-                ->firstOrFail();
+        try {
+            $result = DB::transaction(function () use ($cita, $request, $slot, $priorityEvaluator, $nota, $scheduleService) {
+                // Acquire stable single-row lock on the doctor FIRST.
+                // A lock on existing appointment rows would not protect us when there are
+                // zero appointments for that day, allowing two concurrent transactions to
+                // both read an empty set and proceed to insert the same slot.
+                User::query()->whereKey((int) $cita->doctor_id)->lockForUpdate()->firstOrFail();
 
-            $controlExistente = $nota->followUpCita && $this->controlPerteneceACita($cita, $nota->followUpCita)
-                ? Cita::query()->whereKey($nota->followUpCita->id)->lockForUpdate()->firstOrFail()
-                : $this->controlPosteriorActivo($cita);
+                $cita = Cita::query()->whereKey($cita->id)->lockForUpdate()->firstOrFail();
 
-            $control = $controlExistente
-                ? Cita::query()->whereKey($controlExistente->id)->lockForUpdate()->firstOrFail()
-                : new Cita([
-                    'paciente_id' => $cita->paciente_id,
-                    'dependiente_id' => $cita->dependiente_id,
-                    'doctor_id' => $cita->doctor_id,
-                    'especialidad_id' => $cita->especialidad_id,
-                    'motivo_consulta' => 'Consulta médica de control',
+                $nota = NotaSoap::query()
+                    ->whereKey($nota->id)
+                    ->with(['followUpCita'])
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                $controlExistente = $nota->followUpCita && $this->controlPerteneceACita($cita, $nota->followUpCita)
+                    ? Cita::query()->whereKey($nota->followUpCita->id)->lockForUpdate()->firstOrFail()
+                    : $this->controlPosteriorActivo($cita);
+
+                $control = $controlExistente
+                    ? Cita::query()->whereKey($controlExistente->id)->lockForUpdate()->firstOrFail()
+                    : new Cita([
+                        'paciente_id' => $cita->paciente_id,
+                        'dependiente_id' => $cita->dependiente_id,
+                        'doctor_id' => $cita->doctor_id,
+                        'especialidad_id' => $cita->especialidad_id,
+                        'motivo_consulta' => 'Consulta médica de control',
+                        'source_nota_soap_id' => $nota->id,
+                     ]);
+
+                // Re-verify availability inside the serialised critical section.
+                $hasConflict = $scheduleService->hasConflict(
+                    professionalId: (int) $cita->doctor_id,
+                    date: (string) $request->fecha,
+                    slot: $slot,
+                    interval: 30,
+                    exceptCitaId: $control->exists ? $control->id : null
+                );
+
+                if ($hasConflict) {
+                    throw new \DomainException('Ese horario acaba de ser reservado por otro paciente. Selecciona otro horario disponible.');
+                }
+
+                $esNuevo = ! $control->exists;
+                $control->fill([
+                    'fecha' => $request->fecha,
+                    'hora' => $slot->format('H:i:00'),
+                    'estado' => Cita::ESTADO_PENDIENTE,
+                    'activo' => true,
                     'source_nota_soap_id' => $nota->id,
                 ]);
 
-            $esNuevo = ! $control->exists;
-            $control->fill([
-                'fecha' => $request->fecha,
-                'hora' => $slot->format('H:i:00'),
-                'estado' => Cita::ESTADO_PENDIENTE,
-                'activo' => true,
-                'source_nota_soap_id' => $nota->id,
-            ]);
+                $priorityEvaluator->apply($control);
+                $control->save();
 
-            $priorityEvaluator->apply($control);
-            $control->save();
-            $nota->forceFill(['follow_up_cita_id' => $control->id])->saveQuietly();
+                // Keep follow_up_date on NotaSoap in sync with the control appointment date.
+                $nota->forceFill([
+                    'follow_up_cita_id' => $control->id,
+                    'follow_up_date' => $request->fecha,
+                ])->saveQuietly();
 
-            if ($esNuevo) {
-                try {
-                    event(new CitaAgendada($control));
-                    EnviarConfirmacionCitaJob::dispatchAfterResponse($control);
-                } catch (\Throwable $e) {
-                    \Illuminate\Support\Facades\Log::error('Error al notificar cita de control agendada: ' . $e->getMessage(), [
-                        'cita_id' => $control->id,
-                        'exception' => $e
-                    ]);
-                }
-            } else {
-                NotificarCambioEstadoCitaJob::dispatchAfterResponse($control, 'reagendada', 'doctor');
+                CitaEvento::create([
+                    'cita_id' => $control->id,
+                    'user_id' => Auth::id(),
+                    'tipo' => $esNuevo ? 'control_agendado' : 'control_reagendado',
+                ]);
+
+                return [
+                    'control' => $control->refresh(),
+                    'existed' => ! $esNuevo,
+                ];
+            });
+        } catch (\DomainException $e) {
+            return response()->json(['ok' => false, 'msg' => $e->getMessage()], 422);
+        }
+
+        // Dispatch notification jobs AFTER the transaction has committed.
+        if (! $result['existed']) {
+            try {
+                event(new CitaAgendada($result['control']));
+                EnviarConfirmacionCitaJob::dispatchAfterResponse($result['control']);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Error al notificar cita de control agendada: ' . $e->getMessage(), [
+                    'cita_id' => $result['control']->id,
+                    'exception' => $e
+                ]);
             }
-
-            return [
-                'control' => $control->refresh(),
-                'existed' => ! $esNuevo,
-            ];
-        });
+        } else {
+            NotificarCambioEstadoCitaJob::dispatchAfterResponse($result['control'], 'reagendada', 'doctor');
+        }
 
         $control = $result['control'];
 
