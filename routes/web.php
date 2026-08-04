@@ -667,6 +667,11 @@ Route::middleware(['auth', 'role:laboratorio'])->prefix('laboratorio')->name('la
     Route::get('/pedidos/{pedido}/resultados/descargar', [LaboratorioPedidoResultadoController::class, 'download'])
         ->whereNumber('pedido')->name('pedidos.resultados.download');
 
+    // Administración institucional del catálogo de laboratorio (66 exámenes)
+    Route::get('/catalogo', [\App\Http\Controllers\Laboratorio\CatalogoLaboratorioController::class, 'index'])->name('catalogo.index');
+    Route::get('/catalogo/{exam}/editar', [\App\Http\Controllers\Laboratorio\CatalogoLaboratorioController::class, 'edit'])->name('catalogo.edit');
+    Route::put('/catalogo/{exam}', [\App\Http\Controllers\Laboratorio\CatalogoLaboratorioController::class, 'update'])->name('catalogo.update');
+
 });
 
 // =========================== LOGOUT ==========================

@@ -7,11 +7,11 @@
 </head>
 <body>
     @php
-        $paciente = $pedido->cita?->dependiente_id && $pedido->cita?->dependiente
+        $paciente = !empty($pedido->cita?->dependiente)
             ? $pedido->cita->dependiente
-            : $pedido->cita?->paciente;
-        $representante = $pedido->cita?->dependiente_id && $pedido->cita?->dependiente
-            ? $pedido->cita?->paciente
+            : ($pedido->cita?->paciente ?? $pedido->paciente);
+        $representante = !empty($pedido->cita?->dependiente)
+            ? ($pedido->cita?->paciente ?? $pedido->paciente)
             : null;
         $dateOrder = $pedido->created_at?->format('d/m/Y H:i') ?? '-';
         $datePublished = $resultado->publicado_at?->format('d/m/Y H:i') ?? '-';
@@ -56,46 +56,81 @@
 
             <div class="divider"></div>
 
-            <div class="section avoid-break">
-                <h3>Resultados</h3>
-                <table class="result-table">
-                    <thead>
-                        <tr>
-                            <th style="width:17%">Examen</th>
-                            <th style="width:16%">Resultado</th>
-                            <th style="width:10%">Unidad</th>
-                            <th style="width:16%">Referencia</th>
-                            <th style="width:10%">Clasificación</th>
-                            <th style="width:13%">Método</th>
-                            <th style="width:18%">Observaciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach(($resultado->resultado_items ?? []) as $item)
-                            <tr>
-                                <td><strong>{{ $item['nombre'] ?? $item['key'] ?? 'Examen' }}</strong></td>
-                                <td>{{ $item['resultado'] ?? '-' }}</td>
-                                <td>{{ $item['unidad'] ?? '-' }}</td>
-                                <td>{{ $item['referencia'] ?? '-' }}</td>
-                                <td><span class="result-badge {{ $item['clasificacion'] ?? 'normal' }}">{{ $item['clasificacion'] ?? 'normal' }}</span></td>
-                                <td>{{ $item['metodo'] ?? '-' }}</td>
-                                <td class="result-note">{{ $item['observaciones'] ?? '-' }}</td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
+            <div class="section">
+                <h3 style="margin-bottom: 12px;">Resultados de Laboratorio</h3>
+
+                @foreach(($resultado->resultado_items ?? []) as $item)
+                    @php
+                        $nameClean = ($item['nombre'] ?? $item['key'] ?? 'Examen');
+                        if ($nameClean === 'Brusella Abortus') {
+                            $nameClean = 'Brucella abortus';
+                        }
+                    @endphp
+                    <div class="result-block avoid-break" style="margin-bottom: 14px; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; background-color: #ffffff;">
+                        <table style="width: 100%; border-collapse: collapse; margin-bottom: 6px;">
+                            <thead>
+                                <tr style="border-bottom: 1px solid #cbd5e1; font-size: 9pt; color: #475569; text-transform: uppercase;">
+                                    <th style="text-align: left; width: 32%; padding-bottom: 4px;">Componente / Analito</th>
+                                    <th style="text-align: left; width: 18%; padding-bottom: 4px;">Resultado</th>
+                                    <th style="text-align: left; width: 15%; padding-bottom: 4px;">Unidad</th>
+                                    <th style="text-align: left; width: 20%; padding-bottom: 4px;">Intervalo/valor de referencia</th>
+                                    <th style="text-align: right; width: 15%; padding-bottom: 4px;">Clasificación</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr style="font-size: 10pt;">
+                                    <td style="padding-top: 6px; font-weight: bold; color: #0f172a;">{{ $nameClean }}</td>
+                                    <td style="padding-top: 6px; font-weight: bold; color: #0f172a;">{{ $item['resultado'] ?? '-' }}</td>
+                                    <td style="padding-top: 6px; color: #334155;">{{ $item['unidad'] ?? 'No aplica' }}</td>
+                                    <td style="padding-top: 6px; color: #334155;">{{ $item['referencia'] ?? 'No aplica' }}</td>
+                                    <td style="padding-top: 6px; text-align: right;">
+                                        @php
+                                            $rawClass = $item['clasificacion'] ?? 'normal';
+                                            $badgeClass = match($rawClass) {
+                                                'critico', 'critical_low', 'critical_high' => 'critico',
+                                                'alto', 'high', 'abnormal' => 'alto',
+                                                'bajo', 'low' => 'bajo',
+                                                'normal' => 'normal',
+                                                default => 'normal'
+                                            };
+                                            $badgeLabel = match($rawClass) {
+                                                'critical_low' => 'Crítico Bajo',
+                                                'critical_high' => 'Crítico Alto',
+                                                'high', 'alto' => 'Alto',
+                                                'low', 'bajo' => 'Bajo',
+                                                'abnormal' => 'Anormal',
+                                                'not_applicable' => 'No aplica',
+                                                default => 'Normal'
+                                            };
+                                        @endphp
+                                        <span class="result-badge {{ $badgeClass }}">{{ $badgeLabel }}</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <div style="font-size: 8.5pt; color: #64748b; line-height: 1.45; border-top: 1px dashed #e2e8f0; padding-top: 6px; margin-top: 4px;">
+                            <span><strong>Método utilizado:</strong> {{ $item['metodo'] ?? 'Método institucional' }}</span>
+                            @if(!empty($item['observaciones']))
+                                <span style="margin-left: 14px;"><strong>Notas:</strong> {{ $item['observaciones'] }}</span>
+                            @endif
+                        </div>
+                    </div>
+                @endforeach
             </div>
 
             @if(!empty($resultado->observaciones_generales))
-                <div class="section avoid-break">
-                    <h3>Observaciones generales</h3>
-                    <div class="preserve">{{ $resultado->observaciones_generales }}</div>
+                <div class="section avoid-break" style="margin-top: 16px;">
+                    <h3 style="margin-bottom: 8px;">Observaciones generales del informe</h3>
+                    <div class="preserve" style="font-size: 9pt; line-height: 1.45; color: #1e293b; background: #f8fafc; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                        {{ $resultado->observaciones_generales }}
+                    </div>
                 </div>
             @endif
 
-            <div class="verification-panel avoid-break">
+            <div class="verification-panel avoid-break" style="margin-top: 20px;">
                 <div>
-                    <div class="verification-label">Verificación pública</div>
+                    <div class="verification-label">Verificación pública de autenticidad</div>
                     <div class="verification-code">CSV: {{ $csv ?? 'N/D' }}</div>
                     <div class="verification-url">{{ $verificationUrl ?? '' }}</div>
                 </div>
@@ -107,10 +142,10 @@
             <div class="lab-footer">
                 <div>
                     <strong>Emitido por {{ $clinica }}</strong><br>
-                    Documento válido únicamente con su versión y CSV de verificación.
+                    Documento firmado y verificado electrónicamente.
                 </div>
                 <div class="text-right">
-                    <strong>{{ $resultado->laboratorio?->name ?? 'Laboratorio' }}</strong><br>
+                    <strong>{{ $resultado->laboratorio?->name ?? 'Laboratorio Clínico' }}</strong><br>
                 </div>
             </div>
         </div>

@@ -40,13 +40,21 @@ class PedidoLaboratorioController extends Controller
     /**
      * Marca la muestra como tomada.
      */
-    public function marcarMuestra(PedidoLaboratorio $pedido)
+    public function marcarMuestra(Request $request, PedidoLaboratorio $pedido)
     {
         if ($pedido->estado === 'resultado_listo') {
             return back()->withErrors(['error' => 'Los resultados para este pedido ya fueron publicados.']);
         }
 
-        $pedido->update(['estado' => 'muestra_tomada']);
+        $sampleDate = $request->input('sample_collected_at')
+            ? Carbon::parse($request->input('sample_collected_at'))
+            : now('America/Guayaquil');
+
+        $pedido->update([
+            'estado' => 'muestra_tomada',
+            'sample_collected_at' => $sampleDate,
+            'sample_collected_by' => \Illuminate\Support\Facades\Auth::id(),
+        ]);
 
         return back()->with('success', 'Muestra del pedido registrada como tomada con éxito.');
     }

@@ -3,6 +3,7 @@ function selectedRoleText(){
   if(!sel)return'';
   return sel.options[sel.selectedIndex].text.toLowerCase()||'';
 }
+
 function toggleDoctorFields(){
   const sel=document.getElementById('role_id');
   if(!sel)return;
@@ -12,6 +13,7 @@ function toggleDoctorFields(){
   const isLab=preset==='laboratorio'||roleText.includes('laboratorio');
   const esp=document.getElementById('doctor-only-esp');
   const precio=document.getElementById('doctor-only-precio');
+
   if(esp)esp.style.display=isDoctor ? '' : 'none';
   if(precio)precio.style.display=(isDoctor||isLab) ? '' : 'none';
 
@@ -26,6 +28,7 @@ function toggleDoctorFields(){
     else precioInput.removeAttribute('required');
   }
 }
+
 function togglePatientFlags(){
   const sel=document.getElementById('role_id');
   if(!sel)return;
@@ -35,6 +38,7 @@ function togglePatientFlags(){
   const flags=document.getElementById('patient-flags-section');
   if(flags)flags.style.display=isPaciente ? '' : 'none';
 }
+
 document.addEventListener('DOMContentLoaded',()=>{
   const sel=document.getElementById('role_id');
   if(sel)sel.addEventListener('change',()=>{

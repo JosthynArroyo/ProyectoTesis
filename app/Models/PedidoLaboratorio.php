@@ -33,6 +33,8 @@ class PedidoLaboratorio extends Model
         'resultado_resumen',
         'resultado_publicado_at',
         'resultado_enviado_at',
+        'sample_collected_at',
+        'processed_at',
         'enviado_a',
         'enviado_en',
         'envio_estado',
@@ -43,6 +45,9 @@ class PedidoLaboratorio extends Model
     protected $casts = [
         'examenes' => 'array',
         'resultado_publicado_at' => 'datetime',
+        'resultado_enviado_at' => 'datetime',
+        'sample_collected_at' => 'datetime',
+        'processed_at' => 'datetime',
         'resultado_enviado_at' => 'datetime',
         'enviado_en' => 'datetime',
         'envio_intentos' => 'integer',

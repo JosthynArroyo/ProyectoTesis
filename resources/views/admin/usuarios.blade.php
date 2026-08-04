@@ -123,7 +123,7 @@
             $isSusp = $u->suspended_until && now()->lt($u->suspended_until);
           @endphp
 
-          @unless($esAdmin || $isClinicalProfessional)
+          @unless($esAdmin || $u->id === auth()->id())
             <form id="delete-{{ $u->id }}" action="{{ route('admin.usuarios.destroy', $u) }}" method="POST">@csrf @method('DELETE')</form>
           @endunless
           @unless($esAdmin)
@@ -296,13 +296,13 @@
                             <i class="ri-user-follow-line"></i> Reactivar
                           </button>
                         @endif
-                        @unless($isClinicalProfessional)
+                        @unless($u->id === auth()->id())
                           <button
                             type="button"
                             class="btn btn-ghost btn-sm justify-start text-rose-600"
                             data-confirm-form="delete-{{ $u->id }}"
                             data-confirm-title="Eliminar usuario"
-                            data-confirm-message="Se eliminara la cuenta de {{ $u->name }}."
+                            data-confirm-message="{{ $isClinicalProfessional ? 'La cuenta del profesional se desactivara para conservar el historial clinico y relaciones.' : 'Se eliminara la cuenta de '.$u->name.'.' }}"
                             data-confirm-button="Eliminar"
                           >
                             <i class="ri-delete-bin-line"></i> Eliminar
