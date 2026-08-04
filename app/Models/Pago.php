@@ -86,6 +86,7 @@ class Pago extends Model
         'cita_id',
         'folio_unico',
         'token_publico',
+        'csv',
         'paciente_id',
         'monto',
         'moneda',

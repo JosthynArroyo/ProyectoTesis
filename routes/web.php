@@ -18,6 +18,8 @@ use App\Http\Controllers\CitaController;
 use App\Http\Controllers\DemoDashboardController;
 use App\Http\Controllers\CitaPrioridadController;
 use App\Http\Controllers\DocumentoVerificacionController;
+use App\Http\Controllers\PagoLookupController;
+use App\Http\Controllers\PaymentReceiptVerificationController;
 use App\Http\Controllers\ContactoController;
 use App\Http\Controllers\Doctor\AdminController as DoctorDashboardController;
 use App\Http\Controllers\Doctor\CertificadoMedicoController as DoctorCertificadoMedicoController;
@@ -39,7 +41,6 @@ use App\Http\Controllers\Paciente\HistorialController as PacienteHistorialContro
 use App\Http\Controllers\Paciente\LaboratorioController as PacienteLaboratorioController;
 use App\Http\Controllers\Paciente\PagoController as PacientePagoController;
 use App\Http\Controllers\DependienteController;
-use App\Http\Controllers\PagoLookupController;
 use App\Http\Controllers\PanelThemeController;
 use App\Http\Controllers\FaviconController;
 use App\Http\Controllers\AvatarMediaController;
@@ -106,6 +107,10 @@ Route::post('/verificar-documento', [DocumentoVerificacionController::class, 'se
 Route::get('/verificar/{csv}', [DocumentoVerificacionController::class, 'show'])
     ->where('csv', '[A-Za-z0-9\-]+')
     ->name('documentos.verificar.show');
+Route::get('/verificar-recibo/{token}', [PaymentReceiptVerificationController::class, 'show'])
+    ->name('recibos.verificar');
+Route::get('/cobro/{token}', [PagoLookupController::class, 'showByToken'])
+    ->name('pagos.token.show');
 
 // Rutas firmadas por email
 Route::middleware('signed')->get('/email/cita/{cita}/{rol}/{accion}', EmailCitaActionController::class)
@@ -738,7 +743,6 @@ Route::middleware(['chatbot_identity', 'throttle:chatbot.message'])->group(funct
 
 Route::middleware('auth')->group(function () {
     Route::patch('/panel/theme', [PanelThemeController::class, 'update'])->name('panel.theme.update');
-    Route::get('/cobro/{token}', [PagoLookupController::class, 'showByToken'])->name('pagos.token.show');
     Route::get('/auth/must-change-password', [\App\Http\Controllers\Auth\MustChangePasswordController::class, 'show'])->name('auth.must-change-password');
     Route::post('/auth/must-change-password', [\App\Http\Controllers\Auth\MustChangePasswordController::class, 'update'])->name('auth.must-change-password.update');
 });

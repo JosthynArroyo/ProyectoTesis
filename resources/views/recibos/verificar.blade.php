@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
-    <title>Verificación de Orden de Cobro - {{ $pago->folio_unico ?: 'Orden' }}</title>
+    <title>Verificación de Recibo - {{ $receipt->folio_recibo }}</title>
     <style>
         body {
             font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -42,25 +42,10 @@
             color: #047857;
             border: 1px solid #6ee7b7;
         }
-        .status-pendiente {
-            background-color: #fef3c7;
-            color: #b45309;
-            border: 1px solid #fcd34d;
-        }
-        .status-en_verificacion {
-            background-color: #e0f2fe;
-            color: #0369a1;
-            border: 1px solid #7dd3fc;
-        }
-        .status-rechazado {
-            background-color: #fee2e2;
-            color: #b91c1c;
-            border: 1px solid #fca5a5;
-        }
         .status-anulado {
-            background-color: #f3f4f6;
-            color: #4b5563;
-            border: 1px solid #d1d5db;
+            background-color: #ffe4e6;
+            color: #be123c;
+            border: 1px solid #fda4af;
         }
         .title {
             font-size: 22px;
@@ -105,31 +90,19 @@
 </head>
 <body>
     <div class="card">
-        @php
-            $badgeClass = match($estadoActual) {
-                'pagado' => 'status-pagado',
-                'en_verificacion' => 'status-en_verificacion',
-                'rechazado' => 'status-rechazado',
-                'anulado' => 'status-anulado',
-                default => 'status-pendiente',
-            };
-        @endphp
+        @if($estadoActual === 'ANULADO')
+            <div class="status-badge status-anulado">Recibo Anulado</div>
+        @else
+            <div class="status-badge status-pagado">Recibo de pago verificado</div>
+        @endif
 
-        <div class="status-badge {{ $badgeClass }}">
-            Orden de cobro {{ str_replace('_', ' ', $estadoActual) }}
-        </div>
-
-        <h1 class="title">Verificación de Orden de Cobro</h1>
-        <p class="subtitle">Estado de autenticidad registrado en la Clínica</p>
+        <h1 class="title">Verificación de Recibo</h1>
+        <p class="subtitle">Documento financiero auténtico registrado en la Clínica</p>
 
         <div class="detail-group">
             <div class="detail-row">
-                <span class="detail-label">Folio Orden:</span>
-                <span class="detail-value">{{ $pago->folio_unico ?: 'Sin Folio' }}</span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">Token:</span>
-                <span class="detail-value" style="word-break: break-all; font-family: monospace; font-size: 11px;">{{ $pago->token_publico }}</span>
+                <span class="detail-label">Folio Recibo:</span>
+                <span class="detail-value">{{ $receipt->folio_recibo }}</span>
             </div>
             <div class="detail-row">
                 <span class="detail-label">Emisor:</span>
@@ -141,15 +114,19 @@
             </div>
             <div class="detail-row">
                 <span class="detail-label">Fecha de Emisión:</span>
-                <span class="detail-value">{{ $pago->created_at?->format('Y-m-d H:i') ?? 'N/D' }}</span>
+                <span class="detail-value">{{ $receipt->emitido_en?->format('Y-m-d H:i') ?? 'N/D' }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Método de Pago:</span>
+                <span class="detail-value">{{ strtoupper((string) $receipt->metodo_pago) }}</span>
             </div>
             <div class="detail-row">
                 <span class="detail-label">Monto:</span>
-                <span class="detail-value">${{ number_format((float) $pago->monto, 2) }} {{ $pago->moneda ?: 'USD' }}</span>
+                <span class="detail-value">${{ number_format((float) $receipt->monto, 2) }} {{ $receipt->pago?->moneda ?: 'USD' }}</span>
             </div>
             <div class="detail-row">
-                <span class="detail-label">Estado Actual:</span>
-                <span class="detail-value">{{ strtoupper(str_replace('_', ' ', $estadoActual)) }}</span>
+                <span class="detail-label">Estado Contable:</span>
+                <span class="detail-value">{{ $estadoActual }}</span>
             </div>
         </div>
 

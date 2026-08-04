@@ -50,7 +50,7 @@
           <a href="{{ route('pagos.token.show', $pago->token_publico) }}" class="btn btn-outline w-full">Abrir token</a>
         @endif
         @if($pago->estado === 'pagado')
-          <a href="{{ route('admin.pagos.recibo.pdf', $pago) }}" class="btn btn-outline w-full" target="_blank" rel="noopener">Recibo PDF</a>
+          <a href="{{ route('admin.pagos.recibo.pdf', $pago) }}" class="btn btn-outline w-full" target="_blank" rel="noopener" data-action-lock-ignore data-skip-page-loader>Recibo PDF</a>
         @endif
       </div>
 
@@ -118,7 +118,7 @@
         <p class="text-sm text-gray-700"><strong>Folio:</strong> {{ $pago->receipt->folio_recibo }}</p>
         <p class="text-sm text-gray-700"><strong>Emitido:</strong> {{ $pago->receipt->emitido_en?->format('Y-m-d H:i') }}</p>
         <p class="text-sm text-gray-700"><strong>Emisor:</strong> {{ $pago->receipt->emisor?->name ?: 'N/D' }}</p>
-        <a href="{{ route('admin.pagos.recibo.pdf', $pago) }}" class="btn btn-outline" target="_blank" rel="noopener">Abrir recibo PDF</a>
+        <a href="{{ route('admin.pagos.recibo.pdf', $pago) }}" class="btn btn-outline" target="_blank" rel="noopener" data-action-lock-ignore data-skip-page-loader>Abrir recibo PDF</a>
       @else
         <p class="text-sm text-gray-500">Aún no se ha emitido recibo.</p>
       @endif

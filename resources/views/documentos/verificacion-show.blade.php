@@ -6,20 +6,20 @@
     'certificado_medico' => 'ri-award-line',
     'pedido_laboratorio' => 'ri-test-tube-line',
     'resultado_laboratorio' => 'ri-file-chart-line',
+    'orden_cobro'        => 'ri-file-list-3-line',
+    'recibo_pago'       => 'ri-shield-check-line',
     default              => 'ri-file-text-line',
   };
   $estadoTone = match($estado) {
-    'Verificado', 'Publicado' => 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    'Borrador'    => 'bg-amber-50 text-amber-700 border-amber-200',
-    'Reemplazado' => 'bg-amber-50 text-amber-700 border-amber-200',
-    'Anulado'     => 'bg-rose-50 text-rose-700 border-rose-200',
+    'Verificado', 'Publicado', 'Pagado' => 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    'Borrador', 'Pendiente', 'En verificación' => 'bg-amber-50 text-amber-700 border-amber-200',
+    'Reemplazado', 'Rechazado', 'Anulado' => 'bg-rose-50 text-rose-700 border-rose-200',
     default       => 'bg-emerald-50 text-emerald-700 border-emerald-200',
   };
   $estadoIcono = match($estado) {
-    'Verificado', 'Publicado' => 'ri-shield-check-line',
-    'Borrador'    => 'ri-time-line',
-    'Reemplazado' => 'ri-arrow-left-right-line',
-    'Anulado'     => 'ri-close-circle-line',
+    'Verificado', 'Publicado', 'Pagado' => 'ri-shield-check-line',
+    'Borrador', 'Pendiente', 'En verificación' => 'ri-time-line',
+    'Reemplazado', 'Rechazado', 'Anulado' => 'ri-close-circle-line',
     default       => 'ri-shield-check-line',
   };
 @endphp
@@ -94,7 +94,7 @@
           <p class="mt-1 text-sm font-semibold text-slate-800">{{ $clinica }}</p>
         </div>
 
-        @if($doctor)
+        @if(!empty($doctor))
           {{-- Doctor --}}
           <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3">
             <p class="text-xs font-semibold uppercase tracking-widest text-slate-400">Profesional</p>
@@ -102,7 +102,28 @@
           </div>
         @endif
 
-        @if($paciente)
+        @if(!empty($folio))
+          <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+            <p class="text-xs font-semibold uppercase tracking-widest text-slate-400">Folio</p>
+            <p class="mt-1 text-sm font-semibold text-slate-800">{{ $folio }}</p>
+          </div>
+        @endif
+
+        @if(!empty($monto))
+          <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+            <p class="text-xs font-semibold uppercase tracking-widest text-slate-400">Monto</p>
+            <p class="mt-1 text-sm font-semibold text-slate-800">{{ $monto }}</p>
+          </div>
+        @endif
+
+        @if(!empty($metodo_pago))
+          <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+            <p class="text-xs font-semibold uppercase tracking-widest text-slate-400">Método de pago</p>
+            <p class="mt-1 text-sm font-semibold text-slate-800">{{ $metodo_pago }}</p>
+          </div>
+        @endif
+
+        @if(!empty($paciente))
           {{-- Patient (protected) --}}
           <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3">
             <p class="text-xs font-semibold uppercase tracking-widest text-slate-400">Paciente</p>

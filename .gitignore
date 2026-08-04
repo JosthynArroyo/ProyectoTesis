@@ -33,3 +33,4 @@ __pycache__/
 /tmp/*.sqlite
 /.psysh/
 /tmp/docx_media/
+/brain/

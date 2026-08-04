@@ -2,30 +2,36 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Pago;
+use App\Models\PaymentReceipt;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
-class PagoLookupController extends Controller
+class PaymentReceiptVerificationController extends Controller
 {
-    public function showByToken(Request $request, string $token): Response
+    public function show(string $token): Response
     {
-        $pago = Pago::query()
-            ->with(['paciente:id,name'])
-            ->where('token_publico', $token)
+        $receipt = PaymentReceipt::query()
+            ->with([
+                'pago:id,estado,moneda,paciente_id',
+                'pago.paciente:id,name',
+            ])
+            ->where('verification_token', $token)
             ->first();
 
-        if (! $pago) {
+        if (! $receipt) {
             abort(404);
         }
 
-        $fullName = $pago->paciente?->name;
+        $fullName = $receipt->pago?->paciente?->name;
         $protectedName = $this->formatProtectedName($fullName);
 
-        $estadoActual = strtolower((string) ($pago->estado ?? 'pendiente'));
+        $estadoActual = strtoupper((string) ($receipt->pago?->estado ?? 'PAGADO'));
+        if ($estadoActual !== 'ANULADO') {
+            $estadoActual = 'PAGADO';
+        }
 
-        $html = view('pagos.token-show', [
-            'pago' => $pago,
+        $html = view('recibos.verificar', [
+            'receipt' => $receipt,
             'protectedName' => $protectedName,
             'estadoActual' => $estadoActual,
         ])->render();

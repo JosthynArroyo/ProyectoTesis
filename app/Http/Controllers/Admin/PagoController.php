@@ -11,6 +11,7 @@ use App\Http\Requests\Admin\UpdatePagoMontoRequest;
 use App\Models\Pago;
 use App\Services\PagoService;
 use App\Services\PaymentProofStorageService;
+use App\Services\PaymentReceiptDocumentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -255,27 +256,15 @@ class PagoController extends Controller
         );
     }
 
-    public function reciboPdf(Request $request, Pago $pago, PagoService $pagoService)
+    public function reciboPdf(Request $request, Pago $pago, PagoService $pagoService, PaymentReceiptDocumentService $receiptDocumentService)
     {
         if ($pago->estado !== Pago::ESTADO_PAGADO) {
             abort(404);
         }
 
         $recibo = $pagoService->emitirReciboParaPago($pago, $request->user(), 'Reimpresion de recibo solicitada por administracion.');
-        if (! $recibo->pdf_path || ! Storage::disk('local')->exists($recibo->pdf_path)) {
-            abort(404);
-        }
 
-        $fileName = 'recibo_pago_'.($recibo->folio_recibo ?: $recibo->id).'.pdf';
-
-        return Storage::disk('local')->response(
-            $recibo->pdf_path,
-            $fileName,
-            [
-                'Content-Type' => 'application/pdf',
-                'Content-Disposition' => 'inline; filename="'.$fileName.'"',
-            ]
-        );
+        return $receiptDocumentService->streamReceiptResponse($recibo, $request->user(), 'admin');
     }
 
     public function comprobante(Pago $pago)

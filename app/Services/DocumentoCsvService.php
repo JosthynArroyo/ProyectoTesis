@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\CertificadoMedico;
+use App\Models\Pago;
+use App\Models\PaymentReceipt;
 use App\Models\PedidoLaboratorioResultado;
 use App\Models\PedidoLaboratorio;
 use App\Models\Receta;
@@ -122,6 +124,24 @@ class DocumentoCsvService
             ];
         }
 
+        $pago = Pago::query()->with('paciente')->where('csv', $csv)->first();
+        if ($pago) {
+            return [
+                'tipo' => 'orden_cobro',
+                'titulo' => 'Orden de cobro',
+                'pago' => $pago,
+            ];
+        }
+
+        $receipt = PaymentReceipt::query()->with(['pago.paciente'])->where('csv', $csv)->first();
+        if ($receipt) {
+            return [
+                'tipo' => 'recibo_pago',
+                'titulo' => 'Recibo de pago',
+                'receipt' => $receipt,
+            ];
+        }
+
         return null;
     }
 
@@ -139,7 +159,9 @@ class DocumentoCsvService
         return Receta::query()->where('csv', $csv)->exists()
             || CertificadoMedico::query()->where('csv', $csv)->exists()
             || PedidoLaboratorio::query()->where('csv', $csv)->exists()
-            || PedidoLaboratorioResultado::query()->where('csv', $csv)->exists();
+            || PedidoLaboratorioResultado::query()->where('csv', $csv)->exists()
+            || Pago::query()->where('csv', $csv)->exists()
+            || PaymentReceipt::query()->where('csv', $csv)->exists();
     }
 
     private function normalizeCsv(string $csv): string

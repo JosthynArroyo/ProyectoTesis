@@ -29,6 +29,9 @@ class PaymentReceipt extends Model
         'comprobante_path',
         'comprobante_disk',
         'pdf_path',
+        'pdf_disk',
+        'verification_token',
+        'csv',
     ];
 
     protected $casts = [

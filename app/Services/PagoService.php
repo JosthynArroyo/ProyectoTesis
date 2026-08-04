@@ -28,7 +28,10 @@ class PagoService
 
     private const FOLIO_COLLISION_ATTEMPTS = 100;
 
-    public function __construct(private readonly PagoDocumentoService $documentoService) {}
+    public function __construct(
+        private readonly PagoDocumentoService $documentoService,
+        private readonly PaymentReceiptDocumentService $receiptDocumentService
+    ) {}
 
     public function crearParaCita(Cita $cita, ?User $actor = null): Pago
     {
@@ -113,6 +116,9 @@ class PagoService
                     if (empty($pagoBloqueado->token_publico)) {
                         $actualizar['token_publico'] = $this->generarTokenPublico($pagoBloqueado);
                     }
+                    if (empty($pagoBloqueado->csv)) {
+                        $actualizar['csv'] = app(DocumentoCsvService::class)->generateCsv();
+                    }
 
                     if (! empty($actualizar)) {
                         $pagoBloqueado->fill($actualizar);
@@ -174,10 +180,9 @@ class PagoService
         /** @var PaymentReceipt|null $existente */
         $existente = $pago->receipt()->first();
         if ($existente) {
-            if (! $existente->pdf_path || ! Storage::disk('local')->exists($existente->pdf_path)) {
-                $path = $this->documentoService->generarReciboPagoPdf($pago, $existente);
-                $existente->pdf_path = $path;
-                $existente->save();
+            $hasValidPdf = $existente->pdf_path && $this->receiptDocumentService->resolveStorage($existente->pdf_path, $existente->pdf_disk) !== null;
+            if (! $hasValidPdf) {
+                $this->receiptDocumentService->generateAndStoreReceiptPdf($pago, $existente, $this->documentoService);
 
                 $this->registrarReciboLog(
                     receipt: $existente,
@@ -206,6 +211,8 @@ class PagoService
             $receipt = PaymentReceipt::query()->create([
                 'pago_id' => $pago->id,
                 'folio_recibo' => $this->generarFolioRecibo($pago),
+                'verification_token' => Str::random(40),
+                'csv' => app(DocumentoCsvService::class)->generateCsv(),
                 'emitido_en' => now(),
                 'emitido_por' => $actor?->id,
                 'metodo_pago' => $pago->metodo_pago ?: Pago::METODO_EFECTIVO,
@@ -215,9 +222,7 @@ class PagoService
                 'comprobante_disk' => $pago->comprobante_disk,
             ]);
 
-            $path = $this->documentoService->generarReciboPagoPdf($pago, $receipt);
-            $receipt->pdf_path = $path;
-            $receipt->save();
+            $this->receiptDocumentService->generateAndStoreReceiptPdf($pago, $receipt, $this->documentoService);
 
             $this->registrarReciboLog(
                 receipt: $receipt,

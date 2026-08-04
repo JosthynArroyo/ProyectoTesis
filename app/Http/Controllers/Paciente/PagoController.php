@@ -7,6 +7,7 @@ use App\Http\Requests\Paciente\SubmitPagoRequest;
 use App\Models\Pago;
 use App\Services\PagoService;
 use App\Services\PaymentProofStorageService;
+use App\Services\PaymentReceiptDocumentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -175,26 +176,13 @@ class PagoController extends Controller
         );
     }
 
-    public function reciboPdf(Pago $pago)
+    public function reciboPdf(Pago $pago, PaymentReceiptDocumentService $receiptDocumentService)
     {
-        if ((int) $pago->paciente_id !== (int) Auth::id()) {
-            abort(403);
-        }
-
         $recibo = $pago->receipt;
-        if (! $recibo || ! $recibo->pdf_path || ! Storage::disk('local')->exists($recibo->pdf_path)) {
+        if (! $recibo) {
             abort(404);
         }
 
-        $fileName = 'recibo_pago_' . ($recibo->folio_recibo ?: $recibo->id) . '.pdf';
-
-        return Storage::disk('local')->response(
-            $recibo->pdf_path,
-            $fileName,
-            [
-                'Content-Type' => 'application/pdf',
-                'Content-Disposition' => 'inline; filename="' . $fileName . '"',
-            ]
-        );
+        return $receiptDocumentService->streamReceiptResponse($recibo, Auth::user(), 'paciente');
     }
 }

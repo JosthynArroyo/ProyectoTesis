@@ -48,10 +48,16 @@ class DocumentoVerificacionController extends Controller
         $tipo = $documento['tipo'] ?? null;
 
         $base = [
-            'csv'      => $csv,
-            'tipo'     => $tipo,
-            'titulo'   => $documento['titulo'] ?? 'Documento médico',
-            'clinica'  => $clinic->institutionalName(),
+            'csv'         => $csv,
+            'tipo'        => $tipo,
+            'titulo'      => $documento['titulo'] ?? 'Documento médico',
+            'clinica'     => $clinic->institutionalName(),
+            'doctor'      => null,
+            'paciente'    => null,
+            'version'     => null,
+            'folio'       => null,
+            'monto'       => null,
+            'metodo_pago' => null,
         ];
 
         switch ($tipo) {
@@ -97,6 +103,39 @@ class DocumentoVerificacionController extends Controller
                     'version'    => $resultado ? 'V'.$resultado->version : null,
                     'emitido_en' => $resultado?->publicado_at,
                     'estado'     => 'Verificado',
+                ]);
+
+            case 'orden_cobro':
+                $pago = $documento['pago'];
+                $pago->loadMissing('paciente');
+                $estadoClean = match($pago->estado) {
+                    'pagado' => 'Pagado',
+                    'en_verificacion' => 'En verificación',
+                    'rechazado' => 'Rechazado',
+                    'anulado' => 'Anulado',
+                    default => 'Pendiente',
+                };
+                return array_merge($base, [
+                    'titulo' => 'Orden de cobro',
+                    'folio' => $pago->folio_unico ?: 'Sin Folio',
+                    'paciente' => $this->protectedName($pago->paciente?->name),
+                    'emitido_en' => $pago->created_at,
+                    'monto' => '$' . number_format((float) $pago->monto, 2) . ' ' . ($pago->moneda ?: 'USD'),
+                    'estado' => $estadoClean,
+                ]);
+
+            case 'recibo_pago':
+                $receipt = $documento['receipt'];
+                $receipt->loadMissing(['pago.paciente']);
+                $estadoClean = ($receipt->pago?->estado === 'anulado') ? 'Anulado' : 'Pagado';
+                return array_merge($base, [
+                    'titulo' => 'Recibo de pago',
+                    'folio' => $receipt->folio_recibo,
+                    'paciente' => $this->protectedName($receipt->pago?->paciente?->name),
+                    'emitido_en' => $receipt->emitido_en ?: $receipt->created_at,
+                    'monto' => '$' . number_format((float) $receipt->monto, 2) . ' ' . ($receipt->pago?->moneda ?: 'USD'),
+                    'metodo_pago' => strtoupper((string) $receipt->metodo_pago),
+                    'estado' => $estadoClean,
                 ]);
 
             default:

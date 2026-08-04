@@ -82,19 +82,19 @@
         </div>
 
         <div class="mt-3 flex flex-wrap gap-2">
-          @if($ordenDisponible)
-            <a href="{{ route('paciente.pagos.orden.pdf', $pago) }}" class="btn btn-outline btn-sm" target="_blank" rel="noopener">Descargar orden</a>
+          @if($pago->estado !== 'pagado' && $ordenDisponible)
+            <a href="{{ route('paciente.pagos.orden.pdf', $pago) }}" class="btn btn-outline btn-sm" target="_blank" rel="noopener" data-action-lock-ignore data-skip-page-loader>Descargar orden</a>
             @if($pago->token_publico)
-              <a href="{{ route('pagos.token.show', $pago->token_publico) }}" class="btn btn-outline btn-sm">Abrir token</a>
+              <a href="{{ route('pagos.token.show', $pago->token_publico) }}" class="btn btn-outline btn-sm" target="_blank" rel="noopener" data-action-lock-ignore data-skip-page-loader>Abrir token</a>
             @endif
           @endif
 
           @if($pago->estado === 'pagado' && $pago->receipt)
-            <a href="{{ route('paciente.pagos.recibo.pdf', $pago) }}" class="btn btn-outline btn-sm" target="_blank" rel="noopener">Descargar recibo</a>
+            <a href="{{ route('paciente.pagos.recibo.pdf', $pago) }}" class="btn btn-outline btn-sm" target="_blank" rel="noopener" data-action-lock-ignore data-skip-page-loader>Descargar recibo</a>
           @endif
 
           @if($pago->comprobante_path)
-            <a href="{{ route('paciente.pagos.comprobante', $pago) }}" class="btn btn-outline btn-sm" target="_blank" rel="noopener">Ver comprobante</a>
+            <a href="{{ route('paciente.pagos.comprobante', $pago) }}" class="btn btn-outline btn-sm" target="_blank" rel="noopener" data-action-lock-ignore data-skip-page-loader>Ver comprobante</a>
           @endif
         </div>
 

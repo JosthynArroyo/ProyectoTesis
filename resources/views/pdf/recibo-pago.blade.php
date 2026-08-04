@@ -76,6 +76,13 @@
 
     <div class="paid">PAGADO</div>
 
+    @if(!empty($qrDataUri))
+        <div style="margin-top: 14px; text-align: center;">
+            <img src="{{ $qrDataUri }}" alt="QR Verificación" style="width: 90px; height: 90px;">
+            <p style="font-size: 9px; color: #6b7280; margin-top: 2px;">Escanee para verificar la autenticidad financiera de este recibo</p>
+        </div>
+    @endif
+
     <div class="footer">
         Documento emitido por el sistema interno de cobros.
         No incluye información clínica.
