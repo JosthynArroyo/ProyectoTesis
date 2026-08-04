@@ -10,6 +10,7 @@ use App\Http\Requests\Admin\UpdatePagoMetodoRequest;
 use App\Http\Requests\Admin\UpdatePagoMontoRequest;
 use App\Models\Pago;
 use App\Services\PagoService;
+use App\Services\PaymentProofStorageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -17,6 +18,9 @@ use Illuminate\Support\Str;
 
 class PagoController extends Controller
 {
+    public function __construct(
+        private readonly PaymentProofStorageService $paymentProofStorageService
+    ) {}
     public function index(Request $request)
     {
         $estado = (string) $request->query('estado', '');
@@ -276,52 +280,6 @@ class PagoController extends Controller
 
     public function comprobante(Pago $pago)
     {
-        $stored = $this->resolveComprobanteStorage($pago->comprobante_path);
-        if (! $stored) {
-            abort(404);
-        }
-
-        $disk = Storage::disk($stored['disk']);
-        $mime = $disk->mimeType($stored['path']) ?: 'application/octet-stream';
-        $fileName = 'comprobante_pago_'.$pago->id.'.'.pathinfo($stored['path'], PATHINFO_EXTENSION);
-
-        return $disk->response(
-            $stored['path'],
-            $fileName,
-            [
-                'Content-Type' => $mime,
-                'Content-Disposition' => 'inline; filename="'.$fileName.'"',
-            ]
-        );
-    }
-
-    /**
-     * @return array{disk:string,path:string}|null
-     */
-    private function resolveComprobanteStorage(?string $path): ?array
-    {
-        $normalized = trim((string) $path);
-        if ($normalized === '') {
-            return null;
-        }
-
-        $normalized = ltrim(str_replace('\\', '/', $normalized), '/');
-
-        if (Storage::disk('local')->exists($normalized)) {
-            return ['disk' => 'local', 'path' => $normalized];
-        }
-
-        $publicCandidates = [$normalized];
-        if (Str::startsWith($normalized, 'storage/')) {
-            $publicCandidates[] = ltrim(substr($normalized, 8), '/');
-        }
-
-        foreach ($publicCandidates as $candidate) {
-            if ($candidate !== '' && Storage::disk('public')->exists($candidate)) {
-                return ['disk' => 'public', 'path' => $candidate];
-            }
-        }
-
-        return null;
+        return $this->paymentProofStorageService->streamProofResponse($pago, auth()->user(), 'admin');
     }
 }

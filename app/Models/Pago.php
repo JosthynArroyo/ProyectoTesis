@@ -94,6 +94,7 @@ class Pago extends Model
         'referencia_transaccion',
         'observacion_admin',
         'comprobante_path',
+        'comprobante_disk',
         'orden_pdf_path',
         'aprobado_por',
         'aprobado_en',

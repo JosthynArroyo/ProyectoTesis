@@ -212,6 +212,7 @@ class PagoService
                 'monto' => $pago->monto,
                 'referencia_transaccion' => $pago->referencia_transaccion,
                 'comprobante_path' => $pago->comprobante_path,
+                'comprobante_disk' => $pago->comprobante_disk,
             ]);
 
             $path = $this->documentoService->generarReciboPagoPdf($pago, $receipt);

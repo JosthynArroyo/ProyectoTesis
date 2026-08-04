@@ -31,7 +31,8 @@ class SubmitPagoRequest extends FormRequest
             : [
                 $requiereComprobante ? 'required' : 'nullable',
                 'file',
-                'mimes:jpg,jpeg,png,webp,pdf',
+                'mimes:jpg,jpeg,png',
+                'mimetypes:image/jpeg,image/png',
                 'max:5120',
             ];
 
@@ -50,8 +51,9 @@ class SubmitPagoRequest extends FormRequest
             'referencia_transaccion.max' => 'La referencia no debe superar 120 caracteres.',
             'comprobante.required' => 'Debe adjuntar el comprobante para transferencias.',
             'comprobante.file' => 'El comprobante debe ser un archivo valido.',
-            'comprobante.mimes' => 'El comprobante debe ser JPG, JPEG, PNG, WEBP o PDF.',
-            'comprobante.max' => 'El comprobante no debe superar 5 MB.',
+            'comprobante.mimes' => 'Formatos permitidos: JPG, JPEG y PNG. Tamaño maximo: 5 MB.',
+            'comprobante.mimetypes' => 'Formatos permitidos: JPG, JPEG y PNG. Tamaño maximo: 5 MB.',
+            'comprobante.max' => 'Formatos permitidos: JPG, JPEG y PNG. Tamaño maximo: 5 MB.',
             'comprobante.prohibited' => 'El pago en efectivo no requiere comprobante.',
         ];
     }

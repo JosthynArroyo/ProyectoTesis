@@ -5,15 +5,18 @@ namespace App\Http\Controllers\Paciente;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Paciente\SubmitPagoRequest;
 use App\Models\Pago;
-use App\Services\ImageOptimizer;
 use App\Services\PagoService;
+use App\Services\PaymentProofStorageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 class PagoController extends Controller
 {
+    public function __construct(
+        private readonly PaymentProofStorageService $paymentProofStorageService
+    ) {}
+
     public function index(Request $request)
     {
         $user = Auth::user();
@@ -46,10 +49,9 @@ class PagoController extends Controller
     public function submit(
         SubmitPagoRequest $request,
         Pago $pago,
-        PagoService $pagoService,
-        ImageOptimizer $imageOptimizer
+        PagoService $pagoService
     ) {
-        if ((int) $pago->paciente_id !== (int) Auth::id()) {
+        if (! $this->paymentProofStorageService->userCanViewProof($request->user(), $pago, 'paciente')) {
             abort(403);
         }
 
@@ -78,30 +80,35 @@ class PagoController extends Controller
         }
 
         $comprobantePath = $pago->comprobante_path;
+        $comprobanteDisk = $pago->comprobante_disk;
 
         if ($metodo === Pago::METODO_TRANSFERENCIA) {
             if ($request->hasFile('comprobante')) {
-                $this->deleteComprobante($comprobantePath, $imageOptimizer);
-
-                $file = $request->file('comprobante');
-                $extension = strtolower((string) $file->getClientOriginalExtension());
-                $mime = strtolower((string) $file->getMimeType());
-
-                if ($this->isImageUpload($extension, $mime)) {
-                    $comprobantePath = $imageOptimizer->optimizeAndStore(
-                        $file,
-                        'payment-proofs/patients/'.$pago->paciente_id
+                try {
+                    $stored = $this->paymentProofStorageService->uploadAndStoreProof(
+                        $request->file('comprobante'),
+                        $pago
                     );
-                } else {
-                    $comprobantePath = $file->store(
-                        'pagos/comprobantes/pacientes/'.$pago->paciente_id,
-                        'local'
-                    );
+                    $comprobantePath = $stored['path'];
+                    $comprobanteDisk = $stored['disk'];
+                } catch (\InvalidArgumentException $e) {
+                    return back()->withErrors([
+                        'comprobante' => $e->getMessage(),
+                    ])->withInput();
+                } catch (\Throwable $e) {
+                    return back()->withErrors([
+                        'comprobante' => 'Error al procesar el comprobante: ' . $e->getMessage(),
+                    ])->withInput();
                 }
             }
         } else {
-            $this->deleteComprobante($comprobantePath, $imageOptimizer);
-            $comprobantePath = null;
+            if ($comprobantePath) {
+                $oldPath = $comprobantePath;
+                $oldDisk = $comprobanteDisk;
+                $comprobantePath = null;
+                $comprobanteDisk = null;
+                $this->paymentProofStorageService->deleteOldProofIfSafe($oldPath, $oldDisk);
+            }
         }
 
         $nuevoEstado = $metodo === Pago::METODO_TRANSFERENCIA
@@ -123,6 +130,7 @@ class PagoController extends Controller
                 'metodo_pago' => $metodo,
                 'referencia_transaccion' => $data['referencia_transaccion'] ?? null,
                 'comprobante_path' => $comprobantePath,
+                'comprobante_disk' => $comprobanteDisk,
                 'observacion_admin' => null,
             ]
         );
@@ -138,79 +146,7 @@ class PagoController extends Controller
 
     public function comprobante(Pago $pago)
     {
-        if ((int) $pago->paciente_id !== (int) Auth::id()) {
-            abort(403);
-        }
-
-        $stored = $this->resolveComprobanteStorage($pago->comprobante_path);
-        if (! $stored) {
-            abort(404);
-        }
-
-        $disk = Storage::disk($stored['disk']);
-        $mime = $disk->mimeType($stored['path']) ?: 'application/octet-stream';
-        $fileName = 'comprobante_pago_'.$pago->id.'.'.pathinfo($stored['path'], PATHINFO_EXTENSION);
-
-        return $disk->response(
-            $stored['path'],
-            $fileName,
-            [
-                'Content-Type' => $mime,
-                'Content-Disposition' => 'inline; filename="'.$fileName.'"',
-            ]
-        );
-    }
-
-    private function deleteComprobante(?string $path, ImageOptimizer $imageOptimizer): void
-    {
-        $stored = $this->resolveComprobanteStorage($path);
-        if (! $stored) {
-            return;
-        }
-
-        if ($stored['disk'] === 'local') {
-            Storage::disk('local')->delete($stored['path']);
-
-            return;
-        }
-
-        $imageOptimizer->deleteByStoredPath($stored['path']);
-    }
-
-    /**
-     * @return array{disk:string,path:string}|null
-     */
-    private function resolveComprobanteStorage(?string $path): ?array
-    {
-        $normalized = trim((string) $path);
-        if ($normalized === '') {
-            return null;
-        }
-
-        $normalized = ltrim(str_replace('\\', '/', $normalized), '/');
-
-        if (Storage::disk('local')->exists($normalized)) {
-            return ['disk' => 'local', 'path' => $normalized];
-        }
-
-        $publicCandidates = [$normalized];
-        if (Str::startsWith($normalized, 'storage/')) {
-            $publicCandidates[] = ltrim(substr($normalized, 8), '/');
-        }
-
-        foreach ($publicCandidates as $candidate) {
-            if ($candidate !== '' && Storage::disk('public')->exists($candidate)) {
-                return ['disk' => 'public', 'path' => $candidate];
-            }
-        }
-
-        return null;
-    }
-
-    private function isImageUpload(string $extension, string $mime): bool
-    {
-        return in_array($extension, ['jpg', 'jpeg', 'png', 'webp'], true)
-            || in_array($mime, ['image/jpeg', 'image/pjpeg', 'image/png', 'image/webp'], true);
+        return $this->paymentProofStorageService->streamProofResponse($pago, Auth::user(), 'paciente');
     }
 
     public function ordenPdf(Request $request, Pago $pago, PagoService $pagoService)
@@ -227,14 +163,14 @@ class PagoController extends Controller
             abort(404);
         }
 
-        $fileName = 'orden_cobro_'.($pago->folio_unico ?: $pago->id).'.pdf';
+        $fileName = 'orden_cobro_' . ($pago->folio_unico ?: $pago->id) . '.pdf';
 
         return Storage::disk('local')->response(
             $path,
             $fileName,
             [
                 'Content-Type' => 'application/pdf',
-                'Content-Disposition' => 'inline; filename="'.$fileName.'"',
+                'Content-Disposition' => 'inline; filename="' . $fileName . '"',
             ]
         );
     }
@@ -250,14 +186,14 @@ class PagoController extends Controller
             abort(404);
         }
 
-        $fileName = 'recibo_pago_'.($recibo->folio_recibo ?: $recibo->id).'.pdf';
+        $fileName = 'recibo_pago_' . ($recibo->folio_recibo ?: $recibo->id) . '.pdf';
 
         return Storage::disk('local')->response(
             $recibo->pdf_path,
             $fileName,
             [
                 'Content-Type' => 'application/pdf',
-                'Content-Disposition' => 'inline; filename="'.$fileName.'"',
+                'Content-Disposition' => 'inline; filename="' . $fileName . '"',
             ]
         );
     }

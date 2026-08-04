@@ -27,6 +27,7 @@ class PaymentReceipt extends Model
         'monto',
         'referencia_transaccion',
         'comprobante_path',
+        'comprobante_disk',
         'pdf_path',
     ];
 

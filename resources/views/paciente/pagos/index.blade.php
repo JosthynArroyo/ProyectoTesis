@@ -128,10 +128,14 @@
             </div>
 
             <div class="md:col-span-2 {{ $esTransferencia ? '' : 'hidden' }}" data-comprobante-wrapper>
-              <label class="form-label" for="comprobante_{{ $pago->id }}">Comprobante (JPG, PNG, WEBP, PDF · max. 5MB)</label>
-              <input id="comprobante_{{ $pago->id }}" type="file" name="comprobante" class="form-input" accept=".jpg,.jpeg,.png,.webp,.pdf" data-comprobante-input @if(!$esTransferencia) disabled @endif>
-              @error('comprobante')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
-              <p class="mt-1 text-xs text-gray-500">Para transferencia se requiere comprobante para enviar a verificación.</p>
+              <label class="form-label" for="comprobante_{{ $pago->id }}">Comprobante (JPG, JPEG, PNG · máx. 5MB)</label>
+              <input id="comprobante_{{ $pago->id }}" type="file" name="comprobante" class="form-input" accept="image/jpeg,image/png" data-comprobante-input @if(!$esTransferencia) disabled @endif>
+              <span data-comprobante-error class="text-xs text-rose-600 hidden mt-1"></span>
+              @error('comprobante')<span class="text-xs text-rose-600 block mt-1">{{ $message }}</span>@enderror
+              <p class="mt-1 text-xs text-gray-500">Formatos permitidos: JPG, JPEG y PNG. Tamaño máximo: 5 MB</p>
+              <div data-comprobante-preview class="mt-2 hidden">
+                <img src="" alt="Vista previa de comprobante" class="max-h-48 rounded-lg border border-gray-200 object-contain">
+              </div>
             </div>
 
             <div class="md:col-span-2 rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700 hidden" data-efectivo-msg-unconfirmed>
@@ -175,6 +179,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const metodoSelect = form.querySelector('[data-metodo-select]');
     const comprobanteWrapper = form.querySelector('[data-comprobante-wrapper]');
     const comprobanteInput = form.querySelector('[data-comprobante-input]');
+    const comprobanteError = form.querySelector('[data-comprobante-error]');
+    const comprobantePreview = form.querySelector('[data-comprobante-preview]');
     const unconfirmedMsg = form.querySelector('[data-efectivo-msg-unconfirmed]');
     const confirmedMsg = form.querySelector('[data-efectivo-msg-confirmed]');
     const submitButton = form.querySelector('[data-submit-label]');
@@ -182,6 +188,50 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!metodoSelect || !submitButton) {
       return;
     }
+
+    if (comprobanteInput) {
+      comprobanteInput.addEventListener('change', () => {
+        if (comprobanteError) comprobanteError.classList.add('hidden');
+        if (comprobantePreview) comprobantePreview.classList.add('hidden');
+
+        const file = comprobanteInput.files ? comprobanteInput.files[0] : null;
+        if (!file) return;
+
+        const validTypes = ['image/jpeg', 'image/png'];
+        const ext = file.name.split('.').pop().toLowerCase();
+        const validExts = ['jpg', 'jpeg', 'png'];
+
+        if (!validTypes.includes(file.type) || !validExts.includes(ext) || file.size > 5 * 1024 * 1024) {
+          if (comprobanteError) {
+            comprobanteError.textContent = 'Formatos permitidos: JPG, JPEG y PNG. Tamaño máximo: 5 MB';
+            comprobanteError.classList.remove('hidden');
+          }
+          comprobanteInput.value = '';
+          return;
+        }
+
+        if (comprobantePreview) {
+          const img = comprobantePreview.querySelector('img');
+          if (img) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              img.src = e.target.result;
+              comprobantePreview.classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+          }
+        }
+      });
+    }
+
+    form.addEventListener('submit', (e) => {
+      if (submitButton.disabled) {
+        e.preventDefault();
+        return;
+      }
+      submitButton.disabled = true;
+      setTimeout(() => { submitButton.disabled = false; }, 4000);
+    });
 
     const applyMode = () => {
       const metodo = metodoSelect.value;
@@ -198,6 +248,8 @@ document.addEventListener('DOMContentLoaded', () => {
         comprobanteInput.required = isTransferencia;
         if (!isTransferencia) {
           comprobanteInput.value = '';
+          if (comprobantePreview) comprobantePreview.classList.add('hidden');
+          if (comprobanteError) comprobanteError.classList.add('hidden');
         }
       }
 
