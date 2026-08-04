@@ -27,6 +27,7 @@ class Cita extends Model
         'folio_cita',
         'token_validacion',
         'comprobante_pdf_path',
+        'comprobante_pdf_disk',
         'comprobante_emitido_en',
         'comprobante_actualizado_en',
         'prioridad_nivel',

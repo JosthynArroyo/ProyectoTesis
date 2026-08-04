@@ -49,6 +49,7 @@ use App\Http\Controllers\PublicPageController;
 use App\Http\Controllers\Superadmin\AdminsController as SuperadminAdminsController;
 use App\Http\Controllers\Superadmin\DashboardController as SuperadminDashboardController;
 use App\Http\Controllers\Superadmin\MaintenanceController as SuperadminMaintenanceController;
+use App\Http\Controllers\Superadmin\DatabaseBackupController as SuperadminDatabaseBackupController;
 use App\Http\Controllers\Superadmin\PersonalizacionController as SuperadminPersonalizacionController;
 use App\Http\Controllers\Superadmin\PersonalizacionRequestController as SuperadminPersonalizacionRequestController;
 use Illuminate\Support\Facades\Route;
@@ -485,6 +486,12 @@ Route::middleware(['auth', 'role:superadmin'])
             ->name('maintenance.edit');
         Route::put('/mantenimiento', [SuperadminMaintenanceController::class, 'update'])
             ->name('maintenance.update');
+
+        // Respaldos de base de datos
+        Route::get('/respaldos', [SuperadminDatabaseBackupController::class, 'index'])->name('respaldos.index');
+        Route::post('/respaldos', [SuperadminDatabaseBackupController::class, 'store'])->middleware(['password.confirm', 'throttle:10,1'])->name('respaldos.store');
+        Route::get('/respaldos/{backup}/descargar', [SuperadminDatabaseBackupController::class, 'download'])->middleware(['password.confirm', 'throttle:10,1'])->name('respaldos.download');
+        Route::post('/respaldos/{backup}/verificar', [SuperadminDatabaseBackupController::class, 'verify'])->middleware(['password.confirm', 'throttle:10,1'])->name('respaldos.verify');
     });
 
 // ========================== PACIENTE =========================

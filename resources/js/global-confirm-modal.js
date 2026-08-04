@@ -10,6 +10,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const cancelBtn = document.getElementById('global-confirm-cancel-btn');
   const submitBtn = document.getElementById('global-confirm-submit-btn');
   const submitTextEl = document.getElementById('global-confirm-submit-text');
+  const iconBgEl = document.getElementById('global-confirm-icon-bg');
+  const iconEl = document.getElementById('global-confirm-icon');
 
   let activeTrigger = null;
   let activeForm = null;
@@ -29,13 +31,19 @@ document.addEventListener('DOMContentLoaded', () => {
     rechazar: 'Sí, rechazar',
   };
 
+  /**
+   * Resolve the confirmation button label.
+   * If an explicit customText is provided via data-confirm-btn, it is always honoured
+   * (trimmed, capped at 80 chars, inserted via textContent — never innerHTML).
+   * Inference and the "Sí, eliminar" fallback only apply when customText is absent.
+   */
   const getConfirmText = (actionType, customText) => {
-    const raw = (customText || '').trim();
-    if (raw && Object.values(validActionTexts).includes(raw)) {
+    const raw = (customText || '').trim().slice(0, 80);
+    if (raw !== '') {
       return raw;
     }
-    
-    const combined = `${actionType || ''} ${raw}`.toLowerCase();
+
+    const combined = `${actionType || ''}`.toLowerCase();
     if (combined.includes('quitar')) return 'Sí, quitar';
     if (combined.includes('desactivar') || combined.includes('inactivar') || combined.includes('suspend')) return 'Sí, desactivar';
     if (combined.includes('bloquear') || combined.includes('block')) return 'Sí, bloquear';
@@ -45,7 +53,42 @@ document.addEventListener('DOMContentLoaded', () => {
     return 'Sí, eliminar';
   };
 
-  const openModal = ({ title, target, message, consequence, confirmText, actionType, form, trigger, callback }) => {
+  /**
+   * Apply visual variant to the submit button and icon.
+   * Allowed values: 'primary', 'warning', 'danger'.
+   * When absent or unrecognised the original 'danger' styling is preserved.
+   */
+  const applyVariant = (variant) => {
+    // Reset to a neutral state first
+    submitBtn.classList.remove('btn-danger', 'btn-primary', 'btn-warning');
+    if (iconBgEl) {
+      iconBgEl.classList.remove(
+        'bg-rose-100', 'dark:bg-rose-950/40', 'text-rose-600', 'dark:text-rose-400',
+        'bg-teal-50', 'dark:bg-teal-950/40', 'text-teal-600', 'dark:text-teal-400',
+        'bg-amber-50', 'dark:bg-amber-950/40', 'text-amber-600', 'dark:text-amber-400'
+      );
+    }
+    if (iconEl) {
+      iconEl.classList.remove('ri-error-warning-line', 'ri-information-line', 'ri-alert-line', 'ri-database-2-line');
+    }
+
+    if (variant === 'primary') {
+      submitBtn.classList.add('btn-primary');
+      if (iconBgEl) iconBgEl.classList.add('bg-teal-50', 'dark:bg-teal-950/40', 'text-teal-600', 'dark:text-teal-400');
+      if (iconEl) iconEl.classList.add('ri-information-line');
+    } else if (variant === 'warning') {
+      submitBtn.classList.add('btn-warning');
+      if (iconBgEl) iconBgEl.classList.add('bg-amber-50', 'dark:bg-amber-950/40', 'text-amber-600', 'dark:text-amber-400');
+      if (iconEl) iconEl.classList.add('ri-alert-line');
+    } else {
+      // 'danger' or unrecognised — original destructive styling
+      submitBtn.classList.add('btn-danger');
+      if (iconBgEl) iconBgEl.classList.add('bg-rose-100', 'dark:bg-rose-950/40', 'text-rose-600', 'dark:text-rose-400');
+      if (iconEl) iconEl.classList.add('ri-error-warning-line');
+    }
+  };
+
+  const openModal = ({ title, target, message, consequence, confirmText, actionType, variant, form, trigger, callback }) => {
     activeTrigger = trigger || document.activeElement;
     activeForm = form || null;
     activeCallback = callback || null;
@@ -75,6 +118,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const btnLabel = getConfirmText(currentActionType, currentCustomText);
     submitTextEl.textContent = btnLabel;
+
+    applyVariant(variant || 'danger');
 
     submitBtn.disabled = false;
     cancelBtn.disabled = false;
@@ -122,7 +167,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (activeForm) {
       activeForm.dataset.confirmed = 'true';
-      activeForm.submit();
+      // Use requestSubmit so that all form event listeners (including action-lock) fire.
+      // Fall back to submit() only if requestSubmit is not available.
+      if (typeof activeForm.requestSubmit === 'function') {
+        activeForm.requestSubmit();
+      } else {
+        activeForm.submit();
+      }
       return;
     }
 
@@ -150,23 +201,24 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const submitBtn = e.submitter || form.querySelector('[type="submit"]') || document.activeElement;
-    const hasConfirmAttr = form.hasAttribute('data-confirm') || form.hasAttribute('data-confirm-title') || (submitBtn && (submitBtn.hasAttribute('data-confirm') || submitBtn.hasAttribute('data-confirm-title')));
+    const submitter = e.submitter || form.querySelector('[type="submit"]') || document.activeElement;
+    const hasConfirmAttr = form.hasAttribute('data-confirm') || form.hasAttribute('data-confirm-title') || (submitter && (submitter.hasAttribute('data-confirm') || submitter.hasAttribute('data-confirm-title')));
     const isDeleteMethod = form.querySelector('input[name="_method"][value="DELETE"]') !== null || (form.getAttribute('method') || '').toUpperCase() === 'DELETE';
     const formOnsubmit = form.getAttribute('onsubmit') || '';
-    const btnOnclick = submitBtn ? submitBtn.getAttribute('onclick') || '' : '';
+    const btnOnclick = submitter ? submitter.getAttribute('onclick') || '' : '';
     const hasInlineConfirm = formOnsubmit.includes('confirm') || btnOnclick.includes('confirm');
 
     if (hasConfirmAttr || isDeleteMethod || hasInlineConfirm) {
       e.preventDefault();
       e.stopPropagation();
 
-      const title = form.dataset.confirmTitle || submitBtn?.dataset?.confirmTitle || '¿Confirmar acción crítica?';
-      const target = form.dataset.confirmTarget || submitBtn?.dataset?.confirmTarget || '';
-      const message = form.dataset.confirmMessage || submitBtn?.dataset?.confirmMessage || '¿Estás seguro de que deseas ejecutar esta acción?';
-      const consequence = form.dataset.confirmConsequence || submitBtn?.dataset?.confirmConsequence || 'Esta modificación alterará el estado del registro.';
-      const confirmText = form.dataset.confirmButton || form.dataset.confirmBtn || submitBtn?.dataset?.confirmButton || submitBtn?.dataset?.confirmBtn || '';
-      const actionType = form.dataset.confirmAction || submitBtn?.dataset?.confirmAction || (isDeleteMethod ? 'eliminar' : 'eliminar');
+      const title = form.dataset.confirmTitle || submitter?.dataset?.confirmTitle || '¿Confirmar acción crítica?';
+      const target = form.dataset.confirmTarget || submitter?.dataset?.confirmTarget || '';
+      const message = form.dataset.confirmMessage || submitter?.dataset?.confirmMessage || '¿Estás seguro de que deseas ejecutar esta acción?';
+      const consequence = form.dataset.confirmConsequence || submitter?.dataset?.confirmConsequence || 'Esta modificación alterará el estado del registro.';
+      const confirmText = form.dataset.confirmButton || form.dataset.confirmBtn || submitter?.dataset?.confirmButton || submitter?.dataset?.confirmBtn || '';
+      const actionType = form.dataset.confirmAction || submitter?.dataset?.confirmAction || (isDeleteMethod ? 'eliminar' : 'eliminar');
+      const variant = form.dataset.confirmVariant || submitter?.dataset?.confirmVariant || '';
 
       openModal({
         title,
@@ -175,8 +227,9 @@ document.addEventListener('DOMContentLoaded', () => {
         consequence,
         confirmText,
         actionType,
+        variant,
         form,
-        trigger: submitBtn || form
+        trigger: submitter || form
       });
     }
   }, true);
@@ -200,6 +253,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const consequence = trigger.dataset.confirmConsequence || 'Esta modificación alterará el estado del registro.';
         const confirmText = trigger.dataset.confirmButton || trigger.dataset.confirmBtn || '';
         const actionType = trigger.dataset.confirmAction || (confirmText ? confirmText : 'eliminar');
+        const variant = trigger.dataset.confirmVariant || '';
 
         openModal({
           title,
@@ -208,6 +262,7 @@ document.addEventListener('DOMContentLoaded', () => {
           consequence,
           confirmText,
           actionType,
+          variant,
           form,
           trigger
         });
@@ -225,6 +280,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const consequence = trigger.dataset.confirmConsequence || 'Esta modificación alterará el estado del registro.';
       const confirmText = trigger.dataset.confirmButton || trigger.dataset.confirmBtn || '';
       const actionType = trigger.dataset.confirmAction || 'eliminar';
+      const variant = trigger.dataset.confirmVariant || '';
       const href = trigger.getAttribute('href');
 
       openModal({
@@ -234,6 +290,7 @@ document.addEventListener('DOMContentLoaded', () => {
         consequence,
         confirmText,
         actionType,
+        variant,
         trigger,
         callback: async () => {
           if (href && href !== '#') {

@@ -81,6 +81,15 @@ return [
             'after_commit' => true,
         ],
 
+        'database_backups' => [
+            'driver' => 'database',
+            'connection' => env('DB_QUEUE_CONNECTION'),
+            'table' => env('DB_QUEUE_TABLE', 'jobs'),
+            'queue' => env('BACKUP_QUEUE', 'backups'),
+            'retry_after' => (int) env('BACKUP_QUEUE_RETRY_AFTER', 2400),
+            'after_commit' => true,
+        ],
+
     ],
 
     /*

@@ -149,7 +149,7 @@
             @endif
 
             <div class="mt-3 flex flex-wrap gap-2">
-              <a class="btn btn-outline btn-sm" href="{{ route('paciente.citas.comprobante.pdf', $cita) }}" target="_blank" rel="noopener">
+              <a class="btn btn-outline btn-sm" href="{{ route('paciente.citas.comprobante.pdf', $cita) }}" target="_blank" rel="noopener" data-action-lock-ignore data-skip-page-loader>
                 <i class="ri-file-download-line"></i>
                 Descargar comprobante
               </a>

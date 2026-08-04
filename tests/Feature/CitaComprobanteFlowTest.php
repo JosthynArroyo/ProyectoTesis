@@ -24,6 +24,8 @@ class CitaComprobanteFlowTest extends TestCase
     {
         parent::setUp();
 
+        config(['private_documents.disk' => 'r2_private']);
+        Storage::fake('r2_private');
         Storage::fake('local');
     }
 
@@ -57,7 +59,11 @@ class CitaComprobanteFlowTest extends TestCase
 
         $cita->refresh();
         $this->assertNotEmpty($cita->comprobante_pdf_path);
-        Storage::disk('local')->assertExists($cita->comprobante_pdf_path);
+        $this->assertSame('r2_private', $cita->comprobante_pdf_disk);
+        Storage::disk('r2_private')->assertExists($cita->comprobante_pdf_path);
+        $pdfBytes = Storage::disk('r2_private')->get($cita->comprobante_pdf_path);
+        $this->assertStringStartsWith('%PDF', $pdfBytes);
+        $this->assertEmpty(Storage::disk('local')->allFiles('citas/comprobantes'));
     }
 
     public function test_agendar_cita_no_genera_orden_de_pago(): void
@@ -106,7 +112,12 @@ class CitaComprobanteFlowTest extends TestCase
 
         $cita->refresh();
         $this->assertNotEmpty($cita->comprobante_pdf_path);
-        Storage::disk('local')->assertExists($cita->comprobante_pdf_path);
+        $this->assertSame('r2_private', $cita->comprobante_pdf_disk);
+        Storage::disk('r2_private')->assertExists($cita->comprobante_pdf_path);
+        $pdfBytes = Storage::disk('r2_private')->get($cita->comprobante_pdf_path);
+        $this->assertStringStartsWith('%PDF', $pdfBytes);
+        $this->assertEmpty(Storage::disk('local')->allFiles('citas/comprobantes'));
+
         $this->actingAs($paciente)
             ->get(route('citas.comprobante.show', $cita->token_validacion))
             ->assertOk()
@@ -184,7 +195,8 @@ class CitaComprobanteFlowTest extends TestCase
 
         $pago->refresh();
         $this->assertNotEmpty($pago->orden_pdf_path);
-        Storage::disk('local')->assertExists($pago->orden_pdf_path);
+        $disk = $pago->orden_pdf_disk ?: 'r2_private';
+        Storage::disk($disk)->assertExists($pago->orden_pdf_path);
 
         $this->actingAs($paciente)
             ->get(route('pagos.token.show', $pago->token_publico))

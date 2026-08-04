@@ -18,31 +18,12 @@ class CitaComprobanteService
 {
     public function sincronizarComprobante(Cita $cita): Cita
     {
-        $cita = $this->asegurarComprobante($cita);
-        $path = $this->generarComprobantePdf($cita->fresh());
-
-        $cita->forceFill([
-            'comprobante_pdf_path' => $path,
-            'comprobante_actualizado_en' => now('America/Guayaquil'),
-        ])->saveQuietly();
-
-        return $cita->refresh();
+        return app(AppointmentConfirmationDocumentService::class)->generateAndStoreR2($cita);
     }
 
     public function obtenerOGenerarPdf(Cita $cita): string
     {
-        $cita = $this->asegurarComprobante($cita);
-
-        $debeRegenerar = empty($cita->comprobante_pdf_path)
-            || ! Storage::disk('local')->exists($cita->comprobante_pdf_path)
-            || empty($cita->comprobante_actualizado_en)
-            || ($cita->updated_at && $cita->updated_at->gt($cita->comprobante_actualizado_en));
-
-        if ($debeRegenerar) {
-            return $this->sincronizarComprobante($cita)->comprobante_pdf_path;
-        }
-
-        return (string) $cita->comprobante_pdf_path;
+        return app(AppointmentConfirmationDocumentService::class)->obtenerOGenerarComprobantePdf($cita);
     }
 
     public function asegurarComprobante(Cita $cita): Cita
@@ -77,37 +58,8 @@ class CitaComprobanteService
 
     protected function generarComprobantePdf(Cita $cita): string
     {
-        $cita->loadMissing([
-            'paciente:id,name,dni,telefono',
-            'dependiente',
-            'doctor:id,name',
-            'especialidad:id,nombre',
-        ]);
-
-        $qrUrl = route('citas.comprobante.show', ['token' => $cita->token_validacion], true);
-        $qrDataUri = $this->generarQrDataUri($qrUrl);
-        $identity = app(ClinicIdentityService::class);
-
-        $html = view('pdf.comprobante-cita', [
-            'cita' => $cita,
-            'qrUrl' => $qrUrl,
-            'qrDataUri' => $qrDataUri,
-            'fechaPdf' => now('America/Guayaquil'),
-            'logoBase64' => $identity->logoBase64ForPdf(),
-            'clinica' => $identity->institutionalName(),
-        ])->render();
-
-        $pdfOutput = $this->renderizarPdf($html);
-        $folder = 'citas/comprobantes';
-        if (! Storage::disk('local')->exists($folder)) {
-            Storage::disk('local')->makeDirectory($folder);
-        }
-
-        $fileName = 'comprobante_'.Str::slug((string) $cita->folio_cita, '_').'.pdf';
-        $path = $folder.'/'.$fileName;
-        Storage::disk('local')->put($path, $pdfOutput);
-
-        return $path;
+        $updatedCita = app(AppointmentConfirmationDocumentService::class)->generateAndStoreR2($cita);
+        return (string) $updatedCita->comprobante_pdf_path;
     }
 
     protected function generarFolioCita(Cita $cita): string

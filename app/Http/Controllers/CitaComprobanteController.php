@@ -42,26 +42,8 @@ class CitaComprobanteController extends Controller
         ]);
     }
 
-    public function pdfPaciente(Request $request, Cita $cita, CitaComprobanteService $comprobanteService)
+    public function pdfPaciente(Request $request, Cita $cita, \App\Services\AppointmentConfirmationDocumentService $confirmationDocumentService)
     {
-        if ((int) $cita->paciente_id !== (int) $request->user()->id) {
-            abort(403);
-        }
-
-        $path = $comprobanteService->obtenerOGenerarPdf($cita);
-        if (! Storage::disk('local')->exists($path)) {
-            abort(404);
-        }
-
-        $fileName = 'comprobante_cita_'.($cita->folio_cita ?: $cita->id).'.pdf';
-
-        return Storage::disk('local')->response(
-            $path,
-            $fileName,
-            [
-                'Content-Type' => 'application/pdf',
-                'Content-Disposition' => 'inline; filename="'.$fileName.'"',
-            ]
-        );
+        return $confirmationDocumentService->streamConfirmationResponse($cita, $request->user(), 'inline');
     }
 }

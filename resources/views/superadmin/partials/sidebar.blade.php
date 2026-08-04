@@ -40,6 +40,10 @@
             <i class="ri-tools-line text-lg"></i> Mantenimiento
         </a>
 
+        <a href="{{ route('superadmin.respaldos.index') }}" class="flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors {{ request()->routeIs('superadmin.respaldos.*') ? 'bg-gray-100 text-gray-900 font-medium' : 'text-gray-600 hover:bg-gray-50' }}">
+            <i class="ri-database-2-line text-lg"></i> Respaldos DB
+        </a>
+
         <form id="logout-form" action="{{ route('salir') }}" method="POST" class="hidden">@csrf</form>
         <a href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();" class="mt-5 flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 text-rose-600 transition-colors hover:bg-rose-50">
             <i class="ri-logout-circle-r-line text-lg"></i> Cerrar sesión
