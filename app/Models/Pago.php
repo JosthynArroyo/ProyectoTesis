@@ -97,6 +97,7 @@ class Pago extends Model
         'comprobante_path',
         'comprobante_disk',
         'orden_pdf_path',
+        'orden_pdf_disk',
         'aprobado_por',
         'aprobado_en',
         'creado_por',

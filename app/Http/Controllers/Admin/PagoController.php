@@ -10,6 +10,7 @@ use App\Http\Requests\Admin\UpdatePagoMetodoRequest;
 use App\Http\Requests\Admin\UpdatePagoMontoRequest;
 use App\Models\Pago;
 use App\Services\PagoService;
+use App\Services\PaymentOrderDocumentService;
 use App\Services\PaymentProofStorageService;
 use App\Services\PaymentReceiptDocumentService;
 use Illuminate\Http\Request;
@@ -233,27 +234,9 @@ class PagoController extends Controller
             ->withErrors(['error' => $pago->administrativeStateMessage()]);
     }
 
-    public function ordenPdf(Request $request, Pago $pago, PagoService $pagoService)
+    public function ordenPdf(Request $request, Pago $pago, PaymentOrderDocumentService $orderDocumentService)
     {
-        if (! $pago->tieneOrdenCobro()) {
-            abort(404);
-        }
-
-        $path = $pagoService->obtenerOGenerarOrdenPdf($pago, $request->user());
-        if (! Storage::disk('local')->exists($path)) {
-            abort(404);
-        }
-
-        $fileName = 'orden_cobro_'.($pago->folio_unico ?: $pago->id).'.pdf';
-
-        return Storage::disk('local')->response(
-            $path,
-            $fileName,
-            [
-                'Content-Type' => 'application/pdf',
-                'Content-Disposition' => 'inline; filename="'.$fileName.'"',
-            ]
-        );
+        return $orderDocumentService->streamOrderResponse($pago, $request->user(), 'admin');
     }
 
     public function reciboPdf(Request $request, Pago $pago, PagoService $pagoService, PaymentReceiptDocumentService $receiptDocumentService)

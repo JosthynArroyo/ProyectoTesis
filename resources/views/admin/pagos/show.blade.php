@@ -46,8 +46,8 @@
 
       <div class="grid gap-2 md:grid-cols-3">
         @if($pago->tieneOrdenCobro())
-          <a href="{{ route('admin.pagos.orden.pdf', $pago) }}" class="btn btn-outline w-full" target="_blank" rel="noopener">Orden PDF</a>
-          <a href="{{ route('pagos.token.show', $pago->token_publico) }}" class="btn btn-outline w-full">Abrir token</a>
+          <a href="{{ route('admin.pagos.orden.pdf', $pago) }}" class="btn btn-outline w-full" target="_blank" rel="noopener" data-action-lock-ignore data-skip-page-loader>Orden PDF</a>
+          <a href="{{ route('pagos.token.show', $pago->token_publico) }}" class="btn btn-outline w-full" target="_blank" rel="noopener" data-action-lock-ignore data-skip-page-loader>Abrir token</a>
         @endif
         @if($pago->estado === 'pagado')
           <a href="{{ route('admin.pagos.recibo.pdf', $pago) }}" class="btn btn-outline w-full" target="_blank" rel="noopener" data-action-lock-ignore data-skip-page-loader>Recibo PDF</a>

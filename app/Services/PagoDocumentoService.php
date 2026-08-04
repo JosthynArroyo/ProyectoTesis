@@ -16,7 +16,7 @@ use Illuminate\Support\Str;
 
 class PagoDocumentoService
 {
-    public function generarOrdenCobroPdf(Pago $pago): string
+    public function generarOrdenCobroPdfContent(Pago $pago): string
     {
         $pago->loadMissing([
             'paciente:id,name,dni,telefono',
@@ -43,7 +43,12 @@ class PagoDocumentoService
             'logoBase64' => $this->logoBase64(),
         ])->render();
 
-        $pdfOutput = $this->renderizarPdf($html);
+        return $this->renderizarPdf($html);
+    }
+
+    public function generarOrdenCobroPdf(Pago $pago): string
+    {
+        $pdfOutput = $this->generarOrdenCobroPdfContent($pago);
         $folder = 'pagos/ordenes';
         if (! Storage::disk('local')->exists($folder)) {
             Storage::disk('local')->makeDirectory($folder);

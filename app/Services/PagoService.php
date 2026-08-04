@@ -30,7 +30,8 @@ class PagoService
 
     public function __construct(
         private readonly PagoDocumentoService $documentoService,
-        private readonly PaymentReceiptDocumentService $receiptDocumentService
+        private readonly PaymentReceiptDocumentService $receiptDocumentService,
+        private readonly PaymentOrderDocumentService $orderDocumentService
     ) {}
 
     public function crearParaCita(Cita $cita, ?User $actor = null): Pago
@@ -149,23 +150,24 @@ class PagoService
     {
         $pago = $this->asegurarDatosOrden($pago, $actor);
 
-        if ($pago->orden_pdf_path && Storage::disk('local')->exists($pago->orden_pdf_path)) {
-            return $pago->orden_pdf_path;
+        if (! empty($pago->orden_pdf_path)) {
+            $resolved = $this->orderDocumentService->resolveStorage($pago->orden_pdf_path, $pago->orden_pdf_disk);
+            if ($resolved !== null) {
+                return $resolved['path'];
+            }
         }
 
-        $path = $this->documentoService->generarOrdenCobroPdf($pago);
-        $pago->orden_pdf_path = $path;
-        $pago->save();
+        $key = $this->orderDocumentService->generateAndStoreOrderPdf($pago, $this->documentoService);
 
         $this->registrarLog(
             pago: $pago,
             estadoAnterior: $pago->estado,
             estadoNuevo: $pago->estado,
             actor: $actor,
-            motivo: 'PDF de orden de cobro generado.'
+            motivo: 'PDF de orden de cobro generado en R2.'
         );
 
-        return $path;
+        return $key;
     }
 
     public function emitirReciboParaPago(Pago $pago, ?User $actor = null, ?string $motivo = null): PaymentReceipt
