@@ -138,6 +138,32 @@ class DocumentoVerificacionController extends Controller
                     'estado' => $estadoClean,
                 ]);
 
+            case 'comprobante_cita':
+                $cita = $documento['cita'];
+                $cita->loadMissing(['paciente', 'doctor', 'especialidad', 'dependiente']);
+                $estadoClean = match($cita->estado) {
+                    'pendiente' => 'Pendiente',
+                    'confirmada' => 'Confirmada',
+                    'cancelada' => 'Cancelada',
+                    'realizada' => 'Realizada',
+                    'no_se_presento' => 'No se presentó',
+                    default => ucfirst((string) $cita->estado),
+                };
+                $fechaStr = $cita->fecha instanceof \Carbon\Carbon
+                    ? $cita->fecha->format('Y-m-d')
+                    : (string) $cita->fecha;
+                $citaDateTime = \Carbon\Carbon::parse($fechaStr . ' ' . $cita->hora);
+                $pacienteName = $cita->dependiente?->nombre ?? $cita->paciente?->name;
+                return array_merge($base, [
+                    'titulo' => 'Comprobante de cita',
+                    'folio' => $cita->folio_cita ?: 'Sin Folio',
+                    'paciente' => $this->protectedName($pacienteName),
+                    'emitido_en' => $citaDateTime,
+                    'doctor' => $cita->doctor?->name,
+                    'especialidad' => $cita->especialidad?->nombre,
+                    'estado' => $estadoClean,
+                ]);
+
             default:
                 return null;
         }

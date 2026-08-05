@@ -917,4 +917,301 @@ class DatabaseBackupSystemTest extends TestCase
         // Must NOT show the action-lock overlay label for downloads
         $this->assertStringNotContainsString('Abriendo Descargar', $html);
     }
+
+    public function test_47_restore_backup_protects_active_database(): void
+    {
+        $activeDb = (string) config('database.connections.' . config('database.default', 'mysql') . '.database');
+
+        $coordinator = app(\App\Services\DatabaseBackup\BackupCoordinatorService::class);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('RESTAURACIÓN RECHAZADA');
+
+        $coordinator->restoreBackup(\Illuminate\Support\Str::uuid(), $activeDb, true);
+    }
+
+    public function test_48_restore_backup_validates_non_existent_custom_mysql_path(): void
+    {
+        $nonExistentPath = 'C:/Program Files/MySQL/InvalidPath/mysql.exe';
+        config(['database_backups.mysql_path' => $nonExistentPath]);
+
+        $coordinator = app(\App\Services\DatabaseBackup\BackupCoordinatorService::class);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('El archivo mysql especificado en la ruta no existe.');
+
+        $coordinator->restoreBackup(\Illuminate\Support\Str::uuid(), 'target_db_test', true);
+    }
+
+    public function test_49_restore_backup_validates_non_executable_custom_mysql_path(): void
+    {
+        // Create a temporary file which is NOT executable
+        $tempFile = tempnam(sys_get_temp_dir(), 'not_exe');
+        config(['database_backups.mysql_path' => $tempFile]);
+
+        $coordinator = app(\App\Services\DatabaseBackup\BackupCoordinatorService::class);
+
+        try {
+            $coordinator->restoreBackup(\Illuminate\Support\Str::uuid(), 'target_db_test', true);
+            $this->fail('Should have thrown an exception');
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString('no es ejecutable', $e->getMessage());
+        } finally {
+            @unlink($tempFile);
+        }
+    }
+
+    public function test_50_restore_backup_argument_preserves_spaces_and_is_not_shell_concatenated(): void
+    {
+        $code = file_get_contents(app_path('Services/DatabaseBackup/BackupCoordinatorService.php'));
+
+        // Assert that $cmd is constructed as an array where $mysqlPath is the first element
+        $this->assertMatchesRegularExpression('/\$cmd\s*=\s*\[\s*\$mysqlPath\s*,/s', $code);
+
+        // Assert that new Process receives $cmd directly (which prevents shell concatenation)
+        $this->assertMatchesRegularExpression('/new\s+Process\(\s*\$cmd\s*,/s', $code);
+    }
+
+    public function test_51_restore_backup_removes_cnf_file_on_failure(): void
+    {
+        $tempBaseDir = config('database_backups.temp_directory');
+
+        // Clean any pre-existing cnf files first so we only look at the one created for this test
+        if (is_dir($tempBaseDir)) {
+            $dirIterator = new \RecursiveDirectoryIterator($tempBaseDir, \RecursiveDirectoryIterator::SKIP_DOTS);
+            $iterator = new \RecursiveIteratorIterator($dirIterator);
+            foreach ($iterator as $file) {
+                if (str_ends_with($file->getFilename(), '.cnf')) {
+                    @unlink($file->getPathname());
+                }
+            }
+        }
+
+        $phpPath = PHP_BINARY;
+        config(['database_backups.mysql_path' => $phpPath]);
+
+        $service = app(\App\Services\DatabaseBackup\BackupCoordinatorService::class);
+        $method = new \ReflectionMethod($service, 'importSqlIntoDatabase');
+        $method->setAccessible(true);
+
+        $dummySql = tempnam(sys_get_temp_dir(), 'dummy_sql');
+        file_put_contents($dummySql, '<?php echo "error"; exit(1);');
+
+        try {
+            $method->invoke($service, $dummySql, 'target_db_test');
+            $this->fail('Expected exception');
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString('Fallo al importar el SQL', $e->getMessage());
+        } finally {
+            @unlink($dummySql);
+        }
+
+        $cnfFiles = [];
+        if (is_dir($tempBaseDir)) {
+            $dirIterator = new \RecursiveDirectoryIterator($tempBaseDir, \RecursiveDirectoryIterator::SKIP_DOTS);
+            $iterator = new \RecursiveIteratorIterator($dirIterator);
+            foreach ($iterator as $file) {
+                if (str_ends_with($file->getFilename(), '.cnf')) {
+                    $cnfFiles[] = $file->getPathname();
+                }
+            }
+        }
+
+        $this->assertEmpty($cnfFiles, 'The cnf file should have been cleaned up/deleted.');
+    }
+
+    public function test_52_restore_backup_rejects_invalid_target_database_name(): void
+    {
+        $coordinator = app(\App\Services\DatabaseBackup\BackupCoordinatorService::class);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('RESTAURACIÓN RECHAZADA: Nombre de base de datos destino inválido o inseguro');
+
+        $coordinator->restoreBackup(\Illuminate\Support\Str::uuid(), 'target_db; DROP TABLE users;_test', true);
+    }
+
+    public function test_53_restore_backup_sanitation_clears_tables_and_reconciles_backups(): void
+    {
+        $targetDb = 'clinica_donbosco_restore_test_db_test';
+        $uuid = (string) \Illuminate\Support\Str::uuid();
+
+        // 1. Setup connection config for this test database
+        $tempConnection = 'temp_restore_sanitize_connection_in_test';
+        $defaultConnection = config('database.default', 'mysql');
+        $defaultConfig = config("database.connections.{$defaultConnection}");
+
+        // First, connect to default to create the test database
+        $rootDb = \Illuminate\Support\Facades\DB::connection($defaultConnection);
+        $rootDb->statement("CREATE DATABASE IF NOT EXISTS `{$targetDb}`");
+
+        config(["database.connections.{$tempConnection}" => array_merge($defaultConfig, [
+            'database' => $targetDb,
+        ])]);
+
+        try {
+            $db = \Illuminate\Support\Facades\DB::connection($tempConnection);
+
+            // Re-create the required tables in target database
+            $db->statement("DROP TABLE IF EXISTS `database_backups`");
+            $db->statement("DROP TABLE IF EXISTS `jobs`");
+            $db->statement("DROP TABLE IF EXISTS `job_batches`");
+            $db->statement("DROP TABLE IF EXISTS `failed_jobs`");
+            $db->statement("DROP TABLE IF EXISTS `cache`");
+            $db->statement("DROP TABLE IF EXISTS `sessions`");
+
+            $db->statement("CREATE TABLE `database_backups` (
+                `id` INT AUTO_INCREMENT PRIMARY KEY,
+                `uuid` CHAR(36) NOT NULL,
+                `status` VARCHAR(20) NOT NULL,
+                `completed_at` TIMESTAMP NULL,
+                `last_verified_at` TIMESTAMP NULL
+            )");
+
+            $db->statement("CREATE TABLE `jobs` (
+                `id` INT AUTO_INCREMENT PRIMARY KEY,
+                `queue` VARCHAR(255) NOT NULL,
+                `payload` TEXT NOT NULL
+            )");
+
+            $db->statement("CREATE TABLE `job_batches` (
+                `id` VARCHAR(255) PRIMARY KEY,
+                `name` VARCHAR(255) NOT NULL
+            )");
+
+            $db->statement("CREATE TABLE `failed_jobs` (
+                `id` INT AUTO_INCREMENT PRIMARY KEY,
+                `connection` TEXT NOT NULL
+            )");
+
+            $db->statement("CREATE TABLE `cache` (
+                `key` VARCHAR(255) PRIMARY KEY,
+                `value` MEDIUMTEXT NOT NULL
+            )");
+
+            $db->statement("CREATE TABLE `sessions` (
+                `id` VARCHAR(255) PRIMARY KEY,
+                `payload` TEXT NOT NULL
+            )");
+
+            // Populate tables
+            $db->statement("INSERT INTO `database_backups` (`uuid`, `status`) VALUES (?, 'processing')", [$uuid]);
+            $db->statement("INSERT INTO `jobs` (`queue`, `payload`) VALUES ('backups', 'dummy_payload')");
+            $db->statement("INSERT INTO `job_batches` (`id`, `name`) VALUES ('batch_1', 'dummy_batch')");
+            $db->statement("INSERT INTO `failed_jobs` (`connection`) VALUES ('mysql')");
+            $db->statement("INSERT INTO `cache` (`key`, `value`) VALUES ('some_key', 'some_val')");
+            $db->statement("INSERT INTO `sessions` (`id`, `payload`) VALUES ('sess_1', 'dummy_session')");
+
+            // Verify active database has no modifications
+            $service = app(\App\Services\DatabaseBackup\BackupCoordinatorService::class);
+            $method = new \ReflectionMethod($service, 'sanitizeTargetDatabase');
+            $method->setAccessible(true);
+
+            $manifestData = [
+                'uuid' => $uuid,
+                'status' => 'verified',
+                'timestamp' => now()->toIso8601String(),
+            ];
+
+            // Execute the sanitation
+            $method->invoke($service, $targetDb, $uuid, $manifestData);
+
+            // Assert target database tables are empty
+            $this->assertEmpty($db->select("SELECT * FROM `jobs`"));
+            $this->assertEmpty($db->select("SELECT * FROM `job_batches`"));
+            $this->assertEmpty($db->select("SELECT * FROM `cache`"));
+            $this->assertEmpty($db->select("SELECT * FROM `sessions`"));
+
+            // Assert failed_jobs is NOT cleared (has 1 row)
+            $this->assertCount(1, $db->select("SELECT * FROM `failed_jobs`"));
+
+            // Assert database_backups row status is updated to verified
+            $backupRow = $db->selectOne("SELECT * FROM `database_backups` WHERE `uuid` = ?", [$uuid]);
+            $this->assertNotNull($backupRow);
+            $this->assertEquals('verified', $backupRow->status);
+            $this->assertNotNull($backupRow->last_verified_at);
+
+        } finally {
+            // Clean up target database tables and connection
+            try {
+                $db = \Illuminate\Support\Facades\DB::connection($tempConnection);
+                $db->statement("DROP TABLE IF EXISTS `database_backups`");
+                $db->statement("DROP TABLE IF EXISTS `jobs`");
+                $db->statement("DROP TABLE IF EXISTS `job_batches`");
+                $db->statement("DROP TABLE IF EXISTS `failed_jobs`");
+                $db->statement("DROP TABLE IF EXISTS `cache`");
+                $db->statement("DROP TABLE IF EXISTS `sessions`");
+            } catch (\Throwable $e) {}
+
+            \Illuminate\Support\Facades\DB::purge($tempConnection);
+            $rootDb->statement("DROP DATABASE IF EXISTS `{$targetDb}`");
+        }
+    }
+
+    public function test_54_restore_backup_sanitation_failure_aborts_success_reporting(): void
+    {
+        $uuid = (string) \Illuminate\Support\Str::uuid();
+
+        // Mock StorageService
+        $storageMock = $this->getMockBuilder(\App\Services\DatabaseBackup\BackupStorageService::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['download', 'getManifest'])
+            ->getMock();
+        $storageMock->method('download')->willReturn('dummy_path');
+        $storageMock->method('getManifest')->willReturn([
+            'uuid' => $uuid,
+            'status' => 'verified',
+            'timestamp' => now()->toIso8601String(),
+        ]);
+
+        // Mock IntegrityService
+        $integrityMock = $this->getMockBuilder(\App\Services\DatabaseBackup\BackupIntegrityService::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['verifyLocalPackage'])
+            ->getMock();
+
+        // Mock EncryptionService
+        $encryptionMock = $this->getMockBuilder(\App\Services\DatabaseBackup\BackupEncryptionService::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['decrypt'])
+            ->getMock();
+        $encryptionMock->method('decrypt')->willReturn('dummy_sql.sql');
+
+        $coordinator = $this->getMockBuilder(\App\Services\DatabaseBackup\BackupCoordinatorService::class)
+            ->setConstructorArgs([
+                app(\App\Services\DatabaseBackup\MySqlDumpService::class),
+                $encryptionMock,
+                $integrityMock,
+                $storageMock,
+                app(\App\Services\DatabaseBackup\BackupManifestService::class),
+                app(\App\Services\DatabaseBackup\BackupRetentionService::class),
+            ])
+            ->onlyMethods(['validateMysqlExecutable', 'importSqlIntoDatabase', 'sanitizeTargetDatabase'])
+            ->getMock();
+
+        $coordinator->expects($this->once())
+            ->method('validateMysqlExecutable');
+
+        $coordinator->expects($this->once())
+            ->method('importSqlIntoDatabase');
+
+        $coordinator->expects($this->once())
+            ->method('sanitizeTargetDatabase')
+            ->willThrowException(new \RuntimeException("Sanitation connection failed"));
+
+        \App\Models\DatabaseBackup::create([
+            'uuid'         => $uuid,
+            'status'       => \App\Models\DatabaseBackup::STATUS_COMPLETED,
+            'type'         => \App\Models\DatabaseBackup::TYPE_MANUAL,
+            'file_path'    => 'backups/backup_test.zip',
+            'file_size'    => 1024,
+            'disk'         => 'r2_backups',
+            'sha256'       => hash('sha256', 'test'),
+            'completed_at' => now(),
+        ]);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('La base de datos fue importada con éxito, pero no está lista para activarse porque falló el saneamiento de seguridad');
+
+        $coordinator->restoreBackup($uuid, 'some_restore_db_test', true);
+    }
 }

@@ -8,6 +8,7 @@
     'resultado_laboratorio' => 'ri-file-chart-line',
     'orden_cobro'        => 'ri-file-list-3-line',
     'recibo_pago'       => 'ri-shield-check-line',
+    'comprobante_cita'   => 'ri-calendar-check-line',
     default              => 'ri-file-text-line',
   };
   $estadoTone = match($estado) {
@@ -51,6 +52,11 @@
           <i class="{{ $estadoIcono }}"></i>
           {{ $estado }}
         </span>
+        @if($tipo === 'comprobante_cita')
+          <span class="inline-flex items-center gap-1.5 rounded-full border px-4 py-1.5 text-xs font-semibold {{ in_array(strtolower($estado), ['pendiente', 'confirmada']) ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200' }}">
+            {{ in_array(strtolower($estado), ['pendiente', 'confirmada']) ? 'Comprobante vigente' : 'Comprobante sin vigencia' }}
+          </span>
+        @endif
       </div>
 
       {{-- Details grid --}}
@@ -78,7 +84,9 @@
 
         {{-- Fecha --}}
         <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3">
-          <p class="text-xs font-semibold uppercase tracking-widest text-slate-400">Fecha de emisión</p>
+          <p class="text-xs font-semibold uppercase tracking-widest text-slate-400">
+            {{ $tipo === 'comprobante_cita' ? 'Fecha y hora de la cita' : 'Fecha de emisión' }}
+          </p>
           <p class="mt-1 text-sm font-semibold text-slate-800">
             @if($emitido_en)
               {{ \Carbon\Carbon::parse($emitido_en)->format('d/m/Y H:i') }}
@@ -129,6 +137,13 @@
             <p class="text-xs font-semibold uppercase tracking-widest text-slate-400">Paciente</p>
             <p class="mt-1 text-sm font-semibold text-slate-800">{{ $paciente }}</p>
             <p class="mt-0.5 text-xs text-slate-400">Nombre protegido por privacidad</p>
+          </div>
+        @endif
+
+        @if(!empty($especialidad))
+          <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+            <p class="text-xs font-semibold uppercase tracking-widest text-slate-400">Especialidad</p>
+            <p class="mt-1 text-sm font-semibold text-slate-800">{{ $especialidad }}</p>
           </div>
         @endif
 

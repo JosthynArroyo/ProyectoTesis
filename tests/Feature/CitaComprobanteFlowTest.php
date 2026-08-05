@@ -121,7 +121,7 @@ class CitaComprobanteFlowTest extends TestCase
         $this->actingAs($paciente)
             ->get(route('citas.comprobante.show', $cita->token_validacion))
             ->assertOk()
-            ->assertSee('2026-03-14')
+            ->assertSee('14/03/2026')
             ->assertSee('11:30');
 
         $this->assertTrue($cita->comprobante_actualizado_en->gt($emitidoInicial));
@@ -268,6 +268,145 @@ class CitaComprobanteFlowTest extends TestCase
         $this->assertSame($folioCita, $cita->folio_cita);
         $this->assertSame($tokenCita, $cita->token_validacion);
         $this->assertSame(1, Pago::query()->where('cita_id', $cita->id)->count());
+    }
+
+    public function test_nuevo_comprobante_cita_requisitos_obligatorios(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-03-10 08:00:00', 'America/Guayaquil'));
+
+        [$paciente, $doctor, $especialidad] = $this->crearActoresBase();
+
+        $paciente->forceFill([
+            'email' => 'paciente_secreto@ejemplo.com',
+            'telefono' => '0999999999',
+        ])->save();
+
+        $cita = $this->crearCita($paciente, $doctor, $especialidad, [
+            'motivo_consulta' => 'Dolor de cabeza severo con migraña',
+        ]);
+
+        app(CitaComprobanteService::class)->asegurarComprobante($cita);
+        $cita->refresh();
+
+        // 1. Una cita nueva recibe CSV único
+        $this->assertNotEmpty($cita->csv);
+        $this->assertMatchesRegularExpression('/^[A-Z0-9]{3}-\d{5}-[A-Z0-9]{3}$/', $cita->csv);
+
+        // 2. Su QR apunta a /verificar/{csv}
+        $docService = app(\App\Services\AppointmentConfirmationDocumentService::class);
+        $pdfBytes = $docService->generateConfirmationContent($cita);
+        $this->assertStringStartsWith('%PDF', $pdfBytes);
+
+        // 3. Un visitante sin sesión recibe 200 HTML
+        $response = $this->get(route('documentos.verificar.show', ['csv' => $cita->csv]));
+        $response->assertStatus(200);
+
+        // 4. No aparece el modal de login
+        $response->assertDontSee('Iniciar sesión');
+        $response->assertDontSee('password');
+
+        // 5. No existe redirección a /login
+        $response->assertOk();
+
+        // 6. No devuelve %PDF
+        $response->assertHeader('Content-Type', 'text/html; charset=UTF-8');
+        $this->assertStringStartsNotWith('%PDF', $response->getContent());
+
+        // 7. No expone rutas locales ni claves R2
+        $response->assertDontSee('documents/appointment-confirmations');
+        $response->assertDontSee('r2_private');
+
+        // 8. No muestra cédula, teléfono, correo ni motivo de consulta
+        $response->assertDontSee($paciente->dni);
+        $response->assertDontSee($paciente->telefono);
+        $response->assertDontSee($paciente->email);
+        $response->assertDontSee('Dolor de cabeza severo con migraña');
+
+        // Mostramos información pública permitida únicamente:
+        $response->assertSee('Comprobante de cita');
+        $response->assertSee($cita->csv);
+        $response->assertSee($cita->folio_cita);
+        $response->assertSee($doctor->name);
+        $response->assertSee($especialidad->nombre);
+        // Nombre protegido
+        $parts = explode(' ', trim($paciente->name));
+        $expectedProtected = $parts[0].' '.strtoupper(substr($parts[1] ?? '', 0, 1)).'.';
+        $response->assertSee($expectedProtected);
+        $response->assertSee('Pendiente');
+
+        // 9. Un CSV inexistente devuelve 404
+        $this->get(route('documentos.verificar.show', ['csv' => 'XYZ-12345-ABC']))
+            ->assertStatus(404);
+
+        // 10. El enlace heredado /cita/comprobante/{token} funciona públicamente
+        $legacyResponse = $this->get(route('citas.comprobante.show', ['token' => $cita->token_validacion]));
+        $legacyResponse->assertStatus(200);
+        $legacyResponse->assertDontSee($paciente->dni);
+        $legacyResponse->assertDontSee($paciente->telefono);
+        $legacyResponse->assertDontSee($paciente->email);
+        $legacyResponse->assertDontSee('Dolor de cabeza severo con migraña');
+        $legacyResponse->assertSee($cita->folio_cita);
+
+        // 11. Las descargas reales continúan exigiendo autorización
+        $this->get(route('paciente.citas.comprobante.pdf', $cita))
+            ->assertRedirect(url('/?login=1'));
+
+        // 12. Recetas, certificados, laboratorio, pagos y recibos no cambian
+        $receta = \App\Models\Receta::create([
+            'cita_id' => $cita->id,
+            'diagnostico' => 'Gripe común',
+            'medicamentos' => 'Paracetamol 500mg',
+            'csv' => app(\App\Services\DocumentoCsvService::class)->generateCsv(),
+            'pdf_path' => 'documents/recipes/dummy.pdf',
+        ]);
+        $recetaResponse = $this->get(route('documentos.verificar.show', ['csv' => $receta->csv]));
+        $recetaResponse->assertStatus(200);
+        $recetaResponse->assertSee('Receta médica');
+    }
+
+    public function test_comprobante_cita_para_dependiente(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-03-10 08:00:00', 'America/Guayaquil'));
+
+        [$paciente, $doctor, $especialidad] = $this->crearActoresBase();
+
+        $paciente->forceFill([
+            'name' => 'Josthyn Arroyo',
+        ])->save();
+
+        $dependiente = \App\Models\Dependiente::create([
+            'user_id' => $paciente->id,
+            'nombre' => 'Anabel Arroyo',
+            'tipo_documento' => 'cedula',
+            'parentesco' => 'hija',
+            'dni' => '0102030406',
+            'fecha_nacimiento' => '2020-05-15',
+            'sexo' => 'Femenino',
+            'activo' => true,
+        ]);
+
+        $cita = $this->crearCita($paciente, $doctor, $especialidad, [
+            'dependiente_id' => $dependiente->id,
+        ]);
+
+        app(CitaComprobanteService::class)->asegurarComprobante($cita);
+        $cita->refresh();
+
+        // Verify CSV verification page for dependent
+        $response = $this->get(route('documentos.verificar.show', ['csv' => $cita->csv]));
+        $response->assertStatus(200);
+
+        // Representative name should NOT appear as the patient
+        $response->assertDontSee('Josthyn A.');
+
+        // Protected name of dependent should appear
+        $response->assertSee('Anabel A.');
+
+        // Legacy validation token route should also show the dependent's protected name
+        $legacyResponse = $this->get(route('citas.comprobante.show', ['token' => $cita->token_validacion]));
+        $legacyResponse->assertStatus(200);
+        $legacyResponse->assertDontSee('Josthyn A.');
+        $legacyResponse->assertSee('Anabel A.');
     }
 
     private function crearActoresBase(): array

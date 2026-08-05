@@ -318,8 +318,7 @@ Route::prefix('demo')->name('demo.')->middleware('demo.isolation')->group(functi
 });
 
 
-Route::middleware('auth')
-    ->get('/cita/comprobante/{token}', [CitaComprobanteController::class, 'showByToken'])
+Route::get('/cita/comprobante/{token}', [CitaComprobanteController::class, 'showByToken'])
     ->name('citas.comprobante.show');
 
 // =========================== ADMIN ===========================

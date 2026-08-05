@@ -4,6 +4,7 @@ return [
     'disk' => 'r2_backups',
     'archive_password' => env('BACKUP_ARCHIVE_PASSWORD'),
     'mysqldump_path' => env('BACKUP_MYSQLDUMP_PATH', 'mysqldump'),
+    'mysql_path' => env('BACKUP_MYSQL_PATH', 'mysql'),
     'retention' => [
         'daily' => (int) env('BACKUP_RETENTION_DAILY', 30),
         'weekly' => (int) env('BACKUP_RETENTION_WEEKLY', 12),

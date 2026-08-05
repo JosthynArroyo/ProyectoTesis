@@ -31,7 +31,9 @@ class AppointmentConfirmationDocumentService
             'especialidad:id,nombre',
         ]);
 
-        $qrUrl = route('citas.comprobante.show', ['token' => $cita->token_validacion], true);
+        $qrUrl = $cita->csv
+            ? route('documentos.verificar.show', ['csv' => $cita->csv], true)
+            : route('citas.comprobante.show', ['token' => $cita->token_validacion], true);
         $qrDataUri = $this->generarQrDataUri($qrUrl);
         $identity = app(ClinicIdentityService::class);
 

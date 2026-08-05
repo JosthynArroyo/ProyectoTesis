@@ -38,6 +38,9 @@ class CitaComprobanteService
             if (empty($cita->token_validacion)) {
                 $actualizar['token_validacion'] = $this->generarTokenValidacion($cita);
             }
+            if (empty($cita->csv)) {
+                $actualizar['csv'] = app(DocumentoCsvService::class)->generateCsv();
+            }
 
             $marcaTiempo = now('America/Guayaquil');
 

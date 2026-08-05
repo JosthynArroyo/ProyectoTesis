@@ -142,6 +142,18 @@ class DocumentoCsvService
             ];
         }
 
+        $cita = \App\Models\Cita::query()
+            ->with(['paciente', 'doctor', 'especialidad', 'dependiente'])
+            ->where('csv', $csv)
+            ->first();
+        if ($cita) {
+            return [
+                'tipo' => 'comprobante_cita',
+                'titulo' => 'Comprobante de cita',
+                'cita' => $cita,
+            ];
+        }
+
         return null;
     }
 
@@ -161,7 +173,8 @@ class DocumentoCsvService
             || PedidoLaboratorio::query()->where('csv', $csv)->exists()
             || PedidoLaboratorioResultado::query()->where('csv', $csv)->exists()
             || Pago::query()->where('csv', $csv)->exists()
-            || PaymentReceipt::query()->where('csv', $csv)->exists();
+            || PaymentReceipt::query()->where('csv', $csv)->exists()
+            || \App\Models\Cita::query()->where('csv', $csv)->exists();
     }
 
     private function normalizeCsv(string $csv): string

@@ -259,9 +259,16 @@ class BackupCoordinatorService
             throw new RuntimeException("RESTAURACIÓN RECHAZADA: Está prohibido restaurar directamente sobre la base activa [{$activeDb}].");
         }
 
+        if (! preg_match('/^[a-zA-Z0-9_\-]+$/', $targetDatabase)) {
+            throw new RuntimeException("RESTAURACIÓN RECHAZADA: Nombre de base de datos destino inválido o inseguro: [{$targetDatabase}].");
+        }
+
         if ($isTestEnvironment && ! str_ends_with(strtolower($targetDatabase), '_test')) {
             throw new RuntimeException("RESTAURACIÓN RECHAZADA: Durante pruebas, el destino debe terminar en '_test'. Base especificada: [{$targetDatabase}].");
         }
+
+        // Pre-validation of mysql executable path
+        $this->validateMysqlExecutable();
 
         $backup = DatabaseBackup::where('uuid', $uuid)->first();
         $r2Key = $backup ? $backup->file_path : null;
@@ -280,6 +287,35 @@ class BackupCoordinatorService
             throw new RuntimeException("No se encontró la clave R2 para el respaldo con UUID [{$uuid}].");
         }
 
+        // Try to pre-load manifest data from R2
+        $manifestKey = $backup ? $backup->manifest_path : null;
+        if (! $manifestKey && $r2Key) {
+            $manifestKey = $this->manifestService->getManifestKeyForBackupKey($r2Key);
+        }
+
+        $manifestData = null;
+        if ($manifestKey) {
+            try {
+                $manifestData = $this->storageService->getManifest($manifestKey);
+            } catch (\Throwable $e) {
+                // Ignore and try fallback
+            }
+        }
+
+        if (! $manifestData) {
+            try {
+                $manifests = $this->discoverFromR2();
+                foreach ($manifests as $m) {
+                    if ($m['uuid'] === $uuid) {
+                        $manifestData = $m;
+                        break;
+                    }
+                }
+            } catch (\Throwable $e) {
+                // Fail-safe
+            }
+        }
+
         $tempDir = BackupTempDirectoryManager::getTempDir('restore_' . $uuid);
         $tempZipPath = $tempDir . DIRECTORY_SEPARATOR . 'downloaded.zip';
 
@@ -292,6 +328,14 @@ class BackupCoordinatorService
             // Import into target database safely via options file
             $this->importSqlIntoDatabase($extractedSql, $targetDatabase);
 
+            // Reconcile and sanitize target database
+            try {
+                $this->sanitizeTargetDatabase($targetDatabase, $uuid, $manifestData);
+            } catch (\Throwable $sanEx) {
+                Log::error("RESTAURACIÓN PARCIAL: SQL importado con éxito, pero falló el saneamiento en [{$targetDatabase}]. Error: " . $sanEx->getMessage());
+                throw new RuntimeException("La base de datos fue importada con éxito, pero no está lista para activarse porque falló el saneamiento de seguridad: " . $sanEx->getMessage());
+            }
+
             Log::info("AUDIT RESTORE: Respaldo [{$uuid}] restaurado con éxito en la base de datos [{$targetDatabase}].");
 
         } finally {
@@ -300,9 +344,137 @@ class BackupCoordinatorService
     }
 
     /**
+     * Validate that the mysql executable path is valid and executable.
+     */
+    protected function validateMysqlExecutable(): void
+    {
+        $mysqlPath = (string) config('database_backups.mysql_path', 'mysql');
+
+        // Check if absolute or relative path to a specific file
+        $isSpecificPath = str_contains($mysqlPath, '/') || str_contains($mysqlPath, '\\');
+        if ($isSpecificPath) {
+            if (! file_exists($mysqlPath)) {
+                throw new RuntimeException("El archivo mysql especificado en la ruta no existe. Configure BACKUP_MYSQL_PATH correctamente.");
+            }
+            $isExe = str_ends_with(strtolower($mysqlPath), '.exe') || str_ends_with(strtolower($mysqlPath), '.bat') || str_ends_with(strtolower($mysqlPath), '.cmd');
+            if (! is_executable($mysqlPath) && ! ($isExe && file_exists($mysqlPath))) {
+                throw new RuntimeException("El archivo mysql especificado en la ruta no es ejecutable. Configure BACKUP_MYSQL_PATH correctamente.");
+            }
+        } else {
+            // It's a command name like 'mysql' or 'mysql.exe'
+            $commandExists = false;
+            $checkCmd = stripos(PHP_OS, 'WIN') === 0 ? ['where', $mysqlPath] : ['which', $mysqlPath];
+            try {
+                $process = new Process($checkCmd);
+                $process->run();
+                if ($process->isSuccessful()) {
+                    $commandExists = true;
+                }
+            } catch (\Throwable $e) {
+                // Ignore process execution errors and assume not found
+            }
+
+            if (! $commandExists) {
+                throw new RuntimeException("El ejecutable '{$mysqlPath}' no se encuentra en el PATH del sistema o no es ejecutable. Configure la variable de entorno BACKUP_MYSQL_PATH.");
+            }
+        }
+    }
+
+    /**
+     * Sanitize the target database after a successful SQL restore.
+     */
+    protected function sanitizeTargetDatabase(string $targetDatabase, string $uuid, ?array $manifestData): void
+    {
+        $activeDb = (string) config('database.connections.' . config('database.default', 'mysql') . '.database');
+
+        if (strtolower($targetDatabase) === strtolower($activeDb)) {
+            throw new RuntimeException("SANEAMIENTO RECHAZADO: No se permite sanear la base activa [{$activeDb}].");
+        }
+
+        if (! preg_match('/^[a-zA-Z0-9_\-]+$/', $targetDatabase)) {
+            throw new RuntimeException("SANEAMIENTO RECHAZADO: Nombre de base de datos destino inválido o inseguro: [{$targetDatabase}].");
+        }
+
+        $tempConnection = 'temp_restore_sanitize_connection';
+        $defaultConnection = config('database.default', 'mysql');
+        $defaultConfig = config("database.connections.{$defaultConnection}");
+
+        config(["database.connections.{$tempConnection}" => array_merge($defaultConfig, [
+            'database' => $targetDatabase,
+        ])]);
+
+        try {
+            $db = DB::connection($tempConnection);
+
+            // Re-verify that the database name matches exactly the targetDatabase
+            $connectedDb = (string) $db->selectOne("SELECT DATABASE() as db")->db;
+            if (strtolower($connectedDb) !== strtolower($targetDatabase)) {
+                throw new RuntimeException("SANEAMIENTO FALLÓ: La conexión temporal apunta a '{$connectedDb}', pero se esperaba '{$targetDatabase}'.");
+            }
+
+            // Get existing tables
+            $existingTables = array_map(function ($row) {
+                return (string) array_values((array) $row)[0];
+            }, $db->select("SHOW TABLES"));
+
+            $tablesToClear = ['jobs', 'job_batches', 'cache', 'cache_locks', 'sessions'];
+            foreach ($tablesToClear as $table) {
+                if (in_array($table, $existingTables, true)) {
+                    $db->statement("TRUNCATE TABLE `{$table}`");
+                }
+            }
+
+            // Reconcile database_backups
+            if (in_array('database_backups', $existingTables, true)) {
+                $status = DatabaseBackup::STATUS_VERIFIED;
+                $completedAt = null;
+                $lastVerifiedAt = Carbon::now('America/Guayaquil');
+
+                if ($manifestData) {
+                    $completedAt = isset($manifestData['timestamp']) ? Carbon::parse($manifestData['timestamp']) : null;
+                    if (isset($manifestData['status']) && in_array($manifestData['status'], [DatabaseBackup::STATUS_COMPLETED, DatabaseBackup::STATUS_VERIFIED], true)) {
+                        $status = $manifestData['status'];
+                    }
+                }
+
+                // Show columns to find columns in database_backups table
+                $columns = array_map(function ($row) {
+                    return strtolower($row->Field);
+                }, $db->select("SHOW COLUMNS FROM `database_backups`"));
+
+                $updateData = [];
+                if (in_array('status', $columns, true)) {
+                    $updateData['status'] = $status;
+                }
+                if (in_array('completed_at', $columns, true) && $completedAt) {
+                    $updateData['completed_at'] = $completedAt->toDateTimeString();
+                }
+                if (in_array('last_verified_at', $columns, true)) {
+                    $updateData['last_verified_at'] = $lastVerifiedAt->toDateTimeString();
+                }
+
+                if (! empty($updateData)) {
+                    $setClauses = [];
+                    $bindings = [];
+                    foreach ($updateData as $col => $val) {
+                        $setClauses[] = "`{$col}` = ?";
+                        $bindings[] = $val;
+                    }
+                    $bindings[] = $uuid;
+
+                    $setSql = implode(', ', $setClauses);
+                    $db->statement("UPDATE `database_backups` SET {$setSql} WHERE `uuid` = ?", $bindings);
+                }
+            }
+        } finally {
+            DB::purge($tempConnection);
+        }
+    }
+
+    /**
      * Execute SQL import safely into a target database using a temporary credentials options file in OS temp dir.
      */
-    private function importSqlIntoDatabase(string $sqlFilePath, string $targetDatabase): void
+    protected function importSqlIntoDatabase(string $sqlFilePath, string $targetDatabase): void
     {
         $connectionName = config('database.default', 'mysql');
         $dbConfig = config("database.connections.{$connectionName}");
@@ -312,11 +484,12 @@ class BackupCoordinatorService
         $username = $dbConfig['username'] ?? '';
         $password = (string) ($dbConfig['password'] ?? '');
 
+        $mysqlPath = (string) config('database_backups.mysql_path', 'mysql');
         $cnfPath = $this->dumpService->createTempOptionsFile($host, $port, $username, $password);
 
         try {
             $cmd = [
-                'mysql',
+                $mysqlPath,
                 "--defaults-extra-file={$cnfPath}",
                 $targetDatabase,
             ];

@@ -16,29 +16,57 @@ class CitaComprobanteController extends Controller
                 'paciente:id,name,dni,email,telefono',
                 'doctor:id,name',
                 'especialidad:id,nombre',
+                'dependiente',
             ])
             ->where('token_validacion', $token)
-            ->firstOrFail();
+            ->first();
 
-        $user = $request->user();
-        abort_unless($user, 403);
-
-        $esSuperadmin = $user->hasRole('superadmin');
-        $esAdmin = $user->hasRole('administrador');
-        $esPacientePropietario = $user->hasRole('paciente') && (int) $cita->paciente_id === (int) $user->id;
-        $esProfesionalResponsable = ($user->hasRole('doctor') || $user->hasRole('laboratorio'))
-            && (int) $cita->doctor_id === (int) $user->id;
-
-        if (! $esSuperadmin && ! $esAdmin && ! $esPacientePropietario && ! $esProfesionalResponsable) {
-            abort(403);
+        if (! $cita) {
+            abort(404);
         }
 
-        return view('citas.comprobante-show', [
-            'cita' => $cita,
-            'esSuperadmin' => $esSuperadmin,
-            'esAdmin' => $esAdmin,
-            'esPacientePropietario' => $esPacientePropietario,
-            'esProfesionalResponsable' => $esProfesionalResponsable,
+        $clinic = app(\App\Services\ClinicIdentityService::class);
+
+        $estadoClean = match($cita->estado) {
+            'pendiente' => 'Pendiente',
+            'confirmada' => 'Confirmada',
+            'cancelada' => 'Cancelada',
+            'realizada' => 'Realizada',
+            'no_se_presento' => 'No se presentó',
+            default => ucfirst((string) $cita->estado),
+        };
+
+        $fechaStr = $cita->fecha instanceof \Carbon\Carbon
+            ? $cita->fecha->format('Y-m-d')
+            : (string) $cita->fecha;
+
+        $citaDateTime = \Carbon\Carbon::parse($fechaStr . ' ' . $cita->hora);
+
+        $pacienteName = $cita->dependiente?->nombre ?? $cita->paciente?->name;
+        $protectedPaciente = null;
+        if ($pacienteName) {
+            $parts = preg_split('/\s+/', trim($pacienteName), -1, PREG_SPLIT_NO_EMPTY);
+            if (! empty($parts)) {
+                $firstName = $parts[0];
+                $lastInitial = isset($parts[1]) ? strtoupper(mb_substr($parts[1], 0, 1)).'.' : null;
+                $protectedPaciente = $lastInitial ? "{$firstName} {$lastInitial}" : $firstName;
+            }
+        }
+
+        return view('documentos.verificacion-show', [
+            'csv' => $cita->csv ?: 'HEREDADO',
+            'tipo' => 'comprobante_cita',
+            'titulo' => 'Comprobante de cita',
+            'clinica' => $clinic->institutionalName(),
+            'doctor' => $cita->doctor?->name,
+            'especialidad' => $cita->especialidad?->nombre,
+            'paciente' => $protectedPaciente,
+            'emitido_en' => $citaDateTime,
+            'estado' => $estadoClean,
+            'version' => null,
+            'folio' => $cita->folio_cita ?: 'Sin Folio',
+            'monto' => null,
+            'metodo_pago' => null,
         ]);
     }
 

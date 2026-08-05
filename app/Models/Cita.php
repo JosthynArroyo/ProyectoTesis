@@ -26,6 +26,7 @@ class Cita extends Model
         'activo',
         'folio_cita',
         'token_validacion',
+        'csv',
         'comprobante_pdf_path',
         'comprobante_pdf_disk',
         'comprobante_emitido_en',
