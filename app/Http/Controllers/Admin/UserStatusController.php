@@ -54,11 +54,22 @@ class UserStatusController extends Controller
             return $response;
         }
 
+        $wasBlocked = $user->status === User::STATUS_BLOCKED;
+        $wasSuspended = $user->suspended_until !== null && now()->lt($user->suspended_until);
+
         $user->update([
             'status' => User::STATUS_ACTIVE,
             'suspended_until' => null,
             'deactivation_reason' => null,
         ]);
+
+        if ($wasBlocked) {
+            return back()->with('success', 'Usuario desbloqueado.');
+        }
+
+        if ($wasSuspended) {
+            return back()->with('success', 'Suspensión finalizada.');
+        }
 
         return back()->with('success', $this->statusMessage($user, 'reactivado'));
     }

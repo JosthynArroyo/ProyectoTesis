@@ -328,10 +328,10 @@
         <table>
             <tr>
                 <td style="text-align: left;">
-                    CÃ³digo Seguro de VerificaciÃ³n (CSV): <strong>{{ $csv }}</strong>
+                    Código Seguro de Verificación (CSV): <strong>{{ $csv }}</strong>
                 </td>
                 <td style="text-align: right;">
-                    VerificaciÃ³n en: {{ $verificationUrl }}
+                    Verificación en: {{ $verificationUrl }}
                 </td>
             </tr>
         </table>

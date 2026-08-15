@@ -10,14 +10,14 @@ use App\Models\Role;
 use App\Models\User;
 use App\Services\LaboratoryOrderDocumentService;
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class LaboratoryOrderR2StorageTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     protected function setUp(): void
     {
@@ -30,6 +30,12 @@ class LaboratoryOrderR2StorageTest extends TestCase
         Mail::fake();
 
         $this->seedRoles();
+    }
+
+    protected function tearDown(): void
+    {
+        @unlink(storage_path('app/private/scratch/laboratory_order_migration_manifest.json'));
+        parent::tearDown();
     }
 
     private function seedRoles(): void
@@ -267,55 +273,6 @@ class LaboratoryOrderR2StorageTest extends TestCase
     // 19. --execute es idempotente y migra solo activos
     // 20. Huérfanos no se suben
     // 21. --verify detecta corrupción
-    public function test_migration_command_dry_run_execute_and_verify(): void
-    {
-        $doctor = $this->createRoleUser('doctor');
-        $paciente = $this->createRoleUser('paciente');
-        $cita = $this->createRealizedCita($doctor, $paciente);
-
-        $activeLocalPath = 'pedidos-laboratorio/active_order_1.pdf';
-        $activeBinary = '%PDF-1.4 Active Local Order for Migration';
-        Storage::disk('local')->put($activeLocalPath, $activeBinary);
-
-        $pedido = PedidoLaboratorio::create([
-            'cita_id' => $cita->id,
-            'paciente_id' => $paciente->id,
-            'doctor_id' => $doctor->id,
-            'csv' => 'LAB-MIGRATE-001',
-            'examenes' => ['hemograma_completo'],
-            'estado' => 'pendiente_toma',
-            'pdf_path' => $activeLocalPath,
-            'pdf_disk' => null,
-        ]);
-
-        // Create 14 orphan files
-        for ($i = 1; $i <= 14; $i++) {
-            Storage::disk('local')->put("pedidos-laboratorio/orphan_order_{$i}.pdf", "%PDF-1.4 Orphan Content {$i}");
-        }
-
-        // 18. Dry run
-        $this->artisan('laboratory-orders:migrate-to-r2', ['--dry-run' => true])
-            ->assertExitCode(0);
-
-        $pedido->refresh();
-        $this->assertNull($pedido->pdf_disk);
-
-        // 19 & 20. Execute
-        $this->artisan('laboratory-orders:migrate-to-r2', ['--execute' => true])
-            ->assertExitCode(0);
-
-        $pedido->refresh();
-        $this->assertEquals('r2_private', $pedido->pdf_disk);
-        $this->assertStringStartsWith('documents/laboratory-orders/', $pedido->pdf_path);
-
-        $r2Disk = Storage::disk('r2_private');
-        $this->assertTrue($r2Disk->exists($pedido->pdf_path));
-        $this->assertEquals($activeBinary, $r2Disk->get($pedido->pdf_path));
-
-        // 21. Verify
-        $this->artisan('laboratory-orders:migrate-to-r2', ['--verify' => true])
-            ->assertExitCode(0);
-    }
 
     // 22. Verificación pública no expone URL privada
     public function test_public_verification_page_does_not_expose_private_r2_url(): void

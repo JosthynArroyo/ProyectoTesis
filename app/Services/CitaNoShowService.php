@@ -70,6 +70,10 @@ class CitaNoShowService
 
     private function syncComprobanteSafely(Cita $cita, string $origin): void
     {
+        if (! app()->runningInConsole()) {
+            return;
+        }
+
         try {
             $this->comprobanteService->sincronizarComprobante($cita);
         } catch (\Throwable $e) {

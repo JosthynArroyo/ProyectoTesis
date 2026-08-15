@@ -26,12 +26,12 @@ const getTheme = () => {
     gridColor: read('--dashboard-chart-grid', dark ? '#334155' : '#e5e7eb'),
     surface: read('--dashboard-chart-surface', dark ? '#111827' : '#ffffff'),
     tooltipTheme: dark ? 'dark' : 'light',
-    primary: read('--dashboard-chart-primary', '#0f766e'),
+    primary: read('--dashboard-chart-primary', '#334155'),
     secondary: read('--dashboard-chart-secondary', '#3b82f6'),
     accent: read('--dashboard-chart-accent', '#f59e0b'),
     danger: read('--dashboard-chart-danger', '#ef4444'),
     purple: read('--dashboard-chart-purple', '#8b5cf6'),
-    teal: read('--dashboard-chart-teal', '#14b8a6'),
+    teal: read('--dashboard-chart-teal', read('--dashboard-chart-primary', '#334155')),
   };
 };
 
@@ -87,7 +87,7 @@ const buildBaseOptions = (chart, theme) => ({
   theme: {
     mode: theme.dark ? 'dark' : 'light',
   },
-  colors: chart.colors?.length ? chart.colors : [theme.teal, theme.secondary, theme.accent, theme.danger, theme.purple],
+  colors: chart.colors?.length ? chart.colors : [theme.primary, theme.secondary, theme.accent, theme.danger, theme.purple],
   grid: {
     borderColor: theme.gridColor,
     strokeDashArray: 4,

@@ -5,13 +5,13 @@ namespace Tests\Feature;
 use App\Models\Cita;
 use App\Models\Especialidad;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use Tests\TestCase;
 
 class ExportCitasTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_exportar_citas_generar_archivo_excel()
     {

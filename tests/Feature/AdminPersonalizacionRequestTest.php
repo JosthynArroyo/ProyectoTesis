@@ -5,12 +5,12 @@ namespace Tests\Feature;
 use App\Models\FeatureAccessRequest;
 use App\Models\Role;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 class AdminPersonalizacionRequestTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_admin_personalizacion_request_returns_json_without_redirecting(): void
     {

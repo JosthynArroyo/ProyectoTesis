@@ -23,6 +23,12 @@ class AsyncServiciosPersonalizacionTest extends TestCase
 {
     use DatabaseTransactions;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Storage::fake('r2_private');
+    }
+
     private function makeUserWithRole(string $roleName): User
     {
         $role = Role::query()->firstOrCreate(['name' => $roleName]);
@@ -100,8 +106,8 @@ class AsyncServiciosPersonalizacionTest extends TestCase
         Queue::fake();
 
         $superadmin = $this->makeUserWithRole('superadmin');
-        $especialidad1 = Especialidad::query()->create(['nombre' => 'Odontologia', 'activo' => true, 'orden' => 1]);
-        $especialidad2 = Especialidad::query()->create(['nombre' => 'Pediatria', 'activo' => true, 'orden' => 2]);
+        $especialidad1 = Especialidad::query()->firstOrCreate(['nombre' => 'Odontologia'], ['activo' => true, 'orden' => 1]);
+        $especialidad2 = Especialidad::query()->firstOrCreate(['nombre' => 'Pediatria'], ['activo' => true, 'orden' => 2]);
 
         $payload = [
             'services_title' => 'Nuestros Servicios',
@@ -163,8 +169,10 @@ class AsyncServiciosPersonalizacionTest extends TestCase
         });
 
         $batch = MediaProcessingBatch::query()->where('uuid', $batchUuid)->firstOrFail();
-        Storage::disk('local')->assertExists($batch->payload['hero_image_temp_path']);
-        Storage::disk('local')->assertExists($batch->payload['especialidades'][$especialidad1->id]['temp_path']);
+        $this->assertStringStartsWith('media-processing/services/', $batch->payload['temp_directory']);
+        Storage::disk('r2_private')->assertExists($batch->payload['hero_image_temp_path']);
+        Storage::disk('r2_private')->assertExists($batch->payload['especialidades'][$especialidad1->id]['temp_path']);
+        $this->assertSame([], Storage::disk('local')->allFiles());
     }
 
     public function test_batch_progress_endpoint_reports_processing_and_elapsed_time(): void
@@ -265,7 +273,10 @@ class AsyncServiciosPersonalizacionTest extends TestCase
         Queue::fake();
 
         $superadmin = $this->makeUserWithRole('superadmin');
-        $especialidad = Especialidad::query()->create(['nombre' => 'Dermatologia', 'activo' => true, 'orden' => 1]);
+        $especialidad = Especialidad::query()->firstOrCreate(
+            ['nombre' => 'Dermatologia'],
+            ['activo' => true, 'orden' => 1]
+        );
 
         $response = $this->submitServicesUpdate($superadmin, [
             'services_title' => 'Servicios Modificados',
@@ -298,8 +309,9 @@ class AsyncServiciosPersonalizacionTest extends TestCase
         $this->assertNotNull(SiteSetting::query()->where('key', 'services.hero_image')->value('value'));
         $this->assertNotNull(SiteSetting::query()->where('key', "services.specialty_image.{$especialidad->id}")->value('value'));
 
-        Storage::disk('local')->assertMissing($batch->payload['hero_image_temp_path']);
-        Storage::disk('local')->assertMissing($batch->payload['especialidades'][$especialidad->id]['temp_path']);
+        Storage::disk('r2_private')->assertMissing($batch->payload['hero_image_temp_path']);
+        Storage::disk('r2_private')->assertMissing($batch->payload['especialidades'][$especialidad->id]['temp_path']);
+        $this->assertSame([], Storage::disk('local')->allFiles());
     }
 
     public function test_failed_batch_preserves_old_paths_and_cleans_new_variants(): void
@@ -317,9 +329,9 @@ class AsyncServiciosPersonalizacionTest extends TestCase
             ['section' => 'services', 'type' => 'image', 'value' => $heroPath]
         );
 
-        $tempDir = 'private/media-processing/services/fail-batch-123';
+        $tempDir = 'media-processing/services/fail-batch-123';
         $tempFile = "{$tempDir}/hero.jpg";
-        Storage::disk('local')->putFileAs($tempDir, $this->fakeImage('hero.jpg'), 'hero.jpg');
+        Storage::disk('r2_private')->putFileAs($tempDir, $this->fakeImage('hero.jpg'), 'hero.jpg');
 
         $batch = MediaProcessingBatch::query()->create([
             'uuid' => 'fail-batch-123',
@@ -367,7 +379,8 @@ class AsyncServiciosPersonalizacionTest extends TestCase
         Storage::disk('r2_public')->assertMissing('images/services/medium/services-hero.webp');
         Storage::disk('r2_public')->assertMissing('images/services/large/services-hero.webp');
         Storage::disk('r2_public')->assertMissing('images/services/original/services-hero.jpg');
-        Storage::disk('local')->assertMissing($tempFile);
+        Storage::disk('r2_private')->assertMissing($tempFile);
+        $this->assertSame([], Storage::disk('local')->allFiles());
     }
 
     public function test_cleanup_job_is_resilient_to_failures(): void
@@ -492,9 +505,9 @@ class AsyncServiciosPersonalizacionTest extends TestCase
         Queue::fake();
 
         $superadmin = $this->makeUserWithRole('superadmin');
-        $esp1 = Especialidad::query()->create(['nombre' => 'Odontología', 'descripcion' => 'Descripción Odontología', 'activo' => true, 'orden' => 1]);
-        $esp2 = Especialidad::query()->create(['nombre' => 'Pediatría', 'descripcion' => 'Descripción Pediatría', 'activo' => true, 'orden' => 2]);
-        $esp3 = Especialidad::query()->create(['nombre' => 'Dermatología', 'descripcion' => 'Descripción Dermatología', 'activo' => true, 'orden' => 3]);
+        $esp1 = Especialidad::query()->firstOrCreate(['nombre' => 'Odontología'], ['descripcion' => 'Descripción Odontología', 'activo' => true, 'orden' => 1]);
+        $esp2 = Especialidad::query()->firstOrCreate(['nombre' => 'Pediatría'], ['descripcion' => 'Descripción Pediatría', 'activo' => true, 'orden' => 2]);
+        $esp3 = Especialidad::query()->firstOrCreate(['nombre' => 'Dermatología'], ['descripcion' => 'Descripción Dermatología', 'activo' => true, 'orden' => 3]);
 
         $initialHero = SiteSetting::query()->where('key', 'services.hero_image')->value('value') ?? \App\Support\ServicePageCatalog::heroImagePath();
 
@@ -600,9 +613,9 @@ class AsyncServiciosPersonalizacionTest extends TestCase
 
         $initialHero = SiteSetting::query()->where('key', 'services.hero_image')->value('value') ?? \App\Support\ServicePageCatalog::heroImagePath();
 
-        $tempDir = 'private/media-processing/services/fail-card-batch-999';
+        $tempDir = 'media-processing/services/fail-card-batch-999';
         $tempFile = "{$tempDir}/spec-{$esp1->id}.jpg";
-        Storage::disk('local')->putFileAs($tempDir, $this->fakeImage('spec.jpg'), "spec-{$esp1->id}.jpg");
+        Storage::disk('r2_private')->putFileAs($tempDir, $this->fakeImage('spec.jpg'), "spec-{$esp1->id}.jpg");
 
         $batch = MediaProcessingBatch::query()->create([
             'uuid' => 'fail-card-batch-999',
@@ -663,6 +676,48 @@ class AsyncServiciosPersonalizacionTest extends TestCase
 
         // Check old path was preserved in r2_public
         Storage::disk('r2_public')->assertExists($oldCardPath);
-        Storage::disk('local')->assertMissing($tempFile);
+        Storage::disk('r2_private')->assertMissing($tempFile);
+        $this->assertSame([], Storage::disk('local')->allFiles());
+    }
+
+    public function test_servicios_update_sin_imagenes_guarda_directamente_sin_batch_ni_job(): void
+    {
+        Storage::fake('local');
+        Queue::fake();
+
+        $superadmin = $this->makeUserWithRole('superadmin');
+        $especialidad = Especialidad::query()->firstOrCreate(['nombre' => 'Dermatologia'], ['activo' => true, 'orden' => 1]);
+        $initialBatchCount = MediaProcessingBatch::query()->count();
+
+        $response = $this->submitServicesUpdate($superadmin, [
+            'services_title' => 'Nuestros Servicios Directos',
+            'services_subtitle' => 'Sin procesamiento de imágenes',
+            'especialidades' => [
+                $especialidad->id => [
+                    'nombre' => 'Dermatologia Clínica',
+                    'descripcion' => 'Descripción nueva sin foto',
+                    'icono' => 'ri-tooth-line',
+                    'activo' => '1',
+                    'orden' => '1',
+                ],
+            ],
+        ], 'superadmin.personalizacion.servicios.update');
+
+        $response->assertStatus(200);
+        $response->assertJson([
+            'ok' => true,
+            'batch_uuid' => null,
+            'total' => 0,
+        ]);
+
+        $this->assertSame($initialBatchCount, MediaProcessingBatch::query()->count());
+        Queue::assertNothingPushed();
+
+        $siteSettings = app(SiteSettingsService::class);
+        $this->assertSame('Nuestros Servicios Directos', $siteSettings->get('services.title'));
+
+        $especialidad->refresh();
+        $this->assertSame('Dermatologia Clínica', $especialidad->nombre);
+        $this->assertSame('Descripción nueva sin foto', $especialidad->descripcion);
     }
 }

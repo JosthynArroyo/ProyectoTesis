@@ -6,18 +6,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const filtersWrap = document.getElementById('filters-wrap');
   const rows = Array.from(document.querySelectorAll('.users tbody tr[data-user-row]'));
   const mobileQuery = window.matchMedia('(max-width: 768px)');
-  const confirmSheet = document.querySelector('[data-confirm-sheet]');
-  const confirmTitle = confirmSheet ? confirmSheet.querySelector('[data-confirm-title]') : null;
-  const confirmMessage = confirmSheet ? confirmSheet.querySelector('[data-confirm-message]') : null;
-  const confirmSubmit = confirmSheet ? confirmSheet.querySelector('[data-confirm-submit]') : null;
   const suspendSheet = document.querySelector('[data-suspend-sheet]');
   const suspendForm = suspendSheet ? suspendSheet.querySelector('[data-suspend-sheet-form]') : null;
   const suspendTitle = suspendSheet ? suspendSheet.querySelector('[data-suspend-title]') : null;
   const suspendName = suspendSheet ? suspendSheet.querySelector('[data-suspend-name]') : null;
-  let pendingFormId = null;
 
   const sync = (chip) => {
     const input = chip.querySelector('input[type="checkbox"]');
+    if (!input) return;
     const active = input.checked;
     chip.classList.toggle('is-active', active);
     chip.setAttribute('aria-pressed', String(active));
@@ -30,6 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   chips.forEach((chip) => {
     const input = chip.querySelector('input[type="checkbox"]');
+    if (!input) return;
     sync(chip);
     input.addEventListener('change', () => sync(chip));
     chip.addEventListener('keydown', (e) => {
@@ -56,18 +53,14 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const openSheet = (sheet) => {
-    if (!sheet) {
-      return;
-    }
+    if (!sheet) return;
     sheet.classList.add('is-open');
     sheet.setAttribute('aria-hidden', 'false');
     setBodyScrollLock();
   };
 
   const closeSheet = (sheet) => {
-    if (!sheet) {
-      return;
-    }
+    if (!sheet) return;
     sheet.classList.remove('is-open');
     sheet.setAttribute('aria-hidden', 'true');
     setBodyScrollLock();
@@ -86,9 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const setDependentState = (button, open) => {
     const panelId = button.dataset.dependentTarget;
-    if (!panelId) {
-      return;
-    }
+    if (!panelId) return;
 
     const panel = document.getElementById(panelId);
     button.setAttribute('aria-expanded', String(open));
@@ -161,23 +152,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   document.addEventListener('click', (event) => {
-    const confirmTrigger = event.target.closest('[data-confirm-form]');
-    if (confirmTrigger && confirmSheet) {
-      event.preventDefault();
-      pendingFormId = confirmTrigger.dataset.confirmForm || null;
-      if (confirmTitle) {
-        confirmTitle.textContent = confirmTrigger.dataset.confirmTitle || 'Confirmar accion';
-      }
-      if (confirmMessage) {
-        confirmMessage.textContent = confirmTrigger.dataset.confirmMessage || 'Confirma para continuar.';
-      }
-      if (confirmSubmit) {
-        confirmSubmit.textContent = confirmTrigger.dataset.confirmButton || 'Confirmar';
-      }
-      openSheet(confirmSheet);
-      return;
-    }
-
     const suspendTrigger = event.target.closest('[data-suspend-open]');
     if (suspendTrigger && suspendSheet && suspendForm) {
       event.preventDefault();
@@ -189,7 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       if (suspendTitle) {
-        suspendTitle.textContent = suspendTrigger.dataset.suspendTitle || 'Suspender acceso';
+        suspendTitle.textContent = suspendTrigger.dataset.suspendTitle || 'Suspender usuario';
       }
       if (suspendName) {
         suspendName.textContent = suspendTrigger.dataset.suspendName || 'Usuario';
@@ -198,19 +172,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  if (confirmSubmit && confirmSheet) {
-    confirmSubmit.addEventListener('click', () => {
-      if (!pendingFormId) {
-        closeSheet(confirmSheet);
-        return;
-      }
-      const form = document.getElementById(pendingFormId);
-      if (form) {
-        form.submit();
-      }
-    });
-  }
-
   document.querySelectorAll('[data-sheet-close]').forEach((button) => {
     button.addEventListener('click', () => {
       closeSheet(button.closest('.modal'));
@@ -218,10 +179,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape') {
-      return;
-    }
-
+    if (event.key !== 'Escape') return;
     document.querySelectorAll('.modal.is-open').forEach((sheet) => {
       closeSheet(sheet);
     });

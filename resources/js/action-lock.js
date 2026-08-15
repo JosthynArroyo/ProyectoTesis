@@ -85,6 +85,32 @@ function readCopy(element) {
   };
 }
 
+function sanitizedFormText(form) {
+  if (!form) {
+    return '';
+  }
+
+  const clone = form.cloneNode(true);
+  clone
+    .querySelectorAll(
+      [
+        'button[type="button"]',
+        'button[type="reset"]',
+        '[data-action-lock-ignore]',
+        '[aria-hidden="true"]',
+        '[hidden]',
+        '[type="hidden"]',
+        'script',
+        'style',
+        'template',
+        'noscript',
+      ].join(', ')
+    )
+    .forEach((node) => node.remove());
+
+  return normalizeText(clone.textContent || '');
+}
+
 function mergeCopy(...parts) {
   return parts.reduce(
     (copy, part) => {
@@ -135,7 +161,7 @@ function buildOverlayMarkup() {
         aria-live="polite"
         aria-atomic="true"
       >
-        <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-teal-50 text-teal-600 dark:bg-teal-500/10 dark:text-teal-300">
+        <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full" style="background: var(--accent-soft); color: var(--accent);">
           <svg class="h-10 w-10 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-opacity="0.2" stroke-width="3"></circle>
             <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="3" stroke-linecap="round"></path>
@@ -470,22 +496,40 @@ function resolveNavigationCopy(anchor) {
 }
 
 function resolveOperationCopy(form, submitter = null) {
-  const explicit = mergeCopy(readCopy(form), readCopy(submitter), readCopy(form?.closest('[data-action-lock-context]')));
-  if (explicit.title || explicit.description) {
+  const explicitSubmitter = readCopy(submitter);
+  if (explicitSubmitter.title || explicitSubmitter.description) {
     return {
-      title: explicit.title || defaultTitle('operation'),
-      description: explicit.description || defaultDescription('operation'),
-      mode: explicit.mode || 'operation',
+      title: explicitSubmitter.title || defaultTitle('operation'),
+      description: explicitSubmitter.description || defaultDescription('operation'),
+      mode: explicitSubmitter.mode || 'operation',
     };
   }
 
+  const explicitForm = readCopy(form);
+  if (explicitForm.title || explicitForm.description) {
+    return {
+      title: explicitForm.title || defaultTitle('operation'),
+      description: explicitForm.description || defaultDescription('operation'),
+      mode: explicitForm.mode || 'operation',
+    };
+  }
+
+  const explicitContext = readCopy(form?.closest?.('[data-action-lock-context]'));
+  if (explicitContext.title || explicitContext.description) {
+    return {
+      title: explicitContext.title || defaultTitle('operation'),
+      description: explicitContext.description || defaultDescription('operation'),
+      mode: explicitContext.mode || 'operation',
+    };
+  }
+
+  const submitText = getElementText(submitter).toLowerCase();
   const actionUrl = normalizeText(submitter?.getAttribute?.('formaction') || form?.getAttribute('action') || '').toLowerCase();
   const formMethod = normalizeMethod(submitter?.getAttribute?.('formmethod') || form?.getAttribute('method') || 'GET');
-  const submitText = getElementText(submitter).toLowerCase();
-  const formText = normalizeText(form?.textContent || '').toLowerCase();
-  const text = `${submitText} ${formText} ${actionUrl} ${window.location.pathname.toLowerCase()}`;
+  const pathname = window.location.pathname.toLowerCase();
 
-  if (text.includes('/salir') || text.includes('cerrar sesión') || text.includes('logout')) {
+  // AUTH & LOGIN / LOGOUT
+  if (actionUrl.includes('/salir') || actionUrl.includes('logout') || submitText.includes('cerrar sesión') || submitText.includes('salir')) {
     return {
       title: 'Cerrando sesión...',
       description: defaultDescription('operation'),
@@ -493,159 +537,7 @@ function resolveOperationCopy(form, submitter = null) {
     };
   }
 
-  if (text.includes('aprobar') && text.includes('pago')) {
-    return {
-      title: 'Aprobando pago...',
-      description: defaultDescription('operation'),
-      mode: 'operation',
-    };
-  }
-
-  if (text.includes('rechazar') && text.includes('pago')) {
-    return {
-      title: 'Rechazando pago...',
-      description: defaultDescription('operation'),
-      mode: 'operation',
-    };
-  }
-
-  if (text.includes('anular') && text.includes('pago')) {
-    return {
-      title: 'Anulando pago...',
-      description: defaultDescription('operation'),
-      mode: 'operation',
-    };
-  }
-
-  if (text.includes('publicar') && text.includes('resultado')) {
-    return {
-      title: 'Publicando resultados...',
-      description: defaultDescription('operation'),
-      mode: 'operation',
-    };
-  }
-
-  if ((text.includes('generar') || text.includes('descargar')) && (text.includes('document') || text.includes('pdf') || text.includes('receta') || text.includes('comprobante') || text.includes('pedido'))) {
-    return {
-      title: 'Generando documento...',
-      description: defaultDescription('operation'),
-      mode: 'operation',
-    };
-  }
-
-  if (text.includes('guardar borrador') || (text.includes('soap') && text.includes('guardar'))) {
-    return {
-      title: 'Guardando nota clínica...',
-      description: defaultDescription('operation'),
-      mode: 'operation',
-    };
-  }
-
-  if (text.includes('firmar') && text.includes('nota')) {
-    return {
-      title: 'Firmando nota clínica...',
-      description: defaultDescription('operation'),
-      mode: 'operation',
-    };
-  }
-
-  if (text.includes('cancelar') && text.includes('cita')) {
-    return {
-      title: 'Cancelando cita...',
-      description: defaultDescription('operation'),
-      mode: 'operation',
-    };
-  }
-
-  if (text.includes('cancelar') && text.includes('control')) {
-    return {
-      title: 'Cancelando control...',
-      description: defaultDescription('operation'),
-      mode: 'operation',
-    };
-  }
-
-  if (text.includes('reagendar') && text.includes('control')) {
-    return {
-      title: 'Reagendando control...',
-      description: defaultDescription('operation'),
-      mode: 'operation',
-    };
-  }
-
-  if (text.includes('reagendar') || text.includes('reprogramar') || actionUrl.includes('editar-cita') || actionUrl.includes('reagendar')) {
-    return {
-      title: 'Reagendando cita...',
-      description: defaultDescription('operation'),
-      mode: 'operation',
-    };
-  }
-
-  if (text.includes('agendar') && text.includes('control')) {
-    return {
-      title: 'Agendando control...',
-      description: defaultDescription('operation'),
-      mode: 'operation',
-    };
-  }
-
-  if (text.includes('registrar') && text.includes('cita')) {
-    return {
-      title: 'Registrando cita...',
-      description: defaultDescription('operation'),
-      mode: 'operation',
-    };
-  }
-
-  if (actionUrl.includes('/crear-cita') || actionUrl.includes('crear-cita')) {
-    return {
-      title: 'Registrando cita...',
-      description: defaultDescription('operation'),
-      mode: 'operation',
-    };
-  }
-
-  if (actionUrl.includes('/editar-cita') || actionUrl.includes('editar-cita')) {
-    return {
-      title: 'Reagendando cita...',
-      description: defaultDescription('operation'),
-      mode: 'operation',
-    };
-  }
-
-  if (text.includes('registrar') && text.includes('usuario')) {
-    return {
-      title: 'Registrando usuario...',
-      description: defaultDescription('operation'),
-      mode: 'operation',
-    };
-  }
-
-  if (text.includes('actualizar') && text.includes('usuario')) {
-    return {
-      title: 'Actualizando usuario...',
-      description: defaultDescription('operation'),
-      mode: 'operation',
-    };
-  }
-
-  if (actionUrl.includes('/perfil') && (text.includes('guardar') || text.includes('actualizar'))) {
-    return {
-      title: 'Guardando perfil...',
-      description: defaultDescription('operation'),
-      mode: 'operation',
-    };
-  }
-
-  if (actionUrl.includes('contacto') || text.includes('mensaje')) {
-    return {
-      title: 'Enviando información...',
-      description: defaultDescription('operation'),
-      mode: 'operation',
-    };
-  }
-
-  if (actionUrl.includes('login') || text.includes('ingresar') || text.includes('iniciar sesión')) {
+  if (actionUrl.includes('login') || submitText.includes('ingresar') || submitText.includes('iniciar sesión')) {
     return {
       title: 'Iniciando sesión...',
       description: defaultDescription('operation'),
@@ -653,15 +545,18 @@ function resolveOperationCopy(form, submitter = null) {
     };
   }
 
-  if (actionUrl.includes('register') || text.includes('registrarse')) {
+  if (
+    actionUrl.includes('must-change-password') ||
+    (submitText.includes('contraseña') && (submitText.includes('actualizar') || submitText.includes('cambiar')))
+  ) {
     return {
-      title: 'Registrando usuario...',
-      description: defaultDescription('operation'),
+      title: 'Actualizando contraseña...',
+      description: 'Por favor, espera mientras guardamos tu nueva contraseña.',
       mode: 'operation',
     };
   }
 
-  if (actionUrl.includes('password') || text.includes('restablecer')) {
+  if (actionUrl.includes('password') && (submitText.includes('restablecer') || submitText.includes('recuperar'))) {
     return {
       title: 'Restableciendo contraseña...',
       description: defaultDescription('operation'),
@@ -669,55 +564,61 @@ function resolveOperationCopy(form, submitter = null) {
     };
   }
 
-  if (actionUrl.includes('horario') && (text.includes('guardar') || formMethod !== 'GET')) {
+  // CERTIFICADO MÉDICO
+  if (
+    submitText.includes('emitir certificado') ||
+    submitText.includes('guardar certificado') ||
+    (submitText.includes('certificado') && (submitText.includes('emitir') || submitText.includes('guardar') || submitText.includes('generar'))) ||
+    actionUrl.includes('certificado') ||
+    pathname.includes('certificado')
+  ) {
     return {
-      title: 'Guardando horario...',
+      title: 'Emitiendo certificado médico...',
       description: defaultDescription('operation'),
       mode: 'operation',
     };
   }
 
-  if (actionUrl.includes('personalizacion') && (text.includes('solicitar') || text.includes('guardar'))) {
+  // RECETAS MÉDICAS
+  if (
+    submitText.includes('emitir receta') ||
+    submitText.includes('guardar receta') ||
+    (submitText.includes('receta') && (submitText.includes('emitir') || submitText.includes('guardar') || submitText.includes('generar'))) ||
+    actionUrl.includes('receta') ||
+    pathname.includes('receta')
+  ) {
     return {
-      title: text.includes('solicitar') ? 'Solicitando acceso...' : 'Guardando cambios...',
+      title: 'Emitiendo receta...',
       description: defaultDescription('operation'),
       mode: 'operation',
     };
   }
 
-  if (text.includes('guardar') && actionUrl.includes('dependiente')) {
+  // PEDIDOS DE LABORATORIO
+  if (
+    submitText.includes('pedido de laboratorio') ||
+    (submitText.includes('pedido') && submitText.includes('laboratorio')) ||
+    submitText.includes('generar pedido') ||
+    actionUrl.includes('pedidos-laboratorio') ||
+    pathname.includes('pedidos-laboratorio')
+  ) {
     return {
-      title: 'Guardando familiar...',
+      title: 'Generando pedido de laboratorio...',
       description: defaultDescription('operation'),
       mode: 'operation',
     };
   }
 
-  if (text.includes('guardar') && actionUrl.includes('pago')) {
+  // NOTAS CLÍNICAS (SOAP)
+  if (submitText.includes('guardar borrador') || (actionUrl.includes('soap') && submitText.includes('borrador'))) {
     return {
-      title: 'Guardando pago...',
+      title: 'Guardando borrador...',
       description: defaultDescription('operation'),
       mode: 'operation',
     };
   }
 
-  if (text.includes('publicar') && text.includes('resultado')) {
-    return {
-      title: 'Publicando resultados...',
-      description: defaultDescription('operation'),
-      mode: 'operation',
-    };
-  }
-
-  if (text.includes('reenviar') && (text.includes('resultado') || text.includes('pedido') || text.includes('receta'))) {
-    return {
-      title: 'Reenviando documento...',
-      description: defaultDescription('operation'),
-      mode: 'operation',
-    };
-  }
-
-  if (text.includes('firmar y cerrar')) {
+  if (submitText.includes('firmar y cerrar') || (submitText.includes('firmar') && (submitText.includes('nota') || actionUrl.includes('soap')))) {
     return {
       title: 'Firmando nota clínica...',
       description: defaultDescription('operation'),
@@ -725,7 +626,47 @@ function resolveOperationCopy(form, submitter = null) {
     };
   }
 
-  if (text.includes('guardar cambios') && actionUrl.includes('cita')) {
+  if (actionUrl.includes('soap') && (submitText.includes('guardar') || submitText.includes('marcar'))) {
+    return {
+      title: 'Guardando nota clínica...',
+      description: defaultDescription('operation'),
+      mode: 'operation',
+    };
+  }
+
+  // CONTROLES Y CITAS
+  if (submitText.includes('cancelar control') || (submitText.includes('cancelar') && submitText.includes('control'))) {
+    return {
+      title: 'Cancelando control...',
+      description: defaultDescription('operation'),
+      mode: 'operation',
+    };
+  }
+
+  if (submitText.includes('reagendar control') || (submitText.includes('reagendar') && submitText.includes('control'))) {
+    return {
+      title: 'Reagendando control...',
+      description: defaultDescription('operation'),
+      mode: 'operation',
+    };
+  }
+
+  if (submitText.includes('cancelar cita') || (submitText.includes('cancelar') && submitText.includes('cita')) || actionUrl.includes('cancelar-cita') || actionUrl.includes('cancelar_cita')) {
+    return {
+      title: 'Cancelando cita...',
+      description: defaultDescription('operation'),
+      mode: 'operation',
+    };
+  }
+
+  if (
+    submitText.includes('reagendar cita') ||
+    submitText.includes('reprogramar cita') ||
+    (submitText.includes('reagendar') && submitText.includes('cita')) ||
+    (submitText.includes('guardar cambios') && actionUrl.includes('cita')) ||
+    actionUrl.includes('editar-cita') ||
+    actionUrl.includes('reagendar')
+  ) {
     return {
       title: 'Reagendando cita...',
       description: defaultDescription('operation'),
@@ -733,7 +674,145 @@ function resolveOperationCopy(form, submitter = null) {
     };
   }
 
-  if (text.includes('guardar') || text.includes('actualizar')) {
+  if (submitText.includes('confirmar cita') || (submitText.includes('confirmar') && submitText.includes('cita'))) {
+    return {
+      title: 'Confirmando cita...',
+      description: defaultDescription('operation'),
+      mode: 'operation',
+    };
+  }
+
+  if (
+    submitText.includes('agendar cita') ||
+    submitText.includes('registrar cita') ||
+    (submitText.includes('agendar') && submitText.includes('cita')) ||
+    actionUrl.includes('crear-cita')
+  ) {
+    return {
+      title: 'Agendando cita...',
+      description: defaultDescription('operation'),
+      mode: 'operation',
+    };
+  }
+
+  if (submitText.includes('concluir') || (submitText.includes('concluir') && submitText.includes('cita'))) {
+    return {
+      title: 'Concluyendo cita...',
+      description: defaultDescription('operation'),
+      mode: 'operation',
+    };
+  }
+
+  // USUARIOS
+  if (submitText.includes('crear usuario') || submitText.includes('registrar usuario') || (submitText.includes('crear') && submitText.includes('usuario'))) {
+    return {
+      title: 'Creando usuario...',
+      description: defaultDescription('operation'),
+      mode: 'operation',
+    };
+  }
+
+  if (submitText.includes('actualizar usuario') || (submitText.includes('actualizar') && submitText.includes('usuario'))) {
+    return {
+      title: 'Actualizando usuario...',
+      description: defaultDescription('operation'),
+      mode: 'operation',
+    };
+  }
+
+  if (submitText.includes('suspender')) {
+    return {
+      title: 'Suspendiendo usuario...',
+      description: defaultDescription('operation'),
+      mode: 'operation',
+    };
+  }
+
+  if (submitText.includes('activar')) {
+    return {
+      title: 'Activando usuario...',
+      description: defaultDescription('operation'),
+      mode: 'operation',
+    };
+  }
+
+  if (submitText.includes('eliminar usuario') || (submitText.includes('eliminar') && submitText.includes('usuario'))) {
+    return {
+      title: 'Eliminando usuario...',
+      description: defaultDescription('operation'),
+      mode: 'operation',
+    };
+  }
+
+  // PAGOS
+  if (submitText.includes('subir comprobante') || submitText.includes('subir pago') || (submitText.includes('subir') && submitText.includes('comprobante'))) {
+    return {
+      title: 'Subiendo comprobante...',
+      description: defaultDescription('operation'),
+      mode: 'operation',
+    };
+  }
+
+  if (submitText.includes('aprobar') && (submitText.includes('pago') || actionUrl.includes('pago'))) {
+    return {
+      title: 'Aprobando pago...',
+      description: defaultDescription('operation'),
+      mode: 'operation',
+    };
+  }
+
+  if (submitText.includes('rechazar') && (submitText.includes('pago') || actionUrl.includes('pago'))) {
+    return {
+      title: 'Rechazando pago...',
+      description: defaultDescription('operation'),
+      mode: 'operation',
+    };
+  }
+
+  if (submitText.includes('anular') && (submitText.includes('pago') || actionUrl.includes('pago'))) {
+    return {
+      title: 'Anulando pago...',
+      description: defaultDescription('operation'),
+      mode: 'operation',
+    };
+  }
+
+  // RESPALDOS (BACKUPS)
+  if (submitText.includes('crear respaldo') || (submitText.includes('respaldo') && (submitText.includes('crear') || submitText.includes('generar')))) {
+    return {
+      title: 'Creando respaldo...',
+      description: defaultDescription('operation'),
+      mode: 'operation',
+    };
+  }
+
+  if (submitText.includes('verificar respaldo') || (submitText.includes('respaldo') && submitText.includes('verificar'))) {
+    return {
+      title: 'Verificando respaldo...',
+      description: defaultDescription('operation'),
+      mode: 'operation',
+    };
+  }
+
+  // PERSONALIZACIÓN
+  if (actionUrl.includes('personalizacion') || submitText.includes('personalizacion') || submitText.includes('personalización')) {
+    return {
+      title: submitText.includes('solicitar') ? 'Solicitando acceso...' : 'Guardando personalización...',
+      description: defaultDescription('operation'),
+      mode: 'operation',
+    };
+  }
+
+  // GENERIC MATCHING BASED ON SUBMITTER TEXT ONLY
+  if (submitText.includes('guardar borrador')) {
+    return {
+      title: 'Guardando borrador...',
+      description: defaultDescription('operation'),
+      mode: 'operation',
+    };
+  }
+
+  if (submitText.includes('guardar') || submitText.includes('actualizar')) {
     return {
       title: 'Guardando cambios...',
       description: defaultDescription('operation'),
@@ -741,7 +820,7 @@ function resolveOperationCopy(form, submitter = null) {
     };
   }
 
-  if (text.includes('enviar') || text.includes('solicitar')) {
+  if (submitText.includes('enviar') || submitText.includes('solicitar')) {
     return {
       title: 'Enviando información...',
       description: defaultDescription('operation'),
@@ -749,14 +828,7 @@ function resolveOperationCopy(form, submitter = null) {
     };
   }
 
-  if (text.includes('cancelar') || text.includes('anular')) {
-    return {
-      title: 'Procesando solicitud...',
-      description: defaultDescription('operation'),
-      mode: 'operation',
-    };
-  }
-
+  // FALLBACK NEUTRO OBLIGATORIO (SECCIÓN 13)
   return {
     title: defaultTitle('operation'),
     description: defaultDescription('operation'),
@@ -817,6 +889,7 @@ function loadingTextFor(button) {
 
   const text = getElementText(button).toLowerCase();
   if (text.includes('guardar borrador')) return 'Guardando...';
+  if (text.includes('contraseña') && (text.includes('actualizar') || text.includes('cambiar'))) return 'Actualizando contraseña...';
   if (text.includes('guardar') || text.includes('actualizar')) return 'Guardando...';
   if (text.includes('enviar') || text.includes('solicitar')) return 'Enviando...';
   if (text.includes('agendar') || text.includes('reagendar')) return 'Agendando...';

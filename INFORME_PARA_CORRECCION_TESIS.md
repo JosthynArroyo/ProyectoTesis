@@ -44,9 +44,10 @@ A partir de la inspección estática de los archivos de configuración, dependen
   3. Generar la clave de encriptación de la aplicación: `php artisan key:generate`.
   4. Configurar la base de datos relacional en el archivo `.env` (variables `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`).
   5. Ejecutar las migraciones: `php artisan migrate`.
-  6. Poblar la base de datos con los roles y configuraciones iniciales: `php artisan db:seed` (ejecuta [DatabaseSeeder.php](file:///c:/Users/josth/Desktop/proyecto_clinica_JA/database/seeders/DatabaseSeeder.php), insertando los roles, especialidades predeterminadas, catálogos de exámenes y el usuario administrador por defecto `superadmin@clinic.test`).
-  7. Compilar recursos frontend para producción con `npm run build` (o correr el entorno de desarrollo local con `npm run dev`).
-  8. Iniciar el servidor local de desarrollo mediante `php artisan serve` y el procesador de colas con `php artisan queue:listen`.
+  6. Poblar la base de datos con los roles y configuraciones estructurales iniciales: `php artisan db:seed` (ejecuta [DatabaseSeeder.php](file:///c:/Users/josth/Desktop/proyecto_clinica_JA/database/seeders/DatabaseSeeder.php), insertando los roles, especialidades predeterminadas y catálogos de exámenes; no crea usuarios).
+  7. Crear el usuario Superadministrador inicial mediante el comando oficial: `php artisan app:create-superadmin`.
+  8. Compilar recursos frontend para producción con `npm run build` (o correr el entorno de desarrollo local con `npm run dev`).
+  9. Iniciar el servidor local de desarrollo mediante `php artisan serve` y el procesador de colas con `php artisan queue:listen`.
 * **Separación de datos entre clínicas**: Realizada mediante un enfoque *single-instance* (instancia independiente). No se implementa multi-inquilino (*multi-tenancy*) dinámico en base de datos. Cada clínica despliega su propia base de datos, código y archivo `.env` de forma aislada, garantizando privacidad total y adaptando los parámetros white-label a nivel de configuración del servidor.
 
 ---
@@ -179,12 +180,16 @@ Para instalar y ejecutar el sistema desde una copia limpia, el administrador o d
    ```bash
    php artisan key:generate
    ```
-5. **Ejecución de migraciones y carga de semilla de base de datos (con superadmin inicial)**:
+5. **Ejecución de migraciones y carga de datos estructurales**:
    ```bash
    php artisan migrate --force
    php artisan db:seed --force
    ```
-6. **Compilación de recursos estáticos para producción**:
+6. **Creación del usuario Superadministrador inicial**:
+   ```bash
+   php artisan app:create-superadmin
+   ```
+7. **Compilación de recursos estáticos para producción**:
    ```bash
    npm run build
    ```

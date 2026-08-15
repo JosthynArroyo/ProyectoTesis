@@ -12,8 +12,10 @@ class CertificadoMedicoController extends Controller
 {
     public function show(CertificadoMedico $certificado)
     {
-        $certificado->loadMissing(['cita.especialidad', 'paciente', 'doctor.especialidades']);
-        $this->ensureCanView($certificado);
+        $docService = app(\App\Services\MedicalCertificateDocumentService::class);
+        $docService->ensureUserCanView($certificado);
+
+        $certificado->loadMissing(['cita.especialidad', 'paciente', 'dependiente', 'doctor.especialidades', 'reemplazadoPor', 'reemplazaA']);
 
         return view('paciente.certificados.show', [
             'certificado' => $certificado,
@@ -28,12 +30,5 @@ class CertificadoMedicoController extends Controller
         $pdfs->obtenerOGenerar($certificado);
 
         return $docService->streamDownload($certificado);
-    }
-
-    private function ensureCanView(CertificadoMedico $certificado): void
-    {
-        if ((int) $certificado->paciente_id !== (int) Auth::id()) {
-            abort(403);
-        }
     }
 }

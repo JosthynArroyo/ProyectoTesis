@@ -12,7 +12,8 @@
      data-csrf="{{ csrf_token() }}">
   <button id="chatbot-toggle"
           type="button"
-          class="flex h-14 w-14 cursor-pointer items-center justify-center rounded-full bg-teal-600 text-white shadow-lg shadow-teal-500/40"
+          class="flex h-14 w-14 cursor-pointer items-center justify-center rounded-full text-white shadow-lg"
+          style="background: var(--accent); box-shadow: 0 18px 32px color-mix(in srgb, var(--accent) 28%, transparent);"
           aria-controls="chatbot-panel"
           aria-expanded="false"
           aria-label="Abrir asistente de la clínica">

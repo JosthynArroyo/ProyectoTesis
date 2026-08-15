@@ -5,10 +5,10 @@ namespace App\Mail;
 use App\Models\LabOrder;
 use App\Models\LaboratorioOrden;
 use App\Services\ClinicIdentityService;
+use App\Services\LaboratoryResultStorageService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Storage;
 
 class ResultadoLaboratorioMail extends Mailable
 {
@@ -35,9 +35,10 @@ class ResultadoLaboratorioMail extends Mailable
                 'paciente' => $paciente,
             ]);
 
-        if ($this->orden->resultado_path && Storage::exists($this->orden->resultado_path)) {
-            $mail->attach(Storage::path($this->orden->resultado_path), [
-                'as' => 'resultado_laboratorio_'.$this->orden->id.'.pdf',
+        $resultStorage = app(LaboratoryResultStorageService::class);
+        $stored = $resultStorage->resolve($this->orden->resultado_path);
+        if ($stored) {
+            $mail->attachData($resultStorage->contents($stored), 'resultado_laboratorio_'.$this->orden->id.'.pdf', [
                 'mime' => 'application/pdf',
             ]);
         }

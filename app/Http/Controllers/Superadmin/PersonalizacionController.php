@@ -7,19 +7,17 @@ use App\Http\Requests\LandingWelcomeRequest;
 use App\Http\Requests\PersonalizacionContactoRequest;
 use App\Http\Requests\PersonalizacionServiciosRequest;
 use App\Models\Especialidad;
-use App\Services\ImageOptimizer;
-use App\Services\LandingWelcomeManager;
+use App\Models\MediaProcessingBatch;
 use App\Services\LandingWelcomeService;
 use App\Services\SiteSettingsService;
 use App\Services\ProfessionalScheduleService;
+use App\Services\ServicesPersonalizationAsyncService;
+use App\Services\WelcomePersonalizationAsyncService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Throwable;
-
-use App\Models\MediaProcessingBatch;
-use App\Services\ServicesPersonalizationAsyncService;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 class PersonalizacionController extends Controller
 {
@@ -47,11 +45,95 @@ class PersonalizacionController extends Controller
         ]);
     }
 
-    public function update(LandingWelcomeRequest $request, LandingWelcomeManager $manager)
-    {
-        $manager->update($request);
+    public function update(
+        LandingWelcomeRequest $request,
+        WelcomePersonalizationAsyncService $asyncService
+    ) {
+        try {
+            if (! $asyncService->hasNewImages($request)) {
+                $asyncService->saveDirectly($request);
 
-        return back()->with('success', 'Bienvenida actualizada correctamente.');
+                $message = 'Personalización guardada correctamente.';
+
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'ok'         => true,
+                        'batch_uuid' => null,
+                        'total'      => 0,
+                        'message'    => $message,
+                    ], 200);
+                }
+
+                return back()->with('success', $message);
+            }
+
+            $batch = $asyncService->createAndDispatchBatch($request, $request->user());
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'ok'         => true,
+                    'batch_uuid' => $batch->uuid,
+                    'total'      => $batch->total_items,
+                    'message'    => 'Imágenes recibidas. Estamos procesando los cambios.',
+                    'status_url' => route('superadmin.personalizacion.bienvenida.batch', ['uuid' => $batch->uuid]),
+                ], 202);
+            }
+
+            return back()->with('success', 'Imágenes recibidas. Estamos procesando los cambios.');
+        } catch (Throwable $exception) {
+            report($exception);
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'ok'      => false,
+                    'message' => $exception->getMessage() ?: 'No se pudieron guardar los cambios. Intenta nuevamente.',
+                ], 422);
+            }
+
+            return back()
+                ->withInput()
+                ->with('error', $exception->getMessage() ?: 'No se pudieron guardar los cambios. Intenta nuevamente.');
+        }
+    }
+
+    public function welcomeBatchStatus(string $uuid, Request $request): JsonResponse
+    {
+        $batch = MediaProcessingBatch::query()->where('uuid', $uuid)->first();
+
+        if (! $batch) {
+            return response()->json(['message' => 'Lote no encontrado.'], 404);
+        }
+
+        if (! $batch->canBeAccessedBy($request->user())) {
+            return response()->json(['message' => 'No autorizado.'], 403);
+        }
+
+        $waitingSeconds    = $batch->waiting_seconds;
+        $elapsedSeconds    = $batch->elapsed_seconds;
+        $processingSeconds = $batch->processing_seconds;
+
+        $pendingTimeoutSeconds = 120;
+        $workerAbsent = $batch->isPending() && $waitingSeconds >= $pendingTimeoutSeconds;
+
+        $message = match (true) {
+            $batch->isCompleted()  => 'Personalización guardada correctamente.',
+            $batch->isFailed()     => $batch->error_message ?: 'No pudimos procesar todas las imágenes. Tus imágenes anteriores se conservaron. Intenta nuevamente.',
+            $batch->isProcessing() => "Procesando imágenes {$batch->processed_items} de {$batch->total_items}…",
+            $workerAbsent          => 'Las imágenes fueron recibidas, pero el procesamiento aún no ha comenzado. Verifica que el servicio de procesamiento esté disponible.',
+            default                => 'Preparando imágenes…',
+        };
+
+        return response()->json([
+            'status'             => $batch->status,
+            'total'              => $batch->total_items,
+            'processed'          => $batch->processed_items,
+            'percentage'         => $batch->percentage,
+            'message'            => $message,
+            'elapsed_seconds'    => $elapsedSeconds,
+            'waiting_seconds'    => $waitingSeconds,
+            'processing_seconds' => $processingSeconds,
+            'worker_absent'      => $workerAbsent,
+        ]);
     }
 
     public function serviciosEdit(SiteSettingsService $settings)
@@ -76,6 +158,23 @@ class PersonalizacionController extends Controller
         ServicesPersonalizationAsyncService $asyncService
     ) {
         try {
+            if (! $asyncService->hasNewImages($request)) {
+                $asyncService->saveDirectly($request, $settings);
+
+                $message = 'Personalización guardada correctamente.';
+
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'ok'         => true,
+                        'batch_uuid' => null,
+                        'total'      => 0,
+                        'message'    => $message,
+                    ], 200);
+                }
+
+                return back()->with('success', $message);
+            }
+
             $batch = $asyncService->createAndDispatchBatch($request, $request->user(), $settings);
 
             if ($request->expectsJson()) {
@@ -118,26 +217,31 @@ class PersonalizacionController extends Controller
             return response()->json(['message' => 'No autorizado.'], 403);
         }
 
-        $elapsedSeconds = $batch->elapsed_seconds;
-        $waitingSeconds = $batch->waiting_seconds;
+        $elapsedSeconds    = $batch->elapsed_seconds;
+        $waitingSeconds    = $batch->waiting_seconds;
         $processingSeconds = $batch->processing_seconds;
 
-        $message = match ($batch->status) {
-            'completed' => 'Personalización guardada correctamente.',
-            'failed' => $batch->error_message ?: 'No pudimos procesar todas las imágenes. Tus imágenes anteriores se conservaron. Intenta nuevamente.',
-            'processing' => "Procesando imágenes {$batch->processed_items} de {$batch->total_items}…",
-            default => 'Preparando imágenes…',
+        $pendingTimeoutSeconds = 120;
+        $workerAbsent = $batch->isPending() && $waitingSeconds >= $pendingTimeoutSeconds;
+
+        $message = match (true) {
+            $batch->isCompleted()  => 'Personalización guardada correctamente.',
+            $batch->isFailed()     => $batch->error_message ?: 'No pudimos procesar todas las imágenes. Tus imágenes anteriores se conservaron. Intenta nuevamente.',
+            $batch->isProcessing() => "Procesando imágenes {$batch->processed_items} de {$batch->total_items}…",
+            $workerAbsent          => 'Las imágenes fueron recibidas, pero el procesamiento aún no ha comenzado. Verifica que el servicio de procesamiento esté disponible.',
+            default                => 'Preparando imágenes…',
         };
 
         return response()->json([
-            'status' => $batch->status,
-            'total' => $batch->total_items,
-            'processed' => $batch->processed_items,
-            'percentage' => $batch->percentage,
-            'message' => $message,
-            'elapsed_seconds' => $elapsedSeconds,
-            'waiting_seconds' => $waitingSeconds,
+            'status'             => $batch->status,
+            'total'              => $batch->total_items,
+            'processed'          => $batch->processed_items,
+            'percentage'         => $batch->percentage,
+            'message'            => $message,
+            'elapsed_seconds'    => $elapsedSeconds,
+            'waiting_seconds'    => $waitingSeconds,
             'processing_seconds' => $processingSeconds,
+            'worker_absent'      => $workerAbsent,
         ]);
     }
 

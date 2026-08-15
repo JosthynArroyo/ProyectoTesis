@@ -10,7 +10,7 @@ use App\Models\Role;
 use App\Models\User;
 use App\Mail\CertificadoMedicoMail;
 use Database\Seeders\DatabaseSeeder;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
@@ -18,14 +18,18 @@ use Tests\TestCase;
 
 class MedicalCertificateFlowTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     protected function setUp(): void
     {
         parent::setUp();
 
         Carbon::setTestNow(Carbon::parse('2026-04-16 10:00:00', 'America/Guayaquil'));
+        config(['private_documents.disk' => 'r2_private']);
+        config(['image_optimization.avatar_disk' => 'r2_private']);
         Storage::fake('local');
+        Storage::fake('public');
+        Storage::fake('r2_private');
         Mail::fake();
 
         $this->seed(DatabaseSeeder::class);
@@ -73,7 +77,7 @@ class MedicalCertificateFlowTest extends TestCase
         ]);
         $this->assertNotNull($certificado->clinical_record_id);
         $this->assertNotEmpty($certificado->pdf_path);
-        Storage::disk('local')->assertExists($certificado->pdf_path);
+        Storage::disk($certificado->pdf_disk ?? 'local')->assertExists($certificado->pdf_path);
         $this->assertSame('sent', $certificado->fresh()->envio_estado);
         $this->assertSame($patient->email, $certificado->fresh()->enviado_a);
         Mail::assertSent(CertificadoMedicoMail::class);
@@ -97,6 +101,78 @@ class MedicalCertificateFlowTest extends TestCase
             ->get(route('paciente.certificados.download', $certificado))
             ->assertOk()
             ->assertHeader('content-type', 'application/pdf');
+    }
+
+    public function test_issue_form_requires_both_rest_dates_in_ui_when_rest_days_are_positive(): void
+    {
+        [$doctor, , , $cita] = $this->clinicalScenario(Cita::ESTADO_REALIZADA);
+
+        $initialResponse = $this->actingAs($doctor)
+            ->get(route('doctor.certificados.create', $cita))
+            ->assertOk()
+            ->assertSee('Al indicar dias de reposo, las fechas "Reposo desde" y "Reposo hasta" son obligatorias.', false)
+            ->assertSee("campo.toggleAttribute('required', requiereFechas);", false);
+
+        $initialHtml = $initialResponse->getContent();
+        $requiredDesde = '/<input(?=[^>]*name="reposo_desde")(?=[^>]*\srequired(?:\s|>|=))[^>]*>/';
+        $requiredHasta = '/<input(?=[^>]*name="reposo_hasta")(?=[^>]*\srequired(?:\s|>|=))[^>]*>/';
+
+        $this->assertDoesNotMatchRegularExpression($requiredDesde, $initialHtml);
+        $this->assertDoesNotMatchRegularExpression($requiredHasta, $initialHtml);
+
+        $this->actingAs($doctor)
+            ->from(route('doctor.certificados.create', $cita))
+            ->post(route('doctor.certificados.store', $cita), [
+                'texto_constancia' => 'Certificado con reposo sin rango.',
+                'dias_reposo' => 2,
+            ])
+            ->assertRedirect(route('doctor.certificados.create', $cita))
+            ->assertSessionHasErrors(['reposo_desde']);
+
+        $errorResponse = $this->actingAs($doctor)
+            ->get(route('doctor.certificados.create', $cita))
+            ->assertOk()
+            ->assertSee('Indica el rango de reposo cuando registras dias de reposo.')
+            ->assertSee('Al indicar dias de reposo, las fechas "Reposo desde" y "Reposo hasta" son obligatorias.', false);
+
+        $errorHtml = $errorResponse->getContent();
+        $this->assertMatchesRegularExpression($requiredDesde, $errorHtml);
+        $this->assertMatchesRegularExpression($requiredHasta, $errorHtml);
+    }
+
+    public function test_certificate_pdf_view_does_not_contain_visual_signature_block_and_preserves_meta(): void
+    {
+        [$doctor, $patient, , $cita] = $this->clinicalScenario(Cita::ESTADO_REALIZADA);
+
+        $certificado = CertificadoMedico::create([
+            'codigo' => 'CM-20260416-000099',
+            'cita_id' => $cita->id,
+            'paciente_id' => $patient->id,
+            'doctor_id' => $doctor->id,
+            'clinical_record_id' => ClinicalRecord::firstOrCreate(['patient_id' => $patient->id])->id,
+            'fecha_emision' => now('America/Guayaquil'),
+            'texto_constancia' => 'Certificado medico sin bloque visual de firma.',
+            'dias_reposo' => 1,
+        ]);
+
+        $html = view('pdf.certificado-medico', [
+            'certificado' => $certificado,
+            'clinica' => 'Clinica Don Bosco',
+            'pdfCss' => '',
+            'csv' => 'TESTCSV123',
+            'verificationUrl' => 'http://localhost/verificar/documento/TESTCSV123',
+            'qrDataUri' => 'data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=',
+        ])->render();
+
+        $this->assertStringContainsString('<b>Doctor:</b>', $html);
+        $this->assertStringContainsString('<b>Especialidad:</b>', $html);
+        $this->assertStringContainsString('CSV: TESTCSV123', $html);
+        $this->assertStringContainsString('Verificacion publica', $html);
+
+        $this->assertStringNotContainsString('Validado en sistema', $html);
+        $this->assertStringNotContainsString('Usuario #', $html);
+        $this->assertStringNotContainsString('class="sign-row', $html);
+        $this->assertStringNotContainsString('class="sign"', $html);
     }
 
     public function test_other_doctor_cannot_issue_or_view_certificate_from_another_doctor(): void

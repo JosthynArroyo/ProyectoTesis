@@ -856,7 +856,10 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    if (!batchStatusTemplate) {
+    const fileInputsList = fileInputs();
+    const hasNewImages = fileInputsList.some((input) => input.files && input.files.length > 0);
+
+    if (hasNewImages && !batchStatusTemplate) {
       showUploadAlert('No se pudo iniciar el seguimiento del procesamiento de imagenes.');
       return;
     }
@@ -867,7 +870,15 @@ document.addEventListener('DOMContentLoaded', () => {
       setFormDisabled(true);
       activeBatchUuid = null;
       clearTimers();
-      setOverlayPending(0, 0, 0);
+
+      if (hasNewImages) {
+        setOverlayPending(0, 0, 0);
+      } else if (window.ActionLock?.startOperation) {
+        window.ActionLock.startOperation({
+          title: 'Guardando personalización...',
+          description: 'Por favor, espera. No cierres esta página.',
+        });
+      }
 
       const action = form.getAttribute('action') || window.location.pathname;
 
@@ -885,7 +896,12 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!response.ok) {
         const errorMsg = data.message || 'No se pudieron guardar los cambios de imagen. Intenta nuevamente.';
         clearStoredBatch();
-        finishFailure(errorMsg);
+        if (hasNewImages) {
+          finishFailure(errorMsg);
+        } else {
+          window.ActionLock?.unlock();
+          unlockForm();
+        }
         showUploadAlert(errorMsg);
         return;
       }
@@ -899,10 +915,20 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       clearStoredBatch();
-      finishSuccess({ elapsed_seconds: data.elapsed_seconds || 0 });
+      if (hasNewImages) {
+        finishSuccess({ elapsed_seconds: data.elapsed_seconds || 0 });
+      } else {
+        window.ActionLock?.unlock();
+        window.location.reload();
+      }
     } catch (_error) {
       clearStoredBatch();
-      finishFailure('Error de conexion al enviar el formulario. Intenta nuevamente.');
+      if (hasNewImages) {
+        finishFailure('Error de conexion al enviar el formulario. Intenta nuevamente.');
+      } else {
+        window.ActionLock?.unlock();
+        unlockForm();
+      }
       showUploadAlert('Error de conexion al enviar el formulario. Intenta nuevamente.');
     }
   });

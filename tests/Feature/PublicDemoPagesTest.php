@@ -48,6 +48,101 @@ class PublicDemoPagesTest extends TestCase
         }
     }
 
+    public function test_demo_superadmin_sidebar_has_full_parity_with_real_superadmin_sidebar(): void
+    {
+        $realSidebarHtml = view('superadmin.partials.sidebar', [
+            'clinicIdentity' => app(\App\Services\ClinicIdentityService::class),
+            'pendingPersonalizacion' => 2,
+        ])->render();
+
+        $demoSidebarHtml = view('demo.partials.sidebar-superadmin-demo', [
+            'clinicIdentity' => app(\App\Services\ClinicIdentityService::class),
+            'pendingPersonalizacion' => 2,
+            'logoutUrl' => '#',
+        ])->render();
+
+        $expectedModules = [
+            'Inicio',
+            'Administradores',
+            'Usuarios',
+            'Solicitudes',
+            'Personalización',
+            'Mantenimiento',
+            'Respaldos DB',
+        ];
+
+        foreach ($expectedModules as $module) {
+            $this->assertStringContainsString($module, $realSidebarHtml, "Real sidebar missing {$module}");
+            $this->assertStringContainsString($module, $demoSidebarHtml, "Demo sidebar missing {$module}");
+        }
+    }
+
+    public function test_demo_superadmin_respaldos_route_renders_and_has_visual_parity(): void
+    {
+        $response = $this->get(route('demo.superadmin.respaldos'));
+
+        $response->assertOk();
+        $response->assertSeeText('Respaldos de base de datos');
+        $response->assertSeeText('Último respaldo exitoso');
+        $response->assertSeeText('Cifrado de respaldos');
+        $response->assertSeeText('Crear respaldo manual');
+        $response->assertSeeText('AES-256');
+        $response->assertSeeText('Josthyn Admin');
+        $response->assertSeeText('Sistema (Automático)');
+    }
+
+    public function test_demo_superadmin_respaldos_actions_do_not_mutate_data_or_dispatch_jobs(): void
+    {
+        \Illuminate\Support\Facades\Queue::fake();
+        \Illuminate\Support\Facades\Bus::fake();
+        \Illuminate\Support\Facades\Storage::fake('r2');
+
+        $backupsCountBefore = \App\Models\DatabaseBackup::query()->count();
+
+        $response = $this->get(route('demo.superadmin.respaldos', ['simulated_action' => 'created']));
+
+        $response->assertRedirect(route('demo.superadmin.respaldos'));
+
+        $backupsCountAfter = \App\Models\DatabaseBackup::query()->count();
+        $this->assertEquals($backupsCountBefore, $backupsCountAfter);
+
+        \Illuminate\Support\Facades\Queue::assertNothingPushed();
+        \Illuminate\Support\Facades\Bus::assertNothingDispatched();
+        \Illuminate\Support\Facades\Storage::disk('r2')->assertDirectoryEmpty('');
+    }
+
+    public function test_demo_superadmin_respaldos_links_do_not_point_to_real_superadmin_routes(): void
+    {
+        $response = $this->get(route('demo.superadmin.respaldos'));
+
+        $response->assertOk();
+        $response->assertDontSee(route('superadmin.respaldos.store'), false);
+        $response->assertDontSee('/superadmin/respaldos/', false);
+    }
+
+    public function test_superadmin_respaldos_badges_include_dark_mode_contrast_classes(): void
+    {
+        $response = $this->get(route('demo.superadmin.respaldos'));
+
+        $response->assertOk();
+        $response->assertSee('dark:bg-emerald-950/80', false);
+        $response->assertSee('dark:text-emerald-300', false);
+        $response->assertSee('dark:bg-purple-950/80', false);
+        $response->assertSee('dark:bg-blue-950/80', false);
+    }
+
+    public function test_superadmin_panel_theme_css_includes_apexcharts_dark_mode_fixes(): void
+    {
+        $cssPath = resource_path('css/panel-theme.css');
+        $this->assertFileExists($cssPath);
+
+        $css = file_get_contents($cssPath);
+
+        $this->assertStringContainsString('html.dashboard-root.panel-theme-dark .apexcharts-datalabel-label', $css);
+        $this->assertStringContainsString('html.dashboard-root.panel-theme-dark .apexcharts-datalabel-value', $css);
+        $this->assertStringContainsString('fill: #f3f4f6 !important;', $css);
+    }
+
     /**
      * @return array<int, string>
      */
@@ -56,6 +151,7 @@ class PublicDemoPagesTest extends TestCase
         return [
             'demo.index',
             'demo.superadmin.dashboard',
+            'demo.superadmin.respaldos',
             'demo.admin.dashboard',
             'demo.paciente.dashboard',
             'demo.doctor.dashboard',

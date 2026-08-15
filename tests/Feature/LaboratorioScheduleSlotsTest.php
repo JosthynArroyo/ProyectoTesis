@@ -7,12 +7,12 @@ use App\Models\Especialidad;
 use App\Models\Horario;
 use App\Models\Role;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 class LaboratorioScheduleSlotsTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_laboratory_slots_api_uses_configured_schedule_only(): void
     {

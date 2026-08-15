@@ -53,11 +53,11 @@
       <span class="text-xs font-semibold uppercase tracking-wider text-gray-500">Estado del sistema</span>
       <div class="flex items-center gap-2">
         @if(!$isOverdue)
-          <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800">
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300">
             <span class="h-2 w-2 rounded-full bg-emerald-500"></span> Al día
           </span>
         @else
-          <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800">
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800 dark:bg-amber-950/80 dark:text-amber-300">
             <span class="h-2 w-2 rounded-full bg-amber-500"></span> Pendiente / Vencido
           </span>
         @endif
@@ -164,11 +164,11 @@
             <tr class="hover:bg-gray-50/60 transition-colors">
               <td class="px-4 py-3 font-semibold text-gray-900 capitalize">
                 @if($backup->type === 'manual')
-                  <span class="inline-flex items-center gap-1 rounded bg-purple-50 px-2 py-0.5 text-xs text-purple-700 font-medium">
+                  <span class="inline-flex items-center gap-1 rounded bg-purple-50 px-2 py-0.5 text-xs text-purple-700 font-medium dark:bg-purple-950/80 dark:text-purple-300">
                     <i class="ri-user-setting-line"></i> Manual
                   </span>
                 @else
-                  <span class="inline-flex items-center gap-1 rounded bg-blue-50 px-2 py-0.5 text-xs text-blue-700 font-medium">
+                  <span class="inline-flex items-center gap-1 rounded bg-blue-50 px-2 py-0.5 text-xs text-blue-700 font-medium dark:bg-blue-950/80 dark:text-blue-300">
                     <i class="ri-time-line"></i> {{ ucfirst($backup->type) }}
                   </span>
                 @endif
@@ -176,23 +176,23 @@
 
               <td class="px-4 py-3">
                 @if($backup->status === 'verified')
-                  <span class="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">
+                  <span class="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300">
                     <i class="ri-checkbox-circle-line"></i> Verificado
                   </span>
                 @elseif($backup->status === 'completed')
-                  <span class="inline-flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-800">
+                  <span class="inline-flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-800 dark:bg-green-950/80 dark:text-green-300">
                     <i class="ri-check-line"></i> Completado
                   </span>
                 @elseif($backup->status === 'processing')
-                  <span class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800 animate-pulse">
+                  <span class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800 animate-pulse dark:bg-amber-950/80 dark:text-amber-300">
                     <i class="ri-loader-4-line animate-spin"></i> Procesando...
                   </span>
                 @elseif($backup->status === 'pending')
-                  <span class="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-700">
+                  <span class="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-700 dark:bg-gray-800 dark:text-gray-300">
                     <i class="ri-time-line"></i> Pendiente
                   </span>
                 @else
-                  <span class="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-semibold text-rose-800" title="{{ $backup->error_message }}">
+                  <span class="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-semibold text-rose-800 dark:bg-rose-950/80 dark:text-rose-300" title="{{ $backup->error_message }}">
                     <i class="ri-error-warning-line"></i> Fallido
                   </span>
                 @endif

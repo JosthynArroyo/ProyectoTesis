@@ -10,13 +10,13 @@ use App\Models\Especialidad;
 use App\Services\SiteSettingsService;
 use App\Services\ProfessionalScheduleService;
 use Carbon\Carbon;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
 class AdminHorarioCreateValidationTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     protected function tearDown(): void
     {

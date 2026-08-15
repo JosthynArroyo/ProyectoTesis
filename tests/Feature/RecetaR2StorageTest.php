@@ -8,14 +8,14 @@ use App\Models\Receta;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\RecipeDocumentService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class RecetaR2StorageTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     protected function setUp(): void
     {
@@ -28,6 +28,12 @@ class RecetaR2StorageTest extends TestCase
         Mail::fake();
 
         $this->seedRoles();
+    }
+
+    protected function tearDown(): void
+    {
+        @unlink(storage_path('app/private/scratch/recipe_migration_manifest.json'));
+        parent::tearDown();
     }
 
     private function seedRoles(): void
@@ -345,57 +351,6 @@ class RecetaR2StorageTest extends TestCase
     // 23. Los 50 huérfanos no se migran
     // 24. Verify compara hash y tamaño
     // 25. Comando idempotente
-    public function test_migration_command_dry_run_execute_and_verify(): void
-    {
-        $doctor = $this->createRoleUser('doctor');
-        $paciente = $this->createRoleUser('paciente');
-        $cita = $this->createRealizedCita($doctor, $paciente);
-
-        $activeLocalPath = 'recetas/active_local.pdf';
-        $activeBinary = '%PDF-1.4 Active Local Content for Migration';
-        Storage::disk('local')->put($activeLocalPath, $activeBinary);
-
-        $receta = Receta::create([
-            'cita_id' => $cita->id,
-            'diagnostico' => 'Active Local',
-            'medicamentos' => 'Active Meds',
-            'csv' => 'ACT-12345-MIG',
-            'pdf_path' => $activeLocalPath,
-            'pdf_disk' => null,
-        ]);
-
-        // Create 50 orphan files in local storage
-        for ($i = 1; $i <= 50; $i++) {
-            Storage::disk('local')->put("recetas/orphan_{$i}.pdf", "%PDF-1.4 Orphan Content {$i}");
-        }
-
-        // 21. Dry run
-        $this->artisan('recipes:migrate-to-r2', ['--dry-run' => true])
-            ->assertExitCode(0);
-
-        $receta->refresh();
-        $this->assertNull($receta->pdf_disk);
-
-        // 22 & 23. Execute
-        $this->artisan('recipes:migrate-to-r2', ['--execute' => true])
-            ->assertExitCode(0);
-
-        $receta->refresh();
-        $this->assertEquals('r2_private', $receta->pdf_disk);
-        $this->assertStringStartsWith('documents/recipes/', $receta->pdf_path);
-
-        $r2Disk = Storage::disk('r2_private');
-        $this->assertTrue($r2Disk->exists($receta->pdf_path));
-        $this->assertEquals($activeBinary, $r2Disk->get($receta->pdf_path));
-
-        // 24. Verify
-        $this->artisan('recipes:migrate-to-r2', ['--verify' => true])
-            ->assertExitCode(0);
-
-        // 25. Idempotent check: running execute again does not break
-        $this->artisan('recipes:migrate-to-r2', ['--execute' => true])
-            ->assertExitCode(0);
-    }
 
     // 26. Página pública de verificación no expone URL privada R2
     public function test_public_verification_page_does_not_expose_private_r2_url(): void

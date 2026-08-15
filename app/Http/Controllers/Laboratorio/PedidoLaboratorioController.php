@@ -5,10 +5,10 @@ namespace App\Http\Controllers\Laboratorio;
 use App\Http\Controllers\Controller;
 use App\Mail\ResultadoPedidoLaboratorioMail;
 use App\Models\PedidoLaboratorio;
+use App\Services\LaboratoryResultStorageService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Storage;
 
 class PedidoLaboratorioController extends Controller
 {
@@ -62,7 +62,7 @@ class PedidoLaboratorioController extends Controller
     /**
      * Sube el resultado del pedido y notifica al paciente.
      */
-    public function subirResultado(Request $request, PedidoLaboratorio $pedido)
+    public function subirResultado(Request $request, PedidoLaboratorio $pedido, LaboratoryResultStorageService $resultStorage)
     {
         if ($pedido->estado === 'resultado_listo') {
             return back()->withErrors(['error' => 'Los resultados para este pedido ya fueron publicados.']);
@@ -77,15 +77,19 @@ class PedidoLaboratorioController extends Controller
             'resultado_resumen.required' => 'Debe ingresar un resumen clínico de los resultados.',
         ]);
 
-        // Guardar archivo
-        $path = $request->file('resultado_pdf')->store('laboratorio_resultados', 'local');
+        $path = $resultStorage->storeUploadedPdf($request->file('resultado_pdf'), 'legacy-medical-orders', $pedido->id);
 
-        $pedido->update([
-            'resultado_path' => $path,
-            'resultado_resumen' => $request->input('resultado_resumen'),
-            'resultado_publicado_at' => now('America/Guayaquil'),
-            'estado' => 'resultado_listo',
-        ]);
+        try {
+            $pedido->update([
+                'resultado_path' => $path,
+                'resultado_resumen' => $request->input('resultado_resumen'),
+                'resultado_publicado_at' => now('America/Guayaquil'),
+                'estado' => 'resultado_listo',
+            ]);
+        } catch (\Throwable $exception) {
+            $resultStorage->deleteNew($path);
+            throw $exception;
+        }
 
         // Enviar notificación al paciente
         if ($pedido->paciente && $pedido->paciente->email) {
@@ -121,13 +125,13 @@ class PedidoLaboratorioController extends Controller
     /**
      * Descarga el PDF de resultados subidos por el laboratorio.
      */
-    public function downloadResultado(PedidoLaboratorio $pedido)
+    public function downloadResultado(PedidoLaboratorio $pedido, LaboratoryResultStorageService $resultStorage)
     {
-        if (!$pedido->resultado_path || !Storage::disk('local')->exists($pedido->resultado_path)) {
+        if (! $pedido->resultado_path || ! $resultStorage->resolve($pedido->resultado_path)) {
             return back()->withErrors(['error' => 'El documento de resultados no está disponible.']);
         }
 
         $name = 'resultado_pedido_' . $pedido->id . '.pdf';
-        return Storage::disk('local')->download($pedido->resultado_path, $name);
+        return $resultStorage->download($pedido->resultado_path, $name);
     }
 }

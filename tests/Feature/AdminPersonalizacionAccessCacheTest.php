@@ -5,12 +5,12 @@ namespace Tests\Feature;
 use App\Models\FeatureAccessRequest;
 use App\Models\Role;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 class AdminPersonalizacionAccessCacheTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_admin_sidebar_updates_immediately_after_superadmin_approves_personalizacion_without_expiration(): void
     {

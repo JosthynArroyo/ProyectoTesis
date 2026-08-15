@@ -73,14 +73,14 @@ document.addEventListener('DOMContentLoaded', () => {
     footerPhone: '',
     footerEmail: '',
     colors: {
-      branding_accent: '#0f766e',
-      branding_accent_strong: '#14b8a6',
-      branding_accent_soft: '#ccfbf1',
-      visual_soft_primary: '#dff6f2',
-      visual_soft_secondary: '#e8f8ef',
-      visual_gradient_start: '#dff4ff',
-      visual_gradient_end: '#ecfdf5',
-      visual_badge_soft: '#d9f7ef',
+      branding_accent: '#334155',
+      branding_accent_strong: '#475569',
+      branding_accent_soft: '#e2e8f0',
+      visual_soft_primary: '#e2e8f0',
+      visual_soft_secondary: '#f1f5f9',
+      visual_gradient_start: '#e2e8f0',
+      visual_gradient_end: '#cbd5e1',
+      visual_badge_soft: '#e2e8f0',
     },
   };
 
@@ -1390,6 +1390,304 @@ document.addEventListener('DOMContentLoaded', () => {
   updateFaviconPreview(faviconPath ? resolveImageUrl(faviconPath) : '');
   renderLivePreview();
   syncPreviewScale();
+
+  // ─── Async Upload + Polling (mirrors personalizacion-servicios.js) ────────────
+  const form = document.getElementById('bienvenida-form');
+  const uploadAlert = document.getElementById('bienvenida-upload-alert');
+  const overlay = document.querySelector('[data-media-processing-overlay]');
+  const overlayTitle = overlay?.querySelector('[data-media-processing-title]');
+  const overlayStatusText = overlay?.querySelector('[data-media-processing-status-text]');
+  const overlayProgressBar = overlay?.querySelector('[data-media-processing-progress-bar]');
+  const overlayPercentageText = overlay?.querySelector('[data-media-processing-percentage-text]');
+  const overlaySpinner = overlay?.querySelector('[data-media-processing-spinner]');
+  const overlaySuccessIcon = overlay?.querySelector('[data-media-processing-success-icon]');
+  const overlayErrorIcon = overlay?.querySelector('[data-media-processing-error-icon]');
+
+  const batchStorageKey = 'bienvenida-personalization-batch-uuid';
+  const batchStatusTemplate = formRoot.dataset.batchStatusUrlTemplate || '';
+  const pollDelayMs = 1500;
+  const successMessageDelayMs = 1800;
+  // How long (ms) a batch stays pending before we consider the worker absent:
+  const workerAbsentThresholdMs = 120_000;
+
+  let pollTimeout = null;
+  let successTimeout = null;
+  let activeBatchUuid = null;
+  let isSubmitting = false;
+  let pollInFlight = false;
+
+  if (form && batchStatusTemplate) {
+    const clearTimers = () => {
+      if (pollTimeout !== null) { window.clearTimeout(pollTimeout); pollTimeout = null; }
+      if (successTimeout !== null) { window.clearTimeout(successTimeout); successTimeout = null; }
+    };
+
+    const clearStoredBatch = () => sessionStorage.removeItem(batchStorageKey);
+    const storeBatchUuid = (uuid) => sessionStorage.setItem(batchStorageKey, uuid);
+    const resolveStatusUrl = (uuid) => batchStatusTemplate.replace('__UUID__', encodeURIComponent(uuid));
+
+    const formatElapsed = (seconds) => {
+      const total = Math.max(0, Math.round(Number(seconds) || 0));
+      if (total === 0) return '0 segundos';
+      if (total === 1) return '1 segundo';
+      if (total < 60) return `${total} segundos`;
+      const minutes = Math.floor(total / 60);
+      const remaining = total % 60;
+      return remaining > 0 ? `${minutes} min ${remaining} s` : `${minutes} min`;
+    };
+
+    const showUploadAlert = (message) => {
+      if (!uploadAlert) return;
+      uploadAlert.textContent = message;
+      uploadAlert.hidden = false;
+    };
+    const clearUploadAlert = () => {
+      if (!uploadAlert) return;
+      uploadAlert.textContent = '';
+      uploadAlert.hidden = true;
+    };
+
+    const setFormDisabled = (disabled) => {
+      if (!form) return;
+      form.querySelectorAll('input:not([type="hidden"]), textarea, select, button').forEach((el) => {
+        el.disabled = disabled;
+      });
+    };
+
+    const setOverlayMessage = (title, message) => {
+      if (overlayTitle) overlayTitle.textContent = title;
+      if (overlayStatusText) overlayStatusText.textContent = message;
+    };
+
+    const showOverlay = () => {
+      if (!overlay) return;
+      overlay.hidden = false;
+      overlay.style.display = 'flex';
+      overlay.setAttribute('aria-hidden', 'false');
+      if (overlaySpinner) overlaySpinner.classList.remove('hidden');
+      if (overlaySuccessIcon) overlaySuccessIcon.classList.add('hidden');
+      if (overlayErrorIcon) overlayErrorIcon.classList.add('hidden');
+    };
+
+    const hideOverlay = () => {
+      if (!overlay) return;
+      overlay.hidden = true;
+      overlay.style.display = 'none';
+      overlay.setAttribute('aria-hidden', 'true');
+    };
+
+    const setOverlayPending = (processed = 0, total = 0, elapsedSeconds = 0, workerAbsent = false) => {
+      if (!overlay) return;
+      showOverlay();
+      if (workerAbsent) {
+        setOverlayMessage(
+          'Esperando procesamiento…',
+          'Las imágenes fueron recibidas, pero el procesamiento aún no ha comenzado. Verifica que el servicio de procesamiento esté disponible.',
+        );
+      } else {
+        setOverlayMessage(
+          'Preparando imágenes...',
+          total > 0
+            ? `Procesando imágenes ${processed} de ${total}... ${formatElapsed(elapsedSeconds)}`
+            : `Preparando imágenes... ${formatElapsed(elapsedSeconds)}`,
+        );
+      }
+      if (overlayProgressBar) overlayProgressBar.style.width = total > 0 ? `${Math.max(0, Math.min(99, Math.round((processed / total) * 100)))}%` : '0%';
+      if (overlayPercentageText) overlayPercentageText.textContent = total > 0 ? `${Math.max(0, Math.min(99, Math.round((processed / total) * 100)))}% completado` : '0% completado';
+      if (overlaySpinner) overlaySpinner.classList.remove('hidden');
+      if (overlaySuccessIcon) overlaySuccessIcon.classList.add('hidden');
+      if (overlayErrorIcon) overlayErrorIcon.classList.add('hidden');
+    };
+
+    const setOverlayCompleted = (elapsedSeconds = 0) => {
+      if (!overlay) return;
+      showOverlay();
+      if (overlaySpinner) overlaySpinner.classList.add('hidden');
+      if (overlaySuccessIcon) overlaySuccessIcon.classList.remove('hidden');
+      if (overlayErrorIcon) overlayErrorIcon.classList.add('hidden');
+      setOverlayMessage('Completado', `Cambios guardados correctamente en ${formatElapsed(elapsedSeconds)}.`);
+      if (overlayProgressBar) overlayProgressBar.style.width = '100%';
+      if (overlayPercentageText) overlayPercentageText.textContent = '100% completado';
+    };
+
+    const setOverlayError = (message) => {
+      if (!overlay) return;
+      showOverlay();
+      if (overlaySpinner) overlaySpinner.classList.add('hidden');
+      if (overlaySuccessIcon) overlaySuccessIcon.classList.add('hidden');
+      if (overlayErrorIcon) overlayErrorIcon.classList.remove('hidden');
+      setOverlayMessage('Ocurrió un problema', message);
+    };
+
+    const unlockForm = () => {
+      setFormDisabled(false);
+      isSubmitting = false;
+    };
+
+    const stopPolling = () => {
+      clearTimers();
+      pollInFlight = false;
+    };
+
+    const finishSuccess = (data) => {
+      stopPolling();
+      clearStoredBatch();
+      activeBatchUuid = null;
+      setOverlayCompleted(data.elapsed_seconds || 0);
+      successTimeout = window.setTimeout(() => {
+        hideOverlay();
+        window.location.reload();
+      }, successMessageDelayMs);
+    };
+
+    const finishFailure = (message) => {
+      stopPolling();
+      clearStoredBatch();
+      activeBatchUuid = null;
+      setOverlayError(message);
+      successTimeout = window.setTimeout(() => {
+        hideOverlay();
+        unlockForm();
+      }, 2200);
+    };
+
+    const updateOverlayFromResponse = (data) => {
+      const processed = Number(data.processed || 0);
+      const total = Number(data.total || 0);
+      const percentage = Number(data.percentage || 0);
+      const elapsedSeconds = Number(data.elapsed_seconds || 0);
+      const status = String(data.status || '');
+      const workerAbsent = Boolean(data.worker_absent);
+
+      if (status === 'completed') { finishSuccess(data); return; }
+      if (status === 'failed') {
+        finishFailure(data.message || 'No pudimos procesar todas las imágenes. Tus imágenes anteriores se conservaron. Intenta nuevamente.');
+        return;
+      }
+
+      setOverlayPending(processed, total, elapsedSeconds, workerAbsent);
+      if (overlayProgressBar) overlayProgressBar.style.width = `${Math.max(0, Math.min(percentage, 99))}%`;
+      if (overlayPercentageText) overlayPercentageText.textContent = `${Math.max(0, Math.min(percentage, 99))}% completado`;
+    };
+
+    const pollBatchStatus = async (uuid) => {
+      if (!uuid || pollInFlight || activeBatchUuid !== uuid) return;
+
+      pollInFlight = true;
+
+      try {
+        const response = await fetch(resolveStatusUrl(uuid), {
+          headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        });
+
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+          finishFailure(data.message || 'No pudimos consultar el progreso.');
+          return;
+        }
+
+        updateOverlayFromResponse(data);
+
+        if (data.status === 'pending' || data.status === 'processing') {
+          pollTimeout = window.setTimeout(() => { pollBatchStatus(uuid); }, pollDelayMs);
+        }
+      } catch (_error) {
+        finishFailure('Error de conexión al consultar el progreso.');
+      } finally {
+        pollInFlight = false;
+      }
+    };
+
+    const resumeStoredBatch = async () => {
+      const storedUuid = sessionStorage.getItem(batchStorageKey);
+      if (!storedUuid) return;
+
+      activeBatchUuid = storedUuid;
+      setFormDisabled(true);
+      setOverlayPending(0, 0, 0);
+      await pollBatchStatus(storedUuid);
+    };
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      if (isSubmitting) return;
+      clearUploadAlert();
+
+      const fileInputs = Array.from(form.querySelectorAll('input[type="file"]'));
+      const hasNewImages = fileInputs.some((input) => input.files && input.files.length > 0);
+
+      try {
+        const formData = new FormData(form);
+        isSubmitting = true;
+        setFormDisabled(true);
+        activeBatchUuid = null;
+        clearTimers();
+
+        if (hasNewImages) {
+          setOverlayPending(0, 0, 0);
+        } else if (window.ActionLock?.startOperation) {
+          window.ActionLock.startOperation({
+            title: 'Guardando personalización...',
+            description: 'Por favor, espera. No cierres esta página.',
+          });
+        }
+
+        const action = form.getAttribute('action') || window.location.pathname;
+
+        const response = await fetch(action, {
+          method: 'POST',
+          body: formData,
+          headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        });
+
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+          const errorMsg = data.message || 'No se pudieron guardar los cambios. Intenta nuevamente.';
+          clearStoredBatch();
+          if (hasNewImages) {
+            finishFailure(errorMsg);
+          } else {
+            window.ActionLock?.unlock();
+            unlockForm();
+          }
+          showUploadAlert(errorMsg);
+          return;
+        }
+
+        if (data.ok && data.batch_uuid) {
+          activeBatchUuid = data.batch_uuid;
+          storeBatchUuid(data.batch_uuid);
+          setOverlayPending(0, data.total || 0, 0);
+          await pollBatchStatus(data.batch_uuid);
+          return;
+        }
+
+        clearStoredBatch();
+        if (hasNewImages) {
+          finishSuccess({ elapsed_seconds: data.elapsed_seconds || 0 });
+        } else {
+          window.ActionLock?.unlock();
+          window.location.reload();
+        }
+      } catch (_error) {
+        clearStoredBatch();
+        if (hasNewImages) {
+          finishFailure('Error de conexión al enviar el formulario. Intenta nuevamente.');
+        } else {
+          window.ActionLock?.unlock();
+          unlockForm();
+        }
+        showUploadAlert('Error de conexión al enviar el formulario. Intenta nuevamente.');
+      }
+    });
+
+    window.addEventListener('beforeunload', () => { clearTimers(); });
+
+    void resumeStoredBatch();
+  }
+  // ── End async upload ─────────────────────────────────────────────────────────
 });
 
 function parseFeaturedOptions(rawJson) {

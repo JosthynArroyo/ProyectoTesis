@@ -12,9 +12,7 @@
     $brandName = $clinicIdentity->name();
     $brandLogo = $clinicIdentity->logoPath();
     $navbarText = $siteSettings->get('branding.navbar_text', $clinicIdentity->slogan());
-    $accent = $siteSettings->get('branding.accent', '#0f766e');
-    $accentStrong = $siteSettings->get('branding.accent_strong', '#14b8a6');
-    $accentSoft = $siteSettings->get('branding.accent_soft', '#ccfbf1');
+    $accent = $siteSettings->get('branding.accent', '#334155');
     $headerName = $landingWelcome->get('header_name', $brandName);
     $headerLogo = $landingWelcome->get('header_logo', $brandLogo);
     $headerLoginText = $landingWelcome->get('header_login_text', 'Ingresar');
@@ -23,15 +21,7 @@
   @endphp
   <style>
     :root {
-      --accent:
-        {{ $accent }}
-      ;
-      --accent-strong:
-        {{ $accentStrong }}
-      ;
-      --accent-soft:
-        {{ $accentSoft }}
-      ;
+      --accent: {{ $accent }};
     }
   </style>
   @vite(['resources/css/app.css', 'resources/css/modal.css', 'resources/js/app.js'])
@@ -199,7 +189,6 @@
 
   {{-- ================================================================
   MODAL LOGIN - Premium 2-Column Design
-  Verde institucional: var(--accent) #0f766e
   ================================================================ --}}
   <div id="loginModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="loginTitle" aria-hidden="true">
 
@@ -235,31 +224,31 @@
                 <path d="M140 30 L184 50 L184 100 C184 130 140 154 140 154 C140 154 96 130 96 100 L96 50 Z" fill="white"
                   opacity="0.55" />
                 <!-- Checkmark -->
-                <path d="M118 100 L133 115 L164 82" stroke="#0f766e" stroke-width="5" stroke-linecap="round"
+                <path d="M118 100 L133 115 L164 82" stroke="{{ $accent }}" stroke-width="5" stroke-linecap="round"
                   stroke-linejoin="round" />
                 <!-- Calendar -->
-                <rect x="48" y="120" width="58" height="52" rx="8" fill="white" stroke="#14b8a6" stroke-width="1.5"
+                <rect x="48" y="120" width="58" height="52" rx="8" fill="white" stroke="{{ $accent }}" stroke-width="1.5"
                   opacity="0.9" />
-                <rect x="48" y="120" width="58" height="14" rx="8" fill="#14b8a6" opacity="0.75" />
-                <line x1="64" y1="147" x2="64" y2="147" stroke="#0f766e" stroke-width="4" stroke-linecap="round" />
-                <line x1="76" y1="147" x2="76" y2="147" stroke="#0f766e" stroke-width="4" stroke-linecap="round" />
-                <line x1="88" y1="147" x2="88" y2="147" stroke="#0f766e" stroke-width="4" stroke-linecap="round" />
+                <rect x="48" y="120" width="58" height="14" rx="8" fill="{{ $accent }}" opacity="0.75" />
+                <line x1="64" y1="147" x2="64" y2="147" stroke="{{ $accent }}" stroke-width="4" stroke-linecap="round" />
+                <line x1="76" y1="147" x2="76" y2="147" stroke="{{ $accent }}" stroke-width="4" stroke-linecap="round" />
+                <line x1="88" y1="147" x2="88" y2="147" stroke="{{ $accent }}" stroke-width="4" stroke-linecap="round" />
                 <line x1="64" y1="160" x2="64" y2="160" stroke="#94a3b8" stroke-width="4" stroke-linecap="round" />
                 <line x1="76" y1="160" x2="76" y2="160" stroke="#94a3b8" stroke-width="4" stroke-linecap="round" />
                 <!-- Clock -->
-                <circle cx="208" cy="152" r="30" fill="white" stroke="#14b8a6" stroke-width="1.5" opacity="0.9" />
-                <circle cx="208" cy="152" r="3" fill="#0f766e" />
-                <line x1="208" y1="152" x2="208" y2="138" stroke="#0f766e" stroke-width="2.5" stroke-linecap="round" />
-                <line x1="208" y1="152" x2="218" y2="158" stroke="#14b8a6" stroke-width="2" stroke-linecap="round" />
+                <circle cx="208" cy="152" r="30" fill="white" stroke="{{ $accent }}" stroke-width="1.5" opacity="0.9" />
+                <circle cx="208" cy="152" r="3" fill="{{ $accent }}" />
+                <line x1="208" y1="152" x2="208" y2="138" stroke="{{ $accent }}" stroke-width="2.5" stroke-linecap="round" />
+                <line x1="208" y1="152" x2="218" y2="158" stroke="{{ $accent }}" stroke-width="2" stroke-linecap="round" />
                 <!-- Person -->
-                <circle cx="210" cy="86" r="18" fill="white" stroke="#14b8a6" stroke-width="1.5" opacity="0.9" />
-                <circle cx="210" cy="82" r="6" fill="#14b8a6" opacity="0.7" />
-                <path d="M198 104 Q210 96 222 104" fill="#14b8a6" opacity="0.5" />
+                <circle cx="210" cy="86" r="18" fill="white" stroke="{{ $accent }}" stroke-width="1.5" opacity="0.9" />
+                <circle cx="210" cy="82" r="6" fill="{{ $accent }}" opacity="0.7" />
+                <path d="M198 104 Q210 96 222 104" fill="{{ $accent }}" opacity="0.5" />
                 <!-- Defs -->
                 <defs>
                   <linearGradient id="shieldGrad" x1="140" y1="18" x2="140" y2="166" gradientUnits="userSpaceOnUse">
-                    <stop offset="0%" stop-color="#14b8a6" />
-                    <stop offset="100%" stop-color="#0f766e" />
+                    <stop offset="0%" stop-color="{{ $accent }}" />
+                    <stop offset="100%" stop-color="{{ $accent }}" />
                   </linearGradient>
                 </defs>
               </svg>
@@ -324,7 +313,7 @@
             @endif
 
 
-            {{-- â”€â”€ PANELS â”€â”€ --}}
+            {{-- ── PANELS ── --}}
             <div class="lm-panels">
 
               {{-- Password panel --}}

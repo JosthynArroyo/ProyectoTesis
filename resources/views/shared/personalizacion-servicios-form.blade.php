@@ -409,7 +409,7 @@
     aria-hidden="true"
   >
     <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-gray-900 border border-gray-100 dark:border-gray-800 text-center space-y-4">
-      <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-teal-50 text-teal-600 dark:bg-teal-950/60 dark:text-teal-400">
+      <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full text-[var(--accent)]" style="background: var(--accent-soft);">
         <i class="ri-loader-4-line animate-spin text-3xl" data-media-processing-spinner></i>
         <i class="ri-checkbox-circle-line text-3xl text-emerald-500 hidden" data-media-processing-success-icon></i>
         <i class="ri-error-warning-line text-3xl text-rose-500 hidden" data-media-processing-error-icon></i>
@@ -425,7 +425,8 @@
 
       <div class="w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800 h-3">
         <div
-          class="h-full bg-teal-600 transition-all duration-300 dark:bg-teal-500 rounded-full"
+          class="h-full transition-all duration-300 rounded-full"
+          style="width: 0%; background: var(--accent);"
           style="width: 0%"
           data-media-processing-progress-bar
         ></div>

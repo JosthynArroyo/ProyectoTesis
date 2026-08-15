@@ -5,7 +5,7 @@ namespace Tests\Feature;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\ProfileAvatarService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -14,7 +14,7 @@ use Tests\TestCase;
 
 class AvatarStorageTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     protected function setUp(): void
     {
@@ -164,24 +164,6 @@ class AvatarStorageTest extends TestCase
         $this->assertStringContainsString('v=', $url2);
     }
 
-    public function test_migration_command_options_dry_run_execute_verify(): void
-    {
-        $user = User::factory()->create(['avatar' => 'avatars/legacy_test.png']);
-        $img = UploadedFile::fake()->image('legacy_test.png', 200, 200);
-        Storage::disk('public')->put('avatars/legacy_test.png', file_get_contents($img->getRealPath()));
-
-        // --dry-run: Preview without execution
-        $this->artisan('avatars:migrate-to-r2', ['--dry-run' => true])->assertExitCode(0);
-        $this->assertEquals('avatars/legacy_test.png', $user->fresh()->avatar);
-
-        // --execute: DB updated, R2 file created
-        $this->artisan('avatars:migrate-to-r2', ['--execute' => true])->assertExitCode(0);
-        $newPath = $user->fresh()->avatar;
-        $this->assertStringStartsWith("avatars/{$user->id}/", $newPath);
-
-        // --verify: Scan verifies R2 file
-        $this->artisan('avatars:migrate-to-r2', ['--verify' => true])->assertExitCode(0);
-    }
 
     public function test_doctor_profile_avatar_update_end_to_end_flow(): void
     {

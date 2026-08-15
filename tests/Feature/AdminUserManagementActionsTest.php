@@ -4,13 +4,13 @@ namespace Tests\Feature;
 
 use App\Models\Role;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class AdminUserManagementActionsTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     protected function setUp(): void
     {
@@ -173,5 +173,62 @@ class AdminUserManagementActionsTest extends TestCase
     public function test_can_manage_catalog_column_does_not_exist(): void
     {
         $this->assertFalse(Schema::hasColumn('users', 'can_manage_catalog'));
+    }
+
+    /** 12. Un usuario con información clínica/administrativa no puede ser eliminado */
+    public function test_user_with_clinical_records_cannot_be_deleted(): void
+    {
+        $admin = $this->createRoleUser('administrador');
+        $paciente = $this->createRoleUser('paciente');
+        $doctor = $this->createRoleUser('doctor');
+
+        $especialidad = \App\Models\Especialidad::first() ?? \App\Models\Especialidad::factory()->create();
+
+        // Create an appointment for paciente
+        \App\Models\Cita::create([
+            'paciente_id' => $paciente->id,
+            'doctor_id' => $doctor->id,
+            'especialidad_id' => $especialidad->id,
+            'fecha' => now()->format('Y-m-d'),
+            'hora' => '10:00',
+            'motivo_consulta' => 'Consulta de prueba',
+            'estado' => \App\Models\Cita::ESTADO_CONFIRMADA,
+        ]);
+
+        $response = $this->actingAs($admin)
+            ->delete(route('admin.usuarios.destroy', $paciente));
+
+        $response->assertRedirect();
+        $response->assertSessionHasErrors();
+        $this->assertDatabaseHas('users', ['id' => $paciente->id]);
+    }
+
+    /** 13. El listado de usuarios muestra únicamente las acciones permitidas según el estado */
+    public function test_user_list_shows_correct_actions_per_status(): void
+    {
+        $admin = $this->createRoleUser('administrador');
+        $userActive = $this->createRoleUser('paciente', ['status' => User::STATUS_ACTIVE]);
+        $userBlocked = $this->createRoleUser('paciente', ['status' => User::STATUS_BLOCKED]);
+        $userInactive = $this->createRoleUser('paciente', ['status' => User::STATUS_INACTIVE]);
+        $userSuspended = $this->createRoleUser('paciente', ['status' => User::STATUS_ACTIVE, 'suspended_until' => now()->addDays(2)]);
+
+        $response = $this->actingAs($admin)->get(route('admin.usuarios.index'));
+        $response->assertOk();
+
+        // Check active user section has Bloquear & Desactivar & Suspender
+        $response->assertSee('data-confirm-form="block-'.$userActive->id.'"', false);
+        $response->assertSee('data-confirm-form="deactivate-'.$userActive->id.'"', false);
+
+        // Check blocked user has Desbloquear
+        $response->assertSee('data-confirm-form="activate-'.$userBlocked->id.'"', false);
+        $response->assertSee('Desbloquear usuario');
+
+        // Check inactive user has Reactivar
+        $response->assertSee('data-confirm-form="activate-'.$userInactive->id.'"', false);
+        $response->assertSee('Reactivar usuario');
+
+        // Check suspended user has Levantar suspensión
+        $response->assertSee('data-confirm-form="unsuspend-'.$userSuspended->id.'"', false);
+        $response->assertSee('Levantar suspensión');
     }
 }

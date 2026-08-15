@@ -8,12 +8,12 @@ use App\Models\Especialidad;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\PriorityEvaluator;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 class CitaPrioridadRulesTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_cita_con_red_flag_queda_en_prioridad_alta_automatica(): void
     {

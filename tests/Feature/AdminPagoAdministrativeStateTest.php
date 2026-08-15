@@ -7,12 +7,12 @@ use App\Models\Especialidad;
 use App\Models\Pago;
 use App\Models\Role;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 class AdminPagoAdministrativeStateTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_pago_detail_only_renders_valid_actions_while_reviewable_and_locks_after_approval(): void
     {

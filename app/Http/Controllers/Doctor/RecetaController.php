@@ -8,17 +8,13 @@ use App\Models\ClinicalRecordMedication;
 use App\Models\Cita;
 use App\Models\NotaSoap;
 use App\Models\Receta;
-use App\Services\ClinicIdentityService;
 use App\Services\ClinicalRecordService;
 use App\Services\DocumentoCsvService;
 use Illuminate\Support\Facades\DB;
-use Dompdf\Dompdf;
-use Dompdf\Options;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 class RecetaController extends Controller
 {
@@ -372,56 +368,6 @@ class RecetaController extends Controller
         return $recipeService->streamDownload($receta, 'receta_'.$cita->id.'.pdf');
     }
 
-    private function generarPdfYGuardar(
-        Cita $cita,
-        string $diagnostico,
-        string $medicamentos,
-        string $indicaciones = '',
-        ?string $csv = null,
-        ?DocumentoCsvService $csvService = null
-    ): array {
-        $csvService = $csvService ?: app(DocumentoCsvService::class);
-        $csv = $csv ?: $csvService->generateCsv();
-
-        $viewData = [
-            'cita' => $cita,
-            'diagnostico' => $diagnostico,
-            'medicamentos' => $medicamentos,
-            'indicaciones' => $indicaciones,
-            'fechaPdf' => now('America/Guayaquil'),
-            'logoBase64' => $this->logoBase64(),
-            'pdfCss' => $this->loadPdfCss('doctor/receta-pdf.css'),
-            'csv' => $csv,
-            'verificationUrl' => $csvService->verificationUrl($csv),
-            'qrDataUri' => $csvService->qrDataUri($csv),
-        ];
-
-        $html = view('pdf.receta', $viewData)->render();
-
-        $options = new Options;
-        $options->set('isRemoteEnabled', true);
-        $options->set('defaultFont', 'DejaVu Sans');
-
-        $dompdf = new Dompdf($options);
-        $dompdf->loadHtml($html, 'UTF-8');
-        $dompdf->setPaper('A4');
-        $dompdf->render();
-
-        $pdfOutput = $dompdf->output();
-
-        $dir = 'recetas';
-        if (! Storage::exists($dir)) {
-            Storage::makeDirectory($dir);
-        }
-
-        $fileName = 'receta_'.$cita->id.'_'.now()->format('Ymd_His').'.pdf';
-        $relativePath = $dir.'/'.$fileName;
-
-        Storage::put($relativePath, $pdfOutput);
-
-        return [$relativePath, $pdfOutput, $fileName];
-    }
-
     private function obtenerCsv(Receta $receta, DocumentoCsvService $csvService): string
     {
         $csv = trim((string) $receta->csv);
@@ -530,19 +476,4 @@ class RecetaController extends Controller
         );
     }
 
-    private function logoBase64(): ?string
-    {
-        return app(ClinicIdentityService::class)->logoBase64ForPdf();
-    }
-
-    private function loadPdfCss(string $relativePath): string
-    {
-        $basePath = resource_path('css/pdf/base.css');
-        $specificPath = resource_path('css/'.$relativePath);
-
-        $css = is_file($basePath) ? (file_get_contents($basePath) ?: '') : '';
-        $css .= is_file($specificPath) ? "\n".(file_get_contents($specificPath) ?: '') : '';
-
-        return $css;
-    }
 }

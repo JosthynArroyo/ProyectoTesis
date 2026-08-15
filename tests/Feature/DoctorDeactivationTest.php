@@ -10,13 +10,13 @@ use App\Models\Receta;
 use App\Models\Role;
 use App\Models\User;
 use Carbon\Carbon;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Auth;
 use Tests\TestCase;
 
 class DoctorDeactivationTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     protected function setUp(): void
     {
@@ -181,12 +181,39 @@ class DoctorDeactivationTest extends TestCase
             ]);
     }
 
-    public function test_delete_action_on_doctor_converts_to_logical_deactivation(): void
+    public function test_delete_action_on_doctor_without_records_performs_hard_delete(): void
     {
         $admin = $this->userWithRole('administrador');
         $doctor = $this->userWithRole('doctor');
         $specialty = Especialidad::factory()->create();
         $doctor->especialidades()->attach($specialty->id);
+
+        $doctorId = $doctor->id;
+
+        $this->actingAs($admin)
+            ->delete(route('admin.usuarios.destroy', $doctor))
+            ->assertRedirect();
+
+        // The row must be gone — not merely deactivated
+        $this->assertDatabaseMissing('users', ['id' => $doctorId]);
+    }
+
+    public function test_delete_action_on_doctor_with_cita_is_rejected_and_state_unchanged(): void
+    {
+        $admin   = $this->userWithRole('administrador');
+        $patient = $this->userWithRole('paciente');
+        $doctor  = $this->userWithRole('doctor');
+        $specialty = Especialidad::factory()->create();
+        $doctor->especialidades()->attach($specialty->id);
+
+        Cita::factory()->create([
+            'paciente_id'    => $patient->id,
+            'doctor_id'      => $doctor->id,
+            'especialidad_id' => $specialty->id,
+        ]);
+
+        $statusBefore = $doctor->status;
+        $activeBefore = $doctor->active;
 
         $this->actingAs($admin)
             ->delete(route('admin.usuarios.destroy', $doctor))
@@ -194,13 +221,11 @@ class DoctorDeactivationTest extends TestCase
 
         $doctor->refresh();
 
-        $this->assertSame(User::STATUS_INACTIVE, $doctor->status);
-        $this->assertFalse($doctor->active);
+        // Rejection: row still exists
         $this->assertDatabaseHas('users', ['id' => $doctor->id]);
-        $this->assertDatabaseHas('doctor_especialidad', [
-            'user_id' => $doctor->id,
-            'especialidad_id' => $specialty->id,
-        ]);
+        // State must be completely unchanged
+        $this->assertSame($statusBefore, $doctor->status);
+        $this->assertSame($activeBefore, $doctor->active);
     }
 
     private function userWithRole(string $role, array $attributes = []): User

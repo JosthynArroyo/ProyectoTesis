@@ -13,14 +13,14 @@ use App\Models\Role;
 use App\Models\User;
 use App\Services\LabTestCatalogService;
 use App\Services\PedidoLaboratorioPdfService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class PedidoLaboratorioResultadosFlowTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     protected function setUp(): void
     {

@@ -56,60 +56,49 @@
                     </div>
                 </div>
 
-                <div class="grid gap-4 md:grid-cols-2 p-4 bg-gray-50/50 rounded-2xl border border-gray-200 para-quien-cita-container">
+                <div class="grid gap-4 md:grid-cols-2 p-4 bg-gray-50/50 dark:bg-gray-800/40 rounded-2xl border border-gray-200 dark:border-gray-700 para-quien-cita-container">
+                    @php($isDependiente = old('tipo_paciente') === 'dependiente' || (old('dependiente_id') && ! old('_token')))
+                    @php($isDependiente = old('tipo_paciente') === 'dependiente' || old('dependiente_id') ? true : false)
                     <div class="flex items-center gap-2">
-                        <input type="radio" name="tipo_paciente" id="paciente_titular" value="titular" checked class="h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300">
-                        <label for="paciente_titular" class="text-sm font-medium text-gray-700 cursor-pointer">Para mí ({{ Auth::user()->name }})</label>
+                        <input type="radio" name="tipo_paciente" id="paciente_titular" value="titular" {{ ! $isDependiente ? 'checked' : '' }} class="h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300">
+                        <label for="paciente_titular" class="text-sm font-medium text-gray-700 dark:text-gray-200 cursor-pointer">Para mí ({{ Auth::user()->name }})</label>
                     </div>
                     <div class="flex items-center gap-2">
-                        <input type="radio" name="tipo_paciente" id="paciente_dependiente" value="dependiente" class="h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300">
-                        <label for="paciente_dependiente" class="text-sm font-medium text-gray-700 cursor-pointer">Para un familiar (Dependiente)</label>
+                        <input type="radio" name="tipo_paciente" id="paciente_dependiente" value="dependiente" {{ $isDependiente ? 'checked' : '' }} class="h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300">
+                        <label for="paciente_dependiente" class="text-sm font-medium text-gray-700 dark:text-gray-200 cursor-pointer">Para un familiar (Dependiente)</label>
                     </div>
 
-                    <div class="md:col-span-2 hidden" id="select_dependiente_container">
-                        <label for="dependiente_id" class="form-label">Seleccionar Familiar</label>
-                        <select name="dependiente_id" id="dependiente_id" class="form-select">
-                            <option value="">-- Selecciona un familiar --</option>
-                            @foreach($dependientes as $dep)
-                                <option value="{{ $dep->id }}" {{ old('dependiente_id') == $dep->id ? 'selected' : '' }}>{{ $dep->nombre }} ({{ ucfirst($dep->parentesco) }})</option>
-                            @endforeach
-                        </select>
-                        @error('dependiente_id')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
-                        <p class="mt-2 text-xs text-gray-500">
-                            ¿No aparece tu familiar? <a href="{{ route('paciente.dependientes.create') }}" class="text-teal-600 font-semibold underline hover:text-teal-700">Registra un nuevo familiar aquí</a>.
-                        </p>
+                    <div class="md:col-span-2 {{ $isDependiente ? '' : 'hidden' }}" id="select_dependiente_container">
+                        @if($dependientes->count() > 0)
+                            <label for="dependiente_id" class="form-label">Seleccionar Familiar <span class="text-rose-500">*</span></label>
+                            <select name="dependiente_id" id="dependiente_id" class="form-select" {{ ! $isDependiente ? 'disabled' : '' }}>
+                                <option value="">-- Selecciona un familiar --</option>
+                                @foreach($dependientes as $dep)
+                                    <option value="{{ $dep->id }}" {{ old('dependiente_id') == $dep->id ? 'selected' : '' }}>{{ $dep->nombre }} ({{ ucfirst($dep->parentesco) }})</option>
+                                @endforeach
+                            </select>
+                            @error('dependiente_id')<span class="text-xs text-rose-600 dark:text-rose-400 mt-1 block">{{ $message }}</span>@enderror
+                            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                                ¿No aparece tu familiar? <a href="{{ route('paciente.dependientes.create') }}" class="text-teal-600 dark:text-teal-400 font-semibold underline hover:text-teal-700 dark:hover:text-teal-300">Registra un nuevo familiar aquí</a>.
+                            </p>
+                        @else
+                            <div class="rounded-xl border border-amber-200/80 bg-amber-50/60 dark:border-amber-900/50 dark:bg-amber-950/20 p-4 text-sm space-y-3">
+                                <div class="flex items-center gap-2 font-medium text-amber-800 dark:text-amber-300">
+                                    <i class="ri-information-line text-lg text-amber-600 dark:text-amber-400"></i>
+                                    <span>No tienes familiares registrados en tu cuenta.</span>
+                                </div>
+                                <p class="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">
+                                    Para agendar una cita para un familiar o dependiente, primero debes registrarlo en tu perfil.
+                                </p>
+                                <div>
+                                    <a href="{{ route('paciente.dependientes.index') }}" class="btn btn-outline btn-sm font-semibold inline-flex items-center gap-2 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/40">
+                                        <i class="ri-user-add-line"></i> Registrar dependiente
+                                    </a>
+                                </div>
+                            </div>
+                        @endif
                     </div>
                 </div>
-            </section>
-
-            <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                const radioTitular = document.getElementById('paciente_titular');
-                const radioDependiente = document.getElementById('paciente_dependiente');
-                const container = document.getElementById('select_dependiente_container');
-                const selectDep = document.getElementById('dependiente_id');
-
-                function toggleContainer() {
-                    if (radioDependiente.checked) {
-                        container.classList.remove('hidden');
-                        selectDep.setAttribute('required', 'required');
-                    } else {
-                        container.classList.add('hidden');
-                        selectDep.removeAttribute('required');
-                        selectDep.value = '';
-                    }
-                }
-
-                radioTitular.addEventListener('change', toggleContainer);
-                radioDependiente.addEventListener('change', toggleContainer);
-
-                // Initialize state in case of redirect/old input
-                if (document.getElementById('dependiente_id').value !== '') {
-                    radioDependiente.checked = true;
-                    toggleContainer();
-                }
-            });
-            </script>
 
             <section class="panel-form-section">
                 <div class="panel-form-section__header">

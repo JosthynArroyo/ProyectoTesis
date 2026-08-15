@@ -14,7 +14,7 @@ use App\Services\DatabaseBackup\BackupRetentionService;
 use App\Services\DatabaseBackup\BackupStorageService;
 use App\Services\DatabaseBackup\BackupTempDirectoryManager;
 use App\Services\DatabaseBackup\MySqlDumpService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Log;
@@ -26,7 +26,7 @@ use Tests\TestCase;
 
 class DatabaseBackupSystemTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     protected function setUp(): void
     {
@@ -1034,75 +1034,57 @@ class DatabaseBackupSystemTest extends TestCase
     {
         $targetDb = 'clinica_donbosco_restore_test_db_test';
         $uuid = (string) \Illuminate\Support\Str::uuid();
+        $service = app(\App\Services\DatabaseBackup\BackupCoordinatorService::class);
 
-        // 1. Setup connection config for this test database
-        $tempConnection = 'temp_restore_sanitize_connection_in_test';
-        $defaultConnection = config('database.default', 'mysql');
-        $defaultConfig = config("database.connections.{$defaultConnection}");
+        $databaseManager = \Illuminate\Support\Facades\DB::getFacadeRoot();
+        $activeConnection = $databaseManager->connection();
+        $db = \Mockery::mock(\Illuminate\Database\ConnectionInterface::class);
 
-        // First, connect to default to create the test database
-        $rootDb = \Illuminate\Support\Facades\DB::connection($defaultConnection);
-        $rootDb->statement("CREATE DATABASE IF NOT EXISTS `{$targetDb}`");
+        $db->shouldReceive('selectOne')->once()
+            ->with('SELECT DATABASE() as db')
+            ->andReturn((object) ['db' => $targetDb]);
+        $db->shouldReceive('select')->once()
+            ->with('SHOW TABLES')
+            ->andReturn(array_map(
+                fn (string $table) => (object) ['table' => $table],
+                ['database_backups', 'jobs', 'job_batches', 'failed_jobs', 'cache', 'sessions']
+            ));
 
-        config(["database.connections.{$tempConnection}" => array_merge($defaultConfig, [
-            'database' => $targetDb,
-        ])]);
+        foreach (['jobs', 'job_batches', 'cache', 'sessions'] as $table) {
+            $db->shouldReceive('statement')->once()
+                ->with("TRUNCATE TABLE `{$table}`")
+                ->andReturnTrue();
+        }
+
+        $db->shouldReceive('select')->once()
+            ->with('SHOW COLUMNS FROM `database_backups`')
+            ->andReturn(array_map(
+                fn (string $column) => (object) ['Field' => $column],
+                ['status', 'completed_at', 'last_verified_at']
+            ));
+        $db->shouldReceive('statement')->once()
+            ->withArgs(function (string $sql, array $bindings) use ($uuid): bool {
+                $this->assertStringStartsWith('UPDATE `database_backups` SET', $sql);
+                $this->assertSame('verified', $bindings[0]);
+                $this->assertNotEmpty($bindings[1]);
+                $this->assertNotEmpty($bindings[2]);
+                $this->assertSame($uuid, $bindings[3]);
+
+                return true;
+            })
+            ->andReturnTrue();
+
+        \Illuminate\Support\Facades\DB::shouldReceive('connection')
+            ->zeroOrMoreTimes()
+            ->withNoArgs()
+            ->andReturn($activeConnection);
+        \Illuminate\Support\Facades\DB::shouldReceive('connection')->once()
+            ->with('temp_restore_sanitize_connection')
+            ->andReturn($db);
+        \Illuminate\Support\Facades\DB::shouldReceive('purge')->once()
+            ->with('temp_restore_sanitize_connection');
 
         try {
-            $db = \Illuminate\Support\Facades\DB::connection($tempConnection);
-
-            // Re-create the required tables in target database
-            $db->statement("DROP TABLE IF EXISTS `database_backups`");
-            $db->statement("DROP TABLE IF EXISTS `jobs`");
-            $db->statement("DROP TABLE IF EXISTS `job_batches`");
-            $db->statement("DROP TABLE IF EXISTS `failed_jobs`");
-            $db->statement("DROP TABLE IF EXISTS `cache`");
-            $db->statement("DROP TABLE IF EXISTS `sessions`");
-
-            $db->statement("CREATE TABLE `database_backups` (
-                `id` INT AUTO_INCREMENT PRIMARY KEY,
-                `uuid` CHAR(36) NOT NULL,
-                `status` VARCHAR(20) NOT NULL,
-                `completed_at` TIMESTAMP NULL,
-                `last_verified_at` TIMESTAMP NULL
-            )");
-
-            $db->statement("CREATE TABLE `jobs` (
-                `id` INT AUTO_INCREMENT PRIMARY KEY,
-                `queue` VARCHAR(255) NOT NULL,
-                `payload` TEXT NOT NULL
-            )");
-
-            $db->statement("CREATE TABLE `job_batches` (
-                `id` VARCHAR(255) PRIMARY KEY,
-                `name` VARCHAR(255) NOT NULL
-            )");
-
-            $db->statement("CREATE TABLE `failed_jobs` (
-                `id` INT AUTO_INCREMENT PRIMARY KEY,
-                `connection` TEXT NOT NULL
-            )");
-
-            $db->statement("CREATE TABLE `cache` (
-                `key` VARCHAR(255) PRIMARY KEY,
-                `value` MEDIUMTEXT NOT NULL
-            )");
-
-            $db->statement("CREATE TABLE `sessions` (
-                `id` VARCHAR(255) PRIMARY KEY,
-                `payload` TEXT NOT NULL
-            )");
-
-            // Populate tables
-            $db->statement("INSERT INTO `database_backups` (`uuid`, `status`) VALUES (?, 'processing')", [$uuid]);
-            $db->statement("INSERT INTO `jobs` (`queue`, `payload`) VALUES ('backups', 'dummy_payload')");
-            $db->statement("INSERT INTO `job_batches` (`id`, `name`) VALUES ('batch_1', 'dummy_batch')");
-            $db->statement("INSERT INTO `failed_jobs` (`connection`) VALUES ('mysql')");
-            $db->statement("INSERT INTO `cache` (`key`, `value`) VALUES ('some_key', 'some_val')");
-            $db->statement("INSERT INTO `sessions` (`id`, `payload`) VALUES ('sess_1', 'dummy_session')");
-
-            // Verify active database has no modifications
-            $service = app(\App\Services\DatabaseBackup\BackupCoordinatorService::class);
             $method = new \ReflectionMethod($service, 'sanitizeTargetDatabase');
             $method->setAccessible(true);
 
@@ -1112,38 +1094,10 @@ class DatabaseBackupSystemTest extends TestCase
                 'timestamp' => now()->toIso8601String(),
             ];
 
-            // Execute the sanitation
             $method->invoke($service, $targetDb, $uuid, $manifestData);
-
-            // Assert target database tables are empty
-            $this->assertEmpty($db->select("SELECT * FROM `jobs`"));
-            $this->assertEmpty($db->select("SELECT * FROM `job_batches`"));
-            $this->assertEmpty($db->select("SELECT * FROM `cache`"));
-            $this->assertEmpty($db->select("SELECT * FROM `sessions`"));
-
-            // Assert failed_jobs is NOT cleared (has 1 row)
-            $this->assertCount(1, $db->select("SELECT * FROM `failed_jobs`"));
-
-            // Assert database_backups row status is updated to verified
-            $backupRow = $db->selectOne("SELECT * FROM `database_backups` WHERE `uuid` = ?", [$uuid]);
-            $this->assertNotNull($backupRow);
-            $this->assertEquals('verified', $backupRow->status);
-            $this->assertNotNull($backupRow->last_verified_at);
-
+            $this->addToAssertionCount(1);
         } finally {
-            // Clean up target database tables and connection
-            try {
-                $db = \Illuminate\Support\Facades\DB::connection($tempConnection);
-                $db->statement("DROP TABLE IF EXISTS `database_backups`");
-                $db->statement("DROP TABLE IF EXISTS `jobs`");
-                $db->statement("DROP TABLE IF EXISTS `job_batches`");
-                $db->statement("DROP TABLE IF EXISTS `failed_jobs`");
-                $db->statement("DROP TABLE IF EXISTS `cache`");
-                $db->statement("DROP TABLE IF EXISTS `sessions`");
-            } catch (\Throwable $e) {}
-
-            \Illuminate\Support\Facades\DB::purge($tempConnection);
-            $rootDb->statement("DROP DATABASE IF EXISTS `{$targetDb}`");
+            \Illuminate\Support\Facades\DB::swap($databaseManager);
         }
     }
 

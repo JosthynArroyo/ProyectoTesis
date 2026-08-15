@@ -4,26 +4,46 @@ namespace Tests\Feature;
 
 use App\Models\Role;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Auth;
 use Tests\TestCase;
 
 class AuthModalRedirectTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_login_get_redirects_to_landing_modal(): void
     {
         $response = $this->get(route('login'));
 
-        $response->assertOk();
+        $response->assertRedirect(url('/').'?login=1');
     }
 
-    public function test_guest_access_to_protected_panel_redirects_to_landing_modal(): void
+    public function test_authenticated_user_accessing_get_login_redirects_to_dashboard(): void
     {
-        $response = $this->get(route('superadmin.dashboard'));
+        $role = Role::firstOrCreate(['name' => 'paciente']);
+        $user = User::factory()->create(['status' => User::STATUS_ACTIVE]);
+        $user->roles()->attach($role->id);
 
-        $response->assertRedirect(url('/').'?login=1');
+        $response = $this->actingAs($user)->get(route('login'));
+
+        $response->assertRedirect($user->dashboardPath());
+    }
+
+    public function test_guest_access_to_protected_panels_redirects_to_landing_modal(): void
+    {
+        $protectedRoutes = [
+            'superadmin.dashboard',
+            'admin.dashboard',
+            'doctor.dashboard',
+            'paciente.dashboard',
+            'laboratorio.dashboard',
+        ];
+
+        foreach ($protectedRoutes as $routeName) {
+            $response = $this->get(route($routeName));
+            $response->assertRedirect(url('/').'?login=1');
+        }
     }
 
     public function test_salir_logs_out_and_returns_to_landing(): void

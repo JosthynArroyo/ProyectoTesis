@@ -133,6 +133,7 @@ Route::prefix('demo')->name('demo.')->middleware('demo.isolation')->group(functi
         Route::get('/solicitudes', [DemoDashboardController::class, 'superadminSolicitudes'])->name('solicitudes');
         Route::get('/personalizacion', [DemoDashboardController::class, 'superadminPersonalizacion'])->name('personalizacion');
         Route::get('/mantenimiento', [DemoDashboardController::class, 'superadminMantenimiento'])->name('mantenimiento');
+        Route::get('/respaldos', [DemoDashboardController::class, 'superadminRespaldos'])->name('respaldos');
     });
 
     // Admin
@@ -345,6 +346,9 @@ Route::middleware(['auth', 'role:administrador'])
         Route::put('/personalizacion/bienvenida', [AdminPersonalizacionController::class, 'update'])
             ->middleware('feature:personalizacion')
             ->name('personalizacion.bienvenida.update');
+        Route::get('/personalizacion/bienvenida/batch/{uuid}', [AdminPersonalizacionController::class, 'welcomeBatchStatus'])
+            ->middleware('feature:personalizacion')
+            ->name('personalizacion.bienvenida.batch');
         Route::get('/personalizacion/servicios', [AdminPersonalizacionController::class, 'serviciosEdit'])
             ->middleware('feature:personalizacion')
             ->name('personalizacion.servicios.edit');
@@ -469,6 +473,8 @@ Route::middleware(['auth', 'role:superadmin'])
             ->name('personalizacion.bienvenida.edit');
         Route::put('/personalizacion/bienvenida', [SuperadminPersonalizacionController::class, 'update'])
             ->name('personalizacion.bienvenida.update');
+        Route::get('/personalizacion/bienvenida/batch/{uuid}', [SuperadminPersonalizacionController::class, 'welcomeBatchStatus'])
+            ->name('personalizacion.bienvenida.batch');
         Route::get('/personalizacion/servicios', [SuperadminPersonalizacionController::class, 'serviciosEdit'])
             ->name('personalizacion.servicios.edit');
         Route::put('/personalizacion/servicios', [SuperadminPersonalizacionController::class, 'serviciosUpdate'])
@@ -586,6 +592,10 @@ Route::middleware(['auth', 'role:doctor'])->prefix('doctor')->group(function () 
         ->name('doctor.certificados.download');
     Route::post('/certificados/{certificado}/reenviar', [DoctorCertificadoMedicoController::class, 'resend'])
         ->name('doctor.certificados.resend');
+    Route::get('/certificados/{certificado}/corregir', [DoctorCertificadoMedicoController::class, 'corregir'])
+        ->name('doctor.certificados.corregir');
+    Route::post('/certificados/{certificado}/corregir', [DoctorCertificadoMedicoController::class, 'storeCorregido'])
+        ->name('doctor.certificados.store-corregido');
 
     Route::get('/pedidos-laboratorio', [PedidoLaboratorioController::class, 'index'])
         ->name('doctor.pedidos-laboratorio.index');

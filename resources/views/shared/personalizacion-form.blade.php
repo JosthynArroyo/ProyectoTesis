@@ -30,17 +30,17 @@
       <div class="grid gap-3 sm:grid-cols-3">
         <div>
           <label class="form-label" for="branding_accent">Color base</label>
-          <input class="form-input" id="branding_accent" name="branding_accent" value="{{ old('branding_accent', $settings['branding.accent'] ?? '') }}" placeholder="#0f766e" required>
+          <input class="form-input" id="branding_accent" name="branding_accent" value="{{ old('branding_accent', $settings['branding.accent'] ?? '') }}" placeholder="#334155" required>
           @error('branding_accent')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
         </div>
         <div>
           <label class="form-label" for="branding_accent_strong">Color fuerte</label>
-          <input class="form-input" id="branding_accent_strong" name="branding_accent_strong" value="{{ old('branding_accent_strong', $settings['branding.accent_strong'] ?? '') }}" placeholder="#14b8a6" required>
+          <input class="form-input" id="branding_accent_strong" name="branding_accent_strong" value="{{ old('branding_accent_strong', $settings['branding.accent_strong'] ?? '') }}" placeholder="#475569" required>
           @error('branding_accent_strong')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
         </div>
         <div>
           <label class="form-label" for="branding_accent_soft">Color suave</label>
-          <input class="form-input" id="branding_accent_soft" name="branding_accent_soft" value="{{ old('branding_accent_soft', $settings['branding.accent_soft'] ?? '') }}" placeholder="#ccfbf1" required>
+          <input class="form-input" id="branding_accent_soft" name="branding_accent_soft" value="{{ old('branding_accent_soft', $settings['branding.accent_soft'] ?? '') }}" placeholder="#e2e8f0" required>
           @error('branding_accent_soft')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
         </div>
       </div>

@@ -5,12 +5,12 @@ namespace Tests\Feature;
 use App\Models\Horario;
 use App\Models\Role;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 class PanelBackButtonTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_nested_superadmin_page_renders_panel_back_button(): void
     {

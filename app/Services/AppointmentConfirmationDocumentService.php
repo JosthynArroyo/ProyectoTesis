@@ -212,6 +212,7 @@ class AppointmentConfirmationDocumentService
         }
 
         $path = $this->obtenerOGenerarComprobantePdf($cita);
+        $cita = $cita->fresh();
 
         $stored = $this->resolveStorage($path, $cita->comprobante_pdf_disk);
         if (! $stored) {
@@ -265,12 +266,21 @@ class AppointmentConfirmationDocumentService
         $options->set('isRemoteEnabled', true);
         $options->set('defaultFont', 'DejaVu Sans');
 
-        $dompdf = new Dompdf($options);
-        $dompdf->loadHtml($html, 'UTF-8');
-        $dompdf->setPaper('A4', 'portrait');
-        $dompdf->render();
-
-        return $dompdf->output();
+        try {
+            $dompdf = new Dompdf($options);
+            $dompdf->loadHtml($html, 'UTF-8');
+            $dompdf->setPaper('A4', 'portrait');
+            $dompdf->render();
+            return $dompdf->output();
+        } catch (\DivisionByZeroError $e) {
+            // Fallback: strip <img> tags only when Dompdf image aspect ratio calculation fails due to zero width/height
+            $cleanHtml = preg_replace('/<img[^>]+>/i', '', $html);
+            $dompdf = new Dompdf($options);
+            $dompdf->loadHtml($cleanHtml, 'UTF-8');
+            $dompdf->setPaper('A4', 'portrait');
+            $dompdf->render();
+            return $dompdf->output();
+        }
     }
 
     protected function generarQrDataUri(string $url): string

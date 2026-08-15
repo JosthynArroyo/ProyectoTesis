@@ -551,13 +551,13 @@
       border-radius: 0.25rem;
       background: #0f172a;
       box-shadow: inset 0 1px 2px rgba(2, 6, 23, 0.32);
-      color: #14b8a6;
+      color: var(--accent);
       cursor: pointer;
     }
 
     html.dashboard-root.panel-theme-dark #soap-page .soap-allergy-checkbox:checked {
-      border-color: #14b8a6;
-      background-color: #14b8a6;
+      border-color: var(--accent);
+      background-color: var(--accent);
       background-repeat: no-repeat;
       background-position: center;
       background-size: 0.75rem 0.75rem;
@@ -565,7 +565,7 @@
     }
 
     html.dashboard-root.panel-theme-dark #soap-page .soap-allergy-checkbox:focus-visible {
-      outline: 2px solid rgba(20, 184, 166, 0.45);
+      outline: 2px solid color-mix(in srgb, var(--accent) 56%, white);
       outline-offset: 2px;
     }
 

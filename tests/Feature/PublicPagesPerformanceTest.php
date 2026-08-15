@@ -4,7 +4,7 @@ namespace Tests\Feature;
 
 use App\Services\CaptchaImageSynchronizer;
 use App\Services\LandingWelcomeService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -13,7 +13,7 @@ use Tests\TestCase;
 
 class PublicPagesPerformanceTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     protected function setUp(): void
     {
@@ -39,7 +39,7 @@ class PublicPagesPerformanceTest extends TestCase
         $this->app->instance(CaptchaImageSynchronizer::class, $captchaSynchronizer);
 
         $this->get('/')->assertOk();
-        $this->get('/login')->assertOk();
+        $this->get('/login')->assertRedirect(url('/').'?login=1');
     }
 
     public function test_public_pages_continue_to_render_on_repeated_requests(): void
@@ -50,7 +50,7 @@ class PublicPagesPerformanceTest extends TestCase
 
         for ($i = 0; $i < 5; $i++) {
             $this->get('/')->assertOk();
-            $this->get('/login')->assertOk();
+            $this->get('/login')->assertRedirect(url('/').'?login=1');
         }
     }
 

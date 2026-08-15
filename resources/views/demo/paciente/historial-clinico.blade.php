@@ -15,7 +15,7 @@
       
       $cita = new \App\Models\Cita();
       $cita->id = $i + 1;
-      $cita->fecha = \Carbon\Carbon::parse($e['date']);
+      $cita->fecha = \Carbon\Carbon::parse(str_replace('/', '-', $e['date']));
       $cita->hora = '10:00';
       $cita->setRelation('doctor', new \App\Models\User(['name' => $e['doctor']]));
       $cita->setRelation('especialidad', new \App\Models\Especialidad(['nombre' => $e['specialty']]));

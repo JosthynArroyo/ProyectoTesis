@@ -13,13 +13,13 @@ use App\Models\Role;
 use App\Models\Especialidad;
 use App\Models\User;
 use Carbon\Carbon;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class DashboardAnalyticsTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     protected function setUp(): void
     {
@@ -281,9 +281,12 @@ class DashboardAnalyticsTest extends TestCase
     {
         $superadmin = $this->userWithRole('superadmin');
 
-        Schema::disableForeignKeyConstraints();
-        Schema::dropIfExists((new PedidoLaboratorio())->getTable());
-        Schema::enableForeignKeyConstraints();
+        $realSchema = Schema::getFacadeRoot();
+        $mockSchema = \Mockery::mock($realSchema)->makePartial();
+        $mockSchema->shouldReceive('hasTable')
+            ->with('pedidos_laboratorio')
+            ->andReturn(false);
+        Schema::swap($mockSchema);
 
         $response = $this->actingAs($superadmin)->get(route('superadmin.dashboard'));
 

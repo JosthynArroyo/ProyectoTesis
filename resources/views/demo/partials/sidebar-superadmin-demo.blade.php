@@ -29,13 +29,16 @@
             @endif
         </a>
         <a href="{{ route('demo.superadmin.personalizacion') }}" class="flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors {{ request()->routeIs('demo.superadmin.personalizacion') ? 'bg-gray-100 text-gray-900 font-medium' : 'text-gray-600 hover:bg-gray-50' }}">
-            <i class="ri-palette-line text-lg"></i> Personalizacion
+            <i class="ri-palette-line text-lg"></i> Personalización
         </a>
         <a href="{{ route('demo.superadmin.mantenimiento') }}" class="flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors {{ request()->routeIs('demo.superadmin.mantenimiento') ? 'bg-gray-100 text-gray-900 font-medium' : 'text-gray-600 hover:bg-gray-50' }}">
             <i class="ri-tools-line text-lg"></i> Mantenimiento
         </a>
+        <a href="{{ route('demo.superadmin.respaldos') }}" class="flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors {{ request()->routeIs('demo.superadmin.respaldos*') ? 'bg-gray-100 text-gray-900 font-medium' : 'text-gray-600 hover:bg-gray-50' }}">
+            <i class="ri-database-2-line text-lg"></i> Respaldos DB
+        </a>
         <a href="{{ $logoutUrl }}" class="mt-5 flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 text-rose-600 transition-colors hover:bg-rose-50">
-            <i class="ri-logout-circle-r-line text-lg"></i> Cerrar sesion
+            <i class="ri-logout-circle-r-line text-lg"></i> Cerrar sesión
         </a>
     </nav>
 </aside>

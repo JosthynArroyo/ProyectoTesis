@@ -13,14 +13,14 @@ use App\Models\User;
 use App\Services\LaboratoryOrderDocumentService;
 use App\Services\MedicalCertificateDocumentService;
 use App\Services\RecipeDocumentService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class DocumentoVerificacionPrivacyTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     protected function setUp(): void
     {
@@ -348,5 +348,50 @@ class DocumentoVerificacionPrivacyTest extends TestCase
         $respPacView->assertSee('data-skip-page-loader', false);
         $respPacView->assertSee('data-action-lock-ignore', false);
         $respPacView->assertSee('download', false);
+    }
+
+    /**
+     * Test document verification form page extends the public navbar layout
+     */
+    public function test_public_document_verification_form_extends_public_navbar_header(): void
+    {
+        $response = $this->get(route('documentos.verificar.form'));
+
+        $response->assertStatus(200);
+        $response->assertSee('id="cnav-header"', false);
+        $response->assertSee('id="cnav-menu"', false);
+        $response->assertSee('Comprueba un documento con su CSV.');
+        $response->assertSee('Verificar documento');
+        $response->assertSee('href="'.url('/').'"', false);
+    }
+
+    /**
+     * Test document verification show page extends the public navbar layout
+     */
+    public function test_public_document_verification_show_extends_public_navbar_header(): void
+    {
+        $doctor = $this->createRoleUser('doctor', ['name' => 'Dr. Layout Test']);
+        $paciente = $this->createRoleUser('paciente', ['name' => 'Paciente Layout Test']);
+        $cita = $this->createRealizedCita($doctor, $paciente);
+
+        $recipeService = app(RecipeDocumentService::class);
+        [$pdfBinary, $csv] = $recipeService->generatePdfOutput($cita, 'Diag Test', 'Med Test');
+
+        $receta = Receta::create([
+            'cita_id' => $cita->id,
+            'diagnostico' => 'Diag Test',
+            'medicamentos' => 'Med Test',
+            'csv' => $csv,
+            'pdf_path' => '',
+        ]);
+        $st = $recipeService->storeRecipePdf($receta, $pdfBinary);
+        $receta->update(['pdf_path' => $st['pdf_path'], 'pdf_disk' => $st['pdf_disk']]);
+
+        $response = $this->get(route('documentos.verificar.show', ['csv' => $csv]));
+
+        $response->assertStatus(200);
+        $response->assertSee('id="cnav-header"', false);
+        $response->assertSee('id="cnav-menu"', false);
+        $response->assertSee('Receta médica verificado.');
     }
 }

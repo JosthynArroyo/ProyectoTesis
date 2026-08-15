@@ -615,6 +615,46 @@
     updateStepper();
   });
 
+  const radioTitular = document.getElementById('paciente_titular');
+  const radioDependiente = document.getElementById('paciente_dependiente');
+  const depContainer = document.getElementById('select_dependiente_container');
+  const selectDep = document.getElementById('dependiente_id');
+
+  function toggleDependienteSection() {
+    if (!depContainer) return;
+    const isDependiente = Boolean(radioDependiente?.checked);
+
+    if (isDependiente) {
+      depContainer.classList.remove('hidden');
+      if (selectDep) {
+        selectDep.disabled = false;
+      }
+    } else {
+      depContainer.classList.add('hidden');
+      if (selectDep) {
+        selectDep.value = '';
+        selectDep.disabled = true;
+      }
+    }
+  }
+
+  radioTitular?.addEventListener('change', toggleDependienteSection);
+  radioDependiente?.addEventListener('change', toggleDependienteSection);
+
+  form.addEventListener('submit', function (event) {
+    if (radioDependiente?.checked && selectDep && !selectDep.disabled && !selectDep.value) {
+      event.preventDefault();
+      let errorSpan = depContainer.querySelector('.text-rose-600');
+      if (!errorSpan) {
+        errorSpan = document.createElement('span');
+        errorSpan.className = 'text-xs text-rose-600 dark:text-rose-400 mt-1 block';
+        selectDep.after(errorSpan);
+      }
+      errorSpan.textContent = 'Selecciona el familiar para quien deseas agendar la cita.';
+      selectDep.focus();
+    }
+  });
+
   fechaInp?.addEventListener('change', handleFechaChange);
   fechaInp?.addEventListener('enhanced-date:change', handleFechaChange);
   horaSel?.addEventListener('change', async () => {
@@ -646,6 +686,7 @@
 
   (async function init() {
     ensureHoldToken();
+    toggleDependienteSection();
     if (oldEsp) {
       toggleLabFields(oldEsp);
       await loadDoctors(oldEsp, oldDoc || null);

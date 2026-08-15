@@ -8,7 +8,7 @@ use Illuminate\Console\Command;
 class SyncCaptchaImages extends Command
 {
     protected $signature = 'captcha:sync';
-    protected $description = 'Sincroniza e importa las imágenes de CAPTCHA privadas de la clínica a la base de datos';
+    protected $description = 'Indexa las imágenes de CAPTCHA desde ai/dataset/val en la base de datos';
 
     public function handle(CaptchaImageSynchronizer $synchronizer): int
     {

@@ -17,6 +17,13 @@ class AdminUsuariosDependientesTest extends TestCase
 
     private array $createdUserEmails = [];
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        DB::table('identity_documents')->where('numero_documento', '0987654329')->delete();
+        DB::table('dependientes')->where('dni', '0987654329')->delete();
+    }
+
     public function test_admin_can_view_users_index_and_expand_the_correct_dependientes_without_n_plus_one(): void
     {
         $admin = $this->userWithRole('administrador', ['name' => 'Admin QA', 'email' => 'admin.qa@example.test']);
@@ -182,6 +189,8 @@ class AdminUsuariosDependientesTest extends TestCase
 
         $autoIncrement = DB::selectOne("SELECT AUTO_INCREMENT AS next_id FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users'");
         $this->assertSame(6, (int) ($autoIncrement->next_id ?? 0));
+
+        $this->purgeExistingValidUsers();
     }
 
     private function userWithRole(?string $roleName, array $attributes = []): User
@@ -267,6 +276,9 @@ class AdminUsuariosDependientesTest extends TestCase
 
     private function purgeExistingValidUsers(): void
     {
+        Dependiente::query()->forceDelete();
+        IdentityDocument::query()->delete();
+
         $validEmails = [
             'superadmin@clinic.test',
             'manuellandazuri778@gmail.com',

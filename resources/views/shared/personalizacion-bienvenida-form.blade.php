@@ -71,14 +71,14 @@
     'services' => 'Servicios',
     'contact' => 'Contacto',
   ];
-  $visualSoftPrimary = old('visual_soft_primary', $welcomeSiteSettings['visual.soft_primary'] ?? '#dff6f2');
-  $visualSoftSecondary = old('visual_soft_secondary', $welcomeSiteSettings['visual.soft_secondary'] ?? '#e8f8ef');
-  $visualGradientStart = old('visual_gradient_start', $welcomeSiteSettings['visual.gradient_start'] ?? '#dff4ff');
-  $visualGradientEnd = old('visual_gradient_end', $welcomeSiteSettings['visual.gradient_end'] ?? '#ecfdf5');
-  $visualBadgeSoft = old('visual_badge_soft', $welcomeSiteSettings['visual.badge_soft'] ?? '#d9f7ef');
-  $brandingAccent = old('branding_accent', $welcomeSiteSettings['branding.accent'] ?? '#0f766e');
-  $brandingAccentStrong = old('branding_accent_strong', $welcomeSiteSettings['branding.accent_strong'] ?? '#14b8a6');
-  $brandingAccentSoft = old('branding_accent_soft', $welcomeSiteSettings['branding.accent_soft'] ?? '#ccfbf1');
+  $visualSoftPrimary = old('visual_soft_primary', $welcomeSiteSettings['visual.soft_primary'] ?? '#e2e8f0');
+  $visualSoftSecondary = old('visual_soft_secondary', $welcomeSiteSettings['visual.soft_secondary'] ?? '#f1f5f9');
+  $visualGradientStart = old('visual_gradient_start', $welcomeSiteSettings['visual.gradient_start'] ?? '#e2e8f0');
+  $visualGradientEnd = old('visual_gradient_end', $welcomeSiteSettings['visual.gradient_end'] ?? '#cbd5e1');
+  $visualBadgeSoft = old('visual_badge_soft', $welcomeSiteSettings['visual.badge_soft'] ?? '#e2e8f0');
+  $brandingAccent = old('branding_accent', $welcomeSiteSettings['branding.accent'] ?? '#334155');
+  $brandingAccentStrong = old('branding_accent_strong', $welcomeSiteSettings['branding.accent_strong'] ?? '#475569');
+  $brandingAccentSoft = old('branding_accent_soft', $welcomeSiteSettings['branding.accent_soft'] ?? '#e2e8f0');
   $assetBase = asset('');
   $storageBase = asset('storage');
   $tabDefinitions = [
@@ -404,16 +404,16 @@
 
     .welcome-cms-tab.is-active {
       background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
-      border-color: rgba(13, 148, 136, 0.22);
-      color: #0f766e;
-      box-shadow: 0 18px 32px rgba(15, 118, 110, 0.1);
+      border-color: color-mix(in srgb, var(--preview-accent) 24%, white);
+      color: var(--preview-accent);
+      box-shadow: 0 18px 32px rgba(15, 23, 42, 0.1);
     }
 
     html.panel-theme-dark .welcome-cms-tab.is-active {
       background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
-      border-color: rgba(20, 184, 166, 0.35);
-      color: #14b8a6;
-      box-shadow: 0 18px 32px rgba(20, 184, 166, 0.08);
+      border-color: color-mix(in srgb, var(--preview-accent) 28%, #334155);
+      color: var(--preview-accent);
+      box-shadow: 0 18px 32px rgba(15, 23, 42, 0.18);
     }
 
     .welcome-cms-preview-modal[hidden] {
@@ -515,8 +515,8 @@
 
     .welcome-cms-preview-device.is-active {
       background: #ffffff;
-      color: #0f766e;
-      box-shadow: 0 12px 24px rgba(15, 118, 110, 0.12);
+      color: var(--preview-accent);
+      box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
     }
 
     .welcome-cms-live-preview-surface {
@@ -550,14 +550,14 @@
     }
 
     .welcome-live-preview {
-      --preview-accent: #0f766e;
-      --preview-accent-strong: #14b8a6;
-      --preview-accent-soft: #ccfbf1;
-      --preview-soft-primary: #dff6f2;
-      --preview-soft-secondary: #e8f8ef;
-      --preview-gradient-start: #dff4ff;
-      --preview-gradient-end: #ecfdf5;
-      --preview-badge-soft: #d9f7ef;
+      --preview-accent: {{ $brandingAccent }};
+      --preview-accent-strong: color-mix(in srgb, var(--preview-accent) 82%, black);
+      --preview-accent-soft: color-mix(in srgb, var(--preview-accent) 14%, white);
+      --preview-soft-primary: {{ $visualSoftPrimary }};
+      --preview-soft-secondary: {{ $visualSoftSecondary }};
+      --preview-gradient-start: {{ $visualGradientStart }};
+      --preview-gradient-end: {{ $visualGradientEnd }};
+      --preview-badge-soft: {{ $visualBadgeSoft }};
       background:
         radial-gradient(circle at top left, color-mix(in srgb, var(--preview-gradient-start) 48%, transparent), transparent 38%),
         radial-gradient(circle at top right, color-mix(in srgb, var(--preview-gradient-end) 38%, transparent), transparent 28%),
@@ -1086,7 +1086,7 @@
 @endif
 
 <input type="hidden" name="active_tab" value="{{ $activeTab }}" data-active-tab-input>
-<div class="welcome-cms-editor space-y-6" data-bienvenida-form data-asset-base="{{ $assetBase }}" data-storage-base="{{ $storageBase }}" data-r2-url="{{ rtrim(config('filesystems.disks.r2_public.url', ''), '/') }}" data-current-year="{{ now()->year }}" data-initial-tab="{{ $activeTab }}">
+<div class="welcome-cms-editor space-y-6" data-bienvenida-form data-asset-base="{{ $assetBase }}" data-storage-base="{{ $storageBase }}" data-r2-url="{{ rtrim(config('filesystems.disks.r2_public.url', ''), '/') }}" data-current-year="{{ now()->year }}" data-initial-tab="{{ $activeTab }}" @isset($batchStatusRouteName) data-batch-status-url-template="{{ route($batchStatusRouteName, ['uuid' => '__UUID__']) }}" @endisset>
   <section class="card overflow-hidden border border-gray-200/80 bg-white/95 dark:border-gray-800/80 dark:bg-gray-900/95">
     <div class="border-b border-gray-200/80 bg-gradient-to-r from-gray-50 via-white to-gray-100/40 px-6 py-5 dark:border-gray-800/80 dark:bg-gradient-to-r dark:from-gray-950/70 dark:via-gray-900/40 dark:to-gray-950/70">
       <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">

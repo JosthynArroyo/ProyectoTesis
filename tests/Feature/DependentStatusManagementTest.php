@@ -8,12 +8,12 @@ use App\Models\Dependiente;
 use App\Models\Especialidad;
 use App\Models\Role;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 class DependentStatusManagementTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_dependiente_se_puede_desactivar_y_reactivar_sin_perder_visibilidad(): void
     {

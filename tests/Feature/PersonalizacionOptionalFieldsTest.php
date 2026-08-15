@@ -7,12 +7,18 @@ use App\Models\FeatureAccessRequest;
 use App\Models\Role;
 use App\Models\SiteSetting;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 class PersonalizacionOptionalFieldsTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        config(['queue.media_connection' => 'sync']);
+    }
 
     public function test_superadmin_personalizacion_forms_do_not_render_required_attributes(): void
     {
@@ -128,7 +134,9 @@ class PersonalizacionOptionalFieldsTest extends TestCase
         ]);
 
         $response->assertRedirect();
-        $response->assertSessionHas('success', 'Servicios actualizados correctamente.');
+        $response->assertSessionHas('success', 'Personalización guardada correctamente.');
+
+        $this->assertSame(0, \App\Models\MediaProcessingBatch::query()->count());
 
         $especialidad->refresh();
 

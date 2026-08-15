@@ -81,6 +81,10 @@ class Dependiente extends Model
                 );
             }
         });
+
+        static::deleting(function (Dependiente $dep): void {
+            app(\App\Services\IdentityDocumentService::class)->deleteFor($dep);
+        });
     }
 
     /* ============================================================

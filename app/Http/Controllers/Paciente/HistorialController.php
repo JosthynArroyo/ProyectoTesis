@@ -24,6 +24,7 @@ class HistorialController extends Controller
             ->where('citas_medicas.paciente_id', $pacienteId);
 
         $certificadosQuery = CertificadoMedico::query()
+            ->vigente()
             ->where('paciente_id', $pacienteId);
 
         if ($pacienteFilter === 'principal') {

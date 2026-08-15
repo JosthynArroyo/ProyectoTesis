@@ -5,12 +5,12 @@ namespace Tests\Feature;
 use App\Models\Role;
 use App\Models\SiteSetting;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 class MaintenanceModeTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     private const GENERIC_MAINTENANCE_MESSAGE = 'El sistema está en mantenimiento. Intenta nuevamente más tarde.';
 
@@ -97,9 +97,10 @@ class MaintenanceModeTest extends TestCase
         $response->assertOk();
     }
 
-    public function test_allowlisted_forwarded_ip_can_bypass_maintenance(): void
+    public function test_allowlisted_forwarded_ip_can_bypass_maintenance_through_configured_proxy(): void
     {
         $this->enableMaintenance('192.168.18.42');
+        config(['trustedproxy.proxies' => ['10.0.0.10']]);
 
         $response = $this
             ->withServerVariables(['REMOTE_ADDR' => '10.0.0.10'])
@@ -107,6 +108,61 @@ class MaintenanceModeTest extends TestCase
             ->get('/');
 
         $response->assertOk();
+    }
+
+    public function test_untrusted_origin_cannot_spoof_allowlisted_x_forwarded_for(): void
+    {
+        $this->enableMaintenance('192.168.18.42');
+        config(['trustedproxy.proxies' => []]);
+
+        $response = $this
+            ->withServerVariables(['REMOTE_ADDR' => '198.51.100.25'])
+            ->withHeader('X-Forwarded-For', '192.168.18.42')
+            ->get('/');
+
+        $response->assertStatus(503);
+    }
+
+    public function test_untrusted_origin_cannot_spoof_allowlisted_cloudflare_header(): void
+    {
+        $this->enableMaintenance('192.168.18.42');
+        config(['trustedproxy.proxies' => []]);
+
+        $response = $this
+            ->withServerVariables(['REMOTE_ADDR' => '198.51.100.25'])
+            ->withHeader('CF-Connecting-IP', '192.168.18.42')
+            ->get('/');
+
+        $response->assertStatus(503);
+    }
+
+    public function test_configured_cloudflare_proxy_cidr_preserves_real_client_ip(): void
+    {
+        $this->enableMaintenance('192.168.18.42');
+        config(['trustedproxy.proxies' => ['203.0.113.0/24']]);
+
+        $response = $this
+            ->withServerVariables(['REMOTE_ADDR' => '203.0.113.10'])
+            ->withHeaders([
+                'X-Forwarded-For' => '192.168.18.42',
+                'CF-Connecting-IP' => '192.168.18.42',
+            ])
+            ->get('/');
+
+        $response->assertOk();
+    }
+
+    public function test_attacker_cannot_inject_allowlisted_ip_before_untrusted_hop(): void
+    {
+        $this->enableMaintenance('192.168.18.42');
+        config(['trustedproxy.proxies' => ['10.0.0.10']]);
+
+        $response = $this
+            ->withServerVariables(['REMOTE_ADDR' => '10.0.0.10'])
+            ->withHeader('X-Forwarded-For', '192.168.18.42, 198.51.100.25')
+            ->get('/');
+
+        $response->assertStatus(503);
     }
 
     public function test_allowlisted_ip_can_login_during_maintenance(): void

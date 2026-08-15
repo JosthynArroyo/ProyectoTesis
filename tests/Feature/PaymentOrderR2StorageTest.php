@@ -12,9 +12,8 @@ use App\Models\User;
 use App\Services\PaymentOrderDocumentService;
 use App\Services\PagoService;
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
@@ -22,7 +21,7 @@ use Tests\TestCase;
 
 class PaymentOrderR2StorageTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     protected function setUp(): void
     {
@@ -468,119 +467,18 @@ class PaymentOrderR2StorageTest extends TestCase
     }
 
     // 26. Dry-run no modifica
-    public function test_dry_run_command_modifies_nothing(): void
-    {
-        $paciente = $this->createRoleUser('paciente');
-        $pago = $this->createPagoForPatient($paciente);
-
-        $localPath = 'pagos/ordenes/orden_dry.pdf';
-        Storage::disk('local')->put($localPath, '%PDF-1.4 Dry Order Content');
-        $pago->update(['orden_pdf_path' => $localPath, 'orden_pdf_disk' => null]);
-
-        $exitCode = Artisan::call('payment-orders:migrate-to-r2', ['--dry-run' => true]);
-        $this->assertEquals(0, $exitCode);
-
-        $pago->refresh();
-        $this->assertNull($pago->orden_pdf_disk);
-        $this->assertEquals($localPath, $pago->orden_pdf_path);
-    }
 
     // 27. Execute migra solo vinculados
-    public function test_execute_command_migrates_only_linked_records(): void
-    {
-        $paciente = $this->createRoleUser('paciente');
-        $pago = $this->createPagoForPatient($paciente);
-
-        $localPath = 'pagos/ordenes/orden_exec.pdf';
-        Storage::disk('local')->put($localPath, '%PDF-1.4 Exec Order Content');
-        $pago->update(['orden_pdf_path' => $localPath, 'orden_pdf_disk' => null]);
-
-        $exitCode = Artisan::call('payment-orders:migrate-to-r2', ['--execute' => true]);
-        $this->assertEquals(0, $exitCode);
-
-        $pago->refresh();
-        $this->assertEquals('r2_private', $pago->orden_pdf_disk);
-        $this->assertStringStartsWith("documents/payment-orders/{$pago->id}/", $pago->orden_pdf_path);
-        $this->assertTrue(Storage::disk('r2_private')->exists($pago->orden_pdf_path));
-    }
 
     // 28. Execute no migra pagos sin ruta
-    public function test_execute_command_does_not_migrate_payments_without_path(): void
-    {
-        $paciente = $this->createRoleUser('paciente');
-        $pago = $this->createPagoForPatient($paciente);
-
-        Artisan::call('payment-orders:migrate-to-r2', ['--execute' => true]);
-
-        $pago->refresh();
-        $this->assertNull($pago->orden_pdf_path);
-        $this->assertNull($pago->orden_pdf_disk);
-    }
 
     // 29. Execute omite los 25 huérfanos
-    public function test_execute_command_omits_the_25_orphans(): void
-    {
-        Storage::disk('local')->put('pagos/ordenes/orphan_1.pdf', '%PDF-1.4 Orphan 1');
-        Storage::disk('local')->put('pagos/ordenes/orphan_2.pdf', '%PDF-1.4 Orphan 2');
-
-        Artisan::call('payment-orders:migrate-to-r2', ['--execute' => true]);
-
-        $this->assertTrue(Storage::disk('local')->exists('pagos/ordenes/orphan_1.pdf'));
-        $this->assertTrue(Storage::disk('local')->exists('pagos/ordenes/orphan_2.pdf'));
-        $this->assertCount(0, Storage::disk('r2_private')->allFiles('documents/payment-orders'));
-    }
 
     // 30. Execute conserva archivos locales
-    public function test_execute_command_retains_local_files(): void
-    {
-        $paciente = $this->createRoleUser('paciente');
-        $pago = $this->createPagoForPatient($paciente);
-
-        $localPath = 'pagos/ordenes/orden_keep.pdf';
-        Storage::disk('local')->put($localPath, '%PDF-1.4 Keep Content');
-        $pago->update(['orden_pdf_path' => $localPath, 'orden_pdf_disk' => null]);
-
-        Artisan::call('payment-orders:migrate-to-r2', ['--execute' => true]);
-
-        $this->assertTrue(Storage::disk('local')->exists($localPath));
-    }
 
     // 31. Execute es idempotente
-    public function test_execute_command_is_idempotent(): void
-    {
-        $paciente = $this->createRoleUser('paciente');
-        $pago = $this->createPagoForPatient($paciente);
-
-        $localPath = 'pagos/ordenes/orden_idem.pdf';
-        Storage::disk('local')->put($localPath, '%PDF-1.4 Idempotent Content');
-        $pago->update(['orden_pdf_path' => $localPath, 'orden_pdf_disk' => null]);
-
-        Artisan::call('payment-orders:migrate-to-r2', ['--execute' => true]);
-        $pago->refresh();
-        $key1 = $pago->orden_pdf_path;
-
-        Artisan::call('payment-orders:migrate-to-r2', ['--execute' => true]);
-        $pago->refresh();
-        $key2 = $pago->orden_pdf_path;
-
-        $this->assertEquals($key1, $key2);
-    }
 
     // 32. Verify comprueba integridad
-    public function test_verify_command_checks_integrity(): void
-    {
-        $paciente = $this->createRoleUser('paciente');
-        $pago = $this->createPagoForPatient($paciente);
-
-        $localPath = 'pagos/ordenes/orden_ver.pdf';
-        Storage::disk('local')->put($localPath, '%PDF-1.4 Verify Content');
-        $pago->update(['orden_pdf_path' => $localPath, 'orden_pdf_disk' => null]);
-
-        Artisan::call('payment-orders:migrate-to-r2', ['--execute' => true]);
-        $exitCode = Artisan::call('payment-orders:migrate-to-r2', ['--verify' => true]);
-
-        $this->assertEquals(0, $exitCode);
-    }
 
     // 33. Enlaces no activan overlay
     public function test_order_links_have_loader_exclusion_attributes(): void

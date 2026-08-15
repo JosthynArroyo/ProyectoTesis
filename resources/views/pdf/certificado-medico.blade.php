@@ -39,9 +39,9 @@
       <div class="divider"></div>
 
       <div class="meta avoid-break">
-        <div><b>Paciente:</b> {{ $certificado->dependiente_id && $certificado->dependiente ? $certificado->dependiente->nombre : ($paciente?->name ?? '-') }}</div>
-        <div><b>Documento:</b> {{ $certificado->dependiente_id && $certificado->dependiente ? $certificado->dependiente->dni : ($paciente?->dni ?: 'Sin registro') }}</div>
-        @if($certificado->dependiente_id && $certificado->dependiente)
+        <div><b>Paciente:</b> {{ $certificado->nombrePacienteReal() }}</div>
+        <div><b>Documento:</b> {{ $certificado->dniPacienteReal() !== 'N/D' ? $certificado->dniPacienteReal() : 'Sin registro' }}</div>
+        @if(($certificado->dependiente_id && $certificado->dependiente) || ($cita?->dependiente_id && $cita?->dependiente))
           <div><b>Representante:</b> {{ $paciente?->name ?? '-' }}</div>
         @endif
         <div><b>Doctor:</b> {{ $doctor?->name ?? '-' }}</div>
@@ -76,15 +76,6 @@
           <div class="preserve">{{ $certificado->observaciones }}</div>
         </div>
       @endif
-
-      <div class="sign-row avoid-break">
-        <div class="sign">
-          <div class="line"></div>
-          <div class="small"><b>{{ $doctor?->name ?? 'Doctor/a' }}</b></div>
-          <div class="xs muted">{{ $especialidad }}</div>
-          <div class="xs muted">Validado en sistema - Usuario #{{ $doctor?->id ?? '-' }}</div>
-        </div>
-      </div>
 
       <div class="verification-panel avoid-break">
         <div>

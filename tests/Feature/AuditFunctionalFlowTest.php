@@ -54,12 +54,20 @@ class AuditFunctionalFlowTest extends TestCase
             }
         }
 
+        $connection = DB::connection();
+        $connection->beginTransaction();
+        $this->beforeApplicationDestroyed(function () use ($connection): void {
+            $connection->rollBack();
+            $connection->disconnect();
+        });
+
         $this->seed(DatabaseSeeder::class);
 
         Mail::fake();
         Notification::fake();
         Storage::fake('local');
         Storage::fake('public');
+        Storage::fake('r2_private');
         $this->seedAuditRoleUsers();
     }
 
@@ -75,6 +83,20 @@ class AuditFunctionalFlowTest extends TestCase
         if (! $doctorSpecialty || ! $labSpecialtyId) {
             $this->fail('La auditoría funcional requiere especialidades base sembradas.');
         }
+
+        $this->auditUsers['superadmin'] = $this->upsertAuditUser(
+            roleName: 'superadmin',
+            attributes: [
+                'name' => 'Superadmin QA',
+                'email' => 'superadmin@clinic.test',
+                'password' => 'superadmin1234',
+                'telefono' => '0990000100',
+                'dni' => '1000000100',
+                'direccion' => 'Clinica central',
+                'fecha_nacimiento' => '1985-01-10',
+                'sexo' => 'Masculino',
+            ]
+        );
 
         $this->auditUsers['administrador'] = $this->upsertAuditUser(
             roleName: 'administrador',
@@ -253,17 +275,9 @@ class AuditFunctionalFlowTest extends TestCase
         $map = [];
 
         foreach ($roles as $role) {
-            if ($role === 'superadmin') {
-                $map[$role] = User::query()
-                    ->whereHas('roles', fn ($q) => $q->where('name', $role))
-                    ->where('email', 'superadmin@clinic.test')
-                    ->firstOrFail();
-                continue;
-            }
-
             $map[$role] = $this->auditUsers[$role] ?? User::query()
                 ->whereHas('roles', fn ($q) => $q->where('name', $role))
-                ->where('email', sprintf('%s.qa@clinic.test', $role))
+                ->where('email', $role === 'superadmin' ? 'superadmin@clinic.test' : sprintf('%s.qa@clinic.test', $role))
                 ->firstOrFail();
         }
 
@@ -440,7 +454,7 @@ class AuditFunctionalFlowTest extends TestCase
             'password' => 'AdminAudit123*',
             'password_confirmation' => 'AdminAudit123*',
             'telefono' => '0991112233',
-            'dni' => '0912345678',
+            'dni' => '1712345675',
             'direccion' => 'Calle QA 123',
             'fecha_nacimiento' => '1990-01-10',
             'sexo' => 'Masculino',
@@ -1473,6 +1487,11 @@ class AuditFunctionalFlowTest extends TestCase
             'contexto' => $this->context,
             'resultados' => $this->results,
         ];
+
+        $dir = base_path('tmp');
+        if (! is_dir($dir)) {
+            mkdir($dir, 0777, true);
+        }
 
         file_put_contents(
             base_path('tmp/audit-functional-report.json'),

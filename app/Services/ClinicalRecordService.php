@@ -224,6 +224,7 @@ class ClinicalRecordService
             ->get();
 
         $certificates = CertificadoMedico::query()
+            ->vigente()
             ->with(['doctor', 'cita.doctor', 'cita.especialidad'])
             ->where('clinical_record_id', $record->id)
             ->orderByDesc('fecha_emision')

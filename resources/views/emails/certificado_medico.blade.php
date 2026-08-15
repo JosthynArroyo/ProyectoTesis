@@ -1,5 +1,5 @@
 @php
-    $pacienteNombre = $certificado->dependiente_id && $certificado->dependiente ? $certificado->dependiente->nombre : ($paciente->name ?? 'Paciente');
+    $pacienteNombre = $certificado->nombrePacienteReal();
     $doctorName = $doctor->name ?? 'tu profesional de salud';
     $fecha = $certificado->fecha_emision ? $certificado->fecha_emision->format('d/m/Y') : now()->format('d/m/Y');
 @endphp

@@ -66,8 +66,16 @@ class IdentityDocumentService
             });
         }
 
-        if ($queryDoc->exists()) {
-            return false;
+        $docs = $queryDoc->get();
+        foreach ($docs as $doc) {
+            if ($doc->documentable_type && class_exists($doc->documentable_type)) {
+                /** @var class-string<Model> $modelClass */
+                $modelClass = $doc->documentable_type;
+                $table = (new $modelClass())->getTable();
+                if (DB::table($table)->where('id', $doc->documentable_id)->exists()) {
+                    return false;
+                }
+            }
         }
 
         // 2. Cross-check users table
@@ -152,6 +160,14 @@ class IdentityDocumentService
                 'numero_documento' => $normalized,
             ]
         );
+    }
+
+    public function deleteFor(Model $model): void
+    {
+        IdentityDocument::query()
+            ->where('documentable_type', get_class($model))
+            ->where('documentable_id', $model->getKey())
+            ->delete();
     }
 
     public static function auditDuplicateAttempt(string $action, string $module, ?int $userId = null): void

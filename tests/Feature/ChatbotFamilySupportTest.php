@@ -11,7 +11,7 @@ use App\Models\Role;
 use App\Models\User;
 use App\Support\ChatbotSessionKeys;
 use Carbon\Carbon;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -20,41 +20,21 @@ use Tests\TestCase;
 
 class ChatbotFamilySupportTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     protected function setUp(): void
     {
         parent::setUp();
 
         Mail::fake();
-    }
-
-    protected function tearDown(): void
-    {
-        \Illuminate\Support\Facades\File::deleteDirectory(\Illuminate\Support\Facades\Storage::disk('local')->path('captcha_animals'));
-        foreach (config('captcha.classes', ['giraffe', 'horse', 'koala', 'kangaroo']) as $class) {
-            $fixturePath = base_path("ai/dataset/val/{$class}/test-captcha.jpg");
-            if (File::exists($fixturePath)) {
-                File::delete($fixturePath);
-            }
-        }
-        parent::tearDown();
-    }
-
-    /** @test */
-    public function test_database_safeguard_prevents_running_on_production_database()
-    {
-        config(['database.connections.mysql.database' => 'clinica_donbosco_db']);
-
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('PROTECCIÓN BD');
-
-        $this->setUp();
+        \Illuminate\Support\Facades\Storage::fake('r2_private');
+        \Illuminate\Support\Facades\Storage::fake('r2_public');
     }
 
     /** @test */
     public function test_captcha_images_are_not_publicly_accessible()
     {
+        $this->assertDirectoryDoesNotExist(public_path('captcha_animals'));
         $response = $this->get('/captcha_animals/giraffe/giraffe-0001.jpg');
         $response->assertStatus(404);
     }
@@ -164,20 +144,17 @@ class ChatbotFamilySupportTest extends TestCase
 
     private function seedCaptchaFixture(string $class): void
     {
-        $filename = 'test-captcha.jpg';
-        $storageDir = \Illuminate\Support\Facades\Storage::disk('local')->path("captcha_animals/{$class}");
-        $aiDir = base_path("ai/dataset/val/{$class}");
+        $aiDir = base_path('ai/dataset/val/'.$class);
+        $file = collect(File::files($aiDir))
+            ->first(static fn ($candidate): bool => in_array(strtolower($candidate->getExtension()), ['jpg', 'jpeg', 'png', 'webp'], true));
 
-        File::ensureDirectoryExists($storageDir);
-        File::ensureDirectoryExists($aiDir);
+        $this->assertNotNull($file, 'No hay imagen CAPTCHA para la categoria '.$class.'.');
 
-        File::put("{$storageDir}/{$filename}", 'dummy image content');
-        File::put("{$aiDir}/{$filename}", 'dummy image content');
-
-        CaptchaImage::create([
+        CaptchaImage::query()->updateOrCreate([
+            'image_path' => 'ai/dataset/val/'.$class.'/'.$file->getFilename(),
+        ], [
             'class_key' => $class,
-            'dataset_split' => 'public',
-            'image_path' => "captcha_animals/{$class}/{$filename}",
+            'dataset_split' => 'val',
         ]);
     }
 

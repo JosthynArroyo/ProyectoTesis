@@ -11,8 +11,8 @@
     $emailBranding = is_array($emailBranding ?? null) ? $emailBranding : [];
     $brandName = $emailBranding['brand_name'] ?? 'Nombre de la clínica';
     $brandLogo = $emailBranding['brand_logo'] ?? null;
-    $accent = $emailBranding['accent'] ?? '#0f766e';
-    $accentStrong = $emailBranding['accent_strong'] ?? '#14b8a6';
+    $accent = $emailBranding['accent'] ?? '#334155';
+    $accentStrong = $emailBranding['accent_strong'] ?? '#475569';
     $accentSoft = $emailBranding['accent_soft'] ?? '#ccfbf1';
     $contactPhone = $emailBranding['contact_phone'] ?? '';
     $contactEmail = $emailBranding['contact_email'] ?? '';
@@ -166,4 +166,3 @@
     </table>
 </body>
 </html>
-

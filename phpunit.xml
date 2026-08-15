@@ -24,8 +24,8 @@
         <env name="DB_HOST" value="127.0.0.1"/>
         <env name="DB_PORT" value="3307"/>
         <env name="DB_DATABASE" value="clinica_donbosco_db_test"/>
-        <env name="DB_USERNAME" value="root"/>
-        <env name="DB_PASSWORD" value="josthyn1930."/>
+        <env name="DB_USERNAME" value="clinica_test_user"/>
+        <!-- DB_PASSWORD se resuelve desde TEST_DB_PASSWORD mediante .env.testing. -->
         <env name="CACHE_STORE" value="array"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>

@@ -6,11 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Models\PedidoLaboratorio;
 use App\Models\LabOrder;
 use App\Models\LaboratorioOrden;
+use App\Services\LaboratoryResultStorageService;
 use Carbon\Carbon;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 
 class LaboratorioController extends Controller
 {
@@ -32,52 +32,63 @@ class LaboratorioController extends Controller
         return view('paciente.laboratorio', compact('ordenes', 'pedidosLaboratorio'));
     }
 
-    public function download(LaboratorioOrden $orden)
+    public function download(LaboratorioOrden $orden, LaboratoryResultStorageService $resultStorage)
     {
         $orden->load('cita');
         if ($orden->cita->paciente_id !== Auth::id()) {
             abort(403);
         }
 
-        if (! $orden->resultado_path || ! Storage::exists($orden->resultado_path)) {
+        if (! $orden->resultado_path || ! $resultStorage->resolve($orden->resultado_path)) {
             return back()->withErrors(['error' => 'No hay resultados disponibles para descargar.']);
         }
 
         $name = 'resultado_laboratorio_'.$orden->id.'.pdf';
 
-        return Storage::download($orden->resultado_path, $name);
+        return $resultStorage->download($orden->resultado_path, $name);
     }
 
-    public function downloadAutoOrder(LabOrder $order)
+    public function downloadAutoOrder(LabOrder $order, LaboratoryResultStorageService $resultStorage)
     {
         if ((int) $order->patient_id !== (int) Auth::id()) {
             abort(403);
         }
 
-        if (! $order->hasResultadoDisponible() || ! Storage::exists($order->resultado_path)) {
+        if (! $order->hasResultadoDisponible() || ! $resultStorage->resolve($order->resultado_path)) {
             return back()->withErrors(['error' => 'No hay resultados disponibles para descargar.']);
         }
 
         $name = 'resultado_laboratorio_solicitud_'.$order->id.'.pdf';
 
-        return Storage::download($order->resultado_path, $name);
+        return $resultStorage->download($order->resultado_path, $name);
     }
 
-    public function downloadPedido(\Illuminate\Http\Request $request, PedidoLaboratorio $pedido, \App\Services\PedidoLaboratorioPdfService $pdfs)
+    public function downloadPedido(\Illuminate\Http\Request $request, PedidoLaboratorio $pedido, \App\Services\PedidoLaboratorioPdfService $pdfs, LaboratoryResultStorageService $resultStorage)
     {
         $resultado = $pedido->resultados()
             ->where('estado', 'publicado')
             ->orderByDesc('version')
             ->first();
 
-        if (! $resultado) {
-            return back()->withErrors(['error' => 'No hay resultados publicados para descargar.']);
+        if ($resultado) {
+            abort_unless($pdfs->usuarioAutorizadoParaResultado($pedido, $resultado, Auth::user()), 403);
+
+            $disposition = $request->query('disposition', 'attachment');
+
+            return $pdfs->streamResultadoFile($resultado, $disposition);
         }
 
-        abort_unless($pdfs->usuarioAutorizadoParaResultado($pedido, $resultado, Auth::user()), 403);
+        $pedido->loadMissing(['cita.dependiente.responsable']);
+        $userId = (int) Auth::id();
+        $authorized = (int) $pedido->paciente_id === $userId
+            || (int) $pedido->cita?->paciente_id === $userId
+            || (int) $pedido->cita?->dependiente?->responsable_id === $userId;
+        abort_unless($authorized, 403);
 
-        $disposition = $request->query('disposition', 'attachment');
-        return $pdfs->streamResultadoFile($resultado, $disposition);
+        $name = 'resultado_laboratorio_'.$pedido->id.'.pdf';
+        $download = $resultStorage->download($pedido->resultado_path, $name);
+
+        return $download ?: back()->withErrors(['error' => 'No hay resultados publicados para descargar.']);
     }
 
     public function downloadOrdenPedidoInline(PedidoLaboratorio $pedido)

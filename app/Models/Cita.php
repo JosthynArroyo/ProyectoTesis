@@ -172,7 +172,17 @@ class Cita extends Model
 
     public function certificadoMedico()
     {
-        return $this->hasOne(CertificadoMedico::class, 'cita_id');
+        return $this->hasOne(CertificadoMedico::class, 'cita_id')
+            ->where(function ($query) {
+                $query->whereNull('certificados_medicos.estado_version')
+                    ->orWhere('certificados_medicos.estado_version', '!=', 'reemplazado');
+            })
+            ->latestOfMany('id');
+    }
+
+    public function certificadosMedicos()
+    {
+        return $this->hasMany(CertificadoMedico::class, 'cita_id')->orderBy('version', 'desc');
     }
 
     public function laboratorioOrden()

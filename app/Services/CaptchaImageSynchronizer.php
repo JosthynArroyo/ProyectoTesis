@@ -14,102 +14,40 @@ class CaptchaImageSynchronizer
     private const CACHE_TOTAL_KEY = 'captcha.images.total';
     private const BOOTSTRAP_LOCK_KEY = 'captcha.images.bootstrap';
     private const BOOTSTRAP_LOCK_SECONDS = 120;
+    private const DATASET_RELATIVE_PATH = 'ai/dataset/val';
+    private const DATASET_SPLIT = 'val';
+    private const EXPECTED_CATEGORY_COUNT = 8;
 
-    /**
-     * Ensure the CAPTCHA image index is synchronized with the AI dataset.
-     */
     public function ensureSynchronized(?callable $logCallback = null): int
     {
         $classes = $this->classes();
-        $signature = $this->datasetSignature($classes);
-        return Cache::lock(self::BOOTSTRAP_LOCK_KEY, self::BOOTSTRAP_LOCK_SECONDS)->block(10, function () use ($classes, $signature, $logCallback): int {
-            $cachedSignature = Cache::get(self::CACHE_SIGNATURE_KEY);
-            $cachedCounts = Cache::get(self::CACHE_COUNTS_KEY, []);
-            $cachedTotal = (int) Cache::get(self::CACHE_TOTAL_KEY, 0);
 
-            if ($cachedSignature === $signature && is_array($cachedCounts) && $cachedCounts !== []) {
-                $currentCounts = $this->currentCounts($classes);
+        return Cache::lock(self::BOOTSTRAP_LOCK_KEY, self::BOOTSTRAP_LOCK_SECONDS)
+            ->block(10, function () use ($classes, $logCallback): int {
+                $signature = $this->datasetSignature($classes);
+                $cachedCounts = Cache::get(self::CACHE_COUNTS_KEY, []);
+                $cachedTotal = (int) Cache::get(self::CACHE_TOTAL_KEY, 0);
 
-                if ($currentCounts === $cachedCounts) {
+                if (
+                    Cache::get(self::CACHE_SIGNATURE_KEY) === $signature
+                    && $this->hasAllConfiguredCategories($cachedCounts, $classes)
+                    && $this->currentCounts($classes) === $cachedCounts
+                ) {
                     return $cachedTotal > 0 ? $cachedTotal : array_sum($cachedCounts);
                 }
-            }
 
-            $databaseCounts = $this->currentCounts($classes);
-            if ($databaseCounts !== [] && count($databaseCounts) >= 4) {
-                return $this->primeCacheFromDatabase($signature, $databaseCounts);
-            }
-
-            return $this->synchronize($logCallback, $signature);
-        });
+                return $this->synchronize($logCallback);
+            });
     }
 
-    /**
-     * Synchronizes CAPTCHA images from the AI dataset to storage and database.
-     *
-     * @param callable|null $logCallback Optional callback to log progress (e.g. CLI output)
-     * @param string|null $signature Optional precomputed dataset signature
-     * @return int Total number of synchronized images
-     * @throws \RuntimeException If no source directory is found or no images exist.
-     */
     public function synchronize(?callable $logCallback = null, ?string $signature = null): int
     {
         $classes = $this->classes();
+        [$rows, $counts] = $this->datasetIndex($classes);
+        $paths = array_column($rows, 'image_path');
 
-        $privateDir = \Illuminate\Support\Facades\Storage::disk('local')->path('captcha_animals');
-        File::ensureDirectoryExists($privateDir);
-
-        $log = function (string $msg, string $type = 'info') use ($logCallback) {
-            Log::channel('single')->$type("CaptchaImageSynchronizer: {$msg}");
-            if ($logCallback) {
-                $logCallback($msg, $type);
-            }
-        };
-
-        $this->syncPrivateDirectoryFromDataset($privateDir, $classes, $log);
-
-        $rows = [];
-        $paths = [];
-        $now = now();
-
-        foreach ($classes as $classKey) {
-            $classDir = "{$privateDir}/{$classKey}";
-            if (! File::isDirectory($classDir)) {
-                $log("Directorio de clase no encontrado: {$classDir}", 'warning');
-                continue;
-            }
-
-            foreach (File::files($classDir) as $file) {
-                $ext = strtolower($file->getExtension());
-                if (! in_array($ext, ['jpg', 'jpeg', 'png', 'webp'], true)) {
-                    continue;
-                }
-
-                $path = "captcha_animals/{$classKey}/{$file->getFilename()}";
-                $paths[] = $path;
-                $rows[] = [
-                    'class_key' => $classKey,
-                    'dataset_split' => 'public',
-                    'image_path' => $path,
-                    'created_at' => $now,
-                    'updated_at' => $now,
-                ];
-            }
-        }
-
-        $total = count($rows);
-        if ($total === 0) {
-            throw new \RuntimeException('No se encontraron imagenes validas en el almacenamiento privado (storage/app/captcha_animals).');
-        }
-
-        CaptchaImage::query()
-            ->whereIn('class_key', $classes)
-            ->where('dataset_split', 'public')
-            ->whereNotIn('image_path', $paths)
-            ->delete();
-
-        $chunks = array_chunk($rows, 500);
-        foreach ($chunks as $chunk) {
+        CaptchaImage::query()->whereNotIn('image_path', $paths)->delete();
+        foreach (array_chunk($rows, 500) as $chunk) {
             CaptchaImage::query()->upsert(
                 $chunk,
                 ['image_path'],
@@ -117,104 +55,91 @@ class CaptchaImageSynchronizer
             );
         }
 
-        $counts = array_count_values(array_column($rows, 'class_key'));
         ksort($counts);
-        Cache::forever(self::CACHE_SIGNATURE_KEY, $signature ?? $this->datasetSignature($classes));
+        $total = count($rows);
+        Cache::forever(self::CACHE_SIGNATURE_KEY, $this->datasetSignature($classes));
         Cache::forever(self::CACHE_COUNTS_KEY, $counts);
         Cache::forever(self::CACHE_TOTAL_KEY, $total);
 
-        $log("Sincronizacion de CAPTCHA exitosa: {$total} imagenes registradas.", 'info');
-
-        return $total;
-    }
-
-    /**
-     * Rebuilds the cache snapshot from the already indexed database rows.
-     */
-    private function primeCacheFromDatabase(string $signature, array $counts): int
-    {
-        ksort($counts);
-        $total = array_sum($counts);
-
-        Cache::forever(self::CACHE_SIGNATURE_KEY, $signature);
-        Cache::forever(self::CACHE_COUNTS_KEY, $counts);
-        Cache::forever(self::CACHE_TOTAL_KEY, $total);
-
-        Log::channel('single')->info('CaptchaImageSynchronizer: Caché de CAPTCHA rehidratada desde el índice de base de datos.');
-
-        return $total;
-    }
-
-    /**
-     * Copies animal images from the AI dataset to storage.
-     */
-    private function syncPrivateDirectoryFromDataset(string $privateDir, array $classes, callable $log): void
-    {
-        $datasetDir = base_path('ai/dataset/val');
-        if (! File::isDirectory($datasetDir)) {
-            $log("El dataset original en {$datasetDir} no existe. No se pueden inicializar las imagenes.", 'error');
-            throw new \RuntimeException("Origen de imagenes de CAPTCHA no disponible. Asegurese de que exista 'ai/dataset/val'.");
+        $message = 'Sincronizacion de CAPTCHA exitosa: '.$total.' imagenes de ai/dataset/val registradas.';
+        Log::channel('single')->info('CaptchaImageSynchronizer: '.$message);
+        if ($logCallback) {
+            $logCallback($message, 'info');
         }
 
-        $log("Sincronizando imagenes del dataset original 'ai/dataset/val' a 'storage/app/captcha_animals'...", 'info');
+        return $total;
+    }
+
+    private function datasetIndex(array $classes): array
+    {
+        $datasetDir = base_path(self::DATASET_RELATIVE_PATH);
+        if (! File::isDirectory($datasetDir)) {
+            throw new \RuntimeException('Origen de imagenes de CAPTCHA no disponible. Asegurese de que exista ai/dataset/val.');
+        }
+
+        $rows = [];
+        $counts = [];
+        $now = now();
 
         foreach ($classes as $classKey) {
-            $sourceClassDir = "{$datasetDir}/{$classKey}";
-            $destClassDir = "{$privateDir}/{$classKey}";
-            File::ensureDirectoryExists($destClassDir);
-
-            if (! File::isDirectory($sourceClassDir)) {
-                $log("La clase de animal '{$classKey}' no existe en el dataset: {$sourceClassDir}", 'warning');
-                continue;
+            $classDir = $datasetDir.DIRECTORY_SEPARATOR.$classKey;
+            if (! File::isDirectory($classDir)) {
+                throw new \RuntimeException('La categoria CAPTCHA configurada '.$classKey.' no existe en ai/dataset/val.');
             }
 
-            $sourceFiles = [];
-            foreach (File::files($sourceClassDir) as $file) {
-                $ext = strtolower($file->getExtension());
-                if (! in_array($ext, ['jpg', 'jpeg', 'png', 'webp'], true)) {
+            $classCount = 0;
+            foreach (File::files($classDir) as $file) {
+                if (! $this->isSupportedImage($file->getExtension())) {
                     continue;
                 }
 
-                $sourceFiles[$file->getFilename()] = true;
-
-                $destPath = "{$destClassDir}/{$file->getFilename()}";
-                if (! File::exists($destPath) || File::lastModified($destPath) < $file->getMTime()) {
-                    File::copy($file->getPathname(), $destPath);
-                }
+                $rows[] = [
+                    'class_key' => $classKey,
+                    'dataset_split' => self::DATASET_SPLIT,
+                    'image_path' => self::DATASET_RELATIVE_PATH.'/'.$classKey.'/'.$file->getFilename(),
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
+                $classCount++;
             }
 
-            foreach (File::files($destClassDir) as $file) {
-                if (! isset($sourceFiles[$file->getFilename()])) {
-                    File::delete($file->getPathname());
-                }
+            if ($classCount === 0) {
+                throw new \RuntimeException('La categoria CAPTCHA configurada '.$classKey.' no contiene imagenes validas en ai/dataset/val.');
             }
+            $counts[$classKey] = $classCount;
         }
+
+        return [$rows, $counts];
     }
 
     private function classes(): array
     {
-        $classes = config('captcha.classes', [
-            'giraffe',
-            'horse',
-            'koala',
-            'kangaroo',
-            'rhinoceros',
-            'dolphin',
-            'blue_whale',
-            'zebra',
-        ]);
+        $configured = config('captcha.classes', []);
+        $classes = is_array($configured)
+            ? array_values(array_filter($configured, static fn ($class): bool => is_string($class) && $class !== ''))
+            : [];
 
-        return is_array($classes) ? array_values($classes) : [];
+        if (count($classes) !== self::EXPECTED_CATEGORY_COUNT || count(array_unique($classes)) !== self::EXPECTED_CATEGORY_COUNT) {
+            throw new \RuntimeException('El CAPTCHA debe tener exactamente 8 categorias configuradas y sin duplicados.');
+        }
+
+        return $classes;
     }
 
     private function datasetSignature(array $classes): string
     {
-        $datasetDir = base_path('ai/dataset/val');
-        $parts = [$datasetDir];
+        $datasetDir = base_path(self::DATASET_RELATIVE_PATH);
+        if (! File::isDirectory($datasetDir)) {
+            throw new \RuntimeException('Origen de imagenes de CAPTCHA no disponible. Asegurese de que exista ai/dataset/val.');
+        }
 
+        $parts = [$datasetDir, (string) File::lastModified($datasetDir)];
         foreach ($classes as $classKey) {
-            $classDir = "{$datasetDir}/{$classKey}";
-            $parts[] = $classKey . ':' . (File::isDirectory($classDir) ? File::lastModified($classDir) : 0);
+            $classDir = $datasetDir.DIRECTORY_SEPARATOR.$classKey;
+            if (! File::isDirectory($classDir)) {
+                throw new \RuntimeException('La categoria CAPTCHA configurada '.$classKey.' no existe en ai/dataset/val.');
+            }
+            $parts[] = $classKey.':'.File::lastModified($classDir);
         }
 
         return hash('sha256', implode('|', $parts));
@@ -224,15 +149,34 @@ class CaptchaImageSynchronizer
     {
         $counts = CaptchaImage::query()
             ->whereIn('class_key', $classes)
-            ->where('dataset_split', 'public')
+            ->where('dataset_split', self::DATASET_SPLIT)
             ->selectRaw('class_key, COUNT(*) as total')
             ->groupBy('class_key')
             ->pluck('total', 'class_key')
-            ->map(static fn ($value) => (int) $value)
+            ->map(static fn ($value): int => (int) $value)
             ->all();
-
         ksort($counts);
 
         return $counts;
+    }
+
+    private function hasAllConfiguredCategories(mixed $counts, array $classes): bool
+    {
+        if (! is_array($counts) || count($counts) !== self::EXPECTED_CATEGORY_COUNT) {
+            return false;
+        }
+
+        $expected = $classes;
+        $actual = array_keys($counts);
+        sort($expected);
+        sort($actual);
+
+        return $actual === $expected
+            && collect($counts)->every(static fn ($count): bool => is_numeric($count) && (int) $count > 0);
+    }
+
+    private function isSupportedImage(string $extension): bool
+    {
+        return in_array(strtolower($extension), ['jpg', 'jpeg', 'png', 'webp'], true);
     }
 }

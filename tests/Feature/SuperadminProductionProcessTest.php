@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Models\PatientFlag;
 use App\Models\Role;
 use App\Models\User;
+use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\ProductionSeeder;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Hash;
@@ -34,6 +36,15 @@ class SuperadminProductionProcessTest extends TestCase
         \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS=0;');
         User::query()->delete();
         \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+    }
+
+    public function test_database_seeder_does_not_create_users(): void
+    {
+        $this->safeWipeUsers();
+
+        $this->seed(DatabaseSeeder::class);
+
+        $this->assertEquals(0, User::count());
     }
 
     public function test_production_seeder_does_not_create_users(): void
@@ -104,6 +115,7 @@ class SuperadminProductionProcessTest extends TestCase
             'name' => 'Existing Patient',
             'email' => 'superadmin@clinic.test',
             'password' => 'ComplexPass123!',
+            'dni' => '1710034115',
         ]);
         $existing->roles()->sync([$role->id]);
 
@@ -232,14 +244,42 @@ class SuperadminProductionProcessTest extends TestCase
             'name' => 'Super',
             'email' => 'superadmin@clinic.test',
             'password' => 'ComplexPass123!',
+            'dni' => '1710034115',
             'status' => User::STATUS_ACTIVE,
         ]);
         $superadmin->roles()->sync([$role->id]);
+        PatientFlag::create([
+            'user_id' => $superadmin->id,
+            'adulto_mayor' => false,
+            'embarazo' => false,
+            'discapacidad' => false,
+            'cronico' => false,
+        ]);
 
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('No se puede eliminar el único superadministrador activo del sistema.');
+        $this->assertDatabaseHas('users', ['id' => $superadmin->id, 'dni' => '1710034115']);
+        $this->assertDatabaseHas('role_user', ['user_id' => $superadmin->id, 'role_id' => $role->id]);
+        $this->assertDatabaseHas('identity_documents', [
+            'documentable_type' => User::class,
+            'documentable_id' => $superadmin->id,
+            'numero_documento' => '1710034115',
+        ]);
+        $this->assertDatabaseHas('patient_flags', ['user_id' => $superadmin->id]);
 
-        $superadmin->delete();
+        try {
+            $superadmin->delete();
+            $this->fail('Se esperaba una RuntimeException al intentar eliminar el último superadmin.');
+        } catch (\RuntimeException $e) {
+            $this->assertSame('No se puede eliminar el único superadministrador activo del sistema.', $e->getMessage());
+        }
+
+        $this->assertDatabaseHas('users', ['id' => $superadmin->id, 'dni' => '1710034115']);
+        $this->assertDatabaseHas('role_user', ['user_id' => $superadmin->id, 'role_id' => $role->id]);
+        $this->assertDatabaseHas('identity_documents', [
+            'documentable_type' => User::class,
+            'documentable_id' => $superadmin->id,
+            'numero_documento' => '1710034115',
+        ]);
+        $this->assertDatabaseHas('patient_flags', ['user_id' => $superadmin->id]);
     }
 
     public function test_last_superadmin_cannot_be_deactivated(): void

@@ -22,8 +22,11 @@
   <section class="grid gap-4 lg:grid-cols-3">
     <article class="card p-5">
       <p class="text-xs uppercase tracking-widest text-gray-500">Paciente</p>
-      <p class="mt-2 font-semibold text-gray-900">{{ $cita->paciente?->name ?? '-' }}</p>
-      <p class="text-sm text-gray-600">{{ $cita->paciente?->dni ?: 'Documento no registrado' }}</p>
+      <p class="mt-2 font-semibold text-gray-900">{{ $cita->nombrePacienteReal() }}</p>
+      <p class="text-sm text-gray-600">{{ $cita->dniPacienteReal() !== 'N/D' ? 'DNI: ' . $cita->dniPacienteReal() : 'Documento no registrado' }}</p>
+      @if($cita->dependiente_id && $cita->paciente)
+        <p class="mt-1 text-xs text-gray-500">Titular/Responsable: {{ $cita->paciente->name }}</p>
+      @endif
     </article>
     <article class="card p-5">
       <p class="text-xs uppercase tracking-widest text-gray-500">Doctor</p>
@@ -37,7 +40,8 @@
     </article>
   </section>
 
-  <form method="POST" action="{{ route('doctor.certificados.store', $cita) }}" class="card p-6 space-y-5">
+  @php($reposoEsObligatorio = (int) old('dias_reposo', 0) > 0)
+  <form method="POST" action="{{ route('doctor.certificados.store', $cita) }}" class="card p-6 space-y-5" data-certificado-reposo-form>
     @csrf
 
     <div>
@@ -54,15 +58,22 @@
         @error('dias_reposo')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
       <div>
-        <label for="reposo_desde" class="form-label">Reposo desde</label>
-        <input id="reposo_desde" name="reposo_desde" type="date" value="{{ old('reposo_desde') }}" class="form-input">
+        <label for="reposo_desde" class="form-label">
+          Reposo desde <span class="text-rose-600 {{ $reposoEsObligatorio ? '' : 'hidden' }}" data-reposo-required-indicator aria-hidden="true">*</span>
+        </label>
+        <input id="reposo_desde" name="reposo_desde" type="date" value="{{ old('reposo_desde') }}" class="form-input" aria-describedby="reposo-fechas-requeridas" aria-required="{{ $reposoEsObligatorio ? 'true' : 'false' }}" data-reposo-date @required($reposoEsObligatorio)>
         @error('reposo_desde')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
       <div>
-        <label for="reposo_hasta" class="form-label">Reposo hasta</label>
-        <input id="reposo_hasta" name="reposo_hasta" type="date" value="{{ old('reposo_hasta') }}" class="form-input">
+        <label for="reposo_hasta" class="form-label">
+          Reposo hasta <span class="text-rose-600 {{ $reposoEsObligatorio ? '' : 'hidden' }}" data-reposo-required-indicator aria-hidden="true">*</span>
+        </label>
+        <input id="reposo_hasta" name="reposo_hasta" type="date" value="{{ old('reposo_hasta') }}" class="form-input" aria-describedby="reposo-fechas-requeridas" aria-required="{{ $reposoEsObligatorio ? 'true' : 'false' }}" data-reposo-date @required($reposoEsObligatorio)>
         @error('reposo_hasta')<div class="text-xs text-rose-600">{{ $message }}</div>@enderror
       </div>
+      <p id="reposo-fechas-requeridas" class="text-sm font-medium text-rose-700 md:col-span-3 {{ $reposoEsObligatorio ? '' : 'hidden' }}" data-reposo-required-message aria-live="polite">
+        Al indicar dias de reposo, las fechas "Reposo desde" y "Reposo hasta" son obligatorias.
+      </p>
     </div>
 
     <div>
@@ -75,10 +86,41 @@
       <x-slot:left>
         <a href="{{ route('doctor.citas') }}" class="btn btn-ghost">Cancelar</a>
       </x-slot>
-      <button type="submit" class="btn btn-primary">
+      <button type="submit" class="btn btn-primary" data-action-lock-title="Emitiendo certificado médico...">
         <i class="ri-file-shield-2-line"></i> Emitir certificado
       </button>
     </x-ui.form-actions>
   </form>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const form = document.querySelector('[data-certificado-reposo-form]');
+  if (!form) return;
+
+  const diasReposo = form.querySelector('[name="dias_reposo"]');
+  const fechasReposo = form.querySelectorAll('[data-reposo-date]');
+  const indicadores = form.querySelectorAll('[data-reposo-required-indicator]');
+  const mensaje = form.querySelector('[data-reposo-required-message]');
+
+  function actualizarObligatoriedadReposo() {
+    const requiereFechas = Number(diasReposo.value) > 0;
+
+    fechasReposo.forEach(function (campo) {
+      campo.toggleAttribute('required', requiereFechas);
+      campo.setAttribute('aria-required', requiereFechas ? 'true' : 'false');
+    });
+    indicadores.forEach(function (indicador) {
+      indicador.classList.toggle('hidden', !requiereFechas);
+    });
+    mensaje.classList.toggle('hidden', !requiereFechas);
+  }
+
+  diasReposo.addEventListener('input', actualizarObligatoriedadReposo);
+  diasReposo.addEventListener('change', actualizarObligatoriedadReposo);
+  actualizarObligatoriedadReposo();
+});
+</script>
+@endpush

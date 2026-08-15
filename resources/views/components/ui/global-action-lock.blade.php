@@ -14,7 +14,7 @@
     aria-live="polite"
     aria-atomic="true"
   >
-    <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-teal-50 text-teal-600 dark:bg-teal-500/10 dark:text-teal-300">
+    <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full text-[var(--accent)]" style="background: var(--accent-soft);">
       <svg class="h-10 w-10 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-opacity="0.2" stroke-width="3"></circle>
         <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="3" stroke-linecap="round"></path>

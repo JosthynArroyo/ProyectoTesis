@@ -11,8 +11,6 @@ use Endroid\QrCode\Encoding\Encoding;
 use Endroid\QrCode\ErrorCorrectionLevel;
 use Endroid\QrCode\RoundBlockSizeMode;
 use Endroid\QrCode\Writer\PngWriter;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 class PagoDocumentoService
 {
@@ -44,21 +42,6 @@ class PagoDocumentoService
         ])->render();
 
         return $this->renderizarPdf($html);
-    }
-
-    public function generarOrdenCobroPdf(Pago $pago): string
-    {
-        $pdfOutput = $this->generarOrdenCobroPdfContent($pago);
-        $folder = 'pagos/ordenes';
-        if (! Storage::disk('local')->exists($folder)) {
-            Storage::disk('local')->makeDirectory($folder);
-        }
-
-        $fileName = 'orden_'.Str::slug((string) $pago->folio_unico, '_').'.pdf';
-        $path = $folder.'/'.$fileName;
-        Storage::disk('local')->put($path, $pdfOutput);
-
-        return $path;
     }
 
     public function generarReciboPagoPdfContent(Pago $pago, PaymentReceipt $receipt): string
@@ -95,33 +78,28 @@ class PagoDocumentoService
         return $this->renderizarPdf($html);
     }
 
-    public function generarReciboPagoPdf(Pago $pago, PaymentReceipt $receipt): string
-    {
-        $pdfOutput = $this->generarReciboPagoPdfContent($pago, $receipt);
-        $folder = 'pagos/recibos';
-        if (! Storage::disk('local')->exists($folder)) {
-            Storage::disk('local')->makeDirectory($folder);
-        }
-
-        $fileName = 'recibo_'.Str::slug((string) $receipt->folio_recibo, '_').'.pdf';
-        $path = $folder.'/'.$fileName;
-        Storage::disk('local')->put($path, $pdfOutput);
-
-        return $path;
-    }
-
     protected function renderizarPdf(string $html): string
     {
         $options = new Options;
         $options->set('isRemoteEnabled', true);
         $options->set('defaultFont', 'DejaVu Sans');
 
-        $dompdf = new Dompdf($options);
-        $dompdf->loadHtml($html, 'UTF-8');
-        $dompdf->setPaper('A4', 'portrait');
-        $dompdf->render();
+        try {
+            $dompdf = new Dompdf($options);
+            $dompdf->loadHtml($html, 'UTF-8');
+            $dompdf->setPaper('A4', 'portrait');
+            $dompdf->render();
 
-        return $dompdf->output();
+            return $dompdf->output();
+        } catch (\DivisionByZeroError $e) {
+            $cleanHtml = preg_replace('/<img[^>]+>/i', '', $html);
+            $dompdf = new Dompdf($options);
+            $dompdf->loadHtml($cleanHtml, 'UTF-8');
+            $dompdf->setPaper('A4', 'portrait');
+            $dompdf->render();
+
+            return $dompdf->output();
+        }
     }
 
     protected function generarQrDataUri(string $url): string

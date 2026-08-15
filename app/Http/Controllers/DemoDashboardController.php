@@ -242,6 +242,82 @@ class DemoDashboardController extends Controller
         return $this->superadminView('demo.superadmin.mantenimiento', 'mantenimiento');
     }
 
+    public function superadminRespaldos()
+    {
+        $type = request()->query('type');
+        $status = request()->query('status');
+        $date = request()->query('date');
+
+        $simulatedAction = request()->query('simulated_action');
+        if ($simulatedAction) {
+            if ($simulatedAction === 'created') {
+                session()->flash('success', 'Se programó el respaldo manual (Simulado). Los datos de la demo se restablecen al recargar.');
+            } elseif ($simulatedAction === 'verified') {
+                session()->flash('success', 'Se verificó la integridad del archivo de respaldo (Simulado).');
+            } elseif ($simulatedAction === 'downloaded') {
+                session()->flash('success', 'Descarga de respaldo cifrado iniciada (Simulado).');
+            }
+
+            return redirect()->route('demo.superadmin.respaldos');
+        }
+
+        $superadminData = $this->superadminData();
+        $backupsCollection = collect($superadminData['respaldos']);
+
+        if (!empty($type)) {
+            $backupsCollection = $backupsCollection->filter(fn($b) => $b['type'] === $type);
+        }
+        if (!empty($status)) {
+            $backupsCollection = $backupsCollection->filter(fn($b) => $b['status'] === $status);
+        }
+        if (!empty($date)) {
+            $backupsCollection = $backupsCollection->filter(fn($b) => str_contains($b['created_at'], $date));
+        }
+
+        $total = $backupsCollection->count();
+        $perPage = 10;
+        $page = (int) request()->query('page', 1);
+        if ($page < 1) {
+            $page = 1;
+        }
+        $offset = ($page - 1) * $perPage;
+        $items = $backupsCollection->slice($offset, $perPage)->values()->all();
+
+        $paginated = new \Illuminate\Pagination\LengthAwarePaginator(
+            $items,
+            $total,
+            $perPage,
+            $page,
+            [
+                'path' => request()->url(),
+                'query' => request()->query(),
+            ]
+        );
+
+        $pendingCount = collect($superadminData['solicitudes'])
+            ->where('status', 'pending')
+            ->count();
+
+        return view('demo.superadmin.respaldos', array_merge(
+            $this->baseData('superadmin', [
+                'activeSidebarKey' => 'respaldos',
+                'pendingPersonalizacion' => $pendingCount,
+            ]),
+            $superadminData,
+            [
+                'backups' => $paginated,
+                'filters' => [
+                    'type' => $type,
+                    'status' => $status,
+                    'date' => $date,
+                ],
+                'lastSuccessfulDate' => \Illuminate\Support\Carbon::parse('2026-08-08 02:00:00'),
+                'isOverdue' => false,
+                'hasPendingOrProcessing' => false,
+            ]
+        ));
+    }
+
     public function adminDashboard()
     {
         return $this->adminView('demo.admin.dashboard', 'dashboard');
@@ -1051,7 +1127,7 @@ class DemoDashboardController extends Controller
 
     public function doctorRecetasIndex()
     {
-        return $this->doctorView('demo.doctor.recetas-index', 'historial-recetas');
+        return $this->doctorView('demo.doctor.historial-recetas', 'historial-recetas');
     }
 
     public function doctorRecetasCreate($cita)
@@ -2016,6 +2092,52 @@ class DemoDashboardController extends Controller
                 'last_change' => '24/04/2026 18:30',
                 'message' => 'Regresamos pronto. Estamos actualizando la demo de la clinica.',
             ],
+            'respaldos' => [
+                [
+                    'id' => 1,
+                    'type' => 'manual',
+                    'status' => 'verified',
+                    'created_at' => '08/08/2026 16:42:00',
+                    'formatted_size' => '124.5 MB',
+                    'duration_seconds' => 14,
+                    'user_name' => 'Josthyn Admin',
+                    'sha256' => 'a1b2c3d4e5f678901234567890abcdef1234567890abcdef1234567890abcdef',
+                    'last_verified_at' => '08/08/2026 17:00:00',
+                ],
+                [
+                    'id' => 2,
+                    'type' => 'daily',
+                    'status' => 'completed',
+                    'created_at' => '08/08/2026 02:00:00',
+                    'formatted_size' => '121.2 MB',
+                    'duration_seconds' => 12,
+                    'user_name' => 'Sistema (Automático)',
+                    'sha256' => 'b2c3d4e5f678901234567890abcdef1234567890abcdef1234567890abcdef1',
+                    'last_verified_at' => '08/08/2026 02:15:00',
+                ],
+                [
+                    'id' => 3,
+                    'type' => 'daily',
+                    'status' => 'completed',
+                    'created_at' => '07/08/2026 02:00:00',
+                    'formatted_size' => '118.8 MB',
+                    'duration_seconds' => 11,
+                    'user_name' => 'Sistema (Automático)',
+                    'sha256' => 'c3d4e5f678901234567890abcdef1234567890abcdef1234567890abcdef12',
+                    'last_verified_at' => '07/08/2026 02:15:00',
+                ],
+                [
+                    'id' => 4,
+                    'type' => 'weekly',
+                    'status' => 'verified',
+                    'created_at' => '03/08/2026 02:00:00',
+                    'formatted_size' => '115.0 MB',
+                    'duration_seconds' => 10,
+                    'user_name' => 'Sistema (Automático)',
+                    'sha256' => 'd4e5f678901234567890abcdef1234567890abcdef1234567890abcdef123',
+                    'last_verified_at' => '03/08/2026 03:00:00',
+                ],
+            ],
         ];
     }
 
@@ -2080,8 +2202,8 @@ class DemoDashboardController extends Controller
                 ['id' => 'P-003', 'folio' => 'FOL-2026-1003', 'patient' => 'Daniel Salazar', 'appointment' => 'Medicina general', 'amount' => '$40.00', 'method' => 'EFECTIVO', 'status' => 'Pendiente', 'status_tone' => 'warning', 'date' => '27/04/2026 17:20'],
             ],
             'historialEntries' => [
-                ['patient' => 'Lucia Vega', 'doctor' => 'Dra. Sofia Cardenas', 'specialty' => 'Pediatria', 'date' => '28/04/2026 08:00', 'summary' => 'Dolor al tragar desde hace tres dias, con congestion y malestar durante la noche.'],
-                ['patient' => 'Daniel Salazar', 'doctor' => 'Dr. Andres Molina', 'specialty' => 'Medicina general', 'date' => '27/04/2026 15:30', 'summary' => 'Chequeo de rutina por hipertension arterial, presion estable.'],
+                ['patient' => 'Lucia Vega', 'doctor' => 'Dra. Sofia Cardenas', 'specialty' => 'Pediatria', 'date' => '2026-04-28 08:00', 'summary' => 'Dolor al tragar desde hace tres dias, con congestion y malestar durante la noche.'],
+                ['patient' => 'Daniel Salazar', 'doctor' => 'Dr. Andres Molina', 'specialty' => 'Medicina general', 'date' => '2026-04-27 15:30', 'summary' => 'Chequeo de rutina por hipertension arterial, presion estable.'],
             ],
             'personalizationSections' => [
                 ['name' => 'Bienvenida', 'status' => 'Visible', 'status_tone' => 'success', 'description' => 'Hero principal, subtitulo y CTA del sitio publico.'],
@@ -2094,8 +2216,8 @@ class DemoDashboardController extends Controller
                 ['id' => 3, 'doctor' => 'Dr. Daniel Mora', 'fecha' => now()->addDay()->toDateString(), 'hora_inicio' => '14:00:00', 'hora_fin' => '18:00:00'],
             ],
             'recordatorios' => [
-                ['id' => 1, 'patient' => 'Maria Fernanda Vega', 'phone' => '+593 99 514 0927', 'appointment' => '28/04/2026 08:00', 'channel' => 'WhatsApp', 'status' => 'Pendiente', 'status_tone' => 'warning'],
-                ['id' => 2, 'patient' => 'Daniel Salazar', 'phone' => '+593 92 345 6781', 'appointment' => '28/04/2026 09:00', 'channel' => 'WhatsApp', 'status' => 'Enviado', 'status_tone' => 'success'],
+                ['id' => 1, 'patient' => 'Maria Fernanda Vega', 'phone' => '+593 99 514 0927', 'appointment' => '2026-04-28 08:00', 'channel' => 'WhatsApp', 'status' => 'Pendiente', 'status_tone' => 'warning'],
+                ['id' => 2, 'patient' => 'Daniel Salazar', 'phone' => '+593 92 345 6781', 'appointment' => '2026-04-28 09:00', 'channel' => 'WhatsApp', 'status' => 'Enviado', 'status_tone' => 'success'],
             ],
             'manualBookingOptions' => [
                 ['doctor' => 'Dra. Sofia Cardenas', 'specialty' => 'Pediatria', 'slot' => '28/04/2026 14:00', 'state' => 'Disponible', 'state_tone' => 'success'],
@@ -2140,8 +2262,8 @@ class DemoDashboardController extends Controller
                 ['id' => 3, 'folio' => 'PAG-2026-9003', 'description' => 'Examen laboratorio', 'amount' => '$28.00', 'status' => 'Pendiente', 'status_tone' => 'warning', 'method' => 'Pendiente de carga', 'date' => '28/04/2026 07:50'],
             ],
             'historyEntries' => [
-                ['id' => 1, 'date' => '15/03/2026', 'doctor' => 'Dr. Carlos Ruiz', 'specialty' => 'Medicina general', 'summary' => 'Chequeo de rutina con controles basales normales.'],
-                ['id' => 2, 'date' => '04/02/2026', 'doctor' => 'Dra. Sofia Cardenas', 'specialty' => 'Pediatria', 'summary' => 'Control preventivo de crecimiento y recomendaciones.'],
+                ['id' => 1, 'date' => '2026-03-15', 'doctor' => 'Dr. Carlos Ruiz', 'specialty' => 'Medicina general', 'summary' => 'Chequeo de rutina con controles basales normales.'],
+                ['id' => 2, 'date' => '2026-02-04', 'doctor' => 'Dra. Sofia Cardenas', 'specialty' => 'Pediatria', 'summary' => 'Control preventivo de crecimiento y recomendaciones.'],
             ],
             'results' => [
                 ['id' => 1, 'code' => 'LAB-2026-101', 'exam' => 'Hemograma completo', 'doctor' => 'Dr. Andres Molina', 'delivered_at' => '28/04/2026 11:10', 'status' => 'Disponible', 'status_tone' => 'success'],
@@ -2185,8 +2307,8 @@ class DemoDashboardController extends Controller
                 ['id' => 11, 'name' => 'Daniel Salazar', 'document' => '0923456781', 'age' => 37, 'blood_type' => 'A+', 'last_visit' => '18/04/2026'],
             ],
             'prescriptions' => [
-                ['id' => 1, 'patient' => 'Lucia Vega', 'specialty' => 'Pediatria', 'date' => '22/04/2026', 'time' => '09:00', 'pdf' => 'Disponible'],
-                ['id' => 2, 'patient' => 'Daniel Salazar', 'specialty' => 'Medicina general', 'date' => '18/04/2026', 'time' => '10:30', 'pdf' => 'Disponible'],
+                ['id' => 1, 'patient' => 'Lucia Vega', 'specialty' => 'Pediatria', 'date' => '2026-04-22', 'time' => '09:00', 'pdf' => 'Disponible'],
+                ['id' => 2, 'patient' => 'Daniel Salazar', 'specialty' => 'Medicina general', 'date' => '2026-04-18', 'time' => '10:30', 'pdf' => 'Disponible'],
             ],
             'weeklyAgenda' => [
                 ['day' => 'Lunes', 'date' => '28/04', 'blocks' => ['08:00-10:00 Consultas', '10:30-12:00 Seguimientos', '15:00-17:00 Controles']],

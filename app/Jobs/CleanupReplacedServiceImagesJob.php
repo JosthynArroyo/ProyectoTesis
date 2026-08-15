@@ -28,8 +28,8 @@ class CleanupReplacedServiceImagesJob implements ShouldQueue
         public array $pathsToDelete,
         public string $folder = 'services'
     ) {
-        $this->onConnection(config('queue.media_connection', env('MEDIA_QUEUE_CONNECTION', 'database')));
-        $this->onQueue(env('MEDIA_QUEUE', 'media'));
+        $this->onConnection(config('queue.media_connection', 'database'));
+        $this->onQueue(config('queue.media_queue', 'media'));
     }
 
     public function handle(ImageOptimizer $imageOptimizer): void

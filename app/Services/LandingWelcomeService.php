@@ -557,30 +557,30 @@ class LandingWelcomeService
         }
 
         $replacements = [
-            'Tu clÃƒÂ­nica digital para una atenciÃƒÂ³n mÃƒÂ¡s cercana y rÃƒÂ¡pida.' => $this->defaults['hero_title'],
+            'Tu clínica digital para una atención más cercana y rápida.' => $this->defaults['hero_title'],
             'Agenda consultas, revisa resultados y recibe recordatorios inteligentes desde cualquier dispositivo. Todo en un mismo lugar.' => $this->defaults['hero_subtitle'],
-            'Agenda inteligente' => $key === 'intro_feature_1_title' ? $this->defaults['intro_feature_1_title'] : 'Citas mÃƒÂ©dicas',
-            'Confirmaciones automÃƒÂ¡ticas, recordatorios y reprogramaciÃƒÂ³n sencilla.' => $this->defaults['intro_feature_1_text'],
-            'AtenciÃƒÂ³n humana' => $this->defaults['intro_feature_4_title'],
-            'Personal mÃƒÂ©dico listo para responder tus dudas.' => $this->defaults['intro_feature_4_text'],
+            'Agenda inteligente' => $key === 'intro_feature_1_title' ? $this->defaults['intro_feature_1_title'] : 'Citas médicas',
+            'Confirmaciones automáticas, recordatorios y reprogramación sencilla.' => $this->defaults['intro_feature_1_text'],
+            'Atención humana' => $this->defaults['intro_feature_4_title'],
+            'Personal médico listo para responder tus dudas.' => $this->defaults['intro_feature_4_text'],
             'Especialidades destacadas' => $this->defaults['services_title'],
-            'AtenciÃƒÂ³n mÃƒÂ©dica integral con profesionales certificados.' => $this->defaults['services_subtitle'],
+            'Atención médica integral con profesionales certificados.' => $this->defaults['services_subtitle'],
             'Precios transparentes' => $this->defaults['prices_title'],
             'Consulta los valores aproximados y pregunta por promociones actuales.' => $this->defaults['prices_subtitle'],
             'Equipo profesional' => $this->defaults['prices_highlight_title'],
             'Especialistas enfocados en un trato cercano y humano.' => $this->defaults['prices_highlight_subtitle'],
             'Agenda tu visita en minutos' => $this->defaults['prices_visit_title'],
-            'Nuestro sistema te guÃƒÂ­a paso a paso para seleccionar especialista, fecha y hora.' => $this->defaults['prices_visit_subtitle'],
+            'Nuestro sistema te guía paso a paso para seleccionar especialista, fecha y hora.' => $this->defaults['prices_visit_subtitle'],
             'Nuestros doctores' => $this->defaults['doctors_title'],
             'Profesionales comprometidos con tu bienestar.' => $this->defaults['doctors_subtitle'],
-            'AtenciÃƒÂ³n personalizada' => $this->defaults['doctors_pill'],
+            'Atención personalizada' => $this->defaults['doctors_pill'],
             'Equipo' => $this->defaults['doctors_badge'],
             'Profesionales disponibles' => $this->defaults['doctors_title'],
-            'Conoce el equipo registrado para las especialidades de la clÃƒÂ­nica.' => $this->defaults['doctors_subtitle'],
-            'AtenciÃƒÂ³n presencial agendada' => $this->defaults['doctors_pill'],
+            'Conoce el equipo registrado para las especialidades de la clínica.' => $this->defaults['doctors_subtitle'],
+            'Atención presencial agendada' => $this->defaults['doctors_pill'],
         ];
 
-        return $replacements[$value] ?? $value;
+        return $replacements[$value] ?? $replacements[utf8_decode($value)] ?? $value;
     }
 
     private function normalizeStatCopy(array $stat): array
@@ -591,9 +591,9 @@ class LandingWelcomeService
 
         $knownTemplateStats = [
             [0, 'Agenda inteligente', 'Reserva citas en pocos pasos'],
-            [1, 'GestiÃƒÂ³n integral', 'Control de pacientes y doctores'],
-            [2, '15 min', 'Promedio en lÃƒÂ­nea'],
-            [0, '+6.2k', 'AtenciÃƒÂ³n continua'],
+            [1, 'Gestión integral', 'Control de pacientes y doctores'],
+            [2, '15 min', 'Promedio en línea'],
+            [0, '+6.2k', 'Atención continua'],
             [1, '32', 'Equipo dedicado'],
         ];
 
@@ -618,13 +618,13 @@ class LandingWelcomeService
     private function normalizeInfoCardCopy(array $card): array
     {
         $replacements = [
-            'AtenciÃƒÂ³n 24/7' => 'Agendamiento de citas',
+            'Atención 24/7' => 'Agendamiento de citas',
             'Soporte y seguimiento continuo.' => 'Solicita una cita desde tu cuenta.',
             'Especialistas certificados' => 'Especialidades disponibles',
-            'MÃƒÂ©dicos con experiencia comprobada.' => 'Elige el servicio mÃƒÂ©dico que necesitas.',
-            'Datos protegidos' => 'InformaciÃƒÂ³n protegida',
-            'Seguridad y privacidad priorizadas.' => 'Acceso seguro para tus datos mÃƒÂ©dicos.',
-            'Recordatorios automÃƒÂ¡ticos' => 'Recordatorios de citas',
+            'Médicos con experiencia comprobada.' => 'Elige el servicio médico que necesitas.',
+            'Datos protegidos' => 'Información protegida',
+            'Seguridad y privacidad priorizadas.' => 'Acceso seguro para tus datos médicos.',
+            'Recordatorios automáticos' => 'Recordatorios de citas',
             'Alertas claras para tus citas.' => 'Avisos para ayudarte a llegar a tiempo.',
         ];
 

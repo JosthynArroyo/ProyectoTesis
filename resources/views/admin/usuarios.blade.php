@@ -119,31 +119,51 @@
             $dependientes = $roleNombre === 'paciente' ? ($u->dependientes ?? collect()) : collect();
             $dependientesCount = (int) ($u->dependientes_count ?? $dependientes->count());
             $dependientesPanelId = 'dependientes-panel-'.$u->id;
-            $estado = $u->status ?? 'active';
-            $isSusp = $u->suspended_until && now()->lt($u->suspended_until);
+
+            $rawStatus = (string) ($u->status ?? 'active');
+            $isSuspended = $u->suspended_until && now()->lt($u->suspended_until);
+
+            if ($rawStatus === 'blocked') {
+                $displayStatus = 'blocked';
+            } elseif ($rawStatus === 'inactive') {
+                $displayStatus = 'inactive';
+            } elseif ($isSuspended) {
+                $displayStatus = 'suspended';
+            } else {
+                $displayStatus = 'active';
+            }
           @endphp
 
-          @unless($esAdmin || $u->id === auth()->id())
-            <form id="delete-{{ $u->id }}" action="{{ route('admin.usuarios.destroy', $u) }}" method="POST">@csrf @method('DELETE')</form>
-          @endunless
-          @unless($esAdmin)
-            <form id="block-{{ $u->id }}" action="{{ route('admin.usuarios.block', $u) }}" method="POST">
-              @csrf
-              @method('PATCH')
-              <input type="hidden" name="reason" value="Bloqueo manual">
-            </form>
-            <form id="activate-{{ $u->id }}" action="{{ route('admin.usuarios.activate', $u) }}" method="POST">
-              @csrf
-              @method('PATCH')
-              <input type="hidden" name="reason" value="">
-            </form>
-            <form id="deactivate-{{ $u->id }}" action="{{ route('admin.usuarios.deactivate', $u) }}" method="POST">
-              @csrf
-              @method('PATCH')
-              <input type="hidden" name="reason" value="Inactivación manual">
-          @endunless
-
           <tr data-user-row>
+            <td class="hidden" aria-hidden="true">
+              @unless($esAdmin || $u->id === auth()->id())
+                <form id="delete-{{ $u->id }}" action="{{ route('admin.usuarios.destroy', $u) }}" method="POST" data-action-lock-title="Eliminando usuario..." data-action-lock-description="Por favor, espera.">
+                  @csrf
+                  @method('DELETE')
+                </form>
+              @endunless
+              @unless($esAdmin)
+                <form id="block-{{ $u->id }}" action="{{ route('admin.usuarios.block', $u) }}" method="POST" data-action-lock-title="Bloqueando usuario..." data-action-lock-description="Por favor, espera.">
+                  @csrf
+                  @method('PATCH')
+                  <input type="hidden" name="reason" value="Bloqueo manual">
+                </form>
+                <form id="activate-{{ $u->id }}" action="{{ route('admin.usuarios.activate', $u) }}" method="POST" data-action-lock-title="{{ $displayStatus === 'blocked' ? 'Desbloqueando usuario...' : 'Reactivando usuario...' }}" data-action-lock-description="Por favor, espera.">
+                  @csrf
+                  @method('PATCH')
+                  <input type="hidden" name="reason" value="">
+                </form>
+                <form id="deactivate-{{ $u->id }}" action="{{ route('admin.usuarios.deactivate', $u) }}" method="POST" data-action-lock-title="Desactivando usuario..." data-action-lock-description="Por favor, espera.">
+                  @csrf
+                  @method('PATCH')
+                  <input type="hidden" name="reason" value="Inactivación manual">
+                </form>
+                <form id="unsuspend-{{ $u->id }}" action="{{ route('admin.usuarios.activate', $u) }}" method="POST" data-action-lock-title="Levantando suspensión..." data-action-lock-description="Por favor, espera.">
+                  @csrf
+                  @method('PATCH')
+                </form>
+              @endunless
+            </td>
             @if(in_array('usuario',$cols))
               <td data-label="Usuario">
                 <div class="flex items-start gap-3">
@@ -208,11 +228,11 @@
             @if(in_array('estado',$cols))
               <td data-label="Estado">
                 <div class="space-y-1">
-                  @if($estado === 'blocked')
+                  @if($displayStatus === 'blocked')
                     <span class="badge danger">Bloqueado</span>
-                  @elseif($estado === 'inactive')
+                  @elseif($displayStatus === 'inactive')
                     <span class="badge warning">Inactivo</span>
-                  @elseif($isSusp)
+                  @elseif($displayStatus === 'suspended')
                     <span class="badge warning">Suspendido</span>
                   @else
                     <span class="badge success">Activo</span>
@@ -249,51 +269,81 @@
                         <i class="ri-edit-line"></i> Editar completo
                       </a>
                       @unless($esAdmin)
-                        <button
-                          type="button"
-                          class="btn btn-ghost btn-sm justify-start"
-                          data-suspend-open
-                          data-suspend-id="{{ $u->id }}"
-                          data-suspend-name="{{ $u->name }}"
-                          data-suspend-title="Suspender usuario"
-                          data-suspend-action="{{ route('admin.usuarios.suspend', $u) }}"
-                        >
-                          <i class="ri-timer-line"></i> Suspender
-                        </button>
-                        @if($estado !== 'blocked')
+                        @if($displayStatus === 'active')
+                          <button
+                            type="button"
+                            class="btn btn-ghost btn-sm justify-start"
+                            data-suspend-open
+                            data-suspend-id="{{ $u->id }}"
+                            data-suspend-name="{{ $u->name }}"
+                            data-suspend-title="Suspender usuario"
+                            data-suspend-action="{{ route('admin.usuarios.suspend', $u) }}"
+                            role="menuitem"
+                          >
+                            <i class="ri-timer-line"></i> Suspender
+                          </button>
                           <button
                             type="button"
                             class="btn btn-ghost btn-sm justify-start"
                             data-confirm-form="block-{{ $u->id }}"
                             data-confirm-title="Bloquear usuario"
-                            data-confirm-message="Se bloqueara el acceso de {{ $u->name }}."
+                            data-confirm-message="Se bloqueará el acceso de {{ $u->name }}."
                             data-confirm-button="Bloquear"
+                            data-action-lock-title="Bloqueando usuario..."
+                            role="menuitem"
                           >
                             <i class="ri-forbid-line"></i> Bloquear
                           </button>
-                        @endif
-                        @if($estado !== 'inactive')
                           <button
                             type="button"
                             class="btn btn-ghost btn-sm justify-start"
                             data-confirm-form="deactivate-{{ $u->id }}"
-                            data-confirm-title="{{ $isClinicalProfessional ? 'Desactivar profesional' : 'Desactivar usuario' }}"
-                            data-confirm-message="{{ $isClinicalProfessional ? 'La cuenta quedara inactiva, pero sus citas, historiales, recetas y especialidades se conservaran.' : 'La cuenta de '.$u->name.' quedara inactiva.' }}"
+                            data-confirm-title="Desactivar usuario"
+                            data-confirm-message="La cuenta de {{ $u->name }} quedará inactiva."
                             data-confirm-button="Desactivar"
+                            data-action-lock-title="Desactivando usuario..."
+                            role="menuitem"
                           >
                             <i class="ri-user-unfollow-line"></i> Desactivar
                           </button>
-                        @endif
-                        @if($estado !== 'active' || $isSusp)
+                        @elseif($displayStatus === 'blocked')
+                          <button
+                            type="button"
+                            class="btn btn-ghost btn-sm justify-start"
+                            data-confirm-form="activate-{{ $u->id }}"
+                            data-confirm-title="Desbloquear usuario"
+                            data-confirm-message="Se restaurará el acceso de {{ $u->name }}."
+                            data-confirm-button="Desbloquear"
+                            data-action-lock-title="Desbloqueando usuario..."
+                            role="menuitem"
+                          >
+                            <i class="ri-lock-unlock-line"></i> Desbloquear
+                          </button>
+                        @elseif($displayStatus === 'inactive')
                           <button
                             type="button"
                             class="btn btn-ghost btn-sm justify-start"
                             data-confirm-form="activate-{{ $u->id }}"
                             data-confirm-title="Reactivar usuario"
-                            data-confirm-message="Se reactivara el acceso de {{ $u->name }}."
+                            data-confirm-message="Se reactivará el acceso de {{ $u->name }}."
                             data-confirm-button="Reactivar"
+                            data-action-lock-title="Reactivando usuario..."
+                            role="menuitem"
                           >
                             <i class="ri-user-follow-line"></i> Reactivar
+                          </button>
+                        @elseif($displayStatus === 'suspended')
+                          <button
+                            type="button"
+                            class="btn btn-ghost btn-sm justify-start"
+                            data-confirm-form="unsuspend-{{ $u->id }}"
+                            data-confirm-title="Levantar suspensión"
+                            data-confirm-message="Se finalizará la suspensión temporal de {{ $u->name }}."
+                            data-confirm-button="Levantar suspensión"
+                            data-action-lock-title="Levantando suspensión..."
+                            role="menuitem"
+                          >
+                            <i class="ri-time-line"></i> Levantar suspensión
                           </button>
                         @endif
                         @unless($u->id === auth()->id())
@@ -302,8 +352,10 @@
                             class="btn btn-ghost btn-sm justify-start text-rose-600"
                             data-confirm-form="delete-{{ $u->id }}"
                             data-confirm-title="Eliminar usuario"
-                            data-confirm-message="{{ $isClinicalProfessional ? 'La cuenta del profesional se desactivara para conservar el historial clinico y relaciones.' : 'Se eliminara la cuenta de '.$u->name.'.' }}"
+                            data-confirm-message="Se eliminará permanentemente la cuenta de {{ $u->name }}."
                             data-confirm-button="Eliminar"
+                            data-action-lock-title="Eliminando usuario..."
+                            role="menuitem"
                           >
                             <i class="ri-delete-bin-line"></i> Eliminar
                           </button>
@@ -400,27 +452,7 @@
   </div>
 </div>
 
-<div class="modal modal--sheet" data-confirm-sheet aria-hidden="true">
-  <div class="modal-backdrop" data-sheet-close></div>
-  <div class="modal-dialog modal-dialog--sheet" role="document" tabindex="-1">
-    <div class="card modal-sheet p-6">
-      <div class="flex items-center justify-between gap-3 border-b border-gray-100 pb-4">
-        <div>
-          <p class="text-xs uppercase tracking-widest text-gray-500">Confirmación</p>
-          <h3 class="mt-2 text-lg font-semibold text-gray-900" data-confirm-title>Confirmar acción</h3>
-        </div>
-        <button type="button" class="btn btn-ghost px-2" data-sheet-close aria-label="Cerrar">
-          <i class="ri-close-line"></i>
-        </button>
-      </div>
-      <p class="mt-4 text-sm text-gray-600" data-confirm-message>Confirma para continuar.</p>
-      <div class="mt-6 flex flex-wrap justify-end gap-3">
-        <button type="button" class="btn btn-outline" data-sheet-close>Cancelar</button>
-        <button type="button" class="btn btn-primary" data-confirm-submit>Confirmar</button>
-      </div>
-    </div>
-  </div>
-</div>
+
 
 <div class="modal modal--sheet" data-suspend-sheet aria-hidden="true" @if($suspendTarget) data-open-on-load="1" @endif>
   <div class="modal-backdrop" data-sheet-close></div>

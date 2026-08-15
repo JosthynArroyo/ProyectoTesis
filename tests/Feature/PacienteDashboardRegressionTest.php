@@ -4,12 +4,12 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use App\Models\Role;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 class PacienteDashboardRegressionTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_paciente_real_puede_entrar_al_dashboard_sin_error(): void
     {

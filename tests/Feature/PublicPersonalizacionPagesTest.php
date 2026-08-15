@@ -6,14 +6,27 @@ use App\Models\Especialidad;
 use App\Models\Role;
 use App\Models\SiteSetting;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class PublicPersonalizacionPagesTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Storage::fake('r2_private');
+        Storage::fake('r2_public', ['url' => 'https://pub-test.r2.dev']);
+        config([
+            'filesystems.disks.r2_public.url' => 'https://pub-test.r2.dev',
+            'image_optimization.disk' => 'r2_public',
+            'queue.media_connection' => 'sync',
+        ]);
+    }
 
     public function test_superadmin_can_customize_services_copy_and_images_without_breaking_public_view(): void
     {
@@ -46,15 +59,17 @@ class PublicPersonalizacionPagesTest extends TestCase
         ]);
 
         $response->assertRedirect();
-        $response->assertSessionHas('success', 'Servicios actualizados correctamente.');
+        $response->assertSessionHas('success', 'Imágenes recibidas. Estamos procesando los cambios.');
 
         $heroImage = SiteSetting::query()->where('key', 'services.hero_image')->value('value');
         $serviceImage = SiteSetting::query()->where('key', 'services.specialty_image.'.$especialidad->id)->value('value');
 
         $this->assertNotNull($heroImage);
         $this->assertNotNull($serviceImage);
-        Storage::disk('public')->assertExists($heroImage);
-        Storage::disk('public')->assertExists($serviceImage);
+        Storage::disk('r2_public')->assertExists($heroImage);
+        Storage::disk('r2_public')->assertExists($serviceImage);
+        Storage::disk('public')->assertMissing($heroImage);
+        Storage::disk('public')->assertMissing($serviceImage);
 
         $publicResponse = $this->get(route('servicios.index'));
 
@@ -62,7 +77,7 @@ class PublicPersonalizacionPagesTest extends TestCase
         $publicResponse->assertSeeText('Servicios integrales para toda la familia');
         $publicResponse->assertSeeText('Configura imagenes y textos sin alterar el flujo publico.');
         $publicResponse->assertSeeText('Dermatologia clinica');
-        $publicResponse->assertSee('/storage/images/services/', false);
+        $publicResponse->assertSee('https://pub-test.r2.dev/images/services/', false);
     }
 
     public function test_superadmin_can_customize_contact_copy_email_and_placeholders_in_public_view(): void
@@ -112,6 +127,27 @@ class PublicPersonalizacionPagesTest extends TestCase
         $publicResponse->assertSee('placeholder="0991112233"', false);
         $publicResponse->assertSee('placeholder="Consulta breve"', false);
         $publicResponse->assertSee('Describe tu consulta', false);
+    }
+
+    public function test_public_verificar_documento_button_uses_dynamic_accent_color_and_not_hardcoded_green(): void
+    {
+        SiteSetting::query()->updateOrCreate(
+            ['key' => 'branding.accent'],
+            ['value' => '#1e40af', 'type' => 'text', 'section' => 'branding']
+        );
+        SiteSetting::query()->updateOrCreate(
+            ['key' => 'branding.accent_strong'],
+            ['value' => '#1e3a8a', 'type' => 'text', 'section' => 'branding']
+        );
+
+        $response = $this->get(route('documentos.verificar.form'));
+
+        $response->assertOk();
+        $response->assertSee('--accent:', false);
+        $response->assertSee('#1e40af', false);
+        $response->assertSee('class="btn btn-primary flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-base font-semibold transition"', false);
+        $response->assertDontSee('bg-emerald-600', false);
+        $response->assertDontSee('bg-green-600', false);
     }
 
     private function makeUserWithRole(string $roleName): User

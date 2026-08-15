@@ -8,15 +8,14 @@ use App\Models\Role;
 use App\Models\User;
 use App\Services\CaptchaImageSynchronizer;
 use App\Support\ChatbotSessionKeys;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class CaptchaFlowTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     protected function setUp(): void
     {
@@ -25,12 +24,6 @@ class CaptchaFlowTest extends TestCase
         Mail::fake();
         $this->bindCaptchaSynchronizerMock();
         $this->seedCaptchaImagesFromDataset();
-    }
-
-    protected function tearDown(): void
-    {
-        File::deleteDirectory(Storage::disk('local')->path('captcha_animals'));
-        parent::tearDown();
     }
 
     public function test_writing_hola_generates_a_valid_captcha_challenge(): void
@@ -65,10 +58,12 @@ class CaptchaFlowTest extends TestCase
 
         foreach ($challenge->option_image_ids as $imageId) {
             $image = CaptchaImage::query()->findOrFail($imageId);
-            $this->assertStringStartsWith('captcha_animals/', $image->image_path);
-
-            $sourcePath = base_path('ai/dataset/val/' . $image->class_key . '/' . basename($image->image_path));
-            $this->assertFileExists($sourcePath);
+            $this->assertStringStartsWith('ai/dataset/val/', $image->image_path);
+            $this->assertSame(
+                base_path(str_replace('/', DIRECTORY_SEPARATOR, $image->image_path)),
+                $image->fullPath()
+            );
+            $this->assertFileExists($image->fullPath());
         }
 
         $response->assertOk();
@@ -186,6 +181,9 @@ class CaptchaFlowTest extends TestCase
         ]));
 
         $imageResponse->assertOk();
+        $cacheControl = (string) $imageResponse->headers->get('Cache-Control');
+        $this->assertStringContainsString('private', $cacheControl);
+        $this->assertStringNotContainsString('public', $cacheControl);
         $this->assertStringStartsWith('image/', (string) $imageResponse->headers->get('Content-Type'));
     }
 
@@ -200,6 +198,44 @@ class CaptchaFlowTest extends TestCase
 
         $second = $synchronizer->ensureSynchronized();
         $this->assertSame($first, $second);
+    }
+
+    public function test_synchronizer_indexes_all_eight_categories_and_reconciles_stale_rows(): void
+    {
+        CaptchaImage::query()->updateOrCreate([
+            'image_path' => 'ai/dataset/val/giraffe/missing-from-dataset.jpg',
+        ], [
+            'class_key' => 'giraffe',
+            'dataset_split' => 'val',
+        ]);
+
+        $total = (new CaptchaImageSynchronizer())->ensureSynchronized();
+        $classes = config('captcha.classes', []);
+        $counts = CaptchaImage::query()
+            ->where('dataset_split', 'val')
+            ->selectRaw('class_key, COUNT(*) as total')
+            ->groupBy('class_key')
+            ->pluck('total', 'class_key')
+            ->map(static fn ($count): int => (int) $count)
+            ->all();
+
+        $this->assertCount(8, $classes);
+        $this->assertCount(8, $counts);
+        $this->assertEqualsCanonicalizing($classes, array_keys($counts));
+        $this->assertSame($total, array_sum($counts));
+        $this->assertFalse(CaptchaImage::query()->where('image_path', 'ai/dataset/val/giraffe/missing-from-dataset.jpg')->exists());
+        $this->assertSame(0, CaptchaImage::query()->where('dataset_split', '!=', 'val')->count());
+        $this->assertDirectoryDoesNotExist(storage_path('app/private/captcha_animals'));
+    }
+
+    public function test_synchronizer_rejects_a_configuration_without_all_eight_categories(): void
+    {
+        config(['captcha.classes' => array_slice(config('captcha.classes', []), 0, 7)]);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('exactamente 8 categorias');
+
+        (new CaptchaImageSynchronizer())->ensureSynchronized();
     }
 
     private function bindCaptchaSynchronizerMock(): void
@@ -218,16 +254,12 @@ class CaptchaFlowTest extends TestCase
             $files = array_values(array_filter(File::files($sourceDir), static fn ($file) => in_array(strtolower($file->getExtension()), ['jpg', 'jpeg', 'png', 'webp'], true)));
             $selectedFiles = array_slice($files, 0, 2);
 
-            foreach ($selectedFiles as $index => $file) {
-                $destDir = Storage::disk('local')->path('captcha_animals/' . $class);
-                File::ensureDirectoryExists($destDir);
-                $destPath = $destDir . DIRECTORY_SEPARATOR . $file->getFilename();
-                File::copy($file->getPathname(), $destPath);
-
-                CaptchaImage::create([
+            foreach ($selectedFiles as $file) {
+                CaptchaImage::query()->updateOrCreate([
+                    'image_path' => 'ai/dataset/val/' . $class . '/' . $file->getFilename(),
+                ], [
                     'class_key' => $class,
-                    'dataset_split' => 'public',
-                    'image_path' => 'captcha_animals/' . $class . '/' . $file->getFilename(),
+                    'dataset_split' => 'val',
                 ]);
             }
         }

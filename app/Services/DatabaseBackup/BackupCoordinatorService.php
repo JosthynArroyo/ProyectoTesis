@@ -4,6 +4,7 @@ namespace App\Services\DatabaseBackup;
 
 use App\Models\DatabaseBackup;
 use App\Models\User;
+use App\Support\DestructiveDatabaseGuard;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -14,14 +15,19 @@ use Symfony\Component\Process\Process;
 
 class BackupCoordinatorService
 {
+    private readonly DestructiveDatabaseGuard $destructiveDatabaseGuard;
+
     public function __construct(
         private readonly MySqlDumpService $dumpService,
         private readonly BackupEncryptionService $encryptionService,
         private readonly BackupIntegrityService $integrityService,
         private readonly BackupStorageService $storageService,
         private readonly BackupManifestService $manifestService,
-        private readonly BackupRetentionService $retentionService
-    ) {}
+        private readonly BackupRetentionService $retentionService,
+        ?DestructiveDatabaseGuard $destructiveDatabaseGuard = null
+    ) {
+        $this->destructiveDatabaseGuard = $destructiveDatabaseGuard ?? app(DestructiveDatabaseGuard::class);
+    }
 
     /**
      * Coordinate full database backup execution.
@@ -267,6 +273,9 @@ class BackupCoordinatorService
             throw new RuntimeException("RESTAURACIÓN RECHAZADA: Durante pruebas, el destino debe terminar en '_test'. Base especificada: [{$targetDatabase}].");
         }
 
+        $this->destructiveDatabaseGuard->assertCurrentDatabaseIsAllowed('restauración de respaldo');
+        $this->destructiveDatabaseGuard->assertTargetDatabaseIsAllowed($targetDatabase, 'restauración de respaldo');
+
         // Pre-validation of mysql executable path
         $this->validateMysqlExecutable();
 
@@ -385,6 +394,9 @@ class BackupCoordinatorService
      */
     protected function sanitizeTargetDatabase(string $targetDatabase, string $uuid, ?array $manifestData): void
     {
+        $this->destructiveDatabaseGuard->assertCurrentDatabaseIsAllowed('saneamiento de restauración');
+        $this->destructiveDatabaseGuard->assertTargetDatabaseIsAllowed($targetDatabase, 'saneamiento de restauración');
+
         $activeDb = (string) config('database.connections.' . config('database.default', 'mysql') . '.database');
 
         if (strtolower($targetDatabase) === strtolower($activeDb)) {
@@ -476,6 +488,9 @@ class BackupCoordinatorService
      */
     protected function importSqlIntoDatabase(string $sqlFilePath, string $targetDatabase): void
     {
+        $this->destructiveDatabaseGuard->assertCurrentDatabaseIsAllowed('importación de restauración');
+        $this->destructiveDatabaseGuard->assertTargetDatabaseIsAllowed($targetDatabase, 'importación de restauración');
+
         $connectionName = config('database.default', 'mysql');
         $dbConfig = config("database.connections.{$connectionName}");
 

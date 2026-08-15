@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.navbar')
 
 @php
   $tipoIcono = match($tipo) {
@@ -27,22 +27,22 @@
 
 @section('title', 'Verificación · '.$titulo)
 
-@section('content')
-<div class="min-h-screen bg-[radial-gradient(ellipse_at_top,_#d1fae5_0,_#f0fdf4_30%,_#ffffff_70%)]">
-  <div class="mx-auto flex min-h-screen max-w-5xl flex-col items-center justify-center px-4 py-16 sm:px-6 lg:px-8">
+@section('main')
+<div class="flex min-h-[calc(100vh-4.5rem)] flex-col justify-between bg-[radial-gradient(ellipse_at_top,_var(--accent-soft,_#f1f5f9)_0,_#f8fafc_35%,_#ffffff_70%)]">
+  <div class="mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
 
     {{-- Branding --}}
     <div class="mb-8 text-center">
-      <p class="text-sm font-semibold uppercase tracking-widest text-emerald-700">{{ $clinica }}</p>
+      <p class="text-sm font-semibold uppercase tracking-widest text-slate-700">{{ $clinica }}</p>
       <p class="mt-1 text-xs text-slate-400">Portal de verificación de documentos</p>
     </div>
 
-    <div class="w-full rounded-[2rem] border border-emerald-100 bg-white/90 shadow-[0_25px_70px_rgba(15,118,110,0.10)] backdrop-blur">
+    <div class="w-full rounded-[2rem] border border-slate-200/80 bg-white/90 shadow-[0_25px_70px_rgba(15,23,42,0.08)] backdrop-blur">
 
       {{-- Top banner --}}
-      <div class="flex flex-col items-center gap-3 rounded-t-[2rem] border-b border-emerald-100 bg-emerald-50/60 px-6 py-6 text-center">
-        <div class="flex h-16 w-16 items-center justify-center rounded-full border border-emerald-200 bg-white shadow-sm">
-          <i class="{{ $tipoIcono }} text-3xl text-emerald-600"></i>
+      <div class="flex flex-col items-center gap-3 rounded-t-[2rem] border-b border-slate-200/80 bg-slate-50/60 px-6 py-6 text-center">
+        <div class="flex h-16 w-16 items-center justify-center rounded-full border border-slate-200 bg-white shadow-sm">
+          <i class="{{ $tipoIcono }} text-3xl text-slate-700"></i>
         </div>
         <div>
           <h1 class="text-2xl font-bold text-slate-900 sm:text-3xl">{{ $titulo }} verificado.</h1>
@@ -52,6 +52,16 @@
           <i class="{{ $estadoIcono }}"></i>
           {{ $estado }}
         </span>
+        @if($tipo === 'certificado_medico' && $estado === 'Reemplazado')
+          <div class="mt-2 w-full rounded-xl border border-rose-200 bg-rose-50 p-4 text-center text-xs text-rose-800">
+            <p class="font-bold text-rose-900 flex items-center justify-center gap-1">
+              <i class="ri-alert-line text-sm"></i> DOCUMENTO REEMPLAZADO
+            </p>
+            <p class="mt-1">
+              Este certificado fue emitido válidamente, pero posteriormente fue sustituido por una versión corregida.
+            </p>
+          </div>
+        @endif
         @if($tipo === 'comprobante_cita')
           <span class="inline-flex items-center gap-1.5 rounded-full border px-4 py-1.5 text-xs font-semibold {{ in_array(strtolower($estado), ['pendiente', 'confirmada']) ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200' }}">
             {{ in_array(strtolower($estado), ['pendiente', 'confirmada']) ? 'Comprobante vigente' : 'Comprobante sin vigencia' }}
@@ -156,7 +166,7 @@
           está disponible exclusivamente para los usuarios autorizados dentro del sistema.
           No se proporciona ningún enlace de descarga en este portal.
         </p>
-        <a href="{{ route('documentos.verificar.form') }}" class="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 hover:underline">
+        <a href="{{ route('documentos.verificar.form') }}" class="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:underline">
           <i class="ri-arrow-left-line"></i>
           Verificar otro documento
         </a>
@@ -165,5 +175,6 @@
     </div>
 
   </div>
+  @include('partials.footer')
 </div>
 @endsection

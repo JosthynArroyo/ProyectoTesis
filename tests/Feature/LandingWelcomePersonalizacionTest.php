@@ -8,12 +8,12 @@ use App\Models\LandingWelcomeFeaturedSpecialty;
 use App\Models\LandingWelcomeSlide;
 use App\Models\Role;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 class LandingWelcomePersonalizacionTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_superadmin_welcome_form_hides_obsolete_fields(): void
     {
@@ -32,18 +32,14 @@ class LandingWelcomePersonalizacionTest extends TestCase
     public function test_superadmin_can_update_featured_specialty_descriptions_from_welcome(): void
     {
         $superadmin = $this->makeUserWithRole('superadmin');
-        $especialidadUno = Especialidad::query()->create([
-            'nombre' => 'Dermatología',
-            'descripcion' => 'Descripción original 1',
-            'activo' => true,
-            'orden' => 1,
-        ]);
-        $especialidadDos = Especialidad::query()->create([
-            'nombre' => 'Pediatría',
-            'descripcion' => 'Descripción original 2',
-            'activo' => true,
-            'orden' => 2,
-        ]);
+        $especialidadUno = Especialidad::query()->firstOrCreate(
+            ['nombre' => 'Dermatología'],
+            ['descripcion' => 'Descripción original 1', 'activo' => true, 'orden' => 1]
+        );
+        $especialidadDos = Especialidad::query()->firstOrCreate(
+            ['nombre' => 'Pediatría'],
+            ['descripcion' => 'Descripción original 2', 'activo' => true, 'orden' => 2]
+        );
 
         $response = $this->actingAs($superadmin)->put(route('superadmin.personalizacion.bienvenida.update'), [
             'show_services_block' => '1',
@@ -60,7 +56,7 @@ class LandingWelcomePersonalizacionTest extends TestCase
         ]);
 
         $response->assertRedirect();
-        $response->assertSessionHas('success', 'Bienvenida actualizada correctamente.');
+        $response->assertSessionHas('success', 'Personalización guardada correctamente.');
 
         $especialidadUno->refresh();
         $especialidadDos->refresh();
@@ -107,7 +103,7 @@ class LandingWelcomePersonalizacionTest extends TestCase
         ]);
 
         $response->assertRedirect();
-        $response->assertSessionHas('success', 'Bienvenida actualizada correctamente.');
+        $response->assertSessionHas('success', 'Personalización guardada correctamente.');
 
         $slide = LandingWelcomeSlide::query()->firstOrFail();
 

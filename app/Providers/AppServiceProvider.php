@@ -10,7 +10,9 @@ use App\Services\ClinicIdentityService;
 use App\Services\LandingWelcomeService;
 use App\Services\LayoutMetricsService;
 use App\Services\SiteSettingsService;
+use App\Support\DestructiveDatabaseGuard;
 use App\Support\ImageUrl;
+use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Foundation\Vite as ViteManager;
 use Illuminate\Http\Request;
@@ -44,6 +46,12 @@ class AppServiceProvider extends ServiceProvider
 
             return $value;
         });
+
+        if ($this->app->runningInConsole()) {
+            $this->app['events']->listen(CommandStarting::class, function (CommandStarting $event): void {
+                app(DestructiveDatabaseGuard::class)->assertConsoleCommandIsSafe($event->command, $event->input);
+            });
+        }
 
         if (! $this->app->runningInConsole()) {
             $request = $this->app['request'];

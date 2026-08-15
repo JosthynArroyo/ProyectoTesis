@@ -11,7 +11,7 @@ use App\Models\Pago;
 use App\Models\Role;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
@@ -22,7 +22,7 @@ use Tests\TestCase;
 
 class SystemFullFlowTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     protected function setUp(): void
     {
@@ -31,6 +31,8 @@ class SystemFullFlowTest extends TestCase
         Carbon::setTestNow(Carbon::parse('2026-03-09 09:00:00', 'America/Guayaquil'));
         Storage::fake('local');
         Storage::fake('public');
+        Storage::fake('r2_private');
+        Storage::fake('r2_public');
         Mail::fake();
         Queue::fake();
 
@@ -39,6 +41,20 @@ class SystemFullFlowTest extends TestCase
         ]);
 
         $this->seed(DatabaseSeeder::class);
+
+        $superadminRole = Role::query()->where('name', 'superadmin')->firstOrFail();
+        $superadmin = User::create([
+            'name' => 'Superadmin QA',
+            'email' => 'superadmin@clinic.test',
+            'password' => Hash::make('superadmin1234'),
+            'telefono' => '0990000100',
+            'dni' => '1000000100',
+            'direccion' => 'Clinica central',
+            'fecha_nacimiento' => '1985-01-10',
+            'sexo' => 'Masculino',
+            'status' => User::STATUS_ACTIVE,
+        ]);
+        $superadmin->roles()->sync([$superadminRole->id]);
     }
 
     protected function tearDown(): void
@@ -53,7 +69,7 @@ class SystemFullFlowTest extends TestCase
         $this->get('/')->assertOk();
         $this->get('/servicios')->assertOk();
         $this->get('/contacto')->assertOk();
-        $this->get('/login')->assertOk();
+        $this->get('/login')->assertRedirect(url('/').'?login=1');
 
         $superadmin = User::query()->where('email', 'superadmin@clinic.test')->firstOrFail();
         $this->loginThroughForm($superadmin, 'superadmin1234');
@@ -317,7 +333,7 @@ class SystemFullFlowTest extends TestCase
         $this->postForm(route('paciente.pagos.submit', $pago), [
             'metodo_pago' => Pago::METODO_TRANSFERENCIA,
             'referencia_transaccion' => 'TRX-0001',
-            'comprobante' => UploadedFile::fake()->create('comprobante.pdf', 100, 'application/pdf'),
+            'comprobante' => UploadedFile::fake()->image('comprobante.png', 100, 100),
         ])->assertRedirect(route('paciente.pagos.index'));
 
         $pago = $pago->fresh();
@@ -367,7 +383,10 @@ class SystemFullFlowTest extends TestCase
             ->assertRedirect();
 
         $this->postForm(route('laboratorio.ordenes.resultado', $labOrder), [
-            'resultado_pdf' => UploadedFile::fake()->create('resultado.pdf', 120, 'application/pdf'),
+            'resultado_pdf' => UploadedFile::fake()->createWithContent(
+                'resultado.pdf',
+                '%PDF-1.4 '.str_repeat('resultado-laboratorio ', 64)
+            ),
             'resultado_resumen' => 'Resultados dentro de rangos esperados.',
         ])->assertRedirect();
 

@@ -1,13 +1,13 @@
-@extends('layouts.app')
+@extends('layouts.navbar')
 
 @section('title', 'Verificar documento')
 
-@section('content')
-<div class="min-h-screen bg-[radial-gradient(circle_at_top,_#d1fae5_0,_#f8fafc_35%,_#ffffff_100%)]">
-  <div class="mx-auto flex min-h-screen max-w-5xl items-center px-4 py-16 sm:px-6 lg:px-8">
-    <div class="grid w-full gap-8 rounded-[2rem] border border-emerald-100 bg-white/90 p-6 shadow-[0_25px_70px_rgba(15,118,110,0.12)] backdrop-blur md:grid-cols-[1.05fr_0.95fr] md:p-10">
+@section('main')
+<div class="flex min-h-[calc(100vh-4.5rem)] flex-col justify-between bg-[radial-gradient(circle_at_top,_var(--accent-soft,_#f1f5f9)_0,_#f8fafc_35%,_#ffffff_100%)]">
+  <div class="mx-auto flex w-full max-w-5xl flex-1 items-center px-4 py-12 sm:px-6 lg:px-8">
+    <div class="grid w-full gap-8 rounded-[2rem] border border-slate-200/80 bg-white/90 p-6 shadow-[0_25px_70px_rgba(15,23,42,0.08)] backdrop-blur md:grid-cols-[1.05fr_0.95fr] md:p-10">
       <div class="space-y-6">
-        <div class="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.25em] text-emerald-700">
+        <div class="inline-flex items-center gap-2 rounded-full bg-slate-100 px-4 py-2 text-xs font-semibold uppercase tracking-[0.25em] text-slate-700">
           Verificacion de documentos
         </div>
         <div class="space-y-3">
@@ -42,7 +42,7 @@
               type="text"
               value="{{ old('csv') }}"
               placeholder="ABC-12345-XYZ"
-              class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-base text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
+              class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-base text-slate-900 outline-none transition focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent-soft)]"
               autocomplete="off"
               spellcheck="false"
               required
@@ -52,7 +52,7 @@
             @enderror
           </div>
 
-          <button type="submit" class="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-base font-semibold text-white transition hover:bg-emerald-700">
+          <button type="submit" class="btn btn-primary flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-base font-semibold transition">
             <i class="ri-search-line"></i>
             Verificar documento
           </button>
@@ -64,5 +64,6 @@
       </div>
     </div>
   </div>
+  @include('partials.footer')
 </div>
 @endsection

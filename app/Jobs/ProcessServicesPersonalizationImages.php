@@ -30,15 +30,25 @@ class ProcessServicesPersonalizationImages implements ShouldQueue
     public function __construct(
         public string $batchUuid
     ) {
-        $this->onConnection(config('queue.media_connection', env('MEDIA_QUEUE_CONNECTION', 'database')));
-        $this->onQueue(env('MEDIA_QUEUE', 'media'));
+        $this->onConnection(config('queue.media_connection', 'database'));
+        $this->onQueue(config('queue.media_queue', 'media'));
     }
 
     public function handle(ImageOptimizer $imageOptimizer, SiteSettingsService $settings): void
     {
         $batch = MediaProcessingBatch::query()->where('uuid', $this->batchUuid)->first();
+        $defaultTempDirectory = 'media-processing/services/'.$this->batchUuid;
 
-        if (! $batch || $batch->isCompleted()) {
+        if (! $batch) {
+            $this->cleanupStaging($defaultTempDirectory);
+            return;
+        }
+
+        $payload = $batch->payload ?? [];
+        $tempDirectory = $payload['temp_directory'] ?? $defaultTempDirectory;
+
+        if ($batch->isCompleted() || $batch->isFailed()) {
+            $this->cleanupStaging($tempDirectory);
             return;
         }
 
@@ -47,8 +57,6 @@ class ProcessServicesPersonalizationImages implements ShouldQueue
             'started_at' => now(),
         ]);
 
-        $payload = $batch->payload ?? [];
-        $tempDirectory = $payload['temp_directory'] ?? null;
         $newlyUploadedPaths = [];
         $pathsToDelete = [];
         $processedCount = 0;
@@ -57,6 +65,10 @@ class ProcessServicesPersonalizationImages implements ShouldQueue
         $webpGenerationSeconds = 0.0;
 
         try {
+            if ($imageOptimizer->disk() !== 'r2_public') {
+                throw new \RuntimeException('Services requiere r2_public como destino final de imágenes.');
+            }
+
             $settingsPayload = $payload['text_settings'] ?? [];
             $meta = [
                 'services.title' => ['section' => 'services', 'type' => 'text'],
@@ -69,8 +81,7 @@ class ProcessServicesPersonalizationImages implements ShouldQueue
             $heroTempPath = $payload['hero_image_temp_path'] ?? null;
             $currentHeroImage = $payload['hero_image_current_path'] ?? $settings->get('services.hero_image');
 
-            if ($heroTempPath && Storage::disk('local')->exists($heroTempPath)) {
-                $absPath = Storage::disk('local')->path($heroTempPath);
+            if ($heroTempPath && Storage::disk('r2_private')->exists($heroTempPath)) {
                 $heroProfile = 'public_hero';
                 $heroVariantCount = count($imageOptimizer->profileSizes($heroProfile));
                 $heroStartedAt = microtime(true);
@@ -79,8 +90,9 @@ class ProcessServicesPersonalizationImages implements ShouldQueue
                 // R2 path (images/services/medium/services-hero.webp) as the
                 // un-uploaded default and falling back to the local static file.
                 $heroBaseName = 'services-hero-'.Str::uuid()->toString();
-                $newHeroPath = $imageOptimizer->optimizeAbsolutePath(
-                    absolutePath: $absPath,
+                $newHeroPath = $imageOptimizer->optimizeStoredPath(
+                    sourceDisk: 'r2_private',
+                    sourcePath: $heroTempPath,
                     folder: 'services',
                     baseName: $heroBaseName,
                     profile: $heroProfile,
@@ -118,14 +130,14 @@ class ProcessServicesPersonalizationImages implements ShouldQueue
                 $currentImagePath = $specData['current_path'] ?? null;
                 $finalImagePath = $currentImagePath;
 
-                if ($specTempPath && Storage::disk('local')->exists($specTempPath)) {
-                    $absPath = Storage::disk('local')->path($specTempPath);
+                if ($specTempPath && Storage::disk('r2_private')->exists($specTempPath)) {
                     $specProfile = 'public_card';
                     $specVariantCount = count($imageOptimizer->profileSizes($specProfile));
                     $specStartedAt = microtime(true);
                     $specBaseName = 'service-'.$id.'-'.Str::uuid()->toString();
-                    $newSpecPath = $imageOptimizer->optimizeAbsolutePath(
-                        absolutePath: $absPath,
+                    $newSpecPath = $imageOptimizer->optimizeStoredPath(
+                        sourceDisk: 'r2_private',
+                        sourcePath: $specTempPath,
                         folder: 'services',
                         baseName: $specBaseName,
                         profile: $specProfile,
@@ -157,14 +169,14 @@ class ProcessServicesPersonalizationImages implements ShouldQueue
                 $newTempPath = $newData['temp_path'] ?? null;
                 $finalImagePath = null;
 
-                if ($newTempPath && Storage::disk('local')->exists($newTempPath)) {
-                    $absPath = Storage::disk('local')->path($newTempPath);
+                if ($newTempPath && Storage::disk('r2_private')->exists($newTempPath)) {
                     $newProfile = 'public_card';
                     $newVariantCount = count($imageOptimizer->profileSizes($newProfile));
                     $newStartedAt = microtime(true);
                     $newSpecBaseName = 'service-new-'.$newIndex.'-'.Str::uuid()->toString();
-                    $newSpecPath = $imageOptimizer->optimizeAbsolutePath(
-                        absolutePath: $absPath,
+                    $newSpecPath = $imageOptimizer->optimizeStoredPath(
+                        sourceDisk: 'r2_private',
+                        sourcePath: $newTempPath,
                         folder: 'services',
                         baseName: $newSpecBaseName,
                         profile: $newProfile,
@@ -188,62 +200,13 @@ class ProcessServicesPersonalizationImages implements ShouldQueue
             }
 
             // 4. Atomic Database Transaction
-            DB::transaction(function () use (
+            \App\Services\ServicesPersonalizationAsyncService::saveToDatabase(
                 $settings,
-                &$settingsPayload,
-                &$meta,
+                $settingsPayload,
+                $settingsPayload['services.hero_image'] ?? null,
                 $updatedEspecialidades,
                 $newEspecialidades
-            ): void {
-                foreach ($updatedEspecialidades as $id => $specData) {
-                    $especialidad = Especialidad::query()->find($id);
-                    if (! $especialidad) {
-                        continue;
-                    }
-
-                    $nombre = isset($specData['nombre']) ? trim((string) $specData['nombre']) : '';
-                    if ($nombre !== '') {
-                        $especialidad->nombre = $nombre;
-                    }
-
-                    $icono = $specData['icono'] ?? null;
-                    $icono = is_string($icono) ? trim($icono) : $icono;
-
-                    $especialidad->descripcion = $specData['descripcion'] ?? null;
-                    $especialidad->icono = $icono === '' ? null : $icono;
-                    $especialidad->activo = ! empty($specData['activo']);
-                    $especialidad->orden = (int) ($specData['orden'] ?? $especialidad->orden);
-                    $especialidad->save();
-
-                    $imageKey = "services.specialty_image.{$especialidad->id}";
-                    $settingsPayload[$imageKey] = $specData['final_image_path'];
-                    $meta[$imageKey] = ['section' => 'services', 'type' => 'image'];
-                }
-
-                foreach ($newEspecialidades as $newData) {
-                    $nombre = isset($newData['nombre']) ? trim((string) $newData['nombre']) : '';
-                    if ($nombre === '') {
-                        continue;
-                    }
-
-                    $icono = $newData['icono'] ?? null;
-                    $icono = is_string($icono) ? trim($icono) : $icono;
-
-                    $especialidad = Especialidad::query()->create([
-                        'nombre' => $nombre,
-                        'descripcion' => $newData['descripcion'] ?? null,
-                        'icono' => $icono === '' ? null : $icono,
-                        'activo' => ! empty($newData['activo']),
-                        'orden' => (int) ($newData['orden'] ?? 0),
-                    ]);
-
-                    $imageKey = "services.specialty_image.{$especialidad->id}";
-                    $settingsPayload[$imageKey] = $newData['final_image_path'];
-                    $meta[$imageKey] = ['section' => 'services', 'type' => 'image'];
-                }
-
-                $settings->setMany($settingsPayload, $meta);
-            });
+            );
 
             // 5. Mark batch completed & trigger cleanup
             $batch->update([
@@ -264,10 +227,6 @@ class ProcessServicesPersonalizationImages implements ShouldQueue
                 CleanupReplacedServiceImagesJob::dispatch($pathsToDelete, 'services');
             }
 
-            // Cleanup local temp directory
-            if ($tempDirectory && Storage::disk('local')->exists($tempDirectory)) {
-                Storage::disk('local')->deleteDirectory($tempDirectory);
-            }
         } catch (Throwable $exception) {
             Log::error('Fallo en procesamiento asíncrono de imágenes de servicios:', [
                 'batch_uuid' => $this->batchUuid,
@@ -280,15 +239,6 @@ class ProcessServicesPersonalizationImages implements ShouldQueue
                     $imageOptimizer->deleteManyByStoredPaths($newlyUploadedPaths, 'services');
                 } catch (Throwable) {
                     // Ignore secondary cleanup error
-                }
-            }
-
-            // Clean up local temp files
-            if ($tempDirectory && Storage::disk('local')->exists($tempDirectory)) {
-                try {
-                    Storage::disk('local')->deleteDirectory($tempDirectory);
-                } catch (Throwable) {
-                    //
                 }
             }
 
@@ -308,6 +258,25 @@ class ProcessServicesPersonalizationImages implements ShouldQueue
             );
 
             throw $exception;
+        } finally {
+            $this->cleanupStaging($tempDirectory);
+        }
+    }
+
+    private function cleanupStaging(?string $directory): void
+    {
+        if (! $directory) {
+            return;
+        }
+
+        try {
+            Storage::disk('r2_private')->deleteDirectory($directory);
+        } catch (Throwable $exception) {
+            Log::warning('No se pudo limpiar staging R2 de Services.', [
+                'batch_uuid' => $this->batchUuid,
+                'directory' => $directory,
+                'error' => $exception->getMessage(),
+            ]);
         }
     }
 

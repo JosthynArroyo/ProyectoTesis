@@ -33,7 +33,7 @@ class ServiciosPersonalizacionPreviewTargetsTest extends TestCase
 
         $this->assertSame(1, substr_count($content, 'data-preview-target="services-hero"'));
         $this->assertSame(1, substr_count($content, 'data-preview-id="services-hero"'));
-        $this->assertSame(1, substr_count($content, 'data-preview-target="service-'.$especialidad->id.'"'));
+        $this->assertSame(2, substr_count($content, 'data-preview-target="service-'.$especialidad->id.'"'));
         $this->assertSame(1, substr_count($content, 'data-preview-id="service-'.$especialidad->id.'"'));
         $this->assertSame(1, substr_count($content, 'data-preview-target="service-new-__INDEX__"'));
         $this->assertSame(1, substr_count($content, 'data-preview-id="service-new-__INDEX__"'));

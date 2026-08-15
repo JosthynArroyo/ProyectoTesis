@@ -6,13 +6,13 @@ use App\Mail\ContactoRecibido;
 use App\Models\ContactMessage;
 use App\Models\Role;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 class ContactMessageFlowTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_contact_form_saves_sends_mail_and_is_visible_in_admin_panel(): void
     {

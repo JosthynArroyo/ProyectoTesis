@@ -8,7 +8,7 @@ use App\Models\Especialidad;
 use App\Models\Horario;
 use App\Models\Role;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Hash;
@@ -18,15 +18,23 @@ use Tests\TestCase;
 
 class ChatbotRegistrationCredentialsTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     protected function setUp(): void
     {
         parent::setUp();
+        Carbon::setTestNow(Carbon::parse('2026-03-09 09:00:00', 'America/Guayaquil'));
         $this->withoutMiddleware([
             \App\Http\Middleware\EnsureCaptchaVerified::class,
             \App\Http\Middleware\EnsureChatbotIdentityVerified::class,
         ]);
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+
+        parent::tearDown();
     }
 
     public function test_chatbot_registers_user_immediately_when_requested(): void

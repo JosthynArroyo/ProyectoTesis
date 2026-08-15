@@ -1,9 +1,9 @@
 @import './doctor.css';
 
 :root {
-  --clr-primary: #0f766e;
-  --clr-primary-variant: #0b5e59;
-  --clr-light: rgba(13, 148, 136, 0.12);
+  --clr-primary: var(--accent);
+  --clr-primary-variant: var(--accent-strong);
+  --clr-light: var(--accent-soft);
 }
 
 .lab-dashboard .btn{

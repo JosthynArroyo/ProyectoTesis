@@ -287,11 +287,23 @@ class CitaController extends Controller
             ]
         );
 
-        if ($request->filled('dependiente_id')) {
-            $belongs = Auth::user()->dependientes()->where('id', $request->dependiente_id)->exists();
-            if (!$belongs) {
-                return back()->withErrors(['dependiente_id' => 'El dependiente seleccionado no pertenece a tu cuenta.'])->withInput();
+        $isDependienteSelected = $request->input('tipo_paciente') === 'dependiente' || $request->filled('dependiente_id');
+
+        if ($isDependienteSelected && $request->input('tipo_paciente') !== 'titular') {
+            if (! $request->filled('dependiente_id')) {
+                return back()
+                    ->withErrors(['dependiente_id' => 'Selecciona el familiar para quien deseas agendar la cita.'])
+                    ->withInput();
             }
+
+            $belongs = Auth::user()->dependientes()->where('id', $request->dependiente_id)->exists();
+            if (! $belongs) {
+                return back()
+                    ->withErrors(['dependiente_id' => 'El dependiente seleccionado no pertenece a tu cuenta.'])
+                    ->withInput();
+            }
+        } else {
+            $request->merge(['dependiente_id' => null]);
         }
 
         $motivoConsulta = $priorityEvaluator->sanitizeMotivo($request->input('motivo_consulta'));
@@ -656,7 +668,7 @@ class CitaController extends Controller
                 'especialidad:id,nombre',
                 'receta:id,cita_id,created_at,updated_at',
                 'notaSoap:id,cita_id,estado',
-                'certificadoMedico:id,cita_id,codigo,pdf_path',
+                'certificadoMedico',
             ])
             ->orderByRaw(Cita::prioridadOrderSql())
             ->orderBy('fecha', 'asc')

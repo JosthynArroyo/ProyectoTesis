@@ -4,12 +4,22 @@ namespace Tests\Feature;
 
 use App\Models\Especialidad;
 use App\Models\LandingWelcomeFeaturedSpecialty;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use App\Models\LandingWelcomeSetting;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 class LandingWelcomeFeaturedSpecialtiesTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        LandingWelcomeSetting::query()->delete();
+        LandingWelcomeFeaturedSpecialty::query()->delete();
+        Especialidad::query()->update(['activo' => false]);
+    }
 
     public function test_home_fallback_shows_only_three_active_specialties_when_featured_is_empty(): void
     {

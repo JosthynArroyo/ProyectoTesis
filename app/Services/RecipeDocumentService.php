@@ -62,12 +62,20 @@ class RecipeDocumentService
         $options->set('isRemoteEnabled', true);
         $options->set('defaultFont', 'DejaVu Sans');
 
-        $dompdf = new Dompdf($options);
-        $dompdf->loadHtml($html, 'UTF-8');
-        $dompdf->setPaper('A4');
-        $dompdf->render();
-
-        return [$dompdf->output(), $csv];
+        try {
+            $dompdf = new Dompdf($options);
+            $dompdf->loadHtml($html, 'UTF-8');
+            $dompdf->setPaper('A4');
+            $dompdf->render();
+            return [$dompdf->output(), $csv];
+        } catch (\DivisionByZeroError $e) {
+            $cleanHtml = preg_replace('/<img[^>]+>/i', '', $html);
+            $dompdf = new Dompdf($options);
+            $dompdf->loadHtml($cleanHtml, 'UTF-8');
+            $dompdf->setPaper('A4');
+            $dompdf->render();
+            return [$dompdf->output(), $csv];
+        }
     }
 
     public function storeRecipePdf(Receta $receta, string $pdfBinary): array

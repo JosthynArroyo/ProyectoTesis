@@ -1,13 +1,13 @@
-@extends('layouts.app')
+@extends('layouts.navbar')
 
 @section('title', 'Verificación de informe de laboratorio')
 
-@section('content')
-<div class="min-h-screen bg-[radial-gradient(circle_at_top,_#d1fae5_0,_#f8fafc_35%,_#ffffff_100%)]">
-  <div class="mx-auto flex min-h-screen max-w-5xl items-center px-4 py-16 sm:px-6 lg:px-8">
-    <div class="grid w-full gap-8 rounded-[2rem] border border-emerald-100 bg-white/90 p-6 shadow-[0_25px_70px_rgba(15,118,110,0.12)] backdrop-blur md:grid-cols-[1.05fr_0.95fr] md:p-10">
+@section('main')
+<div class="flex min-h-[calc(100vh-4.5rem)] flex-col justify-between bg-[radial-gradient(circle_at_top,_var(--accent-soft,_#f1f5f9)_0,_#f8fafc_35%,_#ffffff_100%)]">
+  <div class="mx-auto flex w-full max-w-5xl flex-1 items-center px-4 py-12 sm:px-6 lg:px-8">
+    <div class="grid w-full gap-8 rounded-[2rem] border border-slate-200/80 bg-white/90 p-6 shadow-[0_25px_70px_rgba(15,23,42,0.08)] backdrop-blur md:grid-cols-[1.05fr_0.95fr] md:p-10">
       <div class="space-y-6">
-        <div class="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.25em] text-emerald-700">
+        <div class="inline-flex items-center gap-2 rounded-full bg-slate-100 px-4 py-2 text-xs font-semibold uppercase tracking-[0.25em] text-slate-700">
           Verificación de informe
         </div>
         <div class="space-y-3">
@@ -67,7 +67,7 @@
           </div>
 
           @if($downloadUrl)
-            <a href="{{ $downloadUrl }}" class="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-base font-semibold text-white transition hover:bg-emerald-700">
+            <a href="{{ $downloadUrl }}" class="btn btn-primary flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-base font-semibold transition">
               <i class="ri-download-line"></i>
               Ir al documento seguro
             </a>
@@ -76,5 +76,6 @@
       </div>
     </div>
   </div>
+  @include('partials.footer')
 </div>
 @endsection

@@ -7,13 +7,13 @@ use App\Mail\CambioEstadoCitaMail;
 use App\Models\Cita;
 use App\Models\Especialidad;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 class EnviarConfirmacionCitaJobTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_envia_correo_de_confirmacion_al_paciente()
     {

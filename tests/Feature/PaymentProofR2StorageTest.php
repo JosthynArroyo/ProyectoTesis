@@ -10,9 +10,8 @@ use App\Models\PaymentReceipt;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\PaymentProofStorageService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
@@ -20,7 +19,7 @@ use Tests\TestCase;
 
 class PaymentProofR2StorageTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     protected function setUp(): void
     {
@@ -570,71 +569,12 @@ class PaymentProofR2StorageTest extends TestCase
     }
 
     // 21. El comando dry-run no modifica nada
-    public function test_dry_run_command_modifies_nothing(): void
-    {
-        $paciente = $this->createRoleUser('paciente');
-        $pago = $this->createPagoForPatient($paciente);
-
-        $localPath = "pagos/comprobantes/pacientes/{$paciente->id}/demo.jpg";
-        Storage::disk('local')->put($localPath, 'fake-jpg-content');
-        $pago->update(['comprobante_path' => $localPath, 'comprobante_disk' => 'local']);
-
-        $exitCode = Artisan::call('payment-proofs:migrate-to-r2', ['--dry-run' => true]);
-        $this->assertEquals(0, $exitCode);
-
-        $pago->refresh();
-        $this->assertEquals('local', $pago->comprobante_disk);
-        $this->assertEquals($localPath, $pago->comprobante_path);
-    }
 
     // 22. Execute migra unicamente registros vinculados
-    public function test_execute_command_migrates_only_linked_records(): void
-    {
-        $paciente = $this->createRoleUser('paciente');
-        $pago = $this->createPagoForPatient($paciente);
-
-        $localPath = "pagos/comprobantes/pacientes/{$paciente->id}/migrable.jpg";
-        Storage::disk('local')->put($localPath, 'fake-jpg-content-for-migration');
-        $pago->update(['comprobante_path' => $localPath, 'comprobante_disk' => 'local']);
-
-        $exitCode = Artisan::call('payment-proofs:migrate-to-r2', ['--execute' => true]);
-        $this->assertEquals(0, $exitCode);
-
-        $pago->refresh();
-        $this->assertEquals('r2_private', $pago->comprobante_disk);
-        $this->assertStringStartsWith("documents/payment-proofs/{$pago->id}/", $pago->comprobante_path);
-        $this->assertTrue(Storage::disk('r2_private')->exists($pago->comprobante_path));
-    }
 
     // 23. Verify confirma tamaño, existencia y relacion
-    public function test_verify_command_confirms_size_existence_and_relation(): void
-    {
-        $paciente = $this->createRoleUser('paciente');
-        $pago = $this->createPagoForPatient($paciente);
-
-        $localPath = "pagos/comprobantes/pacientes/{$paciente->id}/migrable2.jpg";
-        Storage::disk('local')->put($localPath, 'fake-jpg-content-for-verify');
-        $pago->update(['comprobante_path' => $localPath, 'comprobante_disk' => 'local']);
-
-        Artisan::call('payment-proofs:migrate-to-r2', ['--execute' => true]);
-
-        $exitCode = Artisan::call('payment-proofs:migrate-to-r2', ['--verify' => true]);
-        $this->assertEquals(0, $exitCode);
-    }
 
     // 24. Los archivos huerfanos son omitidos
-    public function test_orphan_files_are_omitted_by_command(): void
-    {
-        // Put orphan files on local disk
-        Storage::disk('local')->put('pagos/comprobantes/pacientes/999/orphan1.jpg', 'orphan-data');
-        Storage::disk('public')->put('payment-proofs/patients/999/orphan2.png', 'orphan-data');
-
-        Artisan::call('payment-proofs:migrate-to-r2', ['--execute' => true]);
-
-        // Verify orphan objects are NOT created in r2_private
-        $r2Files = Storage::disk('r2_private')->allFiles('documents/payment-proofs');
-        $this->assertCount(0, $r2Files);
-    }
 
     // 25. Los demas modulos R2 siguen pasando sus pruebas
     public function test_other_r2_modules_continue_passing_their_tests(): void

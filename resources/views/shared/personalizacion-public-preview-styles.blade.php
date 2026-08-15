@@ -214,8 +214,8 @@
     }
 
     .public-site-preview__brand-mark--icon {
-      background: linear-gradient(135deg, rgba(20, 184, 166, 0.16), rgba(14, 165, 233, 0.14));
-      color: #0f766e;
+      background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 16%, white), color-mix(in srgb, var(--accent) 10%, white));
+      color: var(--accent);
       font-size: 1.2rem;
     }
 
@@ -241,8 +241,8 @@
       font-weight: 700;
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      color: #0f766e;
-      background: rgba(204, 251, 241, 0.8);
+      color: var(--accent);
+      background: var(--accent-soft);
       white-space: normal;
     }
 
@@ -283,8 +283,8 @@
 
     .public-site-preview__nav-item {
       padding: 0.7rem 0.95rem;
-      background: rgba(240, 253, 250, 0.92);
-      color: #0f766e;
+      background: var(--accent-soft);
+      color: var(--accent);
     }
 
     .public-site-preview__ghost-button {
@@ -297,9 +297,9 @@
     .public-site-preview__button {
       padding: 0.82rem 1.08rem;
       border: 1px solid transparent;
-      background: #0f766e;
+      background: var(--accent);
       color: #ffffff;
-      box-shadow: 0 14px 24px rgba(15, 118, 110, 0.22);
+      box-shadow: 0 14px 24px rgba(15, 23, 42, 0.16);
     }
 
     .public-site-preview__button--secondary {
@@ -377,7 +377,7 @@
       min-height: 320px;
       border-left: 1px solid rgba(226, 232, 240, 0.88);
       background:
-        radial-gradient(circle at top, rgba(20, 184, 166, 0.18), transparent 44%),
+        radial-gradient(circle at top, color-mix(in srgb, var(--accent) 18%, transparent), transparent 44%),
         linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
     }
 
@@ -523,9 +523,9 @@
     }
 
     .public-site-preview__tab.is-active {
-      background: rgba(240, 253, 250, 0.96);
-      border-color: rgba(45, 212, 191, 0.55);
-      color: #0f766e;
+      background: var(--accent-soft);
+      border-color: color-mix(in srgb, var(--accent) 42%, white);
+      color: var(--accent);
     }
 
     .public-site-preview__contact-grid {

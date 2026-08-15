@@ -14,7 +14,8 @@
       
       $cita = new \App\Models\Cita();
       $cita->id = $index + 10;
-      $cita->fecha = \Carbon\Carbon::parse($r['appointment']);
+      $appDate = str_replace('/', '-', $r['appointment']);
+      $cita->fecha = \Carbon\Carbon::parse($appDate);
       $cita->hora = '08:00';
       $cita->estado = 'pendiente';
       
@@ -28,8 +29,8 @@
       $cita->setRelation('especialidad', $esp);
       
       $rec->cita = $cita;
-      $rec->cita_inicio_at = \Carbon\Carbon::parse($r['appointment']);
-      $rec->recordar_en = \Carbon\Carbon::parse($r['appointment'])->subDay();
+      $rec->cita_inicio_at = \Carbon\Carbon::parse($appDate);
+      $rec->recordar_en = \Carbon\Carbon::parse($appDate)->subDay();
       $rec->puede_gestionar = true;
       $rec->whatsapp_url = 'https://wa.me/' . preg_replace('/\D/', '', $r['phone']);
       $rec->telefono_normalizado = $r['phone'];

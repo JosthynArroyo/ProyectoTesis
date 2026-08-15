@@ -160,7 +160,7 @@
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.82);
   border: 1px solid rgba(17, 24, 39, 0.08);
-  color: var(--accent, #0f766e);
+  color: var(--accent, #334155);
   font-size: 0.875rem;
   box-shadow: 0 2px 8px rgba(17, 24, 39, 0.06);
 }
@@ -273,15 +273,15 @@
 }
 .lm-tab i { font-size: 1.0625rem; }
 .lm-tab:hover:not([disabled]) {
-  border-color: rgba(15, 118, 110, 0.35);
+  border-color: color-mix(in srgb, var(--accent, #334155) 42%, white);
   background: #f0fdfa;
-  color: var(--accent, #0f766e);
+  color: var(--accent, #334155);
 }
 .lm-tab.is-active {
-  border-color: var(--accent, #0f766e);
+  border-color: var(--accent, #334155);
   background: #f0fdfa;
-  color: var(--accent, #0f766e);
-  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.09);
+  color: var(--accent, #334155);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent, #334155) 12%, white);
 }
 .lm-tab[disabled],
 .lm-tab[aria-disabled="true"] {
@@ -336,11 +336,11 @@
 }
 .lm-input::placeholder { color: #64748b; font-size: 0.9375rem; }
 .lm-input:focus {
-  border-color: var(--accent, #0f766e);
+  border-color: var(--accent, #334155);
   background: #ffffff;
-  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent, #334155) 16%, white);
 }
-.lm-input-wrap:focus-within .lm-input-icon { color: var(--accent, #0f766e); }
+.lm-input-wrap:focus-within .lm-input-icon { color: var(--accent, #334155); }
 
 /* Eye toggle */
 .lm-eye-btn {
@@ -370,8 +370,8 @@
 }
 .lm-eye-btn:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.18);
-  border-color: var(--accent, #0f766e);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent, #334155) 18%, white);
+  border-color: var(--accent, #334155);
 }
 
 /* ── Remember + forgot row ── */
@@ -397,14 +397,14 @@
   height: 1.0625rem;
   border: 1.5px solid #cbd5e1;
   border-radius: 4px;
-  accent-color: var(--accent, #0f766e);
+  accent-color: var(--accent, #334155);
   cursor: pointer;
   flex-shrink: 0;
 }
 .lm-forgot {
   font-size: 0.8125rem;
   font-weight: 600;
-  color: var(--accent, #0f766e);
+  color: var(--accent, #334155);
   text-decoration: none;
   transition: opacity 0.15s;
   white-space: nowrap;
@@ -421,25 +421,25 @@
   height: 50px;
   border: none;
   border-radius: 12px;
-  background: var(--accent, #0f766e);
+  background: var(--accent, #334155);
   color: #ffffff;
   font-size: 0.9375rem;
   font-weight: 700;
   font-family: inherit;
   cursor: pointer;
   letter-spacing: 0.02em;
-  box-shadow: 0 8px 22px rgba(15, 118, 110, 0.3);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.18);
   transition: background 0.18s, transform 0.15s, box-shadow 0.18s;
   margin-bottom: 0;
 }
 .lm-submit:hover {
-  background: #0d6b64;
+  background: var(--accent-strong, #1e293b);
   transform: translateY(-1px);
-  box-shadow: 0 12px 28px rgba(15, 118, 110, 0.36);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.22);
 }
 .lm-submit:active {
   transform: translateY(0);
-  box-shadow: 0 4px 12px rgba(15, 118, 110, 0.22);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.16);
 }
 .lm-submit:disabled,
 .lm-submit[aria-disabled="true"],
@@ -451,7 +451,7 @@
   border: none !important;
   opacity: 1;
   transform: none;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 6px 14px rgba(15, 118, 110, 0.14) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 6px 14px rgba(15, 23, 42, 0.14) !important;
 }
 .lm-submit:disabled:hover,
 .lm-submit[aria-disabled="true"]:hover,
@@ -459,7 +459,7 @@
   background: #6ea8a2 !important;
   color: #ffffff !important;
   transform: none;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 6px 14px rgba(15, 118, 110, 0.14) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 6px 14px rgba(15, 23, 42, 0.14) !important;
 }
 .lm-submit i { font-size: 1.1rem; }
 
@@ -507,7 +507,7 @@
   height: 2.25rem;
   border-radius: 9px;
   background: #f0fdfa;
-  color: var(--accent, #0f766e);
+  color: var(--accent, #334155);
   flex-shrink: 0;
 }
 .lm-face-title {
@@ -542,7 +542,7 @@
 }
 .lm-footer i {
   font-size: 0.875rem;
-  color: var(--accent, #0f766e);
+  color: var(--accent, #334155);
 }
 
 /* body lock */

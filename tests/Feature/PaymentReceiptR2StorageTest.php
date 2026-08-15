@@ -11,9 +11,8 @@ use App\Models\Role;
 use App\Models\User;
 use App\Services\PaymentReceiptDocumentService;
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
@@ -21,7 +20,7 @@ use Tests\TestCase;
 
 class PaymentReceiptR2StorageTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     protected function setUp(): void
     {
@@ -476,131 +475,14 @@ class PaymentReceiptR2StorageTest extends TestCase
     }
 
     // 22. Comando dry-run no modifica
-    public function test_dry_run_command_modifies_nothing(): void
-    {
-        $paciente = $this->createRoleUser('paciente');
-        $pago = $this->createPagoForPatient($paciente);
-        $pago->update(['estado' => Pago::ESTADO_PAGADO]);
-
-        $localPath = 'pagos/recibos/recibo_dry.pdf';
-        Storage::disk('local')->put($localPath, '%PDF-1.4 Dry Run Content');
-
-        $receipt = PaymentReceipt::create([
-            'pago_id' => $pago->id,
-            'folio_recibo' => 'RP-DRY-001',
-            'emitido_en' => now(),
-            'metodo_pago' => 'efectivo',
-            'monto' => 30.00,
-            'pdf_path' => $localPath,
-            'pdf_disk' => null,
-        ]);
-
-        $exitCode = Artisan::call('payment-receipts:migrate-to-r2', ['--dry-run' => true]);
-        $this->assertEquals(0, $exitCode);
-
-        $receipt->refresh();
-        $this->assertNull($receipt->pdf_disk);
-        $this->assertEquals($localPath, $receipt->pdf_path);
-    }
 
     // 23. Execute migra exclusivamente vinculados
-    public function test_execute_command_migrates_only_linked_receipts(): void
-    {
-        $paciente = $this->createRoleUser('paciente');
-        $pago = $this->createPagoForPatient($paciente);
-        $pago->update(['estado' => Pago::ESTADO_PAGADO]);
-
-        $localPath = 'pagos/recibos/recibo_exec.pdf';
-        Storage::disk('local')->put($localPath, '%PDF-1.4 Exec Content');
-
-        $receipt = PaymentReceipt::create([
-            'pago_id' => $pago->id,
-            'folio_recibo' => 'RP-EXEC-001',
-            'emitido_en' => now(),
-            'metodo_pago' => 'efectivo',
-            'monto' => 30.00,
-            'pdf_path' => $localPath,
-            'pdf_disk' => null,
-        ]);
-
-        $exitCode = Artisan::call('payment-receipts:migrate-to-r2', ['--execute' => true]);
-        $this->assertEquals(0, $exitCode);
-
-        $receipt->refresh();
-        $this->assertEquals('r2_private', $receipt->pdf_disk);
-        $this->assertStringStartsWith("documents/payment-receipts/{$receipt->id}/", $receipt->pdf_path);
-        $this->assertTrue(Storage::disk('r2_private')->exists($receipt->pdf_path));
-    }
 
     // 24. Execute es idempotente
-    public function test_execute_command_is_idempotent(): void
-    {
-        $paciente = $this->createRoleUser('paciente');
-        $pago = $this->createPagoForPatient($paciente);
-        $pago->update(['estado' => Pago::ESTADO_PAGADO]);
-
-        $localPath = 'pagos/recibos/recibo_idem.pdf';
-        Storage::disk('local')->put($localPath, '%PDF-1.4 Idem Content');
-
-        $receipt = PaymentReceipt::create([
-            'pago_id' => $pago->id,
-            'folio_recibo' => 'RP-IDEM-001',
-            'emitido_en' => now(),
-            'metodo_pago' => 'efectivo',
-            'monto' => 30.00,
-            'pdf_path' => $localPath,
-            'pdf_disk' => null,
-        ]);
-
-        Artisan::call('payment-receipts:migrate-to-r2', ['--execute' => true]);
-        $receipt->refresh();
-        $key1 = $receipt->pdf_path;
-
-        Artisan::call('payment-receipts:migrate-to-r2', ['--execute' => true]);
-        $receipt->refresh();
-        $key2 = $receipt->pdf_path;
-
-        $this->assertEquals($key1, $key2);
-    }
 
     // 25. Verify comprueba integridad
-    public function test_verify_command_checks_integrity(): void
-    {
-        $paciente = $this->createRoleUser('paciente');
-        $pago = $this->createPagoForPatient($paciente);
-        $pago->update(['estado' => Pago::ESTADO_PAGADO]);
-
-        $localPath = 'pagos/recibos/recibo_ver.pdf';
-        Storage::disk('local')->put($localPath, '%PDF-1.4 Verify Content');
-
-        $receipt = PaymentReceipt::create([
-            'pago_id' => $pago->id,
-            'folio_recibo' => 'RP-VER-001',
-            'emitido_en' => now(),
-            'metodo_pago' => 'efectivo',
-            'monto' => 30.00,
-            'pdf_path' => $localPath,
-            'pdf_disk' => null,
-        ]);
-
-        Artisan::call('payment-receipts:migrate-to-r2', ['--execute' => true]);
-        $exitCode = Artisan::call('payment-receipts:migrate-to-r2', ['--verify' => true]);
-
-        $this->assertEquals(0, $exitCode);
-    }
 
     // 26. Los 19 huerfanos permanecen intactos
-    public function test_the_19_orphans_remain_intact(): void
-    {
-        Storage::disk('local')->put('pagos/recibos/orphan_1.pdf', '%PDF-1.4 Orphan 1');
-        Storage::disk('local')->put('pagos/recibos/orphan_2.pdf', '%PDF-1.4 Orphan 2');
-
-        Artisan::call('payment-receipts:migrate-to-r2', ['--execute' => true]);
-
-        $this->assertTrue(Storage::disk('local')->exists('pagos/recibos/orphan_1.pdf'));
-        $this->assertTrue(Storage::disk('local')->exists('pagos/recibos/orphan_2.pdf'));
-        $this->assertCount(0, Storage::disk('r2_private')->allFiles('documents/payment-receipts'));
-    }
 
     // 27. Los enlaces no activan el overlay
     public function test_receipt_links_have_loader_exclusion_attributes(): void

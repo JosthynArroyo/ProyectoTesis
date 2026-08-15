@@ -20,18 +20,16 @@ class CertificadoMedicoController extends Controller
 {
     public function create(Cita $cita)
     {
-        $cita->loadMissing(['paciente', 'doctor.especialidades', 'especialidad', 'certificadoMedico', 'notaSoap.diagnosticos']);
-
         $this->ensureCanIssue($cita);
+        $cita->loadMissing(['paciente', 'dependiente', 'doctor.especialidades', 'especialidad', 'certificadoMedico', 'notaSoap.diagnosticos']);
 
         if ($cita->certificadoMedico) {
             return redirect()->route('doctor.certificados.show', $cita->certificadoMedico);
         }
 
-        return view('doctor.certificados.crear', [
-            'cita' => $cita,
-            'textoSugerido' => $this->textoSugerido($cita),
-        ]);
+        $textoSugerido = $this->textoSugerido($cita);
+
+        return view('doctor.certificados.crear', compact('cita', 'textoSugerido'));
     }
 
     public function store(
@@ -40,7 +38,7 @@ class CertificadoMedicoController extends Controller
         ClinicalRecordService $clinicalRecords,
         CertificadoMedicoPdfService $pdfs
     ) {
-        $cita->loadMissing(['paciente', 'doctor.especialidades', 'especialidad', 'certificadoMedico']);
+        $cita->loadMissing(['paciente', 'dependiente', 'doctor.especialidades', 'especialidad', 'certificadoMedico']);
 
         $this->ensureCanIssue($cita);
 
@@ -96,7 +94,7 @@ class CertificadoMedicoController extends Controller
 
     public function show(CertificadoMedico $certificado)
     {
-        $certificado->loadMissing(['cita.especialidad', 'paciente', 'doctor.especialidades']);
+        $certificado->loadMissing(['cita.especialidad', 'cita.dependiente', 'paciente', 'dependiente', 'doctor.especialidades']);
         $this->ensureCanView($certificado);
 
         return view('doctor.certificados.show', [
@@ -134,6 +132,105 @@ class CertificadoMedicoController extends Controller
         return back()->with('success', 'Se reintentara el envio del certificado por correo.');
     }
 
+    public function corregir(CertificadoMedico $certificado)
+    {
+        $certificado->loadMissing(['cita.paciente', 'cita.dependiente', 'cita.doctor.especialidades', 'cita.especialidad', 'dependiente']);
+        $this->ensureCanView($certificado);
+
+        if ($certificado->isReemplazado()) {
+            $vigente = $certificado->cita->certificadoMedico;
+
+            return redirect()
+                ->route('doctor.certificados.show', $vigente ?: $certificado)
+                ->with('info', 'Este certificado fue reemplazado por una version posterior. Para realizar correcciones, edite la version vigente.');
+        }
+
+        return view('doctor.certificados.corregir', [
+            'certificado' => $certificado,
+            'cita' => $certificado->cita,
+        ]);
+    }
+
+    public function storeCorregido(
+        \App\Http\Requests\StoreCorrectionCertificadoMedicoRequest $request,
+        CertificadoMedico $certificado,
+        ClinicalRecordService $clinicalRecords,
+        CertificadoMedicoPdfService $pdfs
+    ) {
+        $certificado->loadMissing(['cita.paciente', 'cita.dependiente', 'cita.doctor.especialidades', 'cita.especialidad', 'dependiente']);
+        $this->ensureCanView($certificado);
+
+        if ($certificado->isReemplazado()) {
+            $vigente = $certificado->cita->certificadoMedico;
+
+            return redirect()
+                ->route('doctor.certificados.show', $vigente ?: $certificado)
+                ->with('info', 'Este certificado ya fue reemplazado por otra version y no se puede volver a corregir directamente.');
+        }
+
+        $data = $request->validated();
+        $diasReposo = (int) ($data['dias_reposo'] ?? 0);
+
+        $newCertificado = DB::transaction(function () use ($certificado, $clinicalRecords, $data, $diasReposo, $pdfs): CertificadoMedico {
+            $oldCert = CertificadoMedico::query()->where('id', $certificado->id)->lockForUpdate()->firstOrFail();
+
+            if ($oldCert->isReemplazado()) {
+                throw new \DomainException('Este certificado ya fue reemplazado y no se puede corregir.');
+            }
+
+            $cita = $oldCert->cita;
+            $csv = app(DocumentoCsvService::class)->generateCsv();
+            $record = $clinicalRecords->ensureForPatient($cita->paciente_id, Auth::id(), $cita->dependiente_id);
+            $newVersion = ((int) ($oldCert->version ?: 1)) + 1;
+
+            $newCert = CertificadoMedico::create([
+                'codigo' => $this->generarCodigo($cita),
+                'csv' => $csv,
+                'estado_version' => CertificadoMedico::ESTADO_VIGENTE,
+                'version' => $newVersion,
+                'reemplaza_a_id' => $oldCert->id,
+                'cita_id' => $cita->id,
+                'paciente_id' => $cita->paciente_id,
+                'dependiente_id' => $cita->dependiente_id,
+                'doctor_id' => $cita->doctor_id,
+                'clinical_record_id' => $record->id,
+                'fecha_emision' => now('America/Guayaquil'),
+                'texto_constancia' => $data['texto_constancia'],
+                'dias_reposo' => $diasReposo,
+                'reposo_desde' => $diasReposo > 0 ? ($data['reposo_desde'] ?? null) : null,
+                'reposo_hasta' => $diasReposo > 0 ? ($data['reposo_hasta'] ?? null) : null,
+                'observaciones' => $data['observaciones'] ?? null,
+                'envio_estado' => 'queued',
+                'envio_intentos' => 0,
+            ]);
+
+            $pdfs->generarYGuardar($newCert);
+
+            $oldCert->forceFill([
+                'estado_version' => CertificadoMedico::ESTADO_REEMPLAZADO,
+                'reemplazado_por_id' => $newCert->id,
+                'motivo_correccion' => $data['motivo_correccion'],
+                'corregido_por' => Auth::id(),
+                'fecha_correccion' => now('America/Guayaquil'),
+            ])->save();
+
+            CitaEvento::create([
+                'cita_id' => $cita->id,
+                'user_id' => Auth::id(),
+                'tipo' => 'certificado_corregido',
+                'comentario' => 'Certificado medico corregido. Nueva version '.$newCert->codigo.' (v'.$newVersion.') emitida.',
+            ]);
+
+            return $newCert;
+        });
+
+        EnviarCertificadoMedicoJob::dispatch($newCertificado->id);
+
+        return redirect()
+            ->route('doctor.certificados.show', $newCertificado)
+            ->with('success', 'Certificado medico corregido y emitido correctamente.');
+    }
+
     private function ensureCanIssue(Cita $cita): void
     {
         if ((int) $cita->doctor_id !== (int) Auth::id()) {
@@ -169,7 +266,7 @@ class CertificadoMedicoController extends Controller
     private function textoSugerido(Cita $cita): string
     {
         $fecha = $cita->fecha?->format('d/m/Y') ?? 'la fecha indicada';
-        $paciente = $cita->paciente?->name ?? 'el/la paciente';
+        $paciente = $cita->nombrePacienteReal();
 
         $texto = 'Se certifica que el/la paciente '.$paciente.' fue atendido(a) en esta institucion en fecha '.$fecha
             .' y, de acuerdo con la valoracion medica realizada, se emite la presente constancia para los fines pertinentes.';

@@ -176,14 +176,13 @@ class CaptchaController extends Controller
         $image = CaptchaImage::query()->find($optionImageIds[$position]);
         abort_unless($image, 404);
 
-        $filename = basename((string) $image->image_path);
-        $fullPath = base_path('ai/dataset/val/' . $image->class_key . '/' . $filename);
+        $fullPath = $image->fullPath();
         abort_unless(is_file($fullPath), 404);
 
         $contentType = mime_content_type($fullPath) ?: 'application/octet-stream';
 
         return response()->file($fullPath, [
-            'Cache-Control' => 'public, max-age=300',
+            'Cache-Control' => 'private, max-age=300',
             'Content-Type' => $contentType,
         ])->setContentDisposition('inline', 'captcha.jpg');
     }
@@ -289,7 +288,7 @@ class CaptchaController extends Controller
     {
         $query = CaptchaImage::query()
             ->where('class_key', $classKey)
-            ->where('dataset_split', 'public');
+            ->where('dataset_split', 'val');
 
         $normalizedExclude = collect($excludeImageIds)
             ->map(static fn ($id) => (int) $id)

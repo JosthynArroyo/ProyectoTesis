@@ -152,7 +152,7 @@
         new ApexCharts(document.querySelector("#chart-orders-doctor"), {
             series: [{ name: 'Pedidos', data: [12, 8, 4] }],
             chart: { type: 'bar', height: '100%', toolbar: {show: false} },
-            colors: ['#0f766e'],
+            colors: ['#334155'],
             plotOptions: { bar: { borderRadius: 4, horizontal: true } },
             xaxis: { categories: ['Dra. Sofía Cárdenas', 'Dr. Andrés Molina', 'Otros'] }
         }).render();
@@ -161,7 +161,7 @@
         new ApexCharts(document.querySelector("#chart-orders-timeline"), {
             series: [{ name: 'Pedidos Totales', data: [3, 5, 2, 7, 5, 8, 9] }],
             chart: { type: 'area', height: '100%', toolbar: {show: false} },
-            colors: ['#0d9488'],
+            colors: ['#475569'],
             stroke: { curve: 'smooth', width: 2 },
             xaxis: { categories: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'] }
         }).render();

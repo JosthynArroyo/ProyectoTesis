@@ -619,20 +619,107 @@ class AdminController extends Controller
             return back()->withErrors(['No puedes eliminar cuentas con rol Administrador o Superadmin.']);
         }
 
-        if ($this->isClinicalProfessionalAccount($user)) {
-            $user->update([
-                'status' => User::STATUS_INACTIVE,
-                'suspended_until' => null,
-                'deactivation_reason' => 'Intento de eliminacion administrativa convertido en desactivacion logica.',
+        if ($this->userHasClinicalOrAdministrativeRecords($user)) {
+            return back()->withErrors([
+                'No es posible eliminar esta cuenta porque posee información clínica o administrativa que debe conservarse. Puedes desactivarla para impedir su acceso.'
             ]);
-
-            return back()->with('success', 'El profesional fue desactivado. No se elimino ningun dato historico ni relacion existente.');
         }
 
-        $user->roles()->detach();
-        $user->delete();
+        try {
+            \Illuminate\Support\Facades\DB::transaction(function () use ($user) {
+                $user->delete();
+            });
+        } catch (\RuntimeException $e) {
+            return back()->withErrors([$e->getMessage()]);
+        } catch (\Illuminate\Database\QueryException $e) {
+            return back()->withErrors([
+                'No es posible eliminar esta cuenta porque posee información clínica o administrativa que debe conservarse. Puedes desactivarla para impedir su acceso.'
+            ]);
+        }
 
         return back()->with('success', 'Usuario eliminado.');
+    }
+
+    private function userHasClinicalOrAdministrativeRecords(User $user): bool
+    {
+        $userId = $user->id;
+
+        if (\App\Models\Cita::where('doctor_id', $userId)->orWhere('paciente_id', $userId)->exists()) {
+            return true;
+        }
+
+        $certQuery = \App\Models\CertificadoMedico::where('doctor_id', $userId)->orWhere('paciente_id', $userId);
+        if (\Illuminate\Support\Facades\Schema::hasColumn('certificados_medicos', 'corregido_por')) {
+            $certQuery->orWhere('corregido_por', $userId);
+        }
+        if ($certQuery->exists()) {
+            return true;
+        }
+
+        if (\App\Models\ClinicalRecord::where('patient_id', $userId)
+            ->orWhere('created_by', $userId)
+            ->orWhere('updated_by', $userId)
+            ->exists()) {
+            return true;
+        }
+
+        if (\App\Models\NotaSoap::where('signed_by', $userId)->exists()) {
+            return true;
+        }
+
+        if (\App\Models\LaboratorioOrden::where('solicitante_id', $userId)->exists()) {
+            return true;
+        }
+
+        if (\App\Models\LabOrder::where('doctor_id', $userId)
+            ->orWhere('patient_id', $userId)
+            ->orWhere('laboratorio_id', $userId)
+            ->exists()) {
+            return true;
+        }
+
+        if (\App\Models\PedidoLaboratorio::where('doctor_id', $userId)
+            ->orWhere('paciente_id', $userId)
+            ->exists()) {
+            return true;
+        }
+
+        if (\App\Models\MedicalOrder::where('doctor_id', $userId)
+            ->orWhere('patient_id', $userId)
+            ->exists()) {
+            return true;
+        }
+
+        if (\App\Models\PedidoLaboratorioResultado::where('laboratorio_id', $userId)->exists()) {
+            return true;
+        }
+
+        if (\App\Models\Pago::where('paciente_id', $userId)
+            ->orWhere('aprobado_por', $userId)
+            ->orWhere('creado_por', $userId)
+            ->exists()) {
+            return true;
+        }
+
+        if (\App\Models\Factura::where('paciente_id', $userId)
+            ->orWhere('doctor_id', $userId)
+            ->exists()) {
+            return true;
+        }
+
+        if (\App\Models\PaymentReceipt::where('emitido_por', $userId)->exists()) {
+            return true;
+        }
+
+        if (\App\Models\Dependiente::where('user_id', $userId)->exists()) {
+            return true;
+        }
+
+        if (\App\Models\Horario::where('doctor_id', $userId)->exists()) {
+            return true;
+        }
+
+        return false;
     }
 
     // ===== Alta rápida Doctor (atajo legado) =====

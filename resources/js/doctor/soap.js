@@ -341,7 +341,7 @@ function drawSparkline(canvas, previous, current) {
     ctx.fill();
   }
   if (Number.isFinite(current)) {
-    ctx.fillStyle = '#0d9488';
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#334155';
     ctx.beginPath();
     ctx.arc(x2, yCurrent, 3, 0, Math.PI * 2);
     ctx.fill();
@@ -437,7 +437,7 @@ function initAgendarControl() {
           title: agendarBtn.textContent && agendarBtn.textContent.toLowerCase().includes('reagendar')
             ? 'Reagendando control...'
             : 'Agendando control...',
-          description: 'Por favor, espera. No cierres esta pÃ¡gina.',
+          description: 'Por favor, espera. No cierres esta página.',
           mode: 'operation',
         };
     let keepLocked = false;
@@ -566,4 +566,3 @@ async function safeJson(response) {
     return {};
   }
 }
-

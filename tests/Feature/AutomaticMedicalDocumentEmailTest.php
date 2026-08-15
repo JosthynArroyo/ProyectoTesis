@@ -20,7 +20,7 @@ use App\Models\Role;
 use App\Models\User;
 use App\Services\CertificadoMedicoPdfService;
 use App\Services\DocumentoCsvService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
@@ -28,7 +28,7 @@ use Tests\TestCase;
 
 class AutomaticMedicalDocumentEmailTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     protected function setUp(): void
     {

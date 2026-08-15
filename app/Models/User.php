@@ -146,7 +146,9 @@ class User extends Authenticatable
         });
 
         static::deleting(function (self $user): void {
-            if ($user->hasRole('superadmin')) {
+            $isSuperadmin = $user->hasRole('superadmin');
+
+            if ($isSuperadmin) {
                 if (auth()->check() && auth()->id() === $user->id) {
                     \Illuminate\Support\Facades\Log::warning('AUDIT_REJECTED: Superadmin tried to delete themselves', [
                         'action' => 'prevent_self_deletion',
@@ -175,6 +177,17 @@ class User extends Authenticatable
                     throw new \RuntimeException('No se puede eliminar el único superadministrador activo del sistema.');
                 }
             }
+        });
+
+        static::deleted(function (self $user): void {
+            app(\App\Services\IdentityDocumentService::class)->deleteFor($user);
+
+            \Illuminate\Support\Facades\DB::table('patient_flags')
+                ->where('user_id', $user->id)
+                ->delete();
+
+            $user->roles()->detach();
+            $user->especialidades()->detach();
         });
     }
 
@@ -257,6 +270,18 @@ class User extends Authenticatable
         }
 
         return in_array($roleName, $this->resolvedRoleNames(), true);
+    }
+
+    public function hasAnyRole(array|string $roles): bool
+    {
+        $rolesList = is_array($roles) ? $roles : func_get_args();
+        foreach ($rolesList as $role) {
+            if ($this->hasRole((string) $role)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function primaryRoleName(): ?string

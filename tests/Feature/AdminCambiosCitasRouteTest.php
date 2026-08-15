@@ -7,12 +7,12 @@ use App\Models\CitaEvento;
 use App\Models\Especialidad;
 use App\Models\Role;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 class AdminCambiosCitasRouteTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_admin_cambios_citas_index_shows_empty_state_without_events(): void
     {

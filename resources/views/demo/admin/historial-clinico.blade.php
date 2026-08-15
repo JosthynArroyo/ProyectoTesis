@@ -14,7 +14,7 @@
       
       $cita = new \App\Models\Cita();
       $cita->id = $index + 10;
-      $cita->fecha = \Carbon\Carbon::parse($entry['date']);
+      $cita->fecha = \Carbon\Carbon::parse(str_replace('/', '-', $entry['date']));
       $cita->hora = '08:00';
       $cita->paciente_id = 10;
       

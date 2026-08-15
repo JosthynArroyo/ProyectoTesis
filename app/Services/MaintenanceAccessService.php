@@ -8,13 +8,6 @@ use Symfony\Component\HttpFoundation\IpUtils;
 
 class MaintenanceAccessService
 {
-    private const FORWARDED_IP_HEADERS = [
-        'X-Forwarded-For',
-        'X-Real-IP',
-        'CF-Connecting-IP',
-        'True-Client-IP',
-    ];
-
     public function __construct(private SiteSettingsService $settings)
     {
     }
@@ -56,26 +49,11 @@ class MaintenanceAccessService
     public function requestIps(Request $request): array
     {
         $ips = [];
+
+        // TrustProxies has already reduced the request to the canonical client
+        // IP. Never inspect forwarded headers directly here: they are
+        // attacker-controlled when REMOTE_ADDR is not an authorized proxy.
         $this->pushIp($ips, $request->ip());
-
-        foreach ($request->ips() as $ip) {
-            $this->pushIp($ips, $ip);
-        }
-
-        foreach (self::FORWARDED_IP_HEADERS as $header) {
-            foreach (explode(',', (string) $request->headers->get($header, '')) as $ip) {
-                $this->pushIp($ips, $ip);
-            }
-        }
-
-        $forwarded = (string) $request->headers->get('Forwarded', '');
-        if ($forwarded !== '') {
-            preg_match_all('/for="?([^";,]+)"?/i', $forwarded, $matches);
-
-            foreach ($matches[1] ?? [] as $ip) {
-                $this->pushIp($ips, $ip);
-            }
-        }
 
         return array_values(array_unique($ips));
     }

@@ -10,12 +10,12 @@ use App\Models\NotaSoapDiagnostico;
 use App\Models\Role;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 class ClinicalRecordWorkflowTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_doctor_can_view_patient_centric_record_and_update_master_clinical_data(): void
     {

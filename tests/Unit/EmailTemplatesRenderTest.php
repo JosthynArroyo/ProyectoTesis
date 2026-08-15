@@ -14,10 +14,13 @@ use App\Models\Especialidad;
 use App\Models\LaboratorioOrden;
 use App\Models\User;
 use App\Services\ClinicIdentityService;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 class EmailTemplatesRenderTest extends TestCase
 {
+    use DatabaseTransactions;
+
     public function test_renderiza_correo_de_cita_con_diseno_unificado(): void
     {
         $html = (new CambioEstadoCitaMail($this->makeCita(), 'paciente', 'agendada', 'paciente'))->render();

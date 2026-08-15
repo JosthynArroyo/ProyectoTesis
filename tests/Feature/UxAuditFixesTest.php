@@ -11,14 +11,14 @@ use App\Models\NotaSoap;
 use App\Models\NotaSoapDiagnostico;
 use App\Models\User;
 use Carbon\Carbon;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 class UxAuditFixesTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     protected function setUp(): void
     {
@@ -171,7 +171,7 @@ class UxAuditFixesTest extends TestCase
             'motivo_consulta' => 'Seguimiento de control',
         ]);
 
-        NotaSoap::create([
+        $nota = NotaSoap::create([
             'cita_id' => $cita->id,
             'estado' => NotaSoap::ESTADO_FIRMADA,
             'signed_at' => now(),
@@ -187,8 +187,10 @@ class UxAuditFixesTest extends TestCase
             'fecha' => $controlDate,
             'hora' => '11:00:00',
             'motivo_consulta' => 'Seguimiento de control',
+            'source_nota_soap_id' => $nota->id,
             'activo' => true,
         ]);
+        $nota->update(['follow_up_cita_id' => $control->id, 'follow_up_date' => $controlDate]);
 
         Horario::create([
             'doctor_id' => $doctor->id,
@@ -292,6 +294,9 @@ class UxAuditFixesTest extends TestCase
 
     public function test_public_footer_legal_buttons_render_openable_modals(): void
     {
+        \App\Models\SiteSetting::query()->where('key', 'like', 'footer.%')->delete();
+        app(\App\Services\SiteSettingsService::class)->forgetCache();
+
         $this->get(route('home.index'))
             ->assertOk()
             ->assertSee('data-legal-open="privacy-policy-modal"', false)

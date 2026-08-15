@@ -6,10 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Jobs\EnviarPedidoLaboratorioJob;
 use App\Models\Cita;
 use App\Models\PedidoLaboratorio;
-use App\Services\ClinicIdentityService;
 use App\Services\DocumentoCsvService;
-use Dompdf\Dompdf;
-use Dompdf\Options;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -272,51 +269,4 @@ class PedidoLaboratorioController extends Controller
         abort_unless($cita->doctor_id === Auth::id(), 403);
     }
 
-    private function generatePdf(PedidoLaboratorio $pedido, DocumentoCsvService $csvService): string
-    {
-        $pedido->loadMissing(['cita.doctor', 'cita.especialidad', 'cita.paciente', 'cita.notaSoap']);
-        $identity = app(ClinicIdentityService::class);
-        $csv = $csvService->ensureCsv($pedido);
-
-        $html = view('pdf.pedido-laboratorio', [
-            'pedido' => $pedido,
-            'clinica' => $identity->institutionalName(),
-            'slogan' => $identity->slogan(),
-            'logoBase64' => $identity->logoBase64ForPdf(),
-            'pdfCss' => $this->loadPdfCss('doctor/pedido-laboratorio-pdf.css'),
-            'csv' => $csv,
-            'verificationUrl' => $csvService->verificationUrl($csv),
-            'qrDataUri' => $csvService->qrDataUri($csv),
-        ])->render();
-
-        $options = new Options();
-        $options->set('isRemoteEnabled', true);
-        $options->set('defaultFont', 'DejaVu Sans');
-
-        $dompdf = new Dompdf($options);
-        $dompdf->loadHtml($html, 'UTF-8');
-        $dompdf->setPaper('A4', 'portrait');
-        $dompdf->render();
-
-        $directory = 'pedidos-laboratorio';
-        if (! Storage::disk('local')->exists($directory)) {
-            Storage::disk('local')->makeDirectory($directory);
-        }
-
-        $relativePath = $directory.'/pedido_'.$pedido->id.'_'.now()->format('Ymd_His').'.pdf';
-        Storage::disk('local')->put($relativePath, $dompdf->output());
-
-        return $relativePath;
-    }
-
-    private function loadPdfCss(string $relativePath): string
-    {
-        $basePath = resource_path('css/pdf/base.css');
-        $specificPath = resource_path('css/'.$relativePath);
-
-        $css = is_file($basePath) ? (file_get_contents($basePath) ?: '') : '';
-        $css .= is_file($specificPath) ? "\n".(file_get_contents($specificPath) ?: '') : '';
-
-        return $css;
-    }
 }

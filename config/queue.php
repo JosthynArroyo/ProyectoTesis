@@ -15,6 +15,10 @@ return [
 
     'default' => env('QUEUE_CONNECTION', 'database'),
 
+    'media_connection' => env('MEDIA_QUEUE_CONNECTION', env('QUEUE_CONNECTION', 'database')),
+
+    'media_queue' => env('MEDIA_QUEUE', 'media'),
+
     /*
     |--------------------------------------------------------------------------
     | Queue Connections

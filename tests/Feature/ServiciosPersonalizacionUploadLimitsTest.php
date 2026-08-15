@@ -18,6 +18,15 @@ class ServiciosPersonalizacionUploadLimitsTest extends TestCase
 {
     use DatabaseTransactions;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Storage::fake('r2_private');
+        Storage::fake('r2_public');
+        config(['image_optimization.disk' => 'r2_public']);
+    }
+
     private function makeUserWithRole(string $roleName): User
     {
         $role = Role::query()->firstOrCreate(['name' => $roleName]);
@@ -263,8 +272,18 @@ class ServiciosPersonalizacionUploadLimitsTest extends TestCase
             ],
         ]);
 
-        $response->assertStatus(202);
-        $response->assertJsonPath('total', 0);
+        $response->assertStatus(200);
+        $response->assertJson([
+            'ok' => true,
+            'batch_uuid' => null,
+            'total' => 0,
+        ]);
+
+        $this->assertSame(0, \App\Models\MediaProcessingBatch::query()->count());
+
+        $especialidad->refresh();
+        $this->assertSame('Pediatria general', $especialidad->nombre);
+        $this->assertSame('Servicios sin imagen nueva', app(SiteSettingsService::class)->get('services.title'));
     }
 
     public function test_superadmin_services_413_response_is_rendered_with_system_design(): void

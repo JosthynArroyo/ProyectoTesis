@@ -64,9 +64,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (iconBgEl) {
       iconBgEl.classList.remove(
         'bg-rose-100', 'dark:bg-rose-950/40', 'text-rose-600', 'dark:text-rose-400',
-        'bg-teal-50', 'dark:bg-teal-950/40', 'text-teal-600', 'dark:text-teal-400',
         'bg-amber-50', 'dark:bg-amber-950/40', 'text-amber-600', 'dark:text-amber-400'
       );
+      iconBgEl.style.background = '';
+      iconBgEl.style.color = '';
     }
     if (iconEl) {
       iconEl.classList.remove('ri-error-warning-line', 'ri-information-line', 'ri-alert-line', 'ri-database-2-line');
@@ -74,7 +75,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (variant === 'primary') {
       submitBtn.classList.add('btn-primary');
-      if (iconBgEl) iconBgEl.classList.add('bg-teal-50', 'dark:bg-teal-950/40', 'text-teal-600', 'dark:text-teal-400');
+      if (iconBgEl) {
+        iconBgEl.style.background = 'var(--accent-soft)';
+        iconBgEl.style.color = 'var(--accent)';
+      }
       if (iconEl) iconEl.classList.add('ri-information-line');
     } else if (variant === 'warning') {
       submitBtn.classList.add('btn-warning');

@@ -17,7 +17,7 @@ use App\Models\User;
 use App\Services\ClinicalRecordService;
 use App\Services\ProfessionalScheduleService;
 use Carbon\Carbon;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -25,13 +25,20 @@ use Tests\TestCase;
 
 class AppointmentConcurrencyAndFollowUpRescheduleTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     protected function setUp(): void
     {
         parent::setUp();
+        \Illuminate\Support\Carbon::setTestNow('2026-08-01 08:00:00');
         Mail::fake();
         $this->seedRoles();
+    }
+
+    protected function tearDown(): void
+    {
+        \Illuminate\Support\Carbon::setTestNow();
+        parent::tearDown();
     }
 
     private function seedRoles(): void

@@ -50,7 +50,7 @@ class CreateSuperadmin extends Command implements Isolatable
         }
 
         // 3. Environment check
-        if (config('app.env') === 'production' || env('APP_ENV') === 'production') {
+        if (config('app.env') === 'production') {
             if ($this->option('no-interaction')) {
                 $this->error('El comando debe ser ejecutado interactivamente en producción.');
                 return 1;

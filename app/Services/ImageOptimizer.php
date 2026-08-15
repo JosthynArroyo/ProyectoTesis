@@ -138,6 +138,50 @@ class ImageOptimizer
         );
     }
 
+    public function optimizeStoredPath(
+        string $sourceDisk,
+        string $sourcePath,
+        string $folder,
+        array $sizes = [],
+        ?string $baseName = null,
+        ?string $profile = null,
+        bool $storeOriginal = false
+    ): ?string {
+        $sourcePath = ltrim(str_replace('\\', '/', $sourcePath), '/');
+        $disk = Storage::disk($sourceDisk);
+
+        if ($sourcePath === '' || ! $disk->exists($sourcePath)) {
+            return null;
+        }
+
+        $contents = $disk->get($sourcePath);
+        $extension = strtolower((string) pathinfo($sourcePath, PATHINFO_EXTENSION));
+        $mime = $this->mimeForStoredObject($disk, $sourcePath, $extension);
+        $folder = $this->sanitizeFolder($folder);
+        $baseName = $this->normalizeBaseName(
+            $baseName ?? pathinfo($sourcePath, PATHINFO_FILENAME)
+        );
+
+        if ($this->isSvg($mime, $extension)) {
+            return $this->storeSvgContents($contents, $folder, $baseName);
+        }
+
+        if (! $this->isSupportedRaster($mime, $extension)) {
+            return null;
+        }
+
+        return $this->optimizeRasterFromContents(
+            contents: $contents,
+            folder: $folder,
+            baseName: $baseName,
+            extension: $extension,
+            mime: $mime,
+            sizes: $sizes,
+            profile: $profile,
+            storeOriginal: $storeOriginal
+        );
+    }
+
     public function deleteByStoredPath(?string $storedPath, ?string $folder = null): void
     {
         $this->deleteManyByStoredPaths([$storedPath], $folder);
@@ -282,10 +326,39 @@ class ImageOptimizer
         ?string $profile = null,
         bool $storeOriginal = false
     ): string {
+        $contents = @file_get_contents($absolutePath);
+        if ($contents === false) {
+            throw new InvalidArgumentException('Unable to read image contents.');
+        }
+
+        return $this->optimizeRasterFromContents(
+            contents: $contents,
+            folder: $folder,
+            baseName: $baseName,
+            extension: $extension,
+            mime: $mime,
+            sizes: $sizes,
+            generateAvif: $generateAvif,
+            profile: $profile,
+            storeOriginal: $storeOriginal
+        );
+    }
+
+    private function optimizeRasterFromContents(
+        string $contents,
+        string $folder,
+        string $baseName,
+        string $extension,
+        string $mime,
+        array $sizes = [],
+        bool $generateAvif = true,
+        ?string $profile = null,
+        bool $storeOriginal = false
+    ): string {
         $manager = $this->resolveManagerForRaster($mime, $extension);
         if (! $manager) {
-            return $this->storeOriginalRaster(
-                absolutePath: $absolutePath,
+            return $this->storeOriginalRasterContents(
+                contents: $contents,
                 folder: $folder,
                 baseName: $baseName,
                 extension: $extension,
@@ -302,8 +375,8 @@ class ImageOptimizer
         $storeOriginal = $storeOriginal || (bool) ($profileDefinition['store_original'] ?? false);
 
         if ($definitions === []) {
-            return $this->storeOriginalRaster(
-                absolutePath: $absolutePath,
+            return $this->storeOriginalRasterContents(
+                contents: $contents,
                 folder: $folder,
                 baseName: $baseName,
                 extension: $extension,
@@ -313,8 +386,8 @@ class ImageOptimizer
         }
 
         if ($storeOriginal) {
-            $this->storeOriginalRaster(
-                absolutePath: $absolutePath,
+            $this->storeOriginalRasterContents(
+                contents: $contents,
                 folder: $folder,
                 baseName: $baseName,
                 extension: $extension,
@@ -323,7 +396,7 @@ class ImageOptimizer
             );
         }
 
-        $image = $manager->read($absolutePath)->orient();
+        $image = $manager->read($contents)->orient();
         $preferredSize = $this->preferredSizeForProfile($profile, array_keys($definitions));
 
         foreach ($definitions as $sizeName => $definition) {
@@ -380,8 +453,8 @@ class ImageOptimizer
         return $path;
     }
 
-    private function storeOriginalRaster(
-        string $absolutePath,
+    private function storeOriginalRasterContents(
+        string $contents,
         string $folder,
         string $baseName,
         string $extension,
@@ -389,12 +462,6 @@ class ImageOptimizer
         bool $storeOriginal = false
     ): string {
         $path = $this->buildOriginalRasterPath($folder, $baseName, $extension);
-        $contents = @file_get_contents($absolutePath);
-
-        if ($contents === false) {
-            throw new InvalidArgumentException('Unable to read image contents.');
-        }
-
         Storage::disk($this->disk())->put($path, $contents);
 
         Log::warning('Image optimization skipped because raster support is unavailable.', [
@@ -517,6 +584,25 @@ class ImageOptimizer
         $folder = trim($folder, '/');
 
         return $folder !== '' ? $folder : 'misc';
+    }
+
+    private function mimeForStoredObject(object $disk, string $path, string $extension): string
+    {
+        try {
+            $mime = strtolower((string) ($disk->mimeType($path) ?: ''));
+            if ($mime !== '') {
+                return $mime;
+            }
+        } catch (Throwable) {
+            // Some S3-compatible providers do not return object MIME metadata.
+        }
+
+        return match ($this->normalizeRasterExtension($extension)) {
+            'jpg' => 'image/jpeg',
+            'png' => 'image/png',
+            'webp' => 'image/webp',
+            default => $extension === 'svg' ? 'image/svg+xml' : '',
+        };
     }
 
     private function isSupportedRaster(string $mime, string $extension): bool

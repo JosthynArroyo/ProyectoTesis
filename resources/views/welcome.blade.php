@@ -5,11 +5,11 @@
 
 @push('styles')
   @php
-    $welcomeSoftPrimary = $siteSettings->get('visual.soft_primary', '#dff6f2');
-    $welcomeSoftSecondary = $siteSettings->get('visual.soft_secondary', '#e8f8ef');
-    $welcomeGradientStart = $siteSettings->get('visual.gradient_start', '#dff4ff');
-    $welcomeGradientEnd = $siteSettings->get('visual.gradient_end', '#ecfdf5');
-    $welcomeBadgeSoft = $siteSettings->get('visual.badge_soft', '#d9f7ef');
+    $welcomeSoftPrimary = $siteSettings->get('visual.soft_primary', '#e2e8f0');
+    $welcomeSoftSecondary = $siteSettings->get('visual.soft_secondary', '#f1f5f9');
+    $welcomeGradientStart = $siteSettings->get('visual.gradient_start', '#e2e8f0');
+    $welcomeGradientEnd = $siteSettings->get('visual.gradient_end', '#cbd5e1');
+    $welcomeBadgeSoft = $siteSettings->get('visual.badge_soft', '#e2e8f0');
   @endphp
   <style>
     :root {
@@ -112,7 +112,7 @@
       margin: 0;
     }
     .wh-title__accent {
-      color: var(--accent);  /* verde institucional exacto #0f766e */
+      color: var(--accent);
       display: block;
     }
 
@@ -181,17 +181,17 @@
       background: var(--accent);
       color: #fff;
       border-radius: 8px;
-      border: 1px solid rgba(15,118,110,0.78);
+      border: 1px solid color-mix(in srgb, var(--accent) 82%, black);
       font-size: 0.875rem;
       font-weight: 700;
       text-decoration: none;
-      box-shadow: 0 10px 22px rgba(15,118,110,0.22);
+      box-shadow: 0 10px 22px rgba(15,23,42,0.16);
       transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
     }
     .wh-btn-primary:hover {
       background: var(--accent-strong);
       transform: translateY(-1px);
-      box-shadow: 0 14px 28px rgba(15,118,110,0.28);
+      box-shadow: 0 14px 28px rgba(15,23,42,0.20);
     }
     .wh-btn-secondary {
       display: inline-flex;

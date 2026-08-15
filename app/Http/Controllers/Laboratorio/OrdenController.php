@@ -6,13 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Mail\ResultadoLaboratorioMail;
 use App\Models\LabOrder;
 use App\Models\LaboratorioOrden;
+use App\Models\PedidoLaboratorio;
+use App\Services\LaboratoryResultStorageService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Storage;
 
 class OrdenController extends Controller
 {
@@ -30,9 +31,15 @@ class OrdenController extends Controller
             $estado = 'all';
         }
 
+        $pedidoCitaIds = DB::table('pedidos_laboratorio')
+            ->whereNotNull('cita_id')
+            ->pluck('cita_id');
+
         $legacyRows = LaboratorioOrden::query()
             ->join('citas_medicas', 'citas_medicas.id', '=', 'laboratorio_ordenes.cita_id')
-            ->where('citas_medicas.doctor_id', Auth::id())
+            ->when($pedidoCitaIds->isNotEmpty(), function ($query) use ($pedidoCitaIds) {
+                $query->whereNotIn('laboratorio_ordenes.cita_id', $pedidoCitaIds);
+            })
             ->when($estado !== 'all', function ($query) use ($estado) {
                 $query->where('laboratorio_ordenes.estado', $estado);
             })
@@ -56,13 +63,42 @@ class OrdenController extends Controller
                     LaboratorioOrden::ESTADO_ORDEN_CREADA => $query->whereRaw('1 = 0'),
                     default => null,
                 };
+            }, function ($query) {
+                $query->whereIn('status', [
+                    LabOrder::STATUS_PENDIENTE_TOMA,
+                    LabOrder::STATUS_MUESTRA_TOMADA,
+                    LabOrder::STATUS_EN_ANALISIS,
+                    LabOrder::STATUS_RESULTADO_LISTO,
+                ]);
             })
             ->selectRaw("'lab_order' as source")
             ->selectRaw('lab_orders.id as source_id')
             ->selectRaw('COALESCE(lab_orders.resultado_publicado_at, lab_orders.scheduled_at, lab_orders.created_at) as sort_at');
 
+        $pedidoRows = PedidoLaboratorio::query()
+            ->when($estado !== 'all', function ($query) use ($estado) {
+                match ($estado) {
+                    LaboratorioOrden::ESTADO_CITA_PROGRAMADA => $query->where('estado', PedidoLaboratorio::ESTADO_PENDIENTE_TOMA),
+                    LaboratorioOrden::ESTADO_MUESTRA_TOMADA => $query->where('estado', PedidoLaboratorio::ESTADO_MUESTRA_TOMADA),
+                    LaboratorioOrden::ESTADO_RESULTADO_DISPONIBLE => $query->where('estado', PedidoLaboratorio::ESTADO_RESULTADO_LISTO),
+                    LaboratorioOrden::ESTADO_ORDEN_CREADA => $query->whereRaw('1 = 0'),
+                    default => null,
+                };
+            }, function ($query) {
+                $query->whereIn('estado', [
+                    PedidoLaboratorio::ESTADO_PENDIENTE_TOMA,
+                    PedidoLaboratorio::ESTADO_MUESTRA_TOMADA,
+                    PedidoLaboratorio::ESTADO_RESULTADO_LISTO,
+                ]);
+            })
+            ->selectRaw("'pedido_laboratorio' as source")
+            ->selectRaw('pedidos_laboratorio.id as source_id')
+            ->selectRaw('COALESCE(pedidos_laboratorio.resultado_publicado_at, pedidos_laboratorio.sample_collected_at, pedidos_laboratorio.updated_at, pedidos_laboratorio.created_at) as sort_at');
+
+        $worklistQuery = $legacyRows->unionAll($selfServiceRows)->unionAll($pedidoRows);
+
         $ordenes = DB::query()
-            ->fromSub($legacyRows->unionAll($selfServiceRows), 'lab_worklist')
+            ->fromSub($worklistQuery, 'lab_worklist')
             ->orderByDesc('sort_at')
             ->orderByDesc('source_id')
             ->paginate(12)
@@ -82,9 +118,7 @@ class OrdenController extends Controller
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            if ($orden->cita->doctor_id !== Auth::id()) {
-                abort(403);
-            }
+            $this->authorizeLaboratorioOrden($orden);
 
             if ($orden->estado === LaboratorioOrden::ESTADO_RESULTADO_DISPONIBLE) {
                 return null;
@@ -137,12 +171,10 @@ class OrdenController extends Controller
         return back()->with('success', 'Muestra registrada para la solicitud del paciente.');
     }
 
-    public function subirResultado(Request $request, LaboratorioOrden $orden)
+    public function subirResultado(Request $request, LaboratorioOrden $orden, LaboratoryResultStorageService $resultStorage)
     {
         $orden->load(['cita.paciente', 'cita.doctor', 'cita.especialidad']);
-        if ($orden->cita->doctor_id !== Auth::id()) {
-            abort(403);
-        }
+        $this->authorizeLaboratorioOrden($orden);
 
         $data = $request->validate(
             [
@@ -154,39 +186,42 @@ class OrdenController extends Controller
             ]
         );
 
-        $path = $request->file('resultado_pdf')->store('laboratorio_resultados');
+        $path = $resultStorage->storeUploadedPdf($request->file('resultado_pdf'), 'legacy-orders', $orden->id);
 
-        $orden = DB::transaction(function () use ($orden, $path, $data) {
-            $orden = LaboratorioOrden::query()
-                ->with(['cita.paciente', 'cita.doctor', 'cita.especialidad'])
-                ->whereKey($orden->id)
-                ->lockForUpdate()
-                ->firstOrFail();
+        try {
+            $orden = DB::transaction(function () use ($orden, $path, $data, $resultStorage) {
+                $orden = LaboratorioOrden::query()
+                    ->with(['cita.paciente', 'cita.doctor', 'cita.especialidad'])
+                    ->whereKey($orden->id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
 
-            if ($orden->cita->doctor_id !== Auth::id()) {
-                abort(403);
-            }
+                $this->authorizeLaboratorioOrden($orden);
 
-            if ($orden->estado === LaboratorioOrden::ESTADO_RESULTADO_DISPONIBLE) {
-                Storage::delete($path);
+                if ($orden->estado === LaboratorioOrden::ESTADO_RESULTADO_DISPONIBLE) {
+                    $resultStorage->deleteNew($path);
 
-                return null;
-            }
+                    return null;
+                }
 
-            $orden->resultado_path = $path;
-            $orden->resultado_resumen = $data['resultado_resumen'] ?? null;
-            $orden->resultado_publicado_at = now('America/Guayaquil');
-            $orden->estado = LaboratorioOrden::ESTADO_RESULTADO_DISPONIBLE;
-            $orden->save();
+                $orden->resultado_path = $path;
+                $orden->resultado_resumen = $data['resultado_resumen'] ?? null;
+                $orden->resultado_publicado_at = now('America/Guayaquil');
+                $orden->estado = LaboratorioOrden::ESTADO_RESULTADO_DISPONIBLE;
+                $orden->save();
 
-            return $orden->refresh();
-        });
+                return $orden->refresh();
+            });
+        } catch (\Throwable $exception) {
+            $resultStorage->deleteNew($path);
+            throw $exception;
+        }
 
         if (! $orden) {
             return back()->withErrors(['error' => 'Los resultados ya fueron publicados.']);
         }
 
-        if ($orden->cita->paciente && $orden->cita->paciente->email && ! $orden->resultado_enviado_at) {
+        if ($orden->cita && $orden->cita->paciente && $orden->cita->paciente->email && ! $orden->resultado_enviado_at) {
             Mail::to($orden->cita->paciente->email)->send(new ResultadoLaboratorioMail($orden));
             $orden->resultado_enviado_at = now('America/Guayaquil');
             $orden->save();
@@ -195,7 +230,7 @@ class OrdenController extends Controller
         return back()->with('success', 'Resultados subidos y notificados al paciente.');
     }
 
-    public function subirResultadoAutoOrder(Request $request, LabOrder $labOrder)
+    public function subirResultadoAutoOrder(Request $request, LabOrder $labOrder, LaboratoryResultStorageService $resultStorage)
     {
         $this->authorizeSelfServiceOrder($labOrder);
         $labOrder->loadMissing(['patient', 'doctor', 'items']);
@@ -210,34 +245,39 @@ class OrdenController extends Controller
             ]
         );
 
-        $path = $request->file('resultado_pdf')->store('laboratorio_resultados');
+        $path = $resultStorage->storeUploadedPdf($request->file('resultado_pdf'), 'self-service-orders', $labOrder->id);
 
-        $labOrder = DB::transaction(function () use ($labOrder, $path, $data) {
-            $labOrder = LabOrder::query()
-                ->with(['patient', 'doctor', 'items'])
-                ->whereKey($labOrder->id)
-                ->lockForUpdate()
-                ->firstOrFail();
+        try {
+            $labOrder = DB::transaction(function () use ($labOrder, $path, $data, $resultStorage) {
+                $labOrder = LabOrder::query()
+                    ->with(['patient', 'doctor', 'items'])
+                    ->whereKey($labOrder->id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
 
-            $this->authorizeSelfServiceOrder($labOrder);
+                $this->authorizeSelfServiceOrder($labOrder);
 
-            if ($labOrder->status === LabOrder::STATUS_RESULTADO_LISTO) {
-                Storage::delete($path);
+                if ($labOrder->status === LabOrder::STATUS_RESULTADO_LISTO) {
+                    $resultStorage->deleteNew($path);
 
-                return null;
-            }
+                    return null;
+                }
 
-            $labOrder->forceFill([
-                'laboratorio_id' => Auth::id(),
-                'scheduled_at' => $labOrder->scheduled_at ?? now(config('app.timezone', 'America/Guayaquil')),
-                'resultado_path' => $path,
-                'resultado_resumen' => $data['resultado_resumen'],
-                'resultado_publicado_at' => now('America/Guayaquil'),
-                'status' => LabOrder::STATUS_RESULTADO_LISTO,
-            ])->save();
+                $labOrder->forceFill([
+                    'laboratorio_id' => Auth::id(),
+                    'scheduled_at' => $labOrder->scheduled_at ?? now(config('app.timezone', 'America/Guayaquil')),
+                    'resultado_path' => $path,
+                    'resultado_resumen' => $data['resultado_resumen'],
+                    'resultado_publicado_at' => now('America/Guayaquil'),
+                    'status' => LabOrder::STATUS_RESULTADO_LISTO,
+                ])->save();
 
-            return $labOrder->refresh();
-        });
+                return $labOrder->refresh();
+            });
+        } catch (\Throwable $exception) {
+            $resultStorage->deleteNew($path);
+            throw $exception;
+        }
 
         if (! $labOrder) {
             return back()->withErrors(['error' => 'Los resultados ya fueron publicados.']);
@@ -257,40 +297,71 @@ class OrdenController extends Controller
         return back()->with('success', 'Resultados subidos y notificados al paciente.');
     }
 
-    public function download(LaboratorioOrden $orden)
+    public function download(LaboratorioOrden $orden, LaboratoryResultStorageService $resultStorage)
     {
         $orden->load('cita');
-        if ($orden->cita->doctor_id !== Auth::id()) {
-            abort(403);
-        }
+        $this->authorizeLaboratorioOrden($orden);
 
-        if (! $orden->resultado_path || ! Storage::exists($orden->resultado_path)) {
+        if (! $orden->resultado_path || ! $resultStorage->resolve($orden->resultado_path)) {
             return back()->withErrors(['error' => 'No hay resultados disponibles para descargar.']);
         }
 
         $name = 'resultado_laboratorio_'.$orden->id.'.pdf';
 
-        return Storage::download($orden->resultado_path, $name);
+        return $resultStorage->download($orden->resultado_path, $name);
     }
 
-    public function downloadAutoOrder(LabOrder $labOrder)
+    public function downloadAutoOrder(LabOrder $labOrder, LaboratoryResultStorageService $resultStorage)
     {
         $this->authorizeSelfServiceOrder($labOrder);
 
-        if (! $labOrder->hasResultadoDisponible() || ! Storage::exists($labOrder->resultado_path)) {
+        if (! $labOrder->hasResultadoDisponible() || ! $resultStorage->resolve($labOrder->resultado_path)) {
             return back()->withErrors(['error' => 'No hay resultados disponibles para descargar.']);
         }
 
         $name = 'resultado_laboratorio_solicitud_'.$labOrder->id.'.pdf';
 
-        return Storage::download($labOrder->resultado_path, $name);
+        return $resultStorage->download($labOrder->resultado_path, $name);
+    }
+
+    private function authorizeLaboratorioOrden(LaboratorioOrden $orden): void
+    {
+        $user = Auth::user();
+        if (! $user) {
+            abort(401);
+        }
+
+        if ($user->hasAnyRole(['laboratorio', 'admin', 'superadmin'])) {
+            return;
+        }
+
+        if ((int) $user->id === (int) optional($orden->cita)->doctor_id || (int) $user->id === (int) $orden->solicitante_id) {
+            return;
+        }
+
+        abort(403);
     }
 
     private function authorizeSelfServiceOrder(LabOrder $labOrder): void
     {
-        if ($labOrder->laboratorio_id !== null && (int) $labOrder->laboratorio_id !== (int) Auth::id()) {
-            abort(403);
+        $user = Auth::user();
+        if (! $user) {
+            abort(401);
         }
+
+        if ($user->hasAnyRole(['laboratorio', 'admin', 'superadmin'])) {
+            if ($labOrder->laboratorio_id !== null && (int) $labOrder->laboratorio_id !== (int) $user->id) {
+                abort(403);
+            }
+
+            return;
+        }
+
+        if ((int) $user->id === (int) $labOrder->doctor_id || (int) $user->id === (int) $labOrder->patient_id) {
+            return;
+        }
+
+        abort(403);
     }
 
     private function mapLegacyOrder(LaboratorioOrden $orden): object
@@ -300,11 +371,14 @@ class OrdenController extends Controller
             ?? $orden->updated_at
             ?? $orden->created_at;
         $hora = $orden->cita?->hora ? Carbon::parse($orden->cita->hora)->format('H:i') : null;
+        $patientName = $orden->cita?->nombrePacienteReal()
+            ?? optional($orden->cita->paciente)->name
+            ?? 'Paciente';
 
         return (object) [
             'uid' => 'legacy-'.$orden->id,
             'title' => $orden->tipo_examen,
-            'patient_name' => optional($orden->cita->paciente)->name ?? 'Paciente',
+            'patient_name' => $patientName,
             'status_label' => str_replace('_', ' ', $orden->estado),
             'badge_tone' => match ($orden->estado) {
                 LaboratorioOrden::ESTADO_ORDEN_CREADA => 'warning',
@@ -360,6 +434,52 @@ class OrdenController extends Controller
         ];
     }
 
+    private function mapPedidoLaboratorio(PedidoLaboratorio $pedido): object
+    {
+        $date = $pedido->resultado_publicado_at
+            ?? $pedido->sample_collected_at
+            ?? optional($pedido->cita)->fecha
+            ?? $pedido->updated_at
+            ?? $pedido->created_at;
+        $hora = $pedido->cita?->hora ? Carbon::parse($pedido->cita->hora)->format('H:i') : null;
+        $examList = is_array($pedido->examenes)
+            ? implode(', ', array_map(fn ($e) => ucwords(str_replace('_', ' ', $e)), $pedido->examenes))
+            : 'Exámenes de laboratorio';
+        $patientName = $pedido->cita?->nombrePacienteReal()
+            ?? $pedido->paciente?->name
+            ?? 'Paciente';
+
+        return (object) [
+            'uid' => 'pedido-'.$pedido->id,
+            'title' => $examList,
+            'patient_name' => $patientName,
+            'status_label' => match ($pedido->estado) {
+                PedidoLaboratorio::ESTADO_PENDIENTE_TOMA => 'Pendiente de toma',
+                PedidoLaboratorio::ESTADO_MUESTRA_TOMADA => 'Muestra tomada / análisis',
+                PedidoLaboratorio::ESTADO_RESULTADO_LISTO => 'Resultado listo',
+                default => str_replace('_', ' ', (string) $pedido->estado),
+            },
+            'badge_tone' => match ($pedido->estado) {
+                PedidoLaboratorio::ESTADO_PENDIENTE_TOMA => 'warning',
+                PedidoLaboratorio::ESTADO_MUESTRA_TOMADA => 'info',
+                PedidoLaboratorio::ESTADO_RESULTADO_LISTO => 'success',
+                default => 'neutral',
+            },
+            'priority_label' => 'Normal',
+            'date_label' => $date ? trim($date->format('Y/m/d').' '.($hora ?? '')) : 'Sin fecha',
+            'source_label' => 'Pedido médico',
+            'preparation' => null,
+            'notes' => null,
+            'result_summary' => $pedido->resultado_resumen,
+            'download_url' => $pedido->resultado_path ? route('laboratorio.pedidos.download-resultado', $pedido->id) : null,
+            'mark_sample_url' => route('laboratorio.pedidos.muestra', $pedido->id),
+            'upload_result_url' => route('laboratorio.pedidos.resultado', $pedido->id),
+            'can_mark_sample' => $pedido->estado === PedidoLaboratorio::ESTADO_PENDIENTE_TOMA,
+            'can_upload_result' => $pedido->estado !== PedidoLaboratorio::ESTADO_RESULTADO_LISTO,
+            'sort_at' => $date,
+        ];
+    }
+
     private function hydrateWorklistRows(LengthAwarePaginator $rows): LengthAwarePaginator
     {
         $pageRows = $rows->getCollection();
@@ -373,8 +493,13 @@ class OrdenController extends Controller
             ->pluck('source_id')
             ->map(fn ($id) => (int) $id)
             ->all();
+        $pedidoIds = $pageRows
+            ->where('source', 'pedido_laboratorio')
+            ->pluck('source_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
 
-        $legacyOrders = LaboratorioOrden::with(['cita.paciente', 'cita.doctor', 'cita.especialidad'])
+        $legacyOrders = LaboratorioOrden::with(['cita.paciente', 'cita.dependiente', 'cita.doctor', 'cita.especialidad'])
             ->whereIn('id', $legacyIds)
             ->get()
             ->keyBy('id');
@@ -384,11 +509,22 @@ class OrdenController extends Controller
             ->get()
             ->keyBy('id');
 
-        $rows->setCollection($pageRows->map(function ($row) use ($legacyOrders, $selfServiceOrders) {
+        $pedidoOrders = PedidoLaboratorio::with(['cita.paciente', 'cita.dependiente', 'doctor', 'paciente'])
+            ->whereIn('id', $pedidoIds)
+            ->get()
+            ->keyBy('id');
+
+        $rows->setCollection($pageRows->map(function ($row) use ($legacyOrders, $selfServiceOrders, $pedidoOrders) {
             if ($row->source === 'legacy') {
                 $orden = $legacyOrders->get((int) $row->source_id);
 
                 return $orden ? $this->mapLegacyOrder($orden) : null;
+            }
+
+            if ($row->source === 'pedido_laboratorio') {
+                $pedido = $pedidoOrders->get((int) $row->source_id);
+
+                return $pedido ? $this->mapPedidoLaboratorio($pedido) : null;
             }
 
             $order = $selfServiceOrders->get((int) $row->source_id);

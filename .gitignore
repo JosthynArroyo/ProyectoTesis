@@ -30,7 +30,7 @@ venv/
 **/venv/
 __pycache__/
 **/__pycache__/
-/tmp/*.sqlite
+/tmp/*
+!/tmp/.gitignore
 /.psysh/
-/tmp/docx_media/
 /brain/

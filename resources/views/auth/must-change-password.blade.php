@@ -21,7 +21,7 @@
             </x-ui.alert>
           @endif
 
-          <form method="POST" action="{{ route('auth.must-change-password.update') }}" class="space-y-4">
+          <form method="POST" action="{{ route('auth.must-change-password.update') }}" class="space-y-4" data-action-lock-title="Actualizando contraseña..." data-action-lock-description="Por favor, espera mientras guardamos tu nueva contraseña.">
             @csrf
 
             <div>
@@ -57,9 +57,9 @@
 
             <x-ui.form-actions>
               <x-slot:left>
-                <button type="button" onclick="event.preventDefault(); document.getElementById('logout-form-cancel').submit();" class="btn btn-ghost">Cerrar sesión</button>
+                <button type="button" onclick="event.preventDefault(); document.getElementById('logout-form-cancel').submit();" class="btn btn-ghost" data-action-lock-ignore>Cerrar sesión</button>
               </x-slot>
-              <button type="submit" class="btn btn-primary">Actualizar contraseña</button>
+              <button type="submit" class="btn btn-primary" data-loading-text="Actualizando contraseña...">Actualizar contraseña</button>
             </x-ui.form-actions>
           </form>
 

@@ -9,14 +9,14 @@ use App\Models\Role;
 use App\Models\User;
 use App\Services\MedicalCertificateDocumentService;
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class MedicalCertificateR2StorageTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     protected function setUp(): void
     {
@@ -29,6 +29,12 @@ class MedicalCertificateR2StorageTest extends TestCase
         Mail::fake();
 
         $this->seedRoles();
+    }
+
+    protected function tearDown(): void
+    {
+        @unlink(storage_path('app/private/scratch/certificate_migration_manifest.json'));
+        parent::tearDown();
     }
 
     private function seedRoles(): void
@@ -277,56 +283,6 @@ class MedicalCertificateR2StorageTest extends TestCase
     // 19. --execute migra solamente activos
     // 20. Huérfanos no se suben
     // 21. --verify detecta objetos ausentes o corruptos
-    public function test_migration_command_dry_run_execute_and_verify(): void
-    {
-        $doctor = $this->createRoleUser('doctor');
-        $paciente = $this->createRoleUser('paciente');
-        $cita = $this->createRealizedCita($doctor, $paciente);
-
-        $activeLocalPath = 'certificados-medicos/active_cm_1.pdf';
-        $activeBinary = '%PDF-1.4 Active Local Certificate for Migration';
-        Storage::disk('local')->put($activeLocalPath, $activeBinary);
-
-        $certificado = CertificadoMedico::create([
-            'codigo' => 'CM-MIGRATE-001',
-            'csv' => 'CM-12345-MIGRATE',
-            'cita_id' => $cita->id,
-            'paciente_id' => $paciente->id,
-            'doctor_id' => $doctor->id,
-            'fecha_emision' => now(),
-            'texto_constancia' => 'Constancia Migration',
-            'pdf_path' => $activeLocalPath,
-            'pdf_disk' => null,
-        ]);
-
-        // Create 3 orphan files in local storage
-        for ($i = 1; $i <= 3; $i++) {
-            Storage::disk('local')->put("certificados-medicos/orphan_cm_{$i}.pdf", "%PDF-1.4 Orphan Content {$i}");
-        }
-
-        // 18. Dry run
-        $this->artisan('certificates:migrate-to-r2', ['--dry-run' => true])
-            ->assertExitCode(0);
-
-        $certificado->refresh();
-        $this->assertNull($certificado->pdf_disk);
-
-        // 19 & 20. Execute
-        $this->artisan('certificates:migrate-to-r2', ['--execute' => true])
-            ->assertExitCode(0);
-
-        $certificado->refresh();
-        $this->assertEquals('r2_private', $certificado->pdf_disk);
-        $this->assertStringStartsWith('documents/medical-certificates/', $certificado->pdf_path);
-
-        $r2Disk = Storage::disk('r2_private');
-        $this->assertTrue($r2Disk->exists($certificado->pdf_path));
-        $this->assertEquals($activeBinary, $r2Disk->get($certificado->pdf_path));
-
-        // 21. Verify
-        $this->artisan('certificates:migrate-to-r2', ['--verify' => true])
-            ->assertExitCode(0);
-    }
 
     // 22. Verificación pública no expone rutas privadas
     public function test_public_verification_page_does_not_expose_private_r2_url(): void

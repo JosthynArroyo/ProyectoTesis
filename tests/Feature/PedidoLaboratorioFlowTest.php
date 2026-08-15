@@ -9,7 +9,7 @@ use App\Models\Especialidad;
 use App\Models\PedidoLaboratorio;
 use App\Models\Role;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
@@ -17,7 +17,7 @@ use Tests\TestCase;
 
 class PedidoLaboratorioFlowTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     protected function setUp(): void
     {
@@ -112,7 +112,9 @@ class PedidoLaboratorioFlowTest extends TestCase
         $pedido->refresh();
         $this->assertSame('muestra_tomada', $pedido->estado);
 
-        $resultPdf = UploadedFile::fake()->create('resultados_analisis.pdf', 150, 'application/pdf');
+        $resultPdf = UploadedFile::fake()
+            ->createWithContent('resultados_analisis.pdf', '%PDF-1.4 resultado de laboratorio')
+            ->mimeType('application/pdf');
 
         $responseResult = $this->actingAs($labUser)
             ->post(route('laboratorio.pedidos.resultado', $pedido), [
@@ -126,10 +128,28 @@ class PedidoLaboratorioFlowTest extends TestCase
         $this->assertSame('resultado_listo', $pedido->estado);
         $this->assertSame('Hemoglobina y glucosa dentro de los límites normales.', $pedido->resultado_resumen);
         $this->assertNotNull($pedido->resultado_path);
-        Storage::disk('local')->assertExists($pedido->resultado_path);
+        $this->assertStringStartsWith('documents/laboratory-results/legacy-medical-orders/', $pedido->resultado_path);
+        Storage::disk('r2_private')->assertExists($pedido->resultado_path);
+        Storage::disk('local')->assertMissing($pedido->resultado_path);
+
+        $this->actingAs($labUser)
+            ->get(route('laboratorio.pedidos.download-resultado', $pedido))
+            ->assertOk();
+
+        $this->actingAs($patient)
+            ->get(route('paciente.laboratorio.pedido.download', $pedido))
+            ->assertOk();
 
         Mail::assertSent(ResultadoPedidoLaboratorioMail::class, function ($mail) use ($patient) {
-            return $mail->hasTo($patient->email);
+            $rawAttachments = $mail->build()->rawAttachments;
+
+            return $mail->hasTo($patient->email)
+                && collect($rawAttachments)->contains(function (array $attachment): bool {
+                    $data = is_callable($attachment['data']) ? $attachment['data']() : $attachment['data'];
+
+                    return $attachment['options']['mime'] === 'application/pdf'
+                        && $data !== '';
+                });
         });
     }
 

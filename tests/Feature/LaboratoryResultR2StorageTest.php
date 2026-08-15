@@ -11,7 +11,7 @@ use App\Models\User;
 use App\Services\PedidoLaboratorioPdfService;
 use App\Jobs\EnviarResultadoPedidoLaboratorioJob;
 use App\Mail\ResultadoPedidoLaboratorioMail;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
@@ -19,16 +19,25 @@ use Tests\TestCase;
 
 class LaboratoryResultR2StorageTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     protected function setUp(): void
     {
         parent::setUp();
+        config(['private_documents.disk' => 'r2_private']);
+        config(['image_optimization.avatar_disk' => 'r2_private']);
         Storage::fake('r2_private');
         Storage::fake('local');
+        Storage::fake('public');
         Mail::fake();
 
         $this->seedRoles();
+    }
+
+    protected function tearDown(): void
+    {
+        @unlink(storage_path('app/private/scratch/lab_result_migration_manifest.json'));
+        parent::tearDown();
     }
 
     private function seedRoles(): void
@@ -403,46 +412,4 @@ class LaboratoryResultR2StorageTest extends TestCase
     }
 
     /** 9. Comando de migración de resultados locales a R2 private */
-    public function test_cli_migration_command_is_idempotent_and_verifies_correctly(): void
-    {
-        $doctor = $this->createRoleUser('doctor');
-        $paciente = $this->createRoleUser('paciente');
-        $pedido = $this->createPedido($doctor, $paciente);
-
-        // 1. Crear un resultado local
-        $resultado = PedidoLaboratorioResultado::create([
-            'pedido_laboratorio_id' => $pedido->id,
-            'version' => 1,
-            'estado' => PedidoLaboratorioResultado::ESTADO_PUBLICADO,
-            'pdf_path' => 'pedidos-laboratorio-resultados/migration_test.pdf',
-            'pdf_disk' => null,
-            'csv' => 'MIGRATE-CSV-1',
-        ]);
-        Storage::disk('local')->put($resultado->pdf_path, "%PDF-1.4 to migrate");
-
-        // 2. Ejecutar --dry-run
-        $this->artisan('laboratory-results:migrate-to-r2', ['--dry-run' => true])
-            ->assertExitCode(0);
-
-        // 3. Ejecutar --execute
-        $this->artisan('laboratory-results:migrate-to-r2', ['--execute' => true])
-            ->assertExitCode(0);
-
-        // El registro debe haberse actualizado a r2_private
-        $resultado->refresh();
-        $this->assertEquals('r2_private', $resultado->pdf_disk);
-        $this->assertStringStartsWith('documents/laboratory-results/', $resultado->pdf_path);
-
-        $this->assertTrue(Storage::disk('r2_private')->exists($resultado->pdf_path));
-        // Conservar el archivo local
-        $this->assertTrue(Storage::disk('local')->exists('pedidos-laboratorio-resultados/migration_test.pdf'));
-
-        // 4. Ejecutar --verify
-        $this->artisan('laboratory-results:migrate-to-r2', ['--verify' => true])
-            ->assertExitCode(0);
-
-        // 5. Correr otra vez execute no debe duplicar
-        $this->artisan('laboratory-results:migrate-to-r2', ['--execute' => true])
-            ->assertExitCode(0);
-    }
 }

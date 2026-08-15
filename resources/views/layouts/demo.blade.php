@@ -15,6 +15,7 @@
     'resources/js/panel-theme.js',
     'resources/js/demo/demo-actions.js',
   ])
+  @stack('styles')
   @stack('head')
 </head>
 @php

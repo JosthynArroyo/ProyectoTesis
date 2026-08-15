@@ -14,8 +14,12 @@ class CaptchaImage extends Model
 
     public function fullPath(): string
     {
-        $path = ltrim((string) $this->image_path, '/\\');
+        $path = str_replace('\\', '/', ltrim((string) $this->image_path, '/\\'));
 
-        return \Illuminate\Support\Facades\Storage::disk('local')->path($path);
+        if (! str_starts_with($path, 'ai/dataset/val/')) {
+            throw new \RuntimeException('La imagen CAPTCHA no pertenece al dataset canonico ai/dataset/val.');
+        }
+
+        return base_path(str_replace('/', DIRECTORY_SEPARATOR, $path));
     }
 }

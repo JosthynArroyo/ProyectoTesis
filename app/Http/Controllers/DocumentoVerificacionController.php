@@ -73,12 +73,14 @@ class DocumentoVerificacionController extends Controller
 
             case 'certificado_medico':
                 $cert = $documento['certificado'];
-                $cert->loadMissing(['doctor', 'paciente']);
+                $cert->loadMissing(['doctor', 'paciente', 'dependiente', 'cita.dependiente']);
+                $estadoClean = $cert->isReemplazado() ? 'Reemplazado' : 'Verificado';
                 return array_merge($base, [
                     'doctor'     => optional($cert->doctor)->name,
-                    'paciente'   => $this->protectedName(optional($cert->paciente)->name),
+                    'paciente'   => $this->protectedName($cert->nombrePacienteReal()),
+                    'version'    => 'V'.($cert->version ?: 1),
                     'emitido_en' => $cert->fecha_emision,
-                    'estado'     => 'Verificado',
+                    'estado'     => $estadoClean,
                 ]);
 
             case 'pedido_laboratorio':

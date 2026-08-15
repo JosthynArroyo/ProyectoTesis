@@ -5,10 +5,10 @@ namespace App\Mail;
 use App\Models\PedidoLaboratorio;
 use App\Models\PedidoLaboratorioResultado;
 use App\Services\ClinicIdentityService;
+use App\Services\LaboratoryResultStorageService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Storage;
 
 class ResultadoPedidoLaboratorioMail extends Mailable
 {
@@ -42,22 +42,13 @@ class ResultadoPedidoLaboratorioMail extends Mailable
             ? 'resultado_laboratorio_'.$this->resultado->pedido_laboratorio_id.'_v'.$this->resultado->version.'.pdf'
             : 'resultado_laboratorio_'.$this->resultado->id.'.pdf';
 
-        $diskName = 'local';
-        if ($this->resultado instanceof PedidoLaboratorioResultado) {
-            $diskName = $this->resultado->pdf_disk ?: 'local';
-        } else {
-            $latestResult = $this->resultado->resultados()
-                ->where('estado', 'publicado')
-                ->orderByDesc('version')
-                ->first();
-            if ($latestResult) {
-                $diskName = $latestResult->pdf_disk ?: 'local';
-            }
-        }
-
-        $disk = Storage::disk($diskName);
-        if ($pdfPath && $disk->exists($pdfPath)) {
-            $pdfBytes = $disk->get($pdfPath);
+        $preferredDisk = $this->resultado instanceof PedidoLaboratorioResultado
+            ? $this->resultado->pdf_disk
+            : null;
+        $resultStorage = app(LaboratoryResultStorageService::class);
+        $stored = $resultStorage->resolve($pdfPath, $preferredDisk);
+        if ($stored) {
+            $pdfBytes = $resultStorage->contents($stored);
             $mail->attachData($pdfBytes, $fileName, [
                 'mime' => 'application/pdf',
             ]);
