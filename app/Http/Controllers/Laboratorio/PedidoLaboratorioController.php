@@ -8,6 +8,8 @@ use App\Models\PedidoLaboratorio;
 use App\Services\LaboratoryResultStorageService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 class PedidoLaboratorioController extends Controller
@@ -42,19 +44,34 @@ class PedidoLaboratorioController extends Controller
      */
     public function marcarMuestra(Request $request, PedidoLaboratorio $pedido)
     {
-        if ($pedido->estado === 'resultado_listo') {
+        $data = $request->validate([
+            'sample_collected_at' => ['nullable', 'date'],
+        ], [
+            'sample_collected_at.date' => 'La fecha de toma de muestra no tiene un formato válido.',
+        ]);
+
+        $transitioned = DB::transaction(function () use ($pedido, $data) {
+            $locked = PedidoLaboratorio::where('id', $pedido->id)->lockForUpdate()->first();
+            if (! $locked || $locked->estado === PedidoLaboratorio::ESTADO_RESULTADO_LISTO) {
+                return false;
+            }
+
+            $sampleDate = ! empty($data['sample_collected_at'])
+                ? Carbon::parse($data['sample_collected_at'])
+                : now('America/Guayaquil');
+
+            $locked->update([
+                'estado' => PedidoLaboratorio::ESTADO_MUESTRA_TOMADA,
+                'sample_collected_at' => $sampleDate,
+                'sample_collected_by' => \Illuminate\Support\Facades\Auth::id(),
+            ]);
+
+            return true;
+        });
+
+        if (! $transitioned) {
             return back()->withErrors(['error' => 'Los resultados para este pedido ya fueron publicados.']);
         }
-
-        $sampleDate = $request->input('sample_collected_at')
-            ? Carbon::parse($request->input('sample_collected_at'))
-            : now('America/Guayaquil');
-
-        $pedido->update([
-            'estado' => 'muestra_tomada',
-            'sample_collected_at' => $sampleDate,
-            'sample_collected_by' => \Illuminate\Support\Facades\Auth::id(),
-        ]);
 
         return back()->with('success', 'Muestra del pedido registrada como tomada con éxito.');
     }
@@ -64,11 +81,11 @@ class PedidoLaboratorioController extends Controller
      */
     public function subirResultado(Request $request, PedidoLaboratorio $pedido, LaboratoryResultStorageService $resultStorage)
     {
-        if ($pedido->estado === 'resultado_listo') {
+        if ($pedido->estado === PedidoLaboratorio::ESTADO_RESULTADO_LISTO) {
             return back()->withErrors(['error' => 'Los resultados para este pedido ya fueron publicados.']);
         }
 
-        $request->validate([
+        $validated = $request->validate([
             'resultado_pdf' => 'required|file|mimes:pdf|max:5120',
             'resultado_resumen' => 'required|string|max:2000',
         ], [
@@ -79,22 +96,48 @@ class PedidoLaboratorioController extends Controller
 
         $path = $resultStorage->storeUploadedPdf($request->file('resultado_pdf'), 'legacy-medical-orders', $pedido->id);
 
+        $published = false;
         try {
-            $pedido->update([
-                'resultado_path' => $path,
-                'resultado_resumen' => $request->input('resultado_resumen'),
-                'resultado_publicado_at' => now('America/Guayaquil'),
-                'estado' => 'resultado_listo',
-            ]);
+            $published = DB::transaction(function () use ($pedido, $path, $validated) {
+                $locked = PedidoLaboratorio::where('id', $pedido->id)->lockForUpdate()->first();
+                if (! $locked || $locked->estado === PedidoLaboratorio::ESTADO_RESULTADO_LISTO) {
+                    return false;
+                }
+
+                $locked->update([
+                    'resultado_path' => $path,
+                    'resultado_resumen' => $validated['resultado_resumen'],
+                    'resultado_publicado_at' => now('America/Guayaquil'),
+                    'estado' => PedidoLaboratorio::ESTADO_RESULTADO_LISTO,
+                ]);
+
+                return true;
+            });
         } catch (\Throwable $exception) {
             $resultStorage->deleteNew($path);
             throw $exception;
         }
 
-        // Enviar notificación al paciente
-        if ($pedido->paciente && $pedido->paciente->email) {
-            Mail::to($pedido->paciente->email)->send(new ResultadoPedidoLaboratorioMail($pedido));
-            $pedido->update(['resultado_enviado_at' => now('America/Guayaquil')]);
+        if (! $published) {
+            $resultStorage->deleteNew($path);
+            return back()->withErrors(['error' => 'Los resultados para este pedido ya fueron publicados.']);
+        }
+
+        // Desacoplar el envío de correo de la solicitud web mediante el job oficial del sistema
+        $paciente = $pedido->paciente;
+        if ($paciente && $paciente->email) {
+            try {
+                \App\Jobs\EnviarResultadoPedidoLaboratorioJob::dispatch(null, false, $pedido->id);
+            } catch (\Throwable $e) {
+                $pedido->forceFill([
+                    'envio_estado' => 'failed',
+                    'envio_error' => 'No se pudo encolar el trabajo de notificación: ' . mb_substr($e->getMessage(), 0, 1000),
+                ])->saveQuietly();
+
+                Log::error('Error despachando EnviarResultadoPedidoLaboratorioJob a la cola: ' . $e->getMessage(), [
+                    'pedido_id' => $pedido->id,
+                ]);
+            }
         }
 
         return back()->with('success', 'Resultados de laboratorio publicados y notificados al paciente por correo electrónico.');

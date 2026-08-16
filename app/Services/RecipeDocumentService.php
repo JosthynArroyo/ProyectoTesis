@@ -94,6 +94,23 @@ class RecipeDocumentService
             throw new \RuntimeException("Failed to write recipe PDF to {$targetDisk} at key: {$key}");
         }
 
+        if (! $disk->exists($key)) {
+            $this->deleteQuietly($key, $targetDisk);
+            throw new \RuntimeException("Failed to verify recipe PDF existence in {$targetDisk} at key: {$key}");
+        }
+
+        $size = $disk->size($key);
+        if ($size === false || $size <= 0) {
+            $this->deleteQuietly($key, $targetDisk);
+            throw new \RuntimeException("Recipe PDF is empty or invalid size in {$targetDisk} at key: {$key}");
+        }
+
+        $header = substr((string) $disk->get($key), 0, 4);
+        if ($header !== '%PDF') {
+            $this->deleteQuietly($key, $targetDisk);
+            throw new \InvalidArgumentException("Recipe PDF content does not have a valid %PDF header in {$targetDisk} at key: {$key}");
+        }
+
         return [
             'pdf_path' => $key,
             'pdf_disk' => $targetDisk,
@@ -282,10 +299,18 @@ class RecipeDocumentService
             ];
         }
 
-        $receta->forceFill([
-            'pdf_path' => $r2Key,
-            'pdf_disk' => 'r2_private',
-        ])->saveQuietly();
+        try {
+            $receta->forceFill([
+                'pdf_path' => $r2Key,
+                'pdf_disk' => 'r2_private',
+            ])->saveQuietly();
+        } catch (\Throwable $e) {
+            $this->deleteQuietly($r2Key, 'r2_private');
+            return [
+                'success' => false,
+                'error' => 'Database save failed: ' . $e->getMessage(),
+            ];
+        }
 
         return [
             'success' => true,

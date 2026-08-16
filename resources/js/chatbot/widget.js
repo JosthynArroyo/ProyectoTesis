@@ -998,15 +998,13 @@ document.addEventListener('DOMContentLoaded', function () {
           email: data.paciente?.email || state.registro.email,
           telefono: data.paciente?.telefono || state.registro.telefono,
         };
-        state.autenticado = true;
-        state.session.type = 'registered';
-        state.session.emailVerified = true;
+        state.buffer.cedula = state.registro.cedula;
+        state.buffer.email = data.paciente?.email || state.registro.email;
+        state.session.otpSent = true;
+        state.step = 'codigo';
         state.dependientes = [];
-        resetBufferConIdentidad();
 
-        let mensaje = 'Tu cuenta de paciente ha sido registrada correctamente. Tu cédula es tu contraseña temporal.';
-        addMessage('bot', mensaje);
-        startAgendar();
+        addMessage('bot', 'Tu cuenta ha sido registrada. Hemos enviado un código de verificación de 6 dígitos a tu correo electrónico para confirmar tu identidad. Por favor ingrésalo para continuar:');
       } catch (error) {
         console.error(error);
         addMessage('bot', 'No pudimos registrar tu usuario en este momento.');

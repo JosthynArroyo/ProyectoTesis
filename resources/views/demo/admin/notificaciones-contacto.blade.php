@@ -37,7 +37,7 @@
                             <td data-label="Estado"><span class="badge {{ $message['status_tone'] }}">{{ $message['status'] }}</span></td>
                             <td data-label="Recibido">{{ $message['received_at'] }}</td>
                             <td data-label="Acciones">
-                                <button class="btn btn-outline btn-sm demo-action-blocked">Ver detalle</button>
+                                <a href="{{ route('demo.admin.contacto.mensajes.show', $message['id']) }}" class="btn btn-outline btn-sm">Ver detalle</a>
                             </td>
                         </tr>
                     @endforeach

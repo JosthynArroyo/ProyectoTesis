@@ -30,7 +30,7 @@ class PaymentReceiptDocumentService
         return self::DISK;
     }
 
-    public function generateAndStoreReceiptPdf(Pago $pago, PaymentReceipt $receipt, PagoDocumentoService $documentoService): string
+    public function generateAndStoreReceiptPdfContentOnly(Pago $pago, PaymentReceipt $receipt, PagoDocumentoService $documentoService): string
     {
         // 1. Generate PDF in memory using existing PagoDocumentoService
         $pago->loadMissing([
@@ -49,35 +49,63 @@ class PaymentReceiptDocumentService
         // Verify PDF content
         $this->verifyPdfContent($pdfContent);
 
-        // 2. Generate UUID key: documents/payment-receipts/{receipt_id}/{uuid}.pdf
+        // 2. Generate UUID key: documents/payment-receipts/{pago_id}/{uuid}.pdf
         $uuid = Str::uuid()->toString();
-        $key = "documents/payment-receipts/{$receipt->id}/{$uuid}.pdf";
+        $key = "documents/payment-receipts/{$pago->id}/{$uuid}.pdf";
         $disk = $this->getDisk();
 
         // 3. Upload bytes to r2_private
-        $uploadSuccess = Storage::disk($disk)->put($key, $pdfContent);
+        $uploadSuccess = false;
+        try {
+            $uploadSuccess = Storage::disk($disk)->put($key, $pdfContent);
+        } catch (\Throwable $e) {
+            throw new \RuntimeException('No se pudo guardar el PDF del recibo en almacenamiento R2: ' . $e->getMessage(), 0, $e);
+        }
         if (! $uploadSuccess) {
             throw new \RuntimeException('No se pudo guardar el PDF del recibo en almacenamiento R2.');
         }
 
-        // 4. Verify object existence, size and %PDF header
-        if (! Storage::disk($disk)->exists($key)) {
-            throw new \RuntimeException('El PDF del recibo guardado no se encuentra en R2.');
+        // 4. Desde que put() retorna true, $key está potencialmente materializada.
+        // Toda verificación posterior debe realizar cleanup directo e incondicional de $key ante cualquier fallo.
+        try {
+            if (! Storage::disk($disk)->exists($key)) {
+                throw new \RuntimeException('El PDF del recibo guardado no se encuentra en R2.');
+            }
+
+            $size = Storage::disk($disk)->size($key);
+            if ($size <= 0 || $size !== strlen($pdfContent)) {
+                throw new \RuntimeException('Inconsistencia en el tamaño del PDF del recibo en R2.');
+            }
+
+            $readHeader = Storage::disk($disk)->get($key);
+            if (! str_starts_with((string) $readHeader, '%PDF')) {
+                throw new \RuntimeException('El archivo almacenado en R2 no es un PDF valido.');
+            }
+        } catch (\Throwable $verifyEx) {
+            try {
+                Storage::disk($disk)->delete($key);
+            } catch (\Throwable $cleanupEx) {
+                \Illuminate\Support\Facades\Log::error('Fallo en cleanup de R2 tras verificación fallida de recibo de pago', [
+                    'pago_id' => $pago->id,
+                    'key' => $key,
+                    'disk' => $disk,
+                    'primary_error' => $verifyEx->getMessage(),
+                    'cleanup_error' => $cleanupEx->getMessage(),
+                ]);
+            }
+
+            throw $verifyEx;
         }
 
-        $size = Storage::disk($disk)->size($key);
-        if ($size <= 0 || $size !== strlen($pdfContent)) {
-            Storage::disk($disk)->delete($key);
-            throw new \RuntimeException('Inconsistencia en el tamaño del PDF del recibo en R2.');
-        }
+        return $key;
+    }
 
-        $readHeader = Storage::disk($disk)->get($key);
-        if (! str_starts_with((string) $readHeader, '%PDF')) {
-            Storage::disk($disk)->delete($key);
-            throw new \RuntimeException('El archivo almacenado en R2 no es un PDF valido.');
-        }
+    public function generateAndStoreReceiptPdf(Pago $pago, PaymentReceipt $receipt, PagoDocumentoService $documentoService): string
+    {
+        $key = $this->generateAndStoreReceiptPdfContentOnly($pago, $receipt, $documentoService);
+        $disk = $this->getDisk();
 
-        // 5. Update DB atomically in transaction
+        // Update DB atomically in transaction
         try {
             DB::transaction(function () use ($receipt, $key, $disk) {
                 $receipt->pdf_path = $key;
@@ -86,7 +114,17 @@ class PaymentReceiptDocumentService
             });
         } catch (\Throwable $e) {
             // Compensating deletion: delete ONLY newly uploaded R2 object if DB update fails
-            Storage::disk($disk)->delete($key);
+            try {
+                Storage::disk($disk)->delete($key);
+            } catch (\Throwable $cleanupEx) {
+                \Illuminate\Support\Facades\Log::error('Fallo en cleanup de R2 tras error en transacción DB de recibo', [
+                    'pago_id' => $pago->id,
+                    'key' => $key,
+                    'disk' => $disk,
+                    'primary_error' => $e->getMessage(),
+                    'cleanup_error' => $cleanupEx->getMessage(),
+                ]);
+            }
             throw $e;
         }
 

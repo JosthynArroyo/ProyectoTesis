@@ -16,7 +16,9 @@ export default defineConfig({
         manualChunks(id) {
           if (!id.includes('node_modules')) return undefined
 
-
+          if (id.includes('apexcharts')) {
+            return 'charts'
+          }
 
           return 'vendor'
         },
@@ -89,7 +91,6 @@ export default defineConfig({
         'resources/js/sidebar-toggle.js',
         'resources/js/navbar.js',
         'resources/js/chatbot/widget.js',
-        'resources/js/servicios.js',
 
         'resources/js/welcome-login-modal.js',
         'resources/js/welcome-carousel.js',

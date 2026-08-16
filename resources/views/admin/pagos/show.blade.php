@@ -54,6 +54,7 @@
         @endif
       </div>
 
+      @if($pago->esEditableFinancieramente())
       <form method="POST" action="{{ route('admin.pagos.monto.update', $pago) }}" class="grid gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4 md:grid-cols-3">
         @csrf
         <div>
@@ -88,6 +89,7 @@
           <button type="submit" class="btn btn-outline w-full">Guardar metodo de pago</button>
         </div>
       </form>
+      @endif
 
       @if($pago->observacion_admin)
         <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">

@@ -202,10 +202,10 @@ class LabTestCatalogConfigService
             'type' => $type,
             'rule_id' => $matched->id,
             'validation_status' => $valStatus,
-            'lower' => $matched->lower_limit ? (float) $matched->lower_limit : null,
-            'upper' => $matched->upper_limit ? (float) $matched->upper_limit : null,
-            'critical_lower' => $matched->critical_lower_limit ? (float) $matched->critical_lower_limit : null,
-            'critical_upper' => $matched->critical_upper_limit ? (float) $matched->critical_upper_limit : null,
+            'lower' => $matched->lower_limit !== null ? (float) $matched->lower_limit : null,
+            'upper' => $matched->upper_limit !== null ? (float) $matched->upper_limit : null,
+            'critical_lower' => $matched->critical_lower_limit !== null ? (float) $matched->critical_lower_limit : null,
+            'critical_upper' => $matched->critical_upper_limit !== null ? (float) $matched->critical_upper_limit : null,
         ];
     }
 

@@ -524,7 +524,7 @@ class CitaController extends Controller
             return back()->with('error', 'La cita ya vencio y se marco como no se presento.');
         }
 
-        if (in_array($cita->estado, [Cita::ESTADO_CANCELADA, Cita::ESTADO_REALIZADA, Cita::ESTADO_NO_SE_PRESENTO])) {
+        if (! $cita->esReprogramable()) {
             return back()->with('error', 'Esta cita no puede ser modificada.');
         }
 
@@ -541,6 +541,10 @@ class CitaController extends Controller
 
         if (app(CitaNoShowService::class)->marcarSiVencio($cita)) {
             return back()->with('error', 'La cita ya vencio y se marco como no se presento.');
+        }
+
+        if (! $cita->esReprogramable()) {
+            return back()->with('error', 'Esta cita no puede ser modificada.');
         }
 
         $request->validate(
@@ -596,18 +600,33 @@ class CitaController extends Controller
             return back()->withErrors([$validationError['field'] => $validationError['message']])->withInput();
         }
 
-        $citaId = $cita->id;
+        $citaId = (int) $cita->id;
         try {
-            DB::transaction(function () use (&$cita, $request, $slot, $priorityEvaluator, $scheduleService, $motivoConsulta, $isLab) {
+            DB::transaction(function () use (&$cita, $citaId, $request, $slot, $priorityEvaluator, $scheduleService, $motivoConsulta, $isLab) {
+                // Lock the target cita row first to get fresh state and prevent concurrent modification
+                $freshCita = Cita::query()->whereKey($citaId)->lockForUpdate()->firstOrFail();
+
+                if ($freshCita->paciente_id != Auth::id()) {
+                    throw new \DomainException('No puedes modificar esta cita.');
+                }
+
+                if (app(CitaNoShowService::class)->marcarSiVencio($freshCita)) {
+                    throw new \DomainException('La cita ya vencio y se marco como no se presento.');
+                }
+
+                if (! $freshCita->esReprogramable()) {
+                    throw new \DomainException('Esta cita no puede ser modificada.');
+                }
+
                 // Acquire stable single-row lock on the doctor before re-checking availability.
-                User::query()->whereKey((int) $cita->doctor_id)->lockForUpdate()->firstOrFail();
+                User::query()->whereKey((int) $freshCita->doctor_id)->lockForUpdate()->firstOrFail();
 
                 $conflict = $scheduleService->hasConflict(
-                    professionalId: (int) $cita->doctor_id,
+                    professionalId: (int) $freshCita->doctor_id,
                     date: (string) $request->fecha,
                     slot: $slot,
                     interval: 30,
-                    exceptCitaId: (int) $cita->id
+                    exceptCitaId: (int) $freshCita->id
                     // No hold_token on reschedule: holds are only issued on initial slot selection
                 );
 
@@ -619,7 +638,7 @@ class CitaController extends Controller
                     );
                 }
 
-                $cita->update([
+                $freshCita->update([
                     'fecha' => $request->fecha,
                     'hora' => $slot->format('H:i:00'),
                     'motivo_consulta' => $motivoConsulta,
@@ -627,8 +646,10 @@ class CitaController extends Controller
                     'activo' => true,
                 ]);
 
-                $priorityEvaluator->apply($cita);
-                $cita->save();
+                $priorityEvaluator->apply($freshCita);
+                $freshCita->save();
+
+                $cita = $freshCita;
             });
         } catch (\DomainException $e) {
             return back()->withErrors(['error' => $e->getMessage()])->withInput();

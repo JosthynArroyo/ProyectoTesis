@@ -906,7 +906,8 @@ class DemoDashboardController extends Controller
     public function adminNotificacionesContactoShow($id)
     {
         $state = $this->getDemoState('admin');
-        $msg = collect($state['contactMessages'])->firstWhere('id', $id);
+        $idInt = is_numeric($id) ? (int) $id : 0;
+        $msg = collect($state['contactMessages'] ?? [])->firstWhere('id', $idInt);
         if (!$msg) abort(404);
         return view('demo.admin.notificaciones-contacto-show', [
             'mensaje' => (object) $msg,
@@ -2228,8 +2229,8 @@ class DemoDashboardController extends Controller
                 ['patient' => 'Daniel Salazar', 'doctor' => 'Dr. Andres Molina', 'from' => '29/04/2026 11:00', 'to' => '29/04/2026 12:00', 'status' => 'Confirmado', 'status_tone' => 'success'],
             ],
             'contactMessages' => [
-                ['id' => 1, 'name' => 'Roberto Ibarra', 'email' => 'roberto.ibarra@example.com', 'phone' => '+593 95 000 1111', 'subject' => 'Disponibilidad de laboratorio', 'status' => 'Nuevo', 'status_tone' => 'warning', 'received_at' => '28/04/2026 07:20'],
-                ['id' => 2, 'name' => 'Monica Franco', 'email' => 'monica.franco@example.com', 'phone' => '+593 98 100 2333', 'subject' => 'Reagendar chequeo', 'status' => 'Leido', 'status_tone' => 'success', 'received_at' => '27/04/2026 18:14'],
+                ['id' => 1, 'name' => 'Roberto Ibarra', 'email' => 'roberto.ibarra@example.com', 'phone' => '+593 95 000 1111', 'subject' => 'Disponibilidad de laboratorio', 'status' => 'Nuevo', 'status_tone' => 'warning', 'received_at' => '28/04/2026 07:20', 'message' => 'Buenas tardes, quisiera consultar la disponibilidad para realizar una prueba de laboratorio el día de mañana temprano. Saludos cordiales.'],
+                ['id' => 2, 'name' => 'Monica Franco', 'email' => 'monica.franco@example.com', 'phone' => '+593 98 100 2333', 'subject' => 'Reagendar chequeo', 'status' => 'Leido', 'status_tone' => 'success', 'received_at' => '27/04/2026 18:14', 'message' => 'Estimados, solicito apoyo para reagendar mi chequeo de control médico debido a un cruce de horarios laborales. Muchas gracias.'],
             ],
             'adminProfile' => [
                 'name' => 'Administrador Demo',

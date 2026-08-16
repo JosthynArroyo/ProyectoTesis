@@ -118,15 +118,24 @@ class PagoController extends Controller
         return view('admin.pagos.show', compact('pago'));
     }
 
-    public function actualizarMonto(UpdatePagoMontoRequest $request, Pago $pago)
+    public function actualizarMonto(UpdatePagoMontoRequest $request, Pago $pago, PagoService $pagoService)
     {
         $data = $request->validated();
 
-        $pago->monto = $data['monto'];
-        if (! empty($data['moneda'])) {
-            $pago->moneda = strtoupper((string) $data['moneda']);
+        if (! $pago->esEditableFinancieramente()) {
+            return back()->withErrors(['error' => 'Este pago ya fue aprobado o cuenta con recibo emitido; su monto es inmutable.']);
         }
-        $pago->save();
+
+        try {
+            $pagoService->actualizarMontoAdministrativo(
+                pago: $pago,
+                nuevoMonto: (float) $data['monto'],
+                nuevaMoneda: $data['moneda'] ?? null,
+                actor: $request->user()
+            );
+        } catch (\InvalidArgumentException $e) {
+            return back()->withErrors(['error' => $e->getMessage()]);
+        }
 
         return back()->with('success', 'Monto de pago actualizado.');
     }
@@ -135,33 +144,22 @@ class PagoController extends Controller
     {
         $data = $request->validated();
         $nuevoMetodo = $data['metodo_pago'];
-        $metodoAnterior = $pago->metodo_pago;
-        $observacion = trim((string) ($data['observacion_admin'] ?? ''));
+        $observacion = $data['observacion_admin'] ?? null;
 
-        if ($metodoAnterior === $nuevoMetodo) {
-            return back()->with('success', 'Metodo de pago actualizado.');
+        if (! $pago->esEditableFinancieramente()) {
+            return back()->withErrors(['error' => 'Este pago ya fue aprobado o cuenta con recibo emitido; su método de pago es inmutable.']);
         }
 
-        $motivoBase = $metodoAnterior
-            ? 'Cambio de metodo de pago: '.strtoupper($metodoAnterior).' -> '.strtoupper($nuevoMetodo).'.'
-            : 'Asignacion de metodo de pago: '.strtoupper($nuevoMetodo).'.';
-        $motivoLog = $observacion !== '' ? $motivoBase.' '.$observacion : $motivoBase;
-
-        DB::transaction(function () use ($pago, $nuevoMetodo, $observacion, $pagoService, $request, $motivoLog): void {
-            $pago->metodo_pago = $nuevoMetodo;
-            if ($observacion !== '') {
-                $pago->observacion_admin = $observacion;
-            }
-            $pago->save();
-
-            $pagoService->registrarLog(
+        try {
+            $pagoService->actualizarMetodoAdministrativo(
                 pago: $pago,
-                estadoAnterior: $pago->estado,
-                estadoNuevo: $pago->estado,
-                actor: $request->user(),
-                motivo: $motivoLog
+                nuevoMetodo: $nuevoMetodo,
+                observacion: $observacion,
+                actor: $request->user()
             );
-        });
+        } catch (\InvalidArgumentException $e) {
+            return back()->withErrors(['error' => $e->getMessage()]);
+        }
 
         return back()->with('success', 'Metodo de pago actualizado.');
     }
@@ -173,18 +171,32 @@ class PagoController extends Controller
         }
 
         if (empty($pago->metodo_pago)) {
-            return back()->withErrors(['error' => 'Debe asignar metodo de pago antes de aprobar.']);
+            return redirect()
+                ->route('admin.pagos.show', $pago)
+                ->withErrors(['error' => 'Debe asignar un método de pago antes de aprobar.']);
         }
         if ($pago->metodo_pago === Pago::METODO_TRANSFERENCIA && ! $pago->comprobante_path) {
-            return back()->withErrors(['error' => 'No se puede aprobar transferencia sin comprobante adjunto.']);
+            return redirect()
+                ->route('admin.pagos.show', $pago)
+                ->withErrors(['error' => 'No se puede aprobar una transferencia sin comprobante adjunto.']);
         }
 
-        $pagoService->cambiarEstado(
-            pago: $pago,
-            nuevoEstado: $pago->administrativeTargetState(Pago::ADMIN_ACTION_APROBAR) ?? Pago::ESTADO_PAGADO,
-            actor: $request->user(),
-            motivo: $request->validated('observacion_admin')
-        );
+        try {
+            $pagoService->cambiarEstado(
+                pago: $pago,
+                nuevoEstado: $pago->administrativeTargetState(Pago::ADMIN_ACTION_APROBAR) ?? Pago::ESTADO_PAGADO,
+                actor: $request->user(),
+                motivo: $request->validated('observacion_admin')
+            );
+        } catch (\InvalidArgumentException $e) {
+            return redirect()
+                ->route('admin.pagos.show', $pago)
+                ->withErrors(['error' => $e->getMessage()]);
+        } catch (\RuntimeException $e) {
+            return redirect()
+                ->route('admin.pagos.show', $pago)
+                ->withErrors(['error' => $e->getMessage()]);
+        }
 
         return redirect()
             ->route('admin.pagos.show', $pago)
@@ -197,12 +209,18 @@ class PagoController extends Controller
             return $this->rejectAdministrativeTransition($pago);
         }
 
-        $pagoService->cambiarEstado(
-            pago: $pago,
-            nuevoEstado: $pago->administrativeTargetState(Pago::ADMIN_ACTION_RECHAZAR) ?? Pago::ESTADO_RECHAZADO,
-            actor: $request->user(),
-            motivo: $request->validated('observacion_admin')
-        );
+        try {
+            $pagoService->cambiarEstado(
+                pago: $pago,
+                nuevoEstado: $pago->administrativeTargetState(Pago::ADMIN_ACTION_RECHAZAR) ?? Pago::ESTADO_RECHAZADO,
+                actor: $request->user(),
+                motivo: $request->validated('observacion_admin')
+            );
+        } catch (\InvalidArgumentException $e) {
+            return redirect()
+                ->route('admin.pagos.show', $pago)
+                ->withErrors(['error' => $e->getMessage()]);
+        }
 
         return redirect()
             ->route('admin.pagos.show', $pago)
@@ -215,12 +233,18 @@ class PagoController extends Controller
             return $this->rejectAdministrativeTransition($pago);
         }
 
-        $pagoService->cambiarEstado(
-            pago: $pago,
-            nuevoEstado: $pago->administrativeTargetState(Pago::ADMIN_ACTION_ANULAR) ?? Pago::ESTADO_ANULADO,
-            actor: $request->user(),
-            motivo: $request->validated('observacion_admin')
-        );
+        try {
+            $pagoService->cambiarEstado(
+                pago: $pago,
+                nuevoEstado: $pago->administrativeTargetState(Pago::ADMIN_ACTION_ANULAR) ?? Pago::ESTADO_ANULADO,
+                actor: $request->user(),
+                motivo: $request->validated('observacion_admin')
+            );
+        } catch (\InvalidArgumentException $e) {
+            return redirect()
+                ->route('admin.pagos.show', $pago)
+                ->withErrors(['error' => $e->getMessage()]);
+        }
 
         return redirect()
             ->route('admin.pagos.show', $pago)

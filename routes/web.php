@@ -688,16 +688,11 @@ Route::middleware(['auth', 'role:laboratorio'])->prefix('laboratorio')->name('la
     Route::get('/pedidos/{pedido}/resultados/descargar', [LaboratorioPedidoResultadoController::class, 'download'])
         ->whereNumber('pedido')->name('pedidos.resultados.download');
 
-    // Administración institucional del catálogo de laboratorio (66 exámenes)
-    Route::get('/catalogo', [\App\Http\Controllers\Laboratorio\CatalogoLaboratorioController::class, 'index'])->name('catalogo.index');
-    Route::get('/catalogo/{exam}/editar', [\App\Http\Controllers\Laboratorio\CatalogoLaboratorioController::class, 'edit'])->name('catalogo.edit');
-    Route::put('/catalogo/{exam}', [\App\Http\Controllers\Laboratorio\CatalogoLaboratorioController::class, 'update'])->name('catalogo.update');
 
 });
 
 // =========================== LOGOUT ==========================
 Route::post('/salir', [PublicPageController::class, 'logout'])->name('salir');
-Route::get('/salir', [PublicPageController::class, 'logout'])->name('salir.get');
 
 // =========================== CHATBOT ===========================
 // 1. CAPTCHA public endpoints (with strict throttles)
@@ -730,12 +725,6 @@ Route::middleware(['captcha_verified'])->group(function () {
         ->name('chatbot.registrarUsuario');
 });
 
-// Agendar: supports both guest (captcha verified) and OTP-identified session flows.
-// Deliberately kept outside captcha_verified group so the OTP session can access it directly.
-Route::post('/chatbot/agendar', [ChatBotController::class, 'agendar'])
-    ->middleware('throttle:chatbot.message')
-    ->name('chatbot.agendar');
-
 // Session cleanup (widget reset)
 Route::post('/chatbot/finalizar', [ChatBotController::class, 'finalizar'])
     ->name('chatbot.finalizar');
@@ -743,6 +732,7 @@ Route::post('/chatbot/finalizar', [ChatBotController::class, 'finalizar'])
 
 // 3. Chatbot Transactional/Patient endpoints (protected by Identity OTP, throttle message)
 Route::middleware(['chatbot_identity', 'throttle:chatbot.message'])->group(function () {
+    Route::post('/chatbot/agendar', [ChatBotController::class, 'agendar'])->name('chatbot.agendar');
     Route::get('/chatbot/especialidades', [ChatBotController::class, 'especialidades'])->name('chatbot.especialidades');
     Route::get('/chatbot/especialidades/{especialidad}/doctores', [ChatBotController::class, 'doctoresPorEspecialidad'])
         ->whereNumber('especialidad')

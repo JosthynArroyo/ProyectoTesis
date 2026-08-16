@@ -196,6 +196,23 @@ class Pago extends Model
         ], true);
     }
 
+    public function esEditableFinancieramente(): bool
+    {
+        if (in_array($this->estado, [self::ESTADO_PAGADO, self::ESTADO_ANULADO], true)) {
+            return false;
+        }
+
+        if ($this->relationLoaded('receipt')) {
+            if ($this->receipt !== null) {
+                return false;
+            }
+        } elseif ($this->receipt()->exists()) {
+            return false;
+        }
+
+        return true;
+    }
+
     public function availableAdministrativeActions(): array
     {
         return array_keys(self::ADMINISTRATIVE_TRANSITIONS[$this->estado] ?? []);

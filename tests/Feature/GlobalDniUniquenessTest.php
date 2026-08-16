@@ -11,6 +11,7 @@ use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class GlobalDniUniquenessTest extends TestCase
@@ -41,7 +42,8 @@ class GlobalDniUniquenessTest extends TestCase
         $this->titular->roles()->attach($this->rolePaciente);
     }
 
-    /** @test 1. Mandatory Case: Crear un dependiente con la cédula del titular */
+    /** 1. Mandatory Case: Crear un dependiente con la cédula del titular */
+    #[Test]
     public function mandatory_case_cannot_create_dependent_with_titular_dni()
     {
         $response = $this->actingAs($this->titular)->post(route('paciente.dependientes.store'), [
@@ -62,7 +64,8 @@ class GlobalDniUniquenessTest extends TestCase
         $this->assertEquals(1, User::where('dni', '1754504635')->count() + Dependiente::where('dni', '1754504635')->count());
     }
 
-    /** @test 2. Cédula de 10 dígitos sin verificar checksum ecuatoriano es aceptada */
+    /** 2. Cédula de 10 dígitos sin verificar checksum ecuatoriano es aceptada */
+    #[Test]
     public function cedula_10_digits_without_checksum_is_accepted()
     {
         $response = $this->actingAs($this->titular)->post(route('paciente.dependientes.store'), [
@@ -78,7 +81,8 @@ class GlobalDniUniquenessTest extends TestCase
         $this->assertDatabaseHas('dependientes', ['nombre' => 'Mateo Válido', 'dni' => '1721820659']);
     }
 
-    /** @test 3. Cédula que no contenga exactamente 10 dígitos es rechazada */
+    /** 3. Cédula que no contenga exactamente 10 dígitos es rechazada */
+    #[Test]
     public function cedula_not_10_digits_is_rejected()
     {
         $response = $this->actingAs($this->titular)->post(route('paciente.dependientes.store'), [
@@ -95,7 +99,8 @@ class GlobalDniUniquenessTest extends TestCase
         });
     }
 
-    /** @test 4. Pasaporte requiere nacionalidad y formato válido de 5 a 20 caracteres */
+    /** 4. Pasaporte requiere nacionalidad y formato válido de 5 a 20 caracteres */
+    #[Test]
     public function passport_requires_nationality_and_valid_format()
     {
         // Sin nacionalidad
@@ -123,7 +128,8 @@ class GlobalDniUniquenessTest extends TestCase
         });
     }
 
-    /** @test 5. Pasaportes de distintos países pueden compartir número, pero del mismo país son únicos */
+    /** 5. Pasaportes de distintos países pueden compartir número, pero del mismo país son únicos */
+    #[Test]
     public function passport_uniqueness_is_scoped_by_nationality()
     {
         // Crear pasaporte de Colombia
@@ -162,7 +168,8 @@ class GlobalDniUniquenessTest extends TestCase
         $this->assertDatabaseHas('dependientes', ['nombre' => 'Peruano Con Mismo Numero', 'nacionalidad' => 'PE', 'dni' => 'PAS12345']);
     }
 
-    /** @test 6. Chatbot con cédula existente */
+    /** 6. Chatbot con cédula existente */
+    #[Test]
     public function chatbot_rejects_duplicate_dni()
     {
         $this->withoutMiddleware([\App\Http\Middleware\EnsureCaptchaVerified::class]);
@@ -179,7 +186,8 @@ class GlobalDniUniquenessTest extends TestCase
         $response->assertJsonValidationErrors(['cedula']);
     }
 
-    /** @test 7. Editar una persona conservando su propia cédula */
+    /** 7. Editar una persona conservando su propia cédula */
+    #[Test]
     public function person_can_keep_own_dni_when_editing()
     {
         $response = $this->actingAs($this->titular)->post(route('paciente.perfil.update'), [
@@ -197,7 +205,8 @@ class GlobalDniUniquenessTest extends TestCase
         $this->assertEquals('Josthyn Arroyo Modificado', $this->titular->fresh()->name);
     }
 
-    /** @test 8. DB-level unique constraint prevents duplicate insertion */
+    /** 8. DB-level unique constraint prevents duplicate insertion */
+    #[Test]
     public function database_unique_constraint_prevents_duplicate_insertion()
     {
         $this->expectException(\Throwable::class);

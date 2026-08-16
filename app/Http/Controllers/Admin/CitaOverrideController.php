@@ -114,52 +114,83 @@ class CitaOverrideController extends Controller
             return back()->withErrors([$validationError['field'] => $validationError['message']])->withInput();
         }
 
+        $citaResult = null;
         try {
-            DB::beginTransaction();
+            $citaResult = DB::transaction(function () use (
+                $data, $slot, $priorityEvaluator, $scheduleService, $pagoService,
+                $isLab, $motivoConsulta, $bloqueado, $forzarBloqueo, $request
+            ) {
+                // 1. Bloqueo estable por fila del profesional para serializar solicitudes concurrentes sobre la misma agenda
+                User::query()->whereKey((int) $data['doctor_id'])->lockForUpdate()->firstOrFail();
 
-            $cita = Cita::query()->create([
-                'paciente_id' => $data['paciente_id'],
-                'doctor_id' => $data['doctor_id'],
-                'especialidad_id' => $data['especialidad_id'],
-                'fecha' => $data['fecha'],
-                'hora' => $slot->format('H:i:00'),
-                'motivo_consulta' => $motivoConsulta,
-                'estado' => Cita::ESTADO_PENDIENTE,
-                'activo' => true,
-            ]);
-            $priorityEvaluator->apply($cita);
-            $cita->save();
+                // 2. Determinar intervalo del horario o usar default 30
+                $schedule = $scheduleService->findScheduleForSlot((int) $data['doctor_id'], (string) $data['fecha'], $slot);
+                $interval = $schedule ? $scheduleService->intervalMinutes($schedule) : 30;
 
-            if ($isLab) {
-                LaboratorioOrden::query()->create([
-                    'cita_id' => $cita->id,
-                    'solicitante_id' => Auth::id(),
-                    'origen' => 'doctor',
-                    'prioridad' => $request->input('prioridad', 'normal'),
-                    'tipo_examen' => $request->input('tipo_examen'),
-                    'indicaciones' => $request->input('indicaciones'),
-                    'preparacion' => $request->input('preparacion'),
-                    'estado' => LaboratorioOrden::ESTADO_CITA_PROGRAMADA,
-                ]);
-            }
-
-            if ($bloqueado && $forzarBloqueo) {
-                $pagoService->registrarOverrideAgendamiento(
-                    pacienteId: (int) $data['paciente_id'],
-                    actor: $request->user(),
-                    citaId: (int) $cita->id,
-                    motivo: $data['override_reason'] ?? null
+                // 3. Revalidación definitiva de conflicto con estado fresco de BD bajo lock
+                $conflict = $scheduleService->hasConflict(
+                    professionalId: (int) $data['doctor_id'],
+                    date: (string) $data['fecha'],
+                    slot: $slot,
+                    interval: $interval
                 );
-            }
 
-            DB::commit();
+                if ($conflict) {
+                    throw new \DomainException(
+                        $isLab
+                            ? 'El laboratorio ya tiene una cita en ese horario o intervalo inmediato.'
+                            : 'El profesional ya tiene una cita en ese horario o intervalo inmediato. Selecciona otro horario disponible.'
+                    );
+                }
+
+                $cita = Cita::query()->create([
+                    'paciente_id' => $data['paciente_id'],
+                    'doctor_id' => $data['doctor_id'],
+                    'especialidad_id' => $data['especialidad_id'],
+                    'fecha' => $data['fecha'],
+                    'hora' => $slot->format('H:i:00'),
+                    'motivo_consulta' => $motivoConsulta,
+                    'estado' => Cita::ESTADO_PENDIENTE,
+                    'activo' => true,
+                ]);
+                $priorityEvaluator->apply($cita);
+                $cita->save();
+
+                if ($isLab) {
+                    LaboratorioOrden::query()->create([
+                        'cita_id' => $cita->id,
+                        'solicitante_id' => Auth::id(),
+                        'origen' => 'doctor',
+                        'prioridad' => $request->input('prioridad', 'normal'),
+                        'tipo_examen' => $request->input('tipo_examen'),
+                        'indicaciones' => $request->input('indicaciones'),
+                        'preparacion' => $request->input('preparacion'),
+                        'estado' => LaboratorioOrden::ESTADO_CITA_PROGRAMADA,
+                    ]);
+                }
+
+                if ($bloqueado && $forzarBloqueo) {
+                    $pagoService->registrarOverrideAgendamiento(
+                        pacienteId: (int) $data['paciente_id'],
+                        actor: $request->user(),
+                        citaId: (int) $cita->id,
+                        motivo: $data['override_reason'] ?? null
+                    );
+                }
+
+                return $cita;
+            });
+        } catch (\DomainException $e) {
+            return back()->withErrors([
+                'hora' => $e->getMessage(),
+            ])->withInput();
         } catch (QueryException $e) {
-            DB::rollBack();
-
             return back()->withErrors([
                 'hora' => 'El horario seleccionado ya fue ocupado por otra cita.',
             ])->withInput();
         }
+
+        $cita = $citaResult;
 
         try {
             event(new CitaAgendada($cita));

@@ -149,6 +149,110 @@ class ChatbotIdentityFlowTest extends TestCase
         $this->assertGreaterThan(0, (int) $second->json('retry_after'));
     }
 
+    public function test_verificar_paciente_rechaza_cuenta_inactiva_bloqueada_o_suspendida(): void
+    {
+        $rolPaciente = Role::firstOrCreate(['name' => 'paciente']);
+
+        // Inactive patient
+        $inactivo = User::factory()->create([
+            'dni' => '1111111111',
+            'email' => 'inactivo@example.com',
+            'status' => User::STATUS_INACTIVE,
+        ]);
+        $inactivo->roles()->attach($rolPaciente->id);
+
+        $resInactivo = $this->postJson(route('chatbot.verificarPaciente'), [
+            'cedula' => '1111111111',
+        ]);
+        $resInactivo->assertStatus(403)
+            ->assertJsonPath('ok', false)
+            ->assertJsonPath('error', 'user_inactive');
+
+        // Blocked patient
+        $bloqueado = User::factory()->create([
+            'dni' => '2222222222',
+            'email' => 'bloqueado@example.com',
+            'status' => User::STATUS_BLOCKED,
+        ]);
+        $bloqueado->roles()->attach($rolPaciente->id);
+
+        $resBloqueado = $this->postJson(route('chatbot.verificarPaciente'), [
+            'cedula' => '2222222222',
+        ]);
+        $resBloqueado->assertStatus(403)
+            ->assertJsonPath('ok', false)
+            ->assertJsonPath('error', 'user_inactive');
+
+        // Suspended patient
+        $suspendido = User::factory()->create([
+            'dni' => '3333333333',
+            'email' => 'suspendido@example.com',
+            'status' => User::STATUS_ACTIVE,
+            'suspended_until' => now()->addDays(5),
+        ]);
+        $suspendido->roles()->attach($rolPaciente->id);
+
+        $resSuspendido = $this->postJson(route('chatbot.verificarPaciente'), [
+            'cedula' => '3333333333',
+        ]);
+        $resSuspendido->assertStatus(403)
+            ->assertJsonPath('ok', false)
+            ->assertJsonPath('error', 'user_inactive');
+    }
+
+    public function test_enviar_codigo_rechaza_cuenta_no_activa(): void
+    {
+        $rolPaciente = Role::firstOrCreate(['name' => 'paciente']);
+
+        $inactivo = User::factory()->create([
+            'dni' => '4444444444',
+            'email' => 'inactivo.otp@example.com',
+            'status' => User::STATUS_INACTIVE,
+        ]);
+        $inactivo->roles()->attach($rolPaciente->id);
+
+        $response = $this->postJson(route('chatbot.enviarCodigo'), [
+            'cedula' => '4444444444',
+            'email' => 'inactivo.otp@example.com',
+        ]);
+
+        $response->assertStatus(403)
+            ->assertJsonPath('ok', false)
+            ->assertJsonPath('error', 'user_inactive');
+    }
+
+    public function test_verificar_codigo_rechaza_si_cuenta_fue_suspendida_despues_de_solicitar_otp(): void
+    {
+        $rolPaciente = Role::firstOrCreate(['name' => 'paciente']);
+
+        $paciente = User::factory()->create([
+            'dni' => '5555555555',
+            'email' => 'paciente.susp@example.com',
+            'status' => User::STATUS_ACTIVE,
+        ]);
+        $paciente->roles()->attach($rolPaciente->id);
+
+        $otpKey = $this->otpCacheKey($paciente->dni, $paciente->email);
+        Cache::put($otpKey, '123456', now()->addMinutes(10));
+
+        // Admin suspends account at T1
+        $paciente->update(['status' => User::STATUS_BLOCKED]);
+
+        // Patient submits valid OTP at T2
+        $response = $this->postJson(route('chatbot.verificarCodigo'), [
+            'cedula' => $paciente->dni,
+            'email' => $paciente->email,
+            'codigo' => '123456',
+        ]);
+
+        $response->assertStatus(403)
+            ->assertJsonPath('ok', false)
+            ->assertJsonPath('error', 'user_inactive');
+
+        $this->assertFalse(session()->has(ChatbotSessionKeys::SESSION_CHATBOT_OTP_VERIFIED));
+        $this->assertFalse(session()->has(ChatbotSessionKeys::SESSION_CHATBOT_USER_ID));
+    }
+
     private function otpCacheKey(string $cedula, string $email): string
     {
         $emailHash = hash('sha256', strtolower(trim($email)));

@@ -96,7 +96,7 @@ class PaymentReceiptR2StorageTest extends TestCase
 
         $receipt = PaymentReceipt::where('pago_id', $pago->id)->firstOrFail();
         $this->assertEquals('r2_private', $receipt->pdf_disk);
-        $this->assertStringStartsWith("documents/payment-receipts/{$receipt->id}/", $receipt->pdf_path);
+        $this->assertStringStartsWith("documents/payment-receipts/{$receipt->pago_id}/", $receipt->pdf_path);
         $this->assertTrue(Storage::disk('r2_private')->exists($receipt->pdf_path));
     }
 
@@ -110,7 +110,7 @@ class PaymentReceiptR2StorageTest extends TestCase
         $this->actingAs($admin)->post(route('admin.pagos.aprobar', $pago));
         $receipt = PaymentReceipt::where('pago_id', $pago->id)->firstOrFail();
 
-        $r2Files = Storage::disk('r2_private')->allFiles("documents/payment-receipts/{$receipt->id}");
+        $r2Files = Storage::disk('r2_private')->allFiles("documents/payment-receipts/{$receipt->pago_id}");
         $this->assertCount(1, $r2Files);
         $this->assertEquals($receipt->pdf_path, $r2Files[0]);
     }
@@ -211,7 +211,7 @@ class PaymentReceiptR2StorageTest extends TestCase
             // Expected
         }
 
-        $allR2Files = Storage::disk('r2_private')->allFiles("documents/payment-receipts/{$receipt->id}");
+        $allR2Files = Storage::disk('r2_private')->allFiles("documents/payment-receipts/{$receipt->pago_id}");
         $this->assertCount(0, $allR2Files);
     }
 
@@ -519,5 +519,352 @@ class PaymentReceiptR2StorageTest extends TestCase
         $resIndex = $this->actingAs($paciente)->get(route('paciente.pagos.index'));
         $resIndex->assertDontSee('r2.dev');
         $resIndex->assertDontSee($receipt->pdf_path);
+    }
+
+    /**
+     * CASO 1 — put() retorna false
+     */
+    public function test_caso_1_put_returns_false_does_not_assume_upload_and_fails_safely(): void
+    {
+        $paciente = $this->createRoleUser('paciente');
+        $pago = $this->createPagoForPatient($paciente);
+        $receipt = new PaymentReceipt(['pago_id' => $pago->id, 'folio_recibo' => 'TEST-01']);
+
+        $service = app(PaymentReceiptDocumentService::class);
+        $docService = app(\App\Services\PagoDocumentoService::class);
+
+        $diskMock = \Mockery::mock(\Illuminate\Contracts\Filesystem\Filesystem::class);
+        $diskMock->shouldReceive('put')->once()->andReturn(false);
+        $diskMock->shouldReceive('delete')->never();
+        Storage::shouldReceive('disk')->with('r2_private')->andReturn($diskMock);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('No se pudo guardar el PDF del recibo en almacenamiento R2');
+
+        $service->generateAndStoreReceiptPdfContentOnly($pago, $receipt, $docService);
+    }
+
+    /**
+     * CASO 2 (Hallazgo exacto) — put() true + exists() false ejecuta delete(newKey) incondicionalmente
+     */
+    public function test_caso_2_put_true_exists_false_executes_delete_on_exact_key(): void
+    {
+        $paciente = $this->createRoleUser('paciente');
+        $pago = $this->createPagoForPatient($paciente);
+        $receipt = new PaymentReceipt(['pago_id' => $pago->id, 'folio_recibo' => 'TEST-02']);
+
+        $service = app(PaymentReceiptDocumentService::class);
+        $docService = app(\App\Services\PagoDocumentoService::class);
+
+        $diskMock = \Mockery::mock(\Illuminate\Contracts\Filesystem\Filesystem::class);
+        $capturedKey = null;
+
+        $diskMock->shouldReceive('put')->once()->with(\Mockery::on(function ($key) use (&$capturedKey, $pago) {
+            $capturedKey = $key;
+            return str_starts_with($key, "documents/payment-receipts/{$pago->id}/");
+        }), \Mockery::type('string'))->andReturn(true);
+
+        // exists() retorna false (el hallazgo exacto)
+        $diskMock->shouldReceive('exists')->once()->andReturn(false);
+
+        // delete() es invocado exactamente 1 vez con la key capturada
+        $diskMock->shouldReceive('delete')->once()->with(\Mockery::on(function ($k) use (&$capturedKey) {
+            return $k === $capturedKey;
+        }))->andReturn(true);
+
+        Storage::shouldReceive('disk')->with('r2_private')->andReturn($diskMock);
+
+        try {
+            $service->generateAndStoreReceiptPdfContentOnly($pago, $receipt, $docService);
+            $this->fail('Debió lanzar excepción de verificación');
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString('no se encuentra en R2', $e->getMessage());
+        }
+
+        $this->assertNotNull($capturedKey);
+    }
+
+    /**
+     * CASO 3 — put() true + exists() lanza Throwable -> delete_calls = 1
+     */
+    public function test_caso_3_put_true_exists_throws_executes_delete(): void
+    {
+        $paciente = $this->createRoleUser('paciente');
+        $pago = $this->createPagoForPatient($paciente);
+        $receipt = new PaymentReceipt(['pago_id' => $pago->id, 'folio_recibo' => 'TEST-03']);
+
+        $service = app(PaymentReceiptDocumentService::class);
+        $docService = app(\App\Services\PagoDocumentoService::class);
+
+        $diskMock = \Mockery::mock(\Illuminate\Contracts\Filesystem\Filesystem::class);
+        $capturedKey = null;
+
+        $diskMock->shouldReceive('put')->once()->with(\Mockery::on(function ($key) use (&$capturedKey) {
+            $capturedKey = $key;
+            return true;
+        }), \Mockery::type('string'))->andReturn(true);
+
+        $diskMock->shouldReceive('exists')->once()->andThrow(new \RuntimeException('Network timeout on exists'));
+        $diskMock->shouldReceive('delete')->once()->with(\Mockery::on(function ($k) use (&$capturedKey) {
+            return $k === $capturedKey;
+        }))->andReturn(true);
+
+        Storage::shouldReceive('disk')->with('r2_private')->andReturn($diskMock);
+
+        try {
+            $service->generateAndStoreReceiptPdfContentOnly($pago, $receipt, $docService);
+            $this->fail('Debió lanzar excepción');
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString('Network timeout on exists', $e->getMessage());
+        }
+    }
+
+    /**
+     * CASO 4 — put() true + exists() true + size() falla/lanza -> delete_calls = 1
+     */
+    public function test_caso_4_put_true_size_failure_executes_delete(): void
+    {
+        $paciente = $this->createRoleUser('paciente');
+        $pago = $this->createPagoForPatient($paciente);
+        $receipt = new PaymentReceipt(['pago_id' => $pago->id, 'folio_recibo' => 'TEST-04']);
+
+        $service = app(PaymentReceiptDocumentService::class);
+        $docService = app(\App\Services\PagoDocumentoService::class);
+
+        $diskMock = \Mockery::mock(\Illuminate\Contracts\Filesystem\Filesystem::class);
+        $capturedKey = null;
+
+        $diskMock->shouldReceive('put')->once()->with(\Mockery::on(function ($key) use (&$capturedKey) {
+            $capturedKey = $key;
+            return true;
+        }), \Mockery::type('string'))->andReturn(true);
+
+        $diskMock->shouldReceive('exists')->once()->andReturn(true);
+        $diskMock->shouldReceive('size')->once()->andReturn(0); // Tamaño inválido
+        $diskMock->shouldReceive('delete')->once()->with(\Mockery::on(function ($k) use (&$capturedKey) {
+            return $k === $capturedKey;
+        }))->andReturn(true);
+
+        Storage::shouldReceive('disk')->with('r2_private')->andReturn($diskMock);
+
+        try {
+            $service->generateAndStoreReceiptPdfContentOnly($pago, $receipt, $docService);
+            $this->fail('Debió lanzar excepción');
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString('Inconsistencia en el tamaño', $e->getMessage());
+        }
+    }
+
+    /**
+     * CASO 5 — put() true + exists() true + size() ok + get() lanza -> delete_calls = 1
+     */
+    public function test_caso_5_put_true_get_throws_executes_delete(): void
+    {
+        $paciente = $this->createRoleUser('paciente');
+        $pago = $this->createPagoForPatient($paciente);
+        $receipt = new PaymentReceipt(['pago_id' => $pago->id, 'folio_recibo' => 'TEST-05']);
+
+        $service = app(PaymentReceiptDocumentService::class);
+        $docMock = $this->createMock(\App\Services\PagoDocumentoService::class);
+        $dummyPdf = '%PDF-1.4 DUMMY PDF CONTENT FOR TESTING';
+        $docMock->method('generarReciboPagoPdfContent')->willReturn($dummyPdf);
+
+        $diskMock = \Mockery::mock(\Illuminate\Contracts\Filesystem\Filesystem::class);
+        $capturedKey = null;
+
+        $diskMock->shouldReceive('put')->once()->with(\Mockery::on(function ($key) use (&$capturedKey) {
+            $capturedKey = $key;
+            return true;
+        }), \Mockery::type('string'))->andReturn(true);
+
+        $diskMock->shouldReceive('exists')->once()->andReturn(true);
+        $diskMock->shouldReceive('size')->once()->andReturn(strlen($dummyPdf));
+        $diskMock->shouldReceive('get')->once()->andThrow(new \RuntimeException('Connection aborted during get'));
+        $diskMock->shouldReceive('delete')->once()->with(\Mockery::on(function ($k) use (&$capturedKey) {
+            return $k === $capturedKey;
+        }))->andReturn(true);
+
+        Storage::shouldReceive('disk')->with('r2_private')->andReturn($diskMock);
+
+        try {
+            $service->generateAndStoreReceiptPdfContentOnly($pago, $receipt, $docMock);
+            $this->fail('Debió lanzar excepción');
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString('Connection aborted during get', $e->getMessage());
+        }
+    }
+
+    /**
+     * CASO 6 — put() true + contenido inválido (no empieza con %PDF-) -> delete_calls = 1
+     */
+    public function test_caso_6_put_true_corrupted_header_executes_delete(): void
+    {
+        $paciente = $this->createRoleUser('paciente');
+        $pago = $this->createPagoForPatient($paciente);
+        $receipt = new PaymentReceipt(['pago_id' => $pago->id, 'folio_recibo' => 'TEST-06']);
+
+        $service = app(PaymentReceiptDocumentService::class);
+        $docMock = $this->createMock(\App\Services\PagoDocumentoService::class);
+        $dummyPdf = '%PDF-1.4 DUMMY PDF CONTENT FOR TESTING';
+        $docMock->method('generarReciboPagoPdfContent')->willReturn($dummyPdf);
+
+        $diskMock = \Mockery::mock(\Illuminate\Contracts\Filesystem\Filesystem::class);
+        $capturedKey = null;
+
+        $diskMock->shouldReceive('put')->once()->with(\Mockery::on(function ($key) use (&$capturedKey) {
+            $capturedKey = $key;
+            return true;
+        }), \Mockery::type('string'))->andReturn(true);
+
+        $diskMock->shouldReceive('exists')->once()->andReturn(true);
+        $diskMock->shouldReceive('size')->once()->andReturn(strlen($dummyPdf));
+        $diskMock->shouldReceive('get')->once()->andReturn('HTML CORRUPT CONTENT');
+        $diskMock->shouldReceive('delete')->once()->with(\Mockery::on(function ($k) use (&$capturedKey) {
+            return $k === $capturedKey;
+        }))->andReturn(true);
+
+        Storage::shouldReceive('disk')->with('r2_private')->andReturn($diskMock);
+
+        try {
+            $service->generateAndStoreReceiptPdfContentOnly($pago, $receipt, $docMock);
+            $this->fail('Debió lanzar excepción');
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString('no es un PDF valido', $e->getMessage());
+        }
+    }
+
+    /**
+     * CASO 7 — Todo correcto: delete_calls = 0, retorna newKey y objeto permanece
+     */
+    public function test_caso_7_all_verifications_pass_returns_key_without_deletion(): void
+    {
+        $paciente = $this->createRoleUser('paciente');
+        $pago = $this->createPagoForPatient($paciente);
+        $receipt = new PaymentReceipt(['pago_id' => $pago->id, 'folio_recibo' => 'TEST-07']);
+
+        $service = app(PaymentReceiptDocumentService::class);
+        $docService = app(\App\Services\PagoDocumentoService::class);
+
+        $key = $service->generateAndStoreReceiptPdfContentOnly($pago, $receipt, $docService);
+
+        $this->assertNotNull($key);
+        $this->assertStringStartsWith("documents/payment-receipts/{$pago->id}/", $key);
+        $this->assertTrue(Storage::disk('r2_private')->exists($key));
+    }
+
+    /**
+     * CLEANUP FAIL — delete() también falla: preserva excepción primaria y no daña estado
+     */
+    public function test_cleanup_failure_preserves_primary_exception(): void
+    {
+        $paciente = $this->createRoleUser('paciente');
+        $pago = $this->createPagoForPatient($paciente);
+        $receipt = new PaymentReceipt(['pago_id' => $pago->id, 'folio_recibo' => 'TEST-CLEANUP-FAIL']);
+
+        $service = app(PaymentReceiptDocumentService::class);
+        $docService = app(\App\Services\PagoDocumentoService::class);
+
+        $diskMock = \Mockery::mock(\Illuminate\Contracts\Filesystem\Filesystem::class);
+        $capturedKey = null;
+
+        $diskMock->shouldReceive('put')->once()->with(\Mockery::on(function ($key) use (&$capturedKey) {
+            $capturedKey = $key;
+            return true;
+        }), \Mockery::type('string'))->andReturn(true);
+
+        $diskMock->shouldReceive('exists')->once()->andReturn(false); // Falla primaria
+        $diskMock->shouldReceive('delete')->once()->andThrow(new \RuntimeException('Delete failed due to S3 500')); // Cleanup falla
+
+        Storage::shouldReceive('disk')->with('r2_private')->andReturn($diskMock);
+
+        try {
+            $service->generateAndStoreReceiptPdfContentOnly($pago, $receipt, $docService);
+            $this->fail('Debió lanzar la excepción primaria');
+        } catch (\RuntimeException $e) {
+            // Debe preservar la causa primaria (exists), no ser sustituida silenciosamente por la de delete
+            $this->assertStringContainsString('no se encuentra en R2', $e->getMessage());
+        }
+    }
+
+    /**
+     * PDF PREVIO — Falla en nuevo intento NO borra el PDF previo legítimo
+     */
+    public function test_failed_attempt_does_not_delete_previous_valid_pdf(): void
+    {
+        $paciente = $this->createRoleUser('paciente');
+        $admin = $this->createRoleUser('administrador');
+        $pago = $this->createPagoForPatient($paciente);
+
+        // Aprobación inicial exitosa
+        $this->actingAs($admin)->post(route('admin.pagos.aprobar', $pago));
+        $receipt = PaymentReceipt::where('pago_id', $pago->id)->firstOrFail();
+        $previousKey = $receipt->pdf_path;
+        $this->assertTrue(Storage::disk('r2_private')->exists($previousKey));
+
+        // Intento fallido de regeneración
+        $service = app(PaymentReceiptDocumentService::class);
+
+        $tempReceipt = new PaymentReceipt(['pago_id' => $pago->id, 'folio_recibo' => 'TEMP']);
+
+        $failingDoc = $this->createMock(\App\Services\PagoDocumentoService::class);
+        $failingDoc->method('generarReciboPagoPdfContent')->willReturn('%PDF-invalid-size');
+
+        try {
+            $service->generateAndStoreReceiptPdfContentOnly($pago, $tempReceipt, $failingDoc);
+        } catch (\Throwable $e) {}
+
+        // El PDF previo legítimo sigue existiendo intacto
+        $this->assertTrue(Storage::disk('r2_private')->exists($previousKey));
+    }
+
+    /**
+     * RETRY — Intento 1 falla en verificación con cleanup -> Intento 2 triunfa -> exactamente 1 objeto válido
+     */
+    public function test_retry_after_verification_failure_leaves_exactly_one_valid_object(): void
+    {
+        $paciente = $this->createRoleUser('paciente');
+        $admin = $this->createRoleUser('administrador');
+        $pago = $this->createPagoForPatient($paciente);
+
+        $service = app(PaymentReceiptDocumentService::class);
+        $receipt = new PaymentReceipt(['pago_id' => $pago->id, 'folio_recibo' => 'RETRY-01']);
+
+        // Intento 1: falla verificación de tamaño con cleanup automático
+        $mockFailingDoc = $this->createMock(\App\Services\PagoDocumentoService::class);
+        $mockFailingDoc->method('generarReciboPagoPdfContent')->willReturn('%PDF-1.4 dummy content');
+
+        // Simulamos fallo antes de aprobación
+        $attempt1Key = null;
+        try {
+            $diskMock = \Mockery::mock(\Illuminate\Contracts\Filesystem\Filesystem::class);
+            $diskMock->shouldReceive('put')->once()->with(\Mockery::on(function ($k) use (&$attempt1Key) {
+                $attempt1Key = $k;
+                return true;
+            }), \Mockery::type('string'))->andReturn(true);
+            $diskMock->shouldReceive('exists')->once()->andReturn(true);
+            $diskMock->shouldReceive('size')->once()->andReturn(0); // Falla tamaño
+            $diskMock->shouldReceive('delete')->once()->with(\Mockery::on(function ($k) use (&$attempt1Key) {
+                return $k === $attempt1Key;
+            }))->andReturn(true);
+
+            Storage::shouldReceive('disk')->with('r2_private')->andReturn($diskMock);
+
+            $service->generateAndStoreReceiptPdfContentOnly($pago, $receipt, $mockFailingDoc);
+        } catch (\Throwable $e) {}
+
+        \Mockery::close();
+        $this->app->forgetInstance('filesystem');
+        \Illuminate\Support\Facades\Storage::clearResolvedInstances();
+        \Illuminate\Support\Facades\Storage::fake('r2_private');
+
+        // Intento 2: Aprobación HTTP normal
+        $pagoFresh = $this->createPagoForPatient($paciente);
+        $this->actingAs($admin)->post(route('admin.pagos.aprobar', $pagoFresh));
+
+        $freshReceipt = PaymentReceipt::where('pago_id', $pagoFresh->id)->firstOrFail();
+        $allFiles = Storage::disk('r2_private')->allFiles("documents/payment-receipts/{$pagoFresh->id}");
+
+        $this->assertCount(1, $allFiles);
+        $this->assertEquals($freshReceipt->pdf_path, $allFiles[0]);
     }
 }

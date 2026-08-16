@@ -3,11 +3,16 @@
 namespace Tests\Feature;
 
 use App\Events\CitaAgendada;
+use App\Http\Middleware\EnsureCaptchaVerified;
+use App\Http\Middleware\EnsureChatbotIdentityVerified;
 use App\Mail\CuentaCreadaDesdeChat;
+use App\Models\Cita;
+use App\Models\Dependiente;
 use App\Models\Especialidad;
 use App\Models\Horario;
 use App\Models\Role;
 use App\Models\User;
+use App\Support\ChatbotSessionKeys;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Event;
@@ -24,10 +29,8 @@ class ChatbotRegistrationCredentialsTest extends TestCase
     {
         parent::setUp();
         Carbon::setTestNow(Carbon::parse('2026-03-09 09:00:00', 'America/Guayaquil'));
-        $this->withoutMiddleware([
-            \App\Http\Middleware\EnsureCaptchaVerified::class,
-            \App\Http\Middleware\EnsureChatbotIdentityVerified::class,
-        ]);
+        Role::query()->firstOrCreate(['name' => 'paciente']);
+        Role::query()->firstOrCreate(['name' => 'doctor']);
     }
 
     protected function tearDown(): void
@@ -37,80 +40,126 @@ class ChatbotRegistrationCredentialsTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_chatbot_registers_user_immediately_when_requested(): void
+    /**
+     * Caso G: Registro mediante chatbot genera contraseña aleatoria segura (no la cédula),
+     * marca must_change_password => true y email_verified_at tras validar OTP.
+     */
+    public function test_chatbot_registers_user_with_secure_random_password_and_must_change_password(): void
     {
         Mail::fake();
-        Role::query()->firstOrCreate(['name' => 'paciente']);
 
         $payload = [
-            'nombre' => 'Paciente Registro',
+            'nombre' => 'Paciente Registro Seguro',
             'cedula' => '1234512345',
-            'email' => 'paciente.registro@example.com',
+            'email' => 'paciente.seguro@example.com',
+            'telefono' => '0991234567',
         ];
 
-        $this->postJson(route('chatbot.registrarUsuario'), $payload)
-            ->assertOk()
+        $response = $this->withSession([
+            ChatbotSessionKeys::SESSION_VERIFIED => true,
+            ChatbotSessionKeys::SESSION_VERIFIED_AT => now()->timestamp,
+        ])->postJson(route('chatbot.registrarUsuario'), $payload);
+
+        $response->assertOk()
             ->assertJsonPath('ok', true)
-            ->assertJsonPath('usuario_creado', true)
-            ->assertJsonPath('credenciales_enviadas', true)
+            ->assertJsonPath('usuario_creado', false)
+            ->assertJsonPath('requiere_otp', true)
             ->assertJsonPath('paciente.email', $payload['email']);
+
+        // Antes de OTP no existe en BD
+        $this->assertDatabaseMissing('users', ['email' => $payload['email']]);
+
+        // Validar OTP
+        $emailHash = hash('sha256', strtolower(trim($payload['email'])));
+        $cacheKey = 'chatbot:codigo:' . sha1($payload['cedula'] . '|' . $emailHash);
+        $codigo = \Illuminate\Support\Facades\Cache::get($cacheKey);
+
+        $resVerificar = $this->postJson(route('chatbot.verificarCodigo'), [
+            'cedula' => $payload['cedula'],
+            'email' => $payload['email'],
+            'codigo' => $codigo,
+        ]);
+
+        $resVerificar->assertOk()
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('usuario_creado', true);
 
         $paciente = User::query()->where('email', $payload['email'])->firstOrFail();
 
         $this->assertSame($payload['cedula'], $paciente->dni);
         $this->assertTrue($paciente->hasRole('paciente'));
-        $this->assertTrue(Hash::check($payload['cedula'], $paciente->password));
+        $this->assertTrue((bool) $paciente->must_change_password, 'El usuario registrado debe tener must_change_password activado.');
+        $this->assertNotNull($paciente->email_verified_at);
+        $this->assertFalse(Hash::check($payload['cedula'], $paciente->password), 'La contraseña NUNCA debe ser la cédula.');
 
         Mail::assertSent(CuentaCreadaDesdeChat::class, function (CuentaCreadaDesdeChat $mail) use ($paciente, $payload) {
             return $mail->user->is($paciente)
-                && $mail->passwordPlano === $payload['cedula'];
+                && $mail->passwordPlano !== $payload['cedula']
+                && strlen($mail->passwordPlano) >= 12
+                && Hash::check($mail->passwordPlano, $paciente->password);
         });
     }
 
-    public function test_chatbot_agendar_reuses_previously_registered_user(): void
+    /**
+     * Prueba Caso 1 & Negativa:
+     * Registro de usuario nuevo sin completar OTP NO crea la cuenta en base de datos
+     * y /chatbot/agendar debe ser rechazado (401).
+     */
+    public function test_new_user_registration_without_otp_verification_does_not_create_db_user_and_cannot_schedule(): void
     {
-        Event::fake([CitaAgendada::class]);
         Mail::fake();
-        Queue::fake();
-
         [$doctor, $especialidad, $fecha] = $this->createDoctorWithAvailability();
 
-        $registro = [
-            'nombre' => 'Paciente Reutilizado',
-            'cedula' => '1010101010',
-            'email' => 'paciente.reutilizado@example.com',
+        $payloadRegistro = [
+            'nombre' => 'Paciente Sin Validar OTP',
+            'cedula' => '0912345678',
+            'email' => 'sin.otp@example.com',
+            'telefono' => '0998765432',
         ];
 
-        $this->postJson(route('chatbot.registrarUsuario'), $registro)
-            ->assertOk()
-            ->assertJsonPath('usuario_creado', true);
+        // 1. Pasa CAPTCHA y se registra
+        $resRegistro = $this->withSession([
+            ChatbotSessionKeys::SESSION_VERIFIED => true,
+            ChatbotSessionKeys::SESSION_VERIFIED_AT => now()->timestamp,
+        ])->postJson(route('chatbot.registrarUsuario'), $payloadRegistro);
 
-        $payload = [
-            'nombre' => $registro['nombre'],
-            'cedula' => $registro['cedula'],
-            'email' => $registro['email'],
-            'telefono' => '0991231234',
+        $resRegistro->assertOk()
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('usuario_creado', false)
+            ->assertJsonPath('requiere_otp', true);
+
+        // Confirmamos que el usuario NO existe aún en BD (evita account squatting)
+        $this->assertDatabaseMissing('users', ['email' => $payloadRegistro['email']]);
+        $this->assertDatabaseMissing('users', ['dni' => $payloadRegistro['cedula']]);
+
+        // 2. Intenta llamar a /chatbot/agendar directamente sin haber verificado el código OTP
+        $payloadAgendar = [
             'especialidad_id' => $especialidad->id,
             'doctor_id' => $doctor->id,
             'fecha' => $fecha,
             'hora' => '10:00',
-            'motivo' => 'Chequeo general',
-            'crear_usuario' => true,
+            'motivo_consulta' => 'Consulta no verificada',
         ];
 
-        $this->postJson(route('chatbot.agendar'), $payload)
-            ->assertOk()
-            ->assertJsonPath('ok', true)
-            ->assertJsonPath('usuario_creado', false)
-            ->assertJsonPath('credenciales_enviadas', false);
+        $resAgendar = $this->postJson(route('chatbot.agendar'), $payloadAgendar);
 
-        $paciente = User::query()->where('email', $registro['email'])->firstOrFail();
+        // Debe ser rechazado con 401
+        $resAgendar->assertStatus(401)
+            ->assertJsonPath('ok', false)
+            ->assertJsonPath('error', 'identity_required');
 
-        $this->assertSame('0991231234', $paciente->fresh()->telefono);
-        Mail::assertSent(CuentaCreadaDesdeChat::class, 1);
+        $this->assertDatabaseMissing('citas_medicas', [
+            'doctor_id' => $doctor->id,
+            'fecha' => $fecha,
+        ]);
     }
 
-    public function test_chatbot_creates_requested_access_with_email_and_cedula_as_initial_password(): void
+    /**
+     * Prueba Caso 2 & 3:
+     * Un intento abandonado o atacante no impide que el propietario legítimo complete
+     * el registro más tarde, y no se generan duplicados en la base de datos.
+     */
+    public function test_abandoned_unverified_registration_does_not_prevent_legitimate_registration_or_cause_duplicates(): void
     {
         Event::fake([CitaAgendada::class]);
         Mail::fake();
@@ -118,38 +167,365 @@ class ChatbotRegistrationCredentialsTest extends TestCase
 
         [$doctor, $especialidad, $fecha] = $this->createDoctorWithAvailability();
 
+        $cedula = '0923456789';
+        $email = 'duplicado.test@example.com';
+
+        // Intento 1: Registro abandonado sin OTP
+        $this->withSession([
+            ChatbotSessionKeys::SESSION_VERIFIED => true,
+            ChatbotSessionKeys::SESSION_VERIFIED_AT => now()->timestamp,
+        ])->postJson(route('chatbot.registrarUsuario'), [
+            'nombre' => 'Intento 1 Abandonado',
+            'cedula' => $cedula,
+            'email' => $email,
+            'telefono' => '0990000001',
+        ])->assertOk();
+
+        $this->assertDatabaseMissing('users', ['email' => $email]);
+
+        // Intento 2: Usuario legítimo completa el registro
+        $this->withSession([
+            ChatbotSessionKeys::SESSION_VERIFIED => true,
+            ChatbotSessionKeys::SESSION_VERIFIED_AT => now()->timestamp,
+        ])->postJson(route('chatbot.registrarUsuario'), [
+            'nombre' => 'Propietario Legítimo',
+            'cedula' => $cedula,
+            'email' => $email,
+            'telefono' => '0991122334',
+        ])->assertOk();
+
+        $emailHash = hash('sha256', strtolower(trim($email)));
+        $cacheKey = 'chatbot:codigo:' . sha1($cedula . '|' . $emailHash);
+        $codigo = \Illuminate\Support\Facades\Cache::get($cacheKey);
+
+        $this->assertNotNull($codigo);
+
+        // Valida OTP
+        $resVerificar = $this->postJson(route('chatbot.verificarCodigo'), [
+            'cedula' => $cedula,
+            'email' => $email,
+            'codigo' => $codigo,
+        ]);
+
+        $resVerificar->assertOk()
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('usuario_creado', true);
+
+        // Exactamente 1 usuario en BD
+        $this->assertSame(1, User::query()->where('email', $email)->count());
+        $paciente = User::query()->where('email', $email)->firstOrFail();
+        $this->assertSame('Propietario Legítimo', $paciente->name);
+        $this->assertSame('0991122334', $paciente->telefono);
+
+        // Puede agendar normalmente
+        $this->postJson(route('chatbot.agendar'), [
+            'especialidad_id' => $especialidad->id,
+            'doctor_id' => $doctor->id,
+            'fecha' => $fecha,
+            'hora' => '10:00',
+            'motivo_consulta' => 'Cita después de verificación completa',
+        ])->assertOk()
+            ->assertJsonPath('ok', true);
+
+        $this->assertDatabaseHas('citas_medicas', [
+            'paciente_id' => $paciente->id,
+            'doctor_id' => $doctor->id,
+            'fecha' => $fecha,
+        ]);
+    }
+
+    /**
+     * Prueba: Una cuenta no verificada (intento de registro sin OTP) no existe en BD
+     * y por tanto no puede autenticarse en el sistema ni actuar como cuenta activa.
+     */
+    public function test_unverified_registration_cannot_login_or_act_as_active_user(): void
+    {
+        Mail::fake();
+
+        $email = 'no.verificado@example.com';
+        $cedula = '1818181818';
+
+        $this->withSession([
+            ChatbotSessionKeys::SESSION_VERIFIED => true,
+            ChatbotSessionKeys::SESSION_VERIFIED_AT => now()->timestamp,
+        ])->postJson(route('chatbot.registrarUsuario'), [
+            'nombre' => 'No Verificado',
+            'cedula' => $cedula,
+            'email' => $email,
+            'telefono' => '0999999999',
+        ])->assertOk();
+
+        // El usuario NO existe en la base de datos
+        $this->assertDatabaseMissing('users', ['email' => $email]);
+
+        // Intento de login web no puede autenticar
+        $this->assertFalse(
+            \Illuminate\Support\Facades\Auth::attempt(['email' => $email, 'password' => 'CualquierPassword123!'])
+        );
+    }
+
+    /**
+     * Prueba Positiva Explícita:
+     * Registro de usuario nuevo + verificación OTP válida → /chatbot/agendar funciona exitosamente.
+     */
+    public function test_new_user_registration_with_valid_otp_verification_can_schedule_appointment(): void
+    {
+        Event::fake([CitaAgendada::class]);
+        Mail::fake();
+        Queue::fake();
+
+        [$doctor, $especialidad, $fecha] = $this->createDoctorWithAvailability();
+
+        $payloadRegistro = [
+            'nombre' => 'Paciente Nuevo Verificado',
+            'cedula' => '0923456789',
+            'email' => 'nuevo.verificado@example.com',
+            'telefono' => '0991122334',
+        ];
+
+        // 1. Pasa CAPTCHA y se registra
+        $resRegistro = $this->withSession([
+            ChatbotSessionKeys::SESSION_VERIFIED => true,
+            ChatbotSessionKeys::SESSION_VERIFIED_AT => now()->timestamp,
+        ])->postJson(route('chatbot.registrarUsuario'), $payloadRegistro);
+
+        $resRegistro->assertOk()
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('usuario_creado', false)
+            ->assertJsonPath('requiere_otp', true);
+
+        // 2. Recuperar el código OTP generado en caché para este usuario
+        $emailHash = hash('sha256', strtolower(trim($payloadRegistro['email'])));
+        $cacheKey = 'chatbot:codigo:' . sha1($payloadRegistro['cedula'] . '|' . $emailHash);
+        $codigo = \Illuminate\Support\Facades\Cache::get($cacheKey);
+
+        $this->assertNotNull($codigo, 'El código OTP debe haberse generado en caché.');
+
+        // 3. Validar el código OTP
+        $resVerificar = $this->postJson(route('chatbot.verificarCodigo'), [
+            'cedula' => $payloadRegistro['cedula'],
+            'email' => $payloadRegistro['email'],
+            'codigo' => $codigo,
+        ]);
+
+        $resVerificar->assertOk()
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('usuario_creado', true);
+
+        $paciente = User::query()->where('email', $payloadRegistro['email'])->firstOrFail();
+
+        // 4. Ahora sí agendar la cita médica
+        $payloadAgendar = [
+            'especialidad_id' => $especialidad->id,
+            'doctor_id' => $doctor->id,
+            'fecha' => $fecha,
+            'hora' => '10:00',
+            'motivo_consulta' => 'Chequeo tras registro y OTP',
+        ];
+
+        $resAgendar = $this->postJson(route('chatbot.agendar'), $payloadAgendar);
+
+        $resAgendar->assertOk()
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('cita.id', fn ($id) => !empty($id));
+
+        $this->assertDatabaseHas('citas_medicas', [
+            'paciente_id' => $paciente->id,
+            'doctor_id' => $doctor->id,
+            'especialidad_id' => $especialidad->id,
+            'fecha' => $fecha,
+            'hora' => '10:00:00',
+        ]);
+    }
+
+    /**
+     * Caso A: Una sesión sin identidad OTP verificada intenta llamar /chatbot/agendar.
+     * Debe ser rechazada (401).
+     */
+    public function test_caso_a_agendar_without_otp_identity_is_rejected(): void
+    {
+        [$doctor, $especialidad, $fecha] = $this->createDoctorWithAvailability();
+
         $payload = [
-            'nombre' => 'Paciente Nuevo',
-            'cedula' => '1234567890',
-            'email' => 'paciente.nuevo@example.com',
+            'especialidad_id' => $especialidad->id,
+            'doctor_id' => $doctor->id,
+            'fecha' => $fecha,
+            'hora' => '10:00',
+            'motivo_consulta' => 'Consulta preventiva',
+        ];
+
+        // Request with empty session (no OTP verification)
+        $response = $this->postJson(route('chatbot.agendar'), $payload);
+
+        $response->assertStatus(401)
+            ->assertJsonPath('ok', false)
+            ->assertJsonPath('error', 'identity_required');
+    }
+
+    /**
+     * Caso B: Una sesión que únicamente pasó CAPTCHA, pero no OTP, intenta agendar.
+     * Debe ser rechazada (401).
+     */
+    public function test_caso_b_agendar_with_only_captcha_is_rejected(): void
+    {
+        [$doctor, $especialidad, $fecha] = $this->createDoctorWithAvailability();
+
+        $payload = [
+            'especialidad_id' => $especialidad->id,
+            'doctor_id' => $doctor->id,
+            'fecha' => $fecha,
+            'hora' => '10:00',
+            'motivo_consulta' => 'Consulta preventiva',
+        ];
+
+        $response = $this->withSession([
+            ChatbotSessionKeys::SESSION_VERIFIED => true,
+            ChatbotSessionKeys::SESSION_VERIFIED_AT => now()->timestamp,
+        ])->postJson(route('chatbot.agendar'), $payload);
+
+        $response->assertStatus(401)
+            ->assertJsonPath('ok', false)
+            ->assertJsonPath('error', 'identity_required');
+    }
+
+    /**
+     * Caso C: Una identidad OTP verificada del paciente A envía deliberadamente
+     * paciente_id = paciente B. Nunca debe agendar como B (403).
+     */
+    public function test_caso_c_verified_patient_a_cannot_spoof_patient_b(): void
+    {
+        Event::fake([CitaAgendada::class]);
+        Mail::fake();
+        Queue::fake();
+
+        [$doctor, $especialidad, $fecha] = $this->createDoctorWithAvailability();
+
+        $pacienteA = $this->createPatient('Paciente A', '1111111111', 'paciente.a@example.com');
+        $pacienteB = $this->createPatient('Paciente B', '2222222222', 'paciente.b@example.com');
+
+        $payload = [
+            'especialidad_id' => $especialidad->id,
+            'doctor_id' => $doctor->id,
+            'fecha' => $fecha,
+            'hora' => '10:00',
+            'motivo_consulta' => 'Intento de suplantación',
+            'paciente_id' => $pacienteB->id,
+        ];
+
+        $response = $this->withSession([
+            ChatbotSessionKeys::SESSION_CHATBOT_USER_ID => $pacienteA->id,
+            ChatbotSessionKeys::SESSION_CHATBOT_OTP_VERIFIED => true,
+        ])->postJson(route('chatbot.agendar'), $payload);
+
+        $response->assertStatus(403)
+            ->assertJsonPath('ok', false);
+
+        $this->assertDatabaseMissing('citas_medicas', [
+            'paciente_id' => $pacienteB->id,
+            'doctor_id' => $doctor->id,
+            'fecha' => $fecha,
+        ]);
+    }
+
+    /**
+     * Caso D: Con identidad OTP válida, modificar email o cédula en el body no debe permitir
+     * cambiar la identidad efectiva (403).
+     */
+    public function test_caso_d_manipulating_email_or_cedula_in_body_is_rejected(): void
+    {
+        Event::fake([CitaAgendada::class]);
+        Mail::fake();
+        Queue::fake();
+
+        [$doctor, $especialidad, $fecha] = $this->createDoctorWithAvailability();
+
+        $paciente = $this->createPatient('Paciente Legítimo', '1717171717', 'paciente.legitimo@example.com');
+
+        // Intento 1: Mandar otro correo
+        $responseEmail = $this->withSession([
+            ChatbotSessionKeys::SESSION_CHATBOT_USER_ID => $paciente->id,
+            ChatbotSessionKeys::SESSION_CHATBOT_OTP_VERIFIED => true,
+        ])->postJson(route('chatbot.agendar'), [
+            'especialidad_id' => $especialidad->id,
+            'doctor_id' => $doctor->id,
+            'fecha' => $fecha,
+            'hora' => '10:00',
+            'motivo_consulta' => 'Chequeo general',
+            'email' => 'otro.correo@example.com',
+        ]);
+
+        $responseEmail->assertStatus(403)
+            ->assertJsonPath('ok', false);
+
+        // Intento 2: Mandar otra cédula
+        $responseCedula = $this->withSession([
+            ChatbotSessionKeys::SESSION_CHATBOT_USER_ID => $paciente->id,
+            ChatbotSessionKeys::SESSION_CHATBOT_OTP_VERIFIED => true,
+        ])->postJson(route('chatbot.agendar'), [
+            'especialidad_id' => $especialidad->id,
+            'doctor_id' => $doctor->id,
+            'fecha' => $fecha,
+            'hora' => '10:00',
+            'motivo_consulta' => 'Chequeo general',
+            'cedula' => '0999999999',
+        ]);
+
+        $responseCedula->assertStatus(403)
+            ->assertJsonPath('ok', false);
+    }
+
+    /**
+     * Caso E: Un atacante conoce email+cédula de un paciente existente pero no ha verificado
+     * esa identidad mediante OTP. No debe poder agendar ni reutilizar esa cuenta (401).
+     */
+    public function test_caso_e_unverified_attacker_knowing_victim_credentials_cannot_book(): void
+    {
+        [$doctor, $especialidad, $fecha] = $this->createDoctorWithAvailability();
+
+        $victima = $this->createPatient('Víctima Existente', '1010101010', 'victima@example.com');
+
+        $payload = [
+            'nombre' => $victima->name,
+            'cedula' => $victima->dni,
+            'email' => $victima->email,
             'telefono' => '0991234567',
             'especialidad_id' => $especialidad->id,
             'doctor_id' => $doctor->id,
             'fecha' => $fecha,
             'hora' => '10:00',
-            'motivo' => 'Chequeo general',
-            'crear_usuario' => true,
+            'motivo_consulta' => 'Intento de reserva fraudulenta',
         ];
 
-        $this->postJson(route('chatbot.agendar'), $payload)
-            ->assertOk()
-            ->assertJsonPath('ok', true)
-            ->assertJsonPath('usuario_creado', true)
-            ->assertJsonPath('credenciales_enviadas', true);
+        // Sin sesión OTP
+        $response = $this->postJson(route('chatbot.agendar'), $payload);
 
-        $paciente = User::query()->where('email', $payload['email'])->firstOrFail();
+        $response->assertStatus(401)
+            ->assertJsonPath('ok', false)
+            ->assertJsonPath('error', 'identity_required');
 
-        $this->assertSame($payload['cedula'], $paciente->dni);
-        $this->assertTrue($paciente->hasRole('paciente'));
-        $this->assertTrue(Hash::check($payload['cedula'], $paciente->password));
-
-        Mail::assertSent(CuentaCreadaDesdeChat::class, function (CuentaCreadaDesdeChat $mail) use ($paciente, $payload) {
-            return $mail->user->is($paciente)
-                && $mail->passwordPlano === $payload['cedula'];
-        });
+        $this->assertDatabaseMissing('citas_medicas', [
+            'paciente_id' => $victima->id,
+            'doctor_id' => $doctor->id,
+            'fecha' => $fecha,
+        ]);
     }
 
-    public function test_chatbot_keeps_a_non_predictable_password_when_user_only_wants_to_schedule(): void
+    /**
+     * Caso F: El flujo CAPTCHA por sí solo no debe marcar OTP/identidad como verificada.
+     */
+    public function test_caso_f_captcha_flow_does_not_set_otp_or_identity_verified_keys(): void
+    {
+        $session = session()->all();
+
+        $this->assertArrayNotHasKey(ChatbotSessionKeys::SESSION_CHATBOT_OTP_VERIFIED, $session);
+        $this->assertArrayNotHasKey(ChatbotSessionKeys::SESSION_CHATBOT_USER_ID, $session);
+    }
+
+    /**
+     * Caso H: Si intervienen dependientes, un paciente no puede proporcionar arbitrariamente
+     * el ID de un dependiente perteneciente a otro paciente (403).
+     */
+    public function test_caso_h_verified_patient_cannot_use_foreign_dependent(): void
     {
         Event::fake([CitaAgendada::class]);
         Mail::fake();
@@ -157,207 +533,171 @@ class ChatbotRegistrationCredentialsTest extends TestCase
 
         [$doctor, $especialidad, $fecha] = $this->createDoctorWithAvailability();
 
+        $pacienteA = $this->createPatient('Titular A', '1111111111', 'titular.a@example.com');
+        $pacienteB = $this->createPatient('Titular B', '2222222222', 'titular.b@example.com');
+
+        $dependienteDeB = Dependiente::create([
+            'user_id' => $pacienteB->id,
+            'activo' => true,
+            'nombre' => 'Hijo de B',
+            'dni' => '3333333333',
+            'parentesco' => 'hijo',
+            'fecha_nacimiento' => '2018-01-01',
+        ]);
+
         $payload = [
-            'nombre' => 'Paciente Agenda',
-            'cedula' => '0987654321',
-            'email' => 'paciente.agenda@example.com',
-            'telefono' => '0997654321',
             'especialidad_id' => $especialidad->id,
             'doctor_id' => $doctor->id,
             'fecha' => $fecha,
             'hora' => '10:00',
-            'motivo' => 'Consulta preventiva',
-            'crear_usuario' => false,
+            'motivo_consulta' => 'Cita médica dependiente ajeno',
+            'dependiente_id' => $dependienteDeB->id,
         ];
 
-        $this->postJson(route('chatbot.agendar'), $payload)
-            ->assertOk()
+        $response = $this->withSession([
+            ChatbotSessionKeys::SESSION_CHATBOT_USER_ID => $pacienteA->id,
+            ChatbotSessionKeys::SESSION_CHATBOT_OTP_VERIFIED => true,
+        ])->postJson(route('chatbot.agendar'), $payload);
+
+        $response->assertStatus(403)
+            ->assertJsonPath('ok', false)
+            ->assertJsonPath('message', 'El dependiente seleccionado no pertenece a tu cuenta.');
+
+        $this->assertDatabaseMissing('citas_medicas', [
+            'dependiente_id' => $dependienteDeB->id,
+        ]);
+    }
+
+    /**
+     * Agendamiento exitoso legítimo para paciente debidamente verificado por OTP.
+     */
+    public function test_legitimate_verified_patient_schedules_appointment_successfully(): void
+    {
+        Event::fake([CitaAgendada::class]);
+        Mail::fake();
+        Queue::fake();
+
+        [$doctor, $especialidad, $fecha] = $this->createDoctorWithAvailability();
+
+        $paciente = $this->createPatient('Paciente Legítimo', '1718192021', 'paciente.legitimo@example.com');
+
+        $payload = [
+            'especialidad_id' => $especialidad->id,
+            'doctor_id' => $doctor->id,
+            'fecha' => $fecha,
+            'hora' => '10:00',
+            'motivo_consulta' => 'Consulta preventiva regular',
+        ];
+
+        $response = $this->withSession([
+            ChatbotSessionKeys::SESSION_CHATBOT_USER_ID => $paciente->id,
+            ChatbotSessionKeys::SESSION_CHATBOT_OTP_VERIFIED => true,
+        ])->postJson(route('chatbot.agendar'), $payload);
+
+        $response->assertOk()
             ->assertJsonPath('ok', true)
-            ->assertJsonPath('usuario_creado', true)
+            ->assertJsonPath('usuario_creado', false)
             ->assertJsonPath('credenciales_enviadas', false);
 
-        $paciente = User::query()->where('email', $payload['email'])->firstOrFail();
-
-        $this->assertFalse(Hash::check($payload['cedula'], $paciente->password));
-        Mail::assertNotSent(CuentaCreadaDesdeChat::class);
+        $this->assertDatabaseHas('citas_medicas', [
+            'paciente_id' => $paciente->id,
+            'doctor_id' => $doctor->id,
+            'especialidad_id' => $especialidad->id,
+            'fecha' => $fecha,
+            'hora' => '10:00:00',
+        ]);
     }
 
-    public function test_chatbot_guest_schedule_flow_does_not_validate_email_against_an_unidentified_profile(): void
+    public function test_ensure_chatbot_identity_middleware_rejects_suspended_or_blocked_patient_and_clears_session(): void
     {
-        Event::fake([CitaAgendada::class]);
-        Mail::fake();
-        Queue::fake();
-
         [$doctor, $especialidad, $fecha] = $this->createDoctorWithAvailability();
+        $paciente = $this->createPatient('Paciente Suspendido', '0928374650', 'paciente.bloqueado@example.com');
 
-        $existingPatientRole = Role::query()->firstOrCreate(['name' => 'paciente']);
-        $existingPatient = User::factory()->create([
-            'name' => 'Paciente Existente',
-            'email' => 'existente@example.com',
-            'dni' => '1111222233',
-            'status' => User::STATUS_ACTIVE,
+        // Admin blocks patient after OTP was granted
+        $paciente->update([
+            'status' => User::STATUS_BLOCKED,
         ]);
-        $existingPatient->roles()->sync([$existingPatientRole->id]);
 
         $payload = [
-            'nombre' => 'Visitante Nuevo',
-            'cedula' => '3333444455',
-            'email' => 'existente@example.com',
-            'telefono' => '0997654321',
             'especialidad_id' => $especialidad->id,
             'doctor_id' => $doctor->id,
             'fecha' => $fecha,
             'hora' => '10:00',
-            'motivo' => 'Consulta preventiva',
-            'crear_usuario' => false,
-            'paciente_id' => null,
+            'motivo_consulta' => 'Consulta medica de control general',
         ];
 
-        $this->postJson(route('chatbot.agendar'), $payload)
-            ->assertStatus(409)
-            ->assertJsonPath('ok', false);
-    }
+        $response = $this->withSession([
+            ChatbotSessionKeys::SESSION_CHATBOT_USER_ID => $paciente->id,
+            ChatbotSessionKeys::SESSION_CHATBOT_OTP_VERIFIED => true,
+        ])->postJson(route('chatbot.agendar'), $payload);
 
-    public function test_chatbot_schedule_validates_email_when_patient_was_identified_previously(): void
-    {
-        Event::fake([CitaAgendada::class]);
-        Mail::fake();
-        Queue::fake();
-
-        [$doctor, $especialidad, $fecha] = $this->createDoctorWithAvailability();
-
-        $patientRole = Role::query()->firstOrCreate(['name' => 'paciente']);
-        $patient = User::factory()->create([
-            'name' => 'Paciente Identificado',
-            'email' => 'paciente.identificado@example.com',
-            'dni' => '1231231234',
-            'telefono' => '0991231234',
-            'status' => User::STATUS_ACTIVE,
-        ]);
-        $patient->roles()->sync([$patientRole->id]);
-
-        $payload = [
-            'nombre' => $patient->name,
-            'cedula' => $patient->dni,
-            'email' => 'otro.correo@example.com',
-            'telefono' => $patient->telefono,
-            'paciente_id' => $patient->id,
-            'especialidad_id' => $especialidad->id,
-            'doctor_id' => $doctor->id,
-            'fecha' => $fecha,
-            'hora' => '10:00',
-            'motivo' => 'Chequeo general',
-            'crear_usuario' => false,
-        ];
-
-        $this->postJson(route('chatbot.agendar'), $payload)
-            ->assertStatus(403)
+        $response->assertStatus(403)
             ->assertJsonPath('ok', false)
-            ->assertJsonPath('message', 'El correo no coincide con tu perfil.');
+            ->assertJsonPath('error', 'user_inactive');
+
+        $this->assertFalse(session()->has(ChatbotSessionKeys::SESSION_CHATBOT_OTP_VERIFIED));
+        $this->assertFalse(session()->has(ChatbotSessionKeys::SESSION_CHATBOT_USER_ID));
     }
 
-    public function test_chatbot_requires_a_real_reason_when_scheduling(): void
+    public function test_ensure_chatbot_identity_middleware_rejects_suspended_patient_even_for_dependent_booking(): void
     {
-        Event::fake([CitaAgendada::class]);
-        Mail::fake();
-        Queue::fake();
-
         [$doctor, $especialidad, $fecha] = $this->createDoctorWithAvailability();
+        $paciente = $this->createPatient('Paciente Titular', '0928374651', 'titular.bloqueado@example.com');
+
+        $dependiente = Dependiente::create([
+            'user_id' => $paciente->id,
+            'nombre' => 'Hijo Titular',
+            'dni' => '0928374652',
+            'fecha_nacimiento' => '2015-05-10',
+            'sexo' => 'Masculino',
+            'parentesco' => 'Hijo',
+            'activo' => true,
+        ]);
+
+        // Admin suspends patient
+        $paciente->update([
+            'suspended_until' => Carbon::now('America/Guayaquil')->addDays(3),
+        ]);
 
         $payload = [
-            'nombre' => 'Paciente Sin Motivo',
-            'cedula' => '2233445566',
-            'email' => 'paciente.sin.motivo@example.com',
-            'telefono' => '0992233445',
             'especialidad_id' => $especialidad->id,
             'doctor_id' => $doctor->id,
             'fecha' => $fecha,
             'hora' => '10:00',
-            'motivo' => 'ninguno',
-            'crear_usuario' => false,
+            'motivo_consulta' => 'Consulta pediatrica de control general',
+            'dependiente_id' => $dependiente->id,
         ];
 
-        $this->postJson(route('chatbot.agendar'), $payload)
-            ->assertStatus(422)
-            ->assertJsonValidationErrors(['motivo']);
+        $response = $this->withSession([
+            ChatbotSessionKeys::SESSION_CHATBOT_USER_ID => $paciente->id,
+            ChatbotSessionKeys::SESSION_CHATBOT_OTP_VERIFIED => true,
+        ])->postJson(route('chatbot.agendar'), $payload);
 
-        $this->assertDatabaseMissing('users', ['email' => $payload['email']]);
-        Mail::assertNotSent(CuentaCreadaDesdeChat::class);
+        $response->assertStatus(403)
+            ->assertJsonPath('ok', false)
+            ->assertJsonPath('error', 'user_inactive');
+
+        $this->assertFalse(session()->has(ChatbotSessionKeys::SESSION_CHATBOT_OTP_VERIFIED));
+        $this->assertFalse(session()->has(ChatbotSessionKeys::SESSION_CHATBOT_USER_ID));
     }
 
-    public function test_chatbot_reports_when_credentials_email_cannot_be_sent(): void
+    private function createPatient(string $nombre, string $dni, string $email): User
     {
-        Event::fake([CitaAgendada::class]);
-        Queue::fake();
+        $role = Role::query()->firstOrCreate(['name' => 'paciente']);
+        $user = User::factory()->create([
+            'name' => $nombre,
+            'email' => $email,
+            'dni' => $dni,
+            'status' => User::STATUS_ACTIVE,
+        ]);
+        $user->roles()->sync([$role->id]);
 
-        [$doctor, $especialidad, $fecha] = $this->createDoctorWithAvailability();
-
-        $payload = [
-            'nombre' => 'Paciente Sin Correo',
-            'cedula' => '1122334455',
-            'email' => 'paciente.sin.correo@example.com',
-            'telefono' => '0991122334',
-            'especialidad_id' => $especialidad->id,
-            'doctor_id' => $doctor->id,
-            'fecha' => $fecha,
-            'hora' => '10:00',
-            'motivo' => 'Consulta general',
-            'crear_usuario' => true,
-        ];
-
-        Mail::shouldReceive('to')
-            ->once()
-            ->with($payload['email'])
-            ->andReturnSelf();
-        Mail::shouldReceive('send')
-            ->once()
-            ->andThrow(new \RuntimeException('SMTP down'));
-
-        $this->postJson(route('chatbot.agendar'), $payload)
-            ->assertOk()
-            ->assertJsonPath('ok', true)
-            ->assertJsonPath('usuario_creado', true)
-            ->assertJsonPath('credenciales_enviadas', false)
-            ->assertJsonPath('credenciales_error', 'La cita fue registrada, pero no pudimos enviar el correo con tus credenciales.');
-
-        $paciente = User::query()->where('email', $payload['email'])->firstOrFail();
-
-        $this->assertTrue(Hash::check($payload['cedula'], $paciente->password));
-    }
-
-    public function test_chatbot_reports_when_immediate_registration_email_cannot_be_sent(): void
-    {
-        Role::query()->firstOrCreate(['name' => 'paciente']);
-
-        $payload = [
-            'nombre' => 'Paciente Registro Sin Correo',
-            'cedula' => '5566778899',
-            'email' => 'paciente.registro.sin.correo@example.com',
-        ];
-
-        Mail::shouldReceive('to')
-            ->once()
-            ->with($payload['email'])
-            ->andReturnSelf();
-        Mail::shouldReceive('send')
-            ->once()
-            ->andThrow(new \RuntimeException('SMTP down'));
-
-        $this->postJson(route('chatbot.registrarUsuario'), $payload)
-            ->assertOk()
-            ->assertJsonPath('ok', true)
-            ->assertJsonPath('usuario_creado', true)
-            ->assertJsonPath('credenciales_enviadas', false)
-            ->assertJsonPath('credenciales_error', 'Registramos tu usuario, pero no pudimos enviar el correo con tus credenciales.');
-
-        $paciente = User::query()->where('email', $payload['email'])->firstOrFail();
-        $this->assertTrue(Hash::check($payload['cedula'], $paciente->password));
+        return $user;
     }
 
     private function createDoctorWithAvailability(): array
     {
         $doctorRole = Role::query()->firstOrCreate(['name' => 'doctor']);
-        Role::query()->firstOrCreate(['name' => 'paciente']);
 
         $especialidad = Especialidad::query()->create([
             'nombre' => 'Medicina General',

@@ -47,7 +47,7 @@ class PaymentProofStorageService
         }
     }
 
-    public function uploadAndStoreProof(UploadedFile $file, Pago $pago): array
+    public function storeUploadedProofFile(UploadedFile $file, int $pagoId): array
     {
         $this->validateUpload($file);
 
@@ -56,11 +56,8 @@ class PaymentProofStorageService
             $ext = 'jpg';
         }
         $uuid = Str::uuid()->toString();
-        $key = "documents/payment-proofs/{$pago->id}/{$uuid}.{$ext}";
+        $key = "documents/payment-proofs/{$pagoId}/{$uuid}.{$ext}";
         $disk = self::DISK;
-
-        $oldPath = $pago->comprobante_path;
-        $oldDisk = $pago->comprobante_disk;
 
         $filePath = $file->getPathname();
         $stream = @fopen($filePath, 'r');
@@ -93,6 +90,21 @@ class PaymentProofStorageService
             Storage::disk($disk)->delete($key);
             throw new \RuntimeException('Inconsistencia en el tamaño del comprobante tras la subida.');
         }
+
+        return [
+            'path' => $key,
+            'disk' => $disk,
+        ];
+    }
+
+    public function uploadAndStoreProof(UploadedFile $file, Pago $pago): array
+    {
+        $oldPath = $pago->comprobante_path;
+        $oldDisk = $pago->comprobante_disk;
+
+        $stored = $this->storeUploadedProofFile($file, $pago->id);
+        $key = $stored['path'];
+        $disk = $stored['disk'];
 
         // Atomic DB update inside transaction
         try {
@@ -146,7 +158,14 @@ class PaymentProofStorageService
         // Safe to delete from disk
         $stored = $this->resolveStorage($normalized, $oldDisk);
         if ($stored) {
-            Storage::disk($stored['disk'])->delete($stored['path']);
+            try {
+                Storage::disk($stored['disk'])->delete($stored['path']);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('Error al eliminar comprobante antiguo de almacenamiento: ' . $e->getMessage(), [
+                    'path' => $stored['path'],
+                    'disk' => $stored['disk'],
+                ]);
+            }
         }
     }
 

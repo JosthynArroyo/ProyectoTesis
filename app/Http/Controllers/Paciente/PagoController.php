@@ -81,18 +81,25 @@ class PagoController extends Controller
                 ->with('success', 'Pago en clínica: este pago será confirmado por recepción al momento de su atención.');
         }
 
-        $comprobantePath = $pago->comprobante_path;
-        $comprobanteDisk = $pago->comprobante_disk;
+        $oldPath = $pago->comprobante_path;
+        $oldDisk = $pago->comprobante_disk;
+        $newUploadedPath = null;
+        $newUploadedDisk = null;
+
+        $comprobantePath = $oldPath;
+        $comprobanteDisk = $oldDisk;
 
         if ($metodo === Pago::METODO_TRANSFERENCIA) {
             if ($request->hasFile('comprobante')) {
                 try {
-                    $stored = $this->paymentProofStorageService->uploadAndStoreProof(
+                    $stored = $this->paymentProofStorageService->storeUploadedProofFile(
                         $request->file('comprobante'),
-                        $pago
+                        $pago->id
                     );
-                    $comprobantePath = $stored['path'];
-                    $comprobanteDisk = $stored['disk'];
+                    $newUploadedPath = $stored['path'];
+                    $newUploadedDisk = $stored['disk'];
+                    $comprobantePath = $newUploadedPath;
+                    $comprobanteDisk = $newUploadedDisk;
                 } catch (\InvalidArgumentException $e) {
                     return back()->withErrors([
                         'comprobante' => $e->getMessage(),
@@ -104,13 +111,9 @@ class PagoController extends Controller
                 }
             }
         } else {
-            if ($comprobantePath) {
-                $oldPath = $comprobantePath;
-                $oldDisk = $comprobanteDisk;
-                $comprobantePath = null;
-                $comprobanteDisk = null;
-                $this->paymentProofStorageService->deleteOldProofIfSafe($oldPath, $oldDisk);
-            }
+            // Cambio a efectivo: desvincular comprobante
+            $comprobantePath = null;
+            $comprobanteDisk = null;
         }
 
         $nuevoEstado = $metodo === Pago::METODO_TRANSFERENCIA
@@ -118,24 +121,54 @@ class PagoController extends Controller
             : Pago::ESTADO_PENDIENTE;
 
         if ($nuevoEstado === Pago::ESTADO_EN_VERIFICACION && ! $comprobantePath) {
+            if ($newUploadedPath) {
+                try {
+                    Storage::disk($newUploadedDisk)->delete($newUploadedPath);
+                } catch (\Throwable) {
+                }
+            }
             return back()->withErrors([
                 'comprobante' => 'Debe adjuntar un comprobante para enviar transferencia a verificación.',
             ])->withInput();
         }
 
-        $pagoService->cambiarEstado(
-            pago: $pago,
-            nuevoEstado: $nuevoEstado,
-            actor: $request->user(),
-            motivo: null,
-            extra: [
-                'metodo_pago' => $metodo,
-                'referencia_transaccion' => $data['referencia_transaccion'] ?? null,
-                'comprobante_path' => $comprobantePath,
-                'comprobante_disk' => $comprobanteDisk,
-                'observacion_admin' => null,
-            ]
-        );
+        try {
+            $pagoService->cambiarEstado(
+                pago: $pago,
+                nuevoEstado: $nuevoEstado,
+                actor: $request->user(),
+                motivo: null,
+                extra: [
+                    'metodo_pago' => $metodo,
+                    'referencia_transaccion' => $data['referencia_transaccion'] ?? null,
+                    'comprobante_path' => $comprobantePath,
+                    'comprobante_disk' => $comprobanteDisk,
+                    'observacion_admin' => null,
+                ]
+            );
+        } catch (\Throwable $e) {
+            // Compensación: Si la actualización de BD falla, eliminar el archivo recién subido
+            if ($newUploadedPath) {
+                try {
+                    Storage::disk($newUploadedDisk)->delete($newUploadedPath);
+                } catch (\Throwable $cleanupErr) {
+                    \Illuminate\Support\Facades\Log::error('Error cleaning up new proof on DB failure: ' . $cleanupErr->getMessage());
+                }
+            }
+
+            if ($e instanceof \InvalidArgumentException) {
+                return back()->withErrors([
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
+            throw $e;
+        }
+
+        // Eliminar el comprobante anterior ÚNICAMENTE después de confirmar la mutación en BD
+        if ($oldPath && $oldPath !== $comprobantePath) {
+            $this->paymentProofStorageService->deleteOldProofIfSafe($oldPath, $oldDisk);
+        }
 
         $message = $nuevoEstado === Pago::ESTADO_EN_VERIFICACION
             ? 'Comprobante enviado. El pago quedó en verificación.'

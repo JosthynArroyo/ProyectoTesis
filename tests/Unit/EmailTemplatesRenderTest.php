@@ -77,7 +77,7 @@ class EmailTemplatesRenderTest extends TestCase
 
         $this->assertStringContainsString('Credenciales de acceso', $cuentaHtml);
         $this->assertStringContainsString('Usuario (correo)', $cuentaHtml);
-        $this->assertStringContainsString('Contraseña inicial', $cuentaHtml);
+        $this->assertStringContainsString('Contraseña temporal', $cuentaHtml);
         $this->assertStringContainsString('Detalles del resultado', $laboratorioHtml);
         $this->assertStringContainsString('Datos de la atención', $recetaHtml);
         $this->assertStringContainsString('Tu certificado medico fue emitido', $certHtml);

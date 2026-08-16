@@ -245,6 +245,46 @@ class MedicalCertificateFlowTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_concurrent_store_requests_produce_exactly_one_vigente_certificate_under_lock(): void
+    {
+        [$doctor, $patient, , $cita] = $this->clinicalScenario(Cita::ESTADO_REALIZADA);
+
+        // 1. Simular concurrencia: Request A pasa la validación inicial antes de la transacción.
+        // Mientras tanto, Request B entra a la transacción y crea el primer certificado vigente.
+        $certB = CertificadoMedico::create([
+            'codigo' => 'CM-20260416-000099',
+            'cita_id' => $cita->id,
+            'paciente_id' => $patient->id,
+            'doctor_id' => $doctor->id,
+            'clinical_record_id' => ClinicalRecord::firstOrCreate(['patient_id' => $patient->id])->id,
+            'estado_version' => CertificadoMedico::ESTADO_VIGENTE,
+            'version' => 1,
+            'fecha_emision' => now('America/Guayaquil'),
+            'texto_constancia' => 'Certificado creado concurrentemente por request B.',
+            'dias_reposo' => 0,
+        ]);
+
+        // 2. Request A intenta ejecutar store() en la misma cita
+        $response = $this->actingAs($doctor)
+            ->post(route('doctor.certificados.store', $cita), [
+                'texto_constancia' => 'Intento concurrente de request A.',
+                'dias_reposo' => 0,
+            ]);
+
+        // 3. Debe ser redirigido de forma controlada a la vista del certificado vigente
+        $response->assertRedirect(route('doctor.certificados.show', $certB));
+        $response->assertSessionHas('info');
+
+        // 4. Invariante: COUNT(vigente) debe ser exactamente 1
+        $vigentes = CertificadoMedico::query()
+            ->where('cita_id', $cita->id)
+            ->vigente()
+            ->get();
+
+        $this->assertCount(1, $vigentes);
+        $this->assertSame($certB->id, $vigentes->first()->id);
+    }
+
     private function clinicalScenario(string $estado): array
     {
         $specialty = Especialidad::query()->orderBy('id')->firstOrFail();

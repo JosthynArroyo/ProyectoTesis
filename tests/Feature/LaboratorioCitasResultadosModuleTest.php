@@ -371,6 +371,52 @@ class LaboratorioCitasResultadosModuleTest extends TestCase
         $response->assertDontSee('Examen Duplicado');
     }
 
+    public function test_laboratorio_routes_resolve_to_valid_controllers_and_no_obsolete_catalog_routes(): void
+    {
+        $routes = \Illuminate\Support\Facades\Route::getRoutes();
+
+        $this->assertFalse(
+            $routes->hasNamedRoute('laboratorio.catalogo.index'),
+            'La ruta obsoleta laboratorio.catalogo.index no debe existir.'
+        );
+        $this->assertFalse(
+            $routes->hasNamedRoute('laboratorio.catalogo.edit'),
+            'La ruta obsoleta laboratorio.catalogo.edit no debe existir.'
+        );
+        $this->assertFalse(
+            $routes->hasNamedRoute('laboratorio.catalogo.update'),
+            'La ruta obsoleta laboratorio.catalogo.update no debe existir.'
+        );
+
+        foreach ($routes as $route) {
+            $name = $route->getName() ?? '';
+            $action = $route->getActionName();
+
+            $this->assertStringNotContainsString(
+                'CatalogoLaboratorioController',
+                $action,
+                "No deben existir rutas apuntando a CatalogoLaboratorioController (ruta: {$name})."
+            );
+
+            if (str_starts_with($name, 'laboratorio.')) {
+                $controller = $route->getControllerClass();
+                if ($controller) {
+                    $this->assertTrue(
+                        class_exists($controller),
+                        "El controlador [{$controller}] para la ruta [{$name}] debe existir."
+                    );
+                    $method = $route->getActionMethod();
+                    if ($method && $method !== '__invoke') {
+                        $this->assertTrue(
+                            method_exists($controller, $method),
+                            "El método [{$method}] en [{$controller}] para la ruta [{$name}] debe existir."
+                        );
+                    }
+                }
+            }
+        }
+    }
+
     private function createScenarioUsers(): array
     {
         $specialty = Especialidad::factory()->create(['nombre' => 'General', 'activo' => true]);

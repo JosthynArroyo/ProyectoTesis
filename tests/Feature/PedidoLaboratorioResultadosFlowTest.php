@@ -301,6 +301,42 @@ class PedidoLaboratorioResultadosFlowTest extends TestCase
         return [$titular, $dependiente, $doctor, $lab, $pedido];
     }
 
+    public function test_publicacion_repetida_no_redespacha_job_ni_duplica_envios(): void
+    {
+        \Illuminate\Support\Facades\Queue::fake();
+
+        [$titular, $dependiente, $doctor, $lab, $pedido] = $this->crearPedidoConDependiente([
+            'glucosa',
+        ]);
+
+        $payload = $this->payloadResultados([
+            'glucosa' => [
+                'resultado' => '90',
+                'unidad' => 'mg/dL',
+                'referencia' => '70 - 100',
+                'clasificacion' => 'normal',
+                'metodo' => 'Enzimatico',
+                'observaciones' => '',
+            ],
+        ], 'Resultado normal.');
+
+        // 1. Primera publicación: despacha el job
+        $this->actingAs($lab)
+            ->post(route('laboratorio.pedidos.resultados.publish', $pedido), $payload)
+            ->assertRedirect(route('laboratorio.pedidos.index'));
+
+        \Illuminate\Support\Facades\Queue::assertPushed(EnviarResultadoPedidoLaboratorioJob::class, 1);
+
+        // 2. Intento de publicación repetida sobre el mismo pedido sin cambios
+        $this->actingAs($lab)
+            ->post(route('laboratorio.pedidos.resultados.publish', $pedido), $payload)
+            ->assertRedirect(route('laboratorio.pedidos.index'))
+            ->assertSessionHas('info');
+
+        // Confirma que el conteo de jobs despachados sigue siendo exactamente 1
+        \Illuminate\Support\Facades\Queue::assertPushed(EnviarResultadoPedidoLaboratorioJob::class, 1);
+    }
+
     private function crearPedidoTitular(array $examenes): array
     {
         $titular = $this->userWithRole('paciente', 'titular@example.test');

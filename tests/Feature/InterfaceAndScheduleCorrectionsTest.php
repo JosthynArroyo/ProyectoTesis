@@ -10,6 +10,7 @@ use App\Services\ProfessionalScheduleService;
 use App\Services\SiteSettingsService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class InterfaceAndScheduleCorrectionsTest extends TestCase
@@ -21,7 +22,7 @@ class InterfaceAndScheduleCorrectionsTest extends TestCase
         parent::setUp();
     }
 
-    /** @test */
+    #[Test]
     public function admin_usuario_crear_page_loads_with_correct_buttons()
     {
         $role = Role::firstOrCreate(['name' => 'administrador']);
@@ -37,7 +38,7 @@ class InterfaceAndScheduleCorrectionsTest extends TestCase
         $response->assertSee('btn-limpiar-usuario');
     }
 
-    /** @test */
+    #[Test]
     public function clinic_weekly_schedule_supports_all_7_days_dynamically()
     {
         $settingsService = app(SiteSettingsService::class);
@@ -81,7 +82,7 @@ class InterfaceAndScheduleCorrectionsTest extends TestCase
         $this->assertEquals('12:00', $sunHours['closing']);
     }
 
-    /** @test */
+    #[Test]
     public function closed_day_generates_no_slots_and_open_sunday_generates_slots()
     {
         $role = Role::firstOrCreate(['name' => 'doctor']);
@@ -130,7 +131,7 @@ class InterfaceAndScheduleCorrectionsTest extends TestCase
         $this->assertEquals('09:00', $sunSlots[0]['hora']);
     }
 
-    /** @test */
+    #[Test]
     public function global_confirm_modal_and_legal_modals_included_in_admin_layout()
     {
         $role = Role::firstOrCreate(['name' => 'administrador']);
@@ -143,7 +144,7 @@ class InterfaceAndScheduleCorrectionsTest extends TestCase
         $response->assertSee('global-confirm-submit-btn');
     }
 
-    /** @test */
+    #[Test]
     public function schedule_formatter_handles_all_5_cases_correctly()
     {
         $scheduleService = app(ProfessionalScheduleService::class);
@@ -202,7 +203,7 @@ class InterfaceAndScheduleCorrectionsTest extends TestCase
         $this->assertTrue($res5['is_all_closed']);
     }
 
-    /** @test */
+    #[Test]
     public function public_contacto_page_renders_dynamic_schedule_correctly()
     {
         $settingsService = app(SiteSettingsService::class);

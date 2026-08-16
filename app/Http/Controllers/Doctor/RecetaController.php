@@ -108,29 +108,36 @@ class RecetaController extends Controller
 
         $newStorage = null;
 
-        $receta = DB::transaction(function () use ($cita, $record, $data, $csv, $pdfBinary, $recipeService, &$newStorage) {
-            $receta = Receta::create([
-                'cita_id' => $cita->id,
-                'nota_soap_id' => $cita->notaSoap?->id,
-                'clinical_record_id' => $record->id,
-                'diagnostico' => $data['diagnostico'],
-                'medicamentos' => $data['medicamentos'],
-                'indicaciones' => $data['indicaciones'] ?? null,
-                'csv' => $csv,
-                'pdf_path' => '',
-                'pdf_disk' => null,
-                'enviado_en' => now('America/Guayaquil'),
-            ]);
+        try {
+            $receta = DB::transaction(function () use ($cita, $record, $data, $csv, $pdfBinary, $recipeService, &$newStorage) {
+                $receta = Receta::create([
+                    'cita_id' => $cita->id,
+                    'nota_soap_id' => $cita->notaSoap?->id,
+                    'clinical_record_id' => $record->id,
+                    'diagnostico' => $data['diagnostico'],
+                    'medicamentos' => $data['medicamentos'],
+                    'indicaciones' => $data['indicaciones'] ?? null,
+                    'csv' => $csv,
+                    'pdf_path' => '',
+                    'pdf_disk' => null,
+                    'enviado_en' => now('America/Guayaquil'),
+                ]);
 
-            $newStorage = $recipeService->storeRecipePdf($receta, $pdfBinary);
+                $newStorage = $recipeService->storeRecipePdf($receta, $pdfBinary);
 
-            $receta->forceFill([
-                'pdf_path' => $newStorage['pdf_path'],
-                'pdf_disk' => $newStorage['pdf_disk'],
-            ])->saveQuietly();
+                $receta->forceFill([
+                    'pdf_path' => $newStorage['pdf_path'],
+                    'pdf_disk' => $newStorage['pdf_disk'],
+                ])->saveQuietly();
 
-            return $receta;
-        });
+                return $receta;
+            });
+        } catch (\Throwable $e) {
+            if ($newStorage && ! empty($newStorage['pdf_path'])) {
+                $recipeService->deleteQuietly($newStorage['pdf_path'], $newStorage['pdf_disk'] ?? 'r2_private');
+            }
+            throw $e;
+        }
 
         $fileName = 'receta_'.$cita->id.'_'.now()->format('Ymd_His').'.pdf';
 
@@ -229,24 +236,33 @@ class RecetaController extends Controller
             $oldPdfPath = (string) $receta->getRawOriginal('pdf_path');
             $oldPdfDisk = (string) $receta->getRawOriginal('pdf_disk');
 
-            DB::transaction(function () use ($receta, $data, $cita, $csv, $pdfBinary, $recipeService, &$newStorage) {
-                $receta->update([
-                    'diagnostico' => $data['diagnostico'],
-                    'medicamentos' => $data['medicamentos'],
-                    'indicaciones' => $data['indicaciones'] ?? null,
-                    'nota_soap_id' => $receta->nota_soap_id ?: $cita->notaSoap?->id,
-                    'csv' => $csv,
-                ]);
+            try {
+                DB::transaction(function () use ($receta, $data, $cita, $csv, $pdfBinary, $recipeService, &$newStorage) {
+                    $receta->update([
+                        'diagnostico' => $data['diagnostico'],
+                        'medicamentos' => $data['medicamentos'],
+                        'indicaciones' => $data['indicaciones'] ?? null,
+                        'nota_soap_id' => $receta->nota_soap_id ?: $cita->notaSoap?->id,
+                        'csv' => $csv,
+                    ]);
 
-                $newStorage = $recipeService->storeRecipePdf($receta, $pdfBinary);
+                    $newStorage = $recipeService->storeRecipePdf($receta, $pdfBinary);
 
-                $receta->forceFill([
-                    'pdf_path' => $newStorage['pdf_path'],
-                    'pdf_disk' => $newStorage['pdf_disk'],
-                ])->saveQuietly();
-            });
+                    $receta->forceFill([
+                        'pdf_path' => $newStorage['pdf_path'],
+                        'pdf_disk' => $newStorage['pdf_disk'],
+                    ])->saveQuietly();
+                });
 
-            $recipeService->cleanupOldPdf($oldPdfPath, $oldPdfDisk);
+                if ($oldPdfPath && $oldPdfPath !== ($newStorage['pdf_path'] ?? null)) {
+                    $recipeService->cleanupOldPdf($oldPdfPath, $oldPdfDisk);
+                }
+            } catch (\Throwable $e) {
+                if ($newStorage && ! empty($newStorage['pdf_path'])) {
+                    $recipeService->deleteQuietly($newStorage['pdf_path'], $newStorage['pdf_disk'] ?? 'r2_private');
+                }
+                throw $e;
+            }
         } else {
             $receta->update([
                 'diagnostico' => $data['diagnostico'],
@@ -306,17 +322,29 @@ class RecetaController extends Controller
 
         $oldPdfPath = (string) $receta->getRawOriginal('pdf_path');
         $oldPdfDisk = (string) $receta->getRawOriginal('pdf_disk');
+        $newStorage = null;
 
-        $newStorage = $recipeService->storeRecipePdf($receta, $pdfBinary);
+        try {
+            $newStorage = $recipeService->storeRecipePdf($receta, $pdfBinary);
 
-        $receta->forceFill([
-            'csv' => $csv,
-            'pdf_path' => $newStorage['pdf_path'],
-            'pdf_disk' => $newStorage['pdf_disk'],
-            'enviado_en' => now('America/Guayaquil'),
-        ])->saveQuietly();
+            DB::transaction(function () use ($receta, $csv, $newStorage) {
+                $receta->forceFill([
+                    'csv' => $csv,
+                    'pdf_path' => $newStorage['pdf_path'],
+                    'pdf_disk' => $newStorage['pdf_disk'],
+                    'enviado_en' => now('America/Guayaquil'),
+                ])->saveQuietly();
+            });
 
-        $recipeService->cleanupOldPdf($oldPdfPath, $oldPdfDisk);
+            if ($oldPdfPath && $oldPdfPath !== ($newStorage['pdf_path'] ?? null)) {
+                $recipeService->cleanupOldPdf($oldPdfPath, $oldPdfDisk);
+            }
+        } catch (\Throwable $e) {
+            if ($newStorage && ! empty($newStorage['pdf_path'])) {
+                $recipeService->deleteQuietly($newStorage['pdf_path'], $newStorage['pdf_disk'] ?? 'r2_private');
+            }
+            throw $e;
+        }
 
         $fileName = 'receta_'.$cita->id.'_'.now()->format('Ymd_His').'.pdf';
 
@@ -358,11 +386,21 @@ class RecetaController extends Controller
                 $csvService
             );
 
-            $newStorage = $recipeService->storeRecipePdf($receta, $pdfBinary);
-            $receta->forceFill([
-                'pdf_path' => $newStorage['pdf_path'],
-                'pdf_disk' => $newStorage['pdf_disk'],
-            ])->saveQuietly();
+            $newStorage = null;
+            try {
+                $newStorage = $recipeService->storeRecipePdf($receta, $pdfBinary);
+                DB::transaction(function () use ($receta, $newStorage) {
+                    $receta->forceFill([
+                        'pdf_path' => $newStorage['pdf_path'],
+                        'pdf_disk' => $newStorage['pdf_disk'],
+                    ])->saveQuietly();
+                });
+            } catch (\Throwable $e) {
+                if ($newStorage && ! empty($newStorage['pdf_path'])) {
+                    $recipeService->deleteQuietly($newStorage['pdf_path'], $newStorage['pdf_disk'] ?? 'r2_private');
+                }
+                throw $e;
+            }
         }
 
         return $recipeService->streamDownload($receta, 'receta_'.$cita->id.'.pdf');

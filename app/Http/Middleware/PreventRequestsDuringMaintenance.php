@@ -63,7 +63,7 @@ class PreventRequestsDuringMaintenance
             return true;
         }
 
-        if (($request->isMethod('GET') || $request->isMethod('POST')) && $request->is('salir')) {
+        if ($request->isMethod('POST') && $request->is('salir')) {
             return true;
         }
 

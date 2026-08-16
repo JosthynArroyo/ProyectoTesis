@@ -428,7 +428,7 @@ class SystemFullFlowTest extends TestCase
 
     private function logoutThroughForm(): void
     {
-        $this->get(route('salir.get'))->assertRedirect('/');
+        $this->post(route('salir'))->assertRedirect('/');
         $this->assertGuest();
     }
 

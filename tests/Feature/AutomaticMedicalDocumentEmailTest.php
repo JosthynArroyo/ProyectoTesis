@@ -202,11 +202,25 @@ class AutomaticMedicalDocumentEmailTest extends TestCase
         $cert = CertificadoMedico::where('cita_id', $cita->id)->firstOrFail();
 
         $job = new EnviarCertificadoMedicoJob($cert->id);
-        $job->handle(app(CertificadoMedicoPdfService::class));
+
+        $caught = false;
+        try {
+            $job->handle(app(CertificadoMedicoPdfService::class));
+        } catch (\Exception $e) {
+            $caught = true;
+            $this->assertSame('SMTP Error Simulated', $e->getMessage());
+        }
+        $this->assertTrue($caught, 'La excepción debe propagarse para que la cola maneje el reintento.');
 
         $cert->refresh();
-        $this->assertEquals('failed', $cert->envio_estado);
+        $this->assertNotSame('sent', $cert->envio_estado);
         $this->assertStringContainsString('SMTP Error Simulated', $cert->envio_error);
+        $this->assertTrue(Storage::disk('r2_private')->exists($cert->pdf_path));
+
+        // Cuando se agotan los intentos de la cola, failed() asigna el estado final 'failed'
+        $job->failed(new \Exception('SMTP Error Simulated'));
+        $cert->refresh();
+        $this->assertEquals('failed', $cert->envio_estado);
         $this->assertTrue(Storage::disk('r2_private')->exists($cert->pdf_path));
     }
 

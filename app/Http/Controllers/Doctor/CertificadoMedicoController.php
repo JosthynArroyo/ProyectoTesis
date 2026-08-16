@@ -52,38 +52,83 @@ class CertificadoMedicoController extends Controller
         $diasReposo = (int) ($data['dias_reposo'] ?? 0);
         $csv = app(DocumentoCsvService::class)->generateCsv();
 
-        $certificado = DB::transaction(function () use ($cita, $clinicalRecords, $data, $diasReposo, $csv): CertificadoMedico {
-            $record = $clinicalRecords->ensureForPatient($cita->paciente_id, Auth::id(), $cita->dependiente_id);
+        try {
+            $certificado = DB::transaction(function () use ($cita, $clinicalRecords, $data, $diasReposo, $csv): CertificadoMedico {
+                $citaBloqueada = Cita::query()
+                    ->whereKey($cita->getKey())
+                    ->lockForUpdate()
+                    ->firstOrFail();
 
-            $certificado = CertificadoMedico::create([
-                'codigo' => $this->generarCodigo($cita),
-                'csv' => $csv,
-                'cita_id' => $cita->id,
-                'paciente_id' => $cita->paciente_id,
-                'dependiente_id' => $cita->dependiente_id,
-                'doctor_id' => $cita->doctor_id,
-                'clinical_record_id' => $record->id,
-                'fecha_emision' => now('America/Guayaquil'),
-                'texto_constancia' => $data['texto_constancia'],
-                'dias_reposo' => $diasReposo,
-                'reposo_desde' => $diasReposo > 0 ? ($data['reposo_desde'] ?? null) : null,
-                'reposo_hasta' => $diasReposo > 0 ? ($data['reposo_hasta'] ?? null) : null,
-                'observaciones' => $data['observaciones'] ?? null,
-                'envio_estado' => 'queued',
-                'envio_intentos' => 0,
-            ]);
+                $this->ensureCanIssue($citaBloqueada);
 
-            CitaEvento::create([
-                'cita_id' => $cita->id,
-                'user_id' => Auth::id(),
-                'tipo' => 'certificado_emitido',
-                'comentario' => 'Certificado medico '.$certificado->codigo.' emitido.',
-            ]);
+                $existente = CertificadoMedico::query()
+                    ->where('cita_id', $citaBloqueada->id)
+                    ->vigente()
+                    ->lockForUpdate()
+                    ->first();
 
-            return $certificado;
-        });
+                if ($existente) {
+                    throw new \DomainException('Ya existe un certificado medico emitido para esta cita.');
+                }
 
-        $pdfs->generarYGuardar($certificado);
+                $record = $clinicalRecords->ensureForPatient($citaBloqueada->paciente_id, Auth::id(), $citaBloqueada->dependiente_id);
+
+                $certificado = CertificadoMedico::create([
+                    'codigo' => $this->generarCodigo($citaBloqueada),
+                    'csv' => $csv,
+                    'estado_version' => CertificadoMedico::ESTADO_VIGENTE,
+                    'version' => 1,
+                    'cita_id' => $citaBloqueada->id,
+                    'paciente_id' => $citaBloqueada->paciente_id,
+                    'dependiente_id' => $citaBloqueada->dependiente_id,
+                    'doctor_id' => $citaBloqueada->doctor_id,
+                    'clinical_record_id' => $record->id,
+                    'fecha_emision' => now('America/Guayaquil'),
+                    'texto_constancia' => $data['texto_constancia'],
+                    'dias_reposo' => $diasReposo,
+                    'reposo_desde' => $diasReposo > 0 ? ($data['reposo_desde'] ?? null) : null,
+                    'reposo_hasta' => $diasReposo > 0 ? ($data['reposo_hasta'] ?? null) : null,
+                    'observaciones' => $data['observaciones'] ?? null,
+                    'envio_estado' => 'queued',
+                    'envio_intentos' => 0,
+                ]);
+
+                CitaEvento::create([
+                    'cita_id' => $citaBloqueada->id,
+                    'user_id' => Auth::id(),
+                    'tipo' => 'certificado_emitido',
+                    'comentario' => 'Certificado medico '.$certificado->codigo.' emitido.',
+                ]);
+
+                return $certificado;
+            });
+        } catch (\DomainException $e) {
+            $vigente = CertificadoMedico::query()
+                ->where('cita_id', $cita->id)
+                ->vigente()
+                ->latest('id')
+                ->first();
+
+            return redirect()
+                ->route('doctor.certificados.show', $vigente ?: $cita->id)
+                ->with('info', $e->getMessage());
+        }
+
+        try {
+            $pdfs->generarYGuardar($certificado);
+        } catch (\Throwable $pdfException) {
+            try {
+                CitaEvento::where('cita_id', $cita->id)
+                    ->where('tipo', 'certificado_emitido')
+                    ->where('comentario', 'like', '%' . $certificado->codigo . '%')
+                    ->delete();
+                $certificado->delete();
+            } catch (\Throwable $rollbackDbErr) {
+                \Illuminate\Support\Facades\Log::error('Error rolling back certificate DB on PDF failure: ' . $rollbackDbErr->getMessage());
+            }
+
+            throw $pdfException;
+        }
 
         EnviarCertificadoMedicoJob::dispatch($certificado->id);
 
@@ -171,58 +216,95 @@ class CertificadoMedicoController extends Controller
         $data = $request->validated();
         $diasReposo = (int) ($data['dias_reposo'] ?? 0);
 
-        $newCertificado = DB::transaction(function () use ($certificado, $clinicalRecords, $data, $diasReposo, $pdfs): CertificadoMedico {
-            $oldCert = CertificadoMedico::query()->where('id', $certificado->id)->lockForUpdate()->firstOrFail();
+        try {
+            $newCertificado = DB::transaction(function () use ($certificado, $clinicalRecords, $data, $diasReposo): CertificadoMedico {
+                $oldCert = CertificadoMedico::query()->where('id', $certificado->id)->lockForUpdate()->firstOrFail();
 
-            if ($oldCert->isReemplazado()) {
-                throw new \DomainException('Este certificado ya fue reemplazado y no se puede corregir.');
+                if ($oldCert->isReemplazado()) {
+                    throw new \DomainException('Este certificado ya fue reemplazado y no se puede corregir.');
+                }
+
+                $cita = Cita::query()->whereKey($oldCert->cita_id)->lockForUpdate()->firstOrFail();
+                $this->ensureCanIssue($cita);
+
+                $csv = app(DocumentoCsvService::class)->generateCsv();
+                $record = $clinicalRecords->ensureForPatient($cita->paciente_id, Auth::id(), $cita->dependiente_id);
+                $newVersion = ((int) ($oldCert->version ?: 1)) + 1;
+
+                $newCert = CertificadoMedico::create([
+                    'codigo' => $this->generarCodigo($cita),
+                    'csv' => $csv,
+                    'estado_version' => CertificadoMedico::ESTADO_VIGENTE,
+                    'version' => $newVersion,
+                    'reemplaza_a_id' => $oldCert->id,
+                    'cita_id' => $cita->id,
+                    'paciente_id' => $cita->paciente_id,
+                    'dependiente_id' => $cita->dependiente_id,
+                    'doctor_id' => $cita->doctor_id,
+                    'clinical_record_id' => $record->id,
+                    'fecha_emision' => now('America/Guayaquil'),
+                    'texto_constancia' => $data['texto_constancia'],
+                    'dias_reposo' => $diasReposo,
+                    'reposo_desde' => $diasReposo > 0 ? ($data['reposo_desde'] ?? null) : null,
+                    'reposo_hasta' => $diasReposo > 0 ? ($data['reposo_hasta'] ?? null) : null,
+                    'observaciones' => $data['observaciones'] ?? null,
+                    'envio_estado' => 'queued',
+                    'envio_intentos' => 0,
+                ]);
+
+                $oldCert->forceFill([
+                    'estado_version' => CertificadoMedico::ESTADO_REEMPLAZADO,
+                    'reemplazado_por_id' => $newCert->id,
+                    'motivo_correccion' => $data['motivo_correccion'],
+                    'corregido_por' => Auth::id(),
+                    'fecha_correccion' => now('America/Guayaquil'),
+                ])->save();
+
+                CitaEvento::create([
+                    'cita_id' => $cita->id,
+                    'user_id' => Auth::id(),
+                    'tipo' => 'certificado_corregido',
+                    'comentario' => 'Certificado medico corregido. Nueva version '.$newCert->codigo.' (v'.$newVersion.') emitida.',
+                ]);
+
+                return $newCert;
+            });
+        } catch (\DomainException $e) {
+            $vigente = CertificadoMedico::query()
+                ->where('cita_id', $certificado->cita_id)
+                ->vigente()
+                ->latest('id')
+                ->first();
+
+            return redirect()
+                ->route('doctor.certificados.show', $vigente ?: $certificado)
+                ->with('info', $e->getMessage());
+        }
+
+        try {
+            $pdfs->generarYGuardar($newCertificado);
+        } catch (\Throwable $pdfException) {
+            try {
+                CertificadoMedico::where('id', $certificado->id)->update([
+                    'estado_version' => CertificadoMedico::ESTADO_VIGENTE,
+                    'reemplazado_por_id' => null,
+                    'motivo_correccion' => null,
+                    'corregido_por' => null,
+                    'fecha_correccion' => null,
+                ]);
+
+                CitaEvento::where('cita_id', $certificado->cita_id)
+                    ->where('tipo', 'certificado_corregido')
+                    ->where('comentario', 'like', '%' . $newCertificado->codigo . '%')
+                    ->delete();
+
+                $newCertificado->delete();
+            } catch (\Throwable $rollbackDbErr) {
+                \Illuminate\Support\Facades\Log::error('Error rolling back corrected certificate on PDF failure: ' . $rollbackDbErr->getMessage());
             }
 
-            $cita = $oldCert->cita;
-            $csv = app(DocumentoCsvService::class)->generateCsv();
-            $record = $clinicalRecords->ensureForPatient($cita->paciente_id, Auth::id(), $cita->dependiente_id);
-            $newVersion = ((int) ($oldCert->version ?: 1)) + 1;
-
-            $newCert = CertificadoMedico::create([
-                'codigo' => $this->generarCodigo($cita),
-                'csv' => $csv,
-                'estado_version' => CertificadoMedico::ESTADO_VIGENTE,
-                'version' => $newVersion,
-                'reemplaza_a_id' => $oldCert->id,
-                'cita_id' => $cita->id,
-                'paciente_id' => $cita->paciente_id,
-                'dependiente_id' => $cita->dependiente_id,
-                'doctor_id' => $cita->doctor_id,
-                'clinical_record_id' => $record->id,
-                'fecha_emision' => now('America/Guayaquil'),
-                'texto_constancia' => $data['texto_constancia'],
-                'dias_reposo' => $diasReposo,
-                'reposo_desde' => $diasReposo > 0 ? ($data['reposo_desde'] ?? null) : null,
-                'reposo_hasta' => $diasReposo > 0 ? ($data['reposo_hasta'] ?? null) : null,
-                'observaciones' => $data['observaciones'] ?? null,
-                'envio_estado' => 'queued',
-                'envio_intentos' => 0,
-            ]);
-
-            $pdfs->generarYGuardar($newCert);
-
-            $oldCert->forceFill([
-                'estado_version' => CertificadoMedico::ESTADO_REEMPLAZADO,
-                'reemplazado_por_id' => $newCert->id,
-                'motivo_correccion' => $data['motivo_correccion'],
-                'corregido_por' => Auth::id(),
-                'fecha_correccion' => now('America/Guayaquil'),
-            ])->save();
-
-            CitaEvento::create([
-                'cita_id' => $cita->id,
-                'user_id' => Auth::id(),
-                'tipo' => 'certificado_corregido',
-                'comentario' => 'Certificado medico corregido. Nueva version '.$newCert->codigo.' (v'.$newVersion.') emitida.',
-            ]);
-
-            return $newCert;
-        });
+            throw $pdfException;
+        }
 
         EnviarCertificadoMedicoJob::dispatch($newCertificado->id);
 

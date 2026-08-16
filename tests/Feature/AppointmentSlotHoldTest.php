@@ -8,6 +8,7 @@ use App\Models\Especialidad;
 use App\Models\Horario;
 use App\Models\Role;
 use App\Models\User;
+use App\Support\ChatbotSessionKeys;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
@@ -102,7 +103,11 @@ class AppointmentSlotHoldTest extends TestCase
             'expires_at' => now()->addMinutes(10),
         ]);
 
-        $this->postJson(route('chatbot.agendar'), [
+        $this->withSession([
+            ChatbotSessionKeys::SESSION_VERIFIED => true,
+            ChatbotSessionKeys::SESSION_CHATBOT_USER_ID => $paciente->id,
+            ChatbotSessionKeys::SESSION_CHATBOT_OTP_VERIFIED => true,
+        ])->postJson(route('chatbot.agendar'), [
             'nombre' => $paciente->name,
             'cedula' => $paciente->dni,
             'email' => $paciente->email,

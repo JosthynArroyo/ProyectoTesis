@@ -204,6 +204,15 @@ class ChatBotController extends Controller
             ], 404);
         }
 
+        if (! $user->isActive()) {
+            return response()->json([
+                'ok'      => false,
+                'existe'  => true,
+                'message' => 'Tu cuenta de paciente se encuentra inactiva o bloqueada. Por favor, comunícate con la clínica.',
+                'error'   => 'user_inactive',
+            ], 403);
+        }
+
         // Validate email match only when email was provided
         if ($email !== null && ! empty($user->email) && strcasecmp((string) $user->email, $email) !== 0) {
             return response()->json([
@@ -238,7 +247,10 @@ class ChatBotController extends Controller
             ->where('dni', $data['cedula'])
             ->first();
 
-        if (! $user) {
+        $pendingKey = $this->pendingRegistrationCacheKey($data['cedula'], $data['email']);
+        $pending = Cache::get($pendingKey);
+
+        if (! $user && ! $pending) {
             return response()->json([
                 'ok' => false,
                 'existe' => false,
@@ -246,7 +258,19 @@ class ChatBotController extends Controller
             ], 404);
         }
 
-        if (! empty($user->email) && strcasecmp((string) $user->email, $data['email']) !== 0) {
+        if ($user && ! $user->isActive()) {
+            return response()->json([
+                'ok' => false,
+                'existe' => true,
+                'message' => 'Tu cuenta de paciente se encuentra inactiva o bloqueada.',
+                'error' => 'user_inactive',
+            ], 403);
+        }
+
+        $targetEmail = $user ? $user->email : $pending['email'];
+        $targetDni = $user ? $user->dni : $pending['cedula'];
+
+        if (! empty($targetEmail) && strcasecmp((string) $targetEmail, $data['email']) !== 0) {
             return response()->json([
                 'ok' => false,
                 'existe' => true,
@@ -254,7 +278,7 @@ class ChatBotController extends Controller
             ], 403);
         }
 
-        $cooldownKey = $this->otpSendCooldownKey($request, $user->email);
+        $cooldownKey = $this->otpSendCooldownKey($request, $targetEmail);
         if (RateLimiter::tooManyAttempts($cooldownKey, 1)) {
             $retryAfter = max(1, RateLimiter::availableIn($cooldownKey));
 
@@ -265,7 +289,7 @@ class ChatBotController extends Controller
             ], 429)->header('Retry-After', (string) $retryAfter);
         }
 
-        $quotaKey = $this->otpSendQuotaKey($request, $user->email);
+        $quotaKey = $this->otpSendQuotaKey($request, $targetEmail);
         if (RateLimiter::tooManyAttempts($quotaKey, 3)) {
             $retryAfter = max(1, RateLimiter::availableIn($quotaKey));
 
@@ -277,7 +301,7 @@ class ChatBotController extends Controller
         }
 
         $codigo = (string) random_int(100000, 999999);
-        $cacheKey = $this->codigoCacheKey($user->dni, $user->email);
+        $cacheKey = $this->codigoCacheKey($targetDni, $targetEmail);
 
         try {
             Mail::raw("Tu código de verificación es {$codigo}. Vence en 10 minutos.", function ($message) use ($data) {
@@ -335,14 +359,30 @@ class ChatBotController extends Controller
             ->where('email', $data['email'])
             ->first();
 
-        if (! $user) {
+        $pendingKey = $this->pendingRegistrationCacheKey($data['cedula'], $data['email']);
+        $pending = Cache::get($pendingKey);
+
+        if (! $user && ! $pending) {
             return response()->json([
                 'ok' => false,
                 'message' => 'No encontramos un paciente con esos datos.',
             ], 404);
         }
 
-        $cacheKey = $this->codigoCacheKey($user->dni, $user->email);
+        if ($user && ! $user->isActive()) {
+            $this->clearChatbotIdentitySession($request);
+
+            return response()->json([
+                'ok' => false,
+                'message' => 'Tu cuenta de paciente se encuentra inactiva o bloqueada.',
+                'error' => 'user_inactive',
+            ], 403);
+        }
+
+        $targetDni = $user ? $user->dni : $pending['cedula'];
+        $targetEmail = $user ? $user->email : $pending['email'];
+
+        $cacheKey = $this->codigoCacheKey($targetDni, $targetEmail);
         $codigoGuardado = Cache::get($cacheKey);
 
         if (is_null($codigoGuardado)) {
@@ -380,6 +420,36 @@ class ChatBotController extends Controller
         Cache::forget($cacheKey);
         $request->session()->forget(ChatbotSessionKeys::SESSION_OTP_VERIFY_ATTEMPTS);
 
+        $usuarioCreado = false;
+        $credencialesEnviadas = false;
+
+        if (! $user && $pending) {
+            $passwordPlano = Str::password(12, true, true, false);
+
+            $user = User::create([
+                'name'                 => $pending['nombre'],
+                'email'                => $pending['email'],
+                'password'             => Hash::make($passwordPlano),
+                'telefono'             => $pending['telefono'] ?? null,
+                'dni'                  => $pending['cedula'],
+                'status'               => User::STATUS_ACTIVE,
+                'must_change_password' => true,
+            ]);
+
+            $user->forceFill(['email_verified_at' => now()])->saveQuietly();
+
+            $role = Role::where('name', 'paciente')->first();
+            if ($role) {
+                $user->roles()->attach($role->id);
+            }
+
+            $credResult = $this->enviarCredencialesChatbot($user, $passwordPlano);
+            $credencialesEnviadas = $credResult['sent'];
+            $usuarioCreado = true;
+
+            Cache::forget($pendingKey);
+        }
+
         $request->session()->put(ChatbotSessionKeys::SESSION_CHATBOT_USER_ID, $user->id);
         $request->session()->put(ChatbotSessionKeys::SESSION_CHATBOT_OTP_VERIFIED, true);
 
@@ -388,25 +458,27 @@ class ChatBotController extends Controller
         $dependientes = Dependiente::where('user_id', $user->id)->orderBy('nombre')->get();
 
         return response()->json([
-            'ok' => true,
-            'message' => 'Código validado.',
-            'paciente' => [
-                'id' => $user->id,
-                'nombre' => $user->name,
-                'email' => $user->email,
+            'ok'                   => true,
+            'message'              => 'Código validado.',
+            'usuario_creado'       => $usuarioCreado,
+            'credenciales_enviadas' => $credencialesEnviadas,
+            'paciente'             => [
+                'id'       => $user->id,
+                'nombre'   => $user->name,
+                'email'    => $user->email,
                 'telefono' => $user->telefono,
             ],
-            'dependientes' => $dependientes->map(fn($d) => [
-                'id' => $d->id,
-                'nombre' => $d->nombre,
-                'nombre_completo' => $d->nombreConParentesco(),
-                'dni' => $d->dni,
-                'fecha_nacimiento' => $d->fecha_nacimiento->toDateString(),
-                'sexo' => $d->sexo,
-                'parentesco' => $d->parentesco,
+            'dependientes'         => $dependientes->map(fn($d) => [
+                'id'                  => $d->id,
+                'nombre'              => $d->nombre,
+                'nombre_completo'     => $d->nombreConParentesco(),
+                'dni'                 => $d->dni,
+                'fecha_nacimiento'    => $d->fecha_nacimiento->toDateString(),
+                'sexo'                => $d->sexo,
+                'parentesco'          => $d->parentesco,
                 'telefono_emergencia' => $d->telefono_emergencia,
-                'notas' => $d->notas,
-                'activo' => (bool) $d->activo,
+                'notas'               => $d->notas,
+                'activo'              => (bool) $d->activo,
             ]),
         ]);
     }
@@ -420,44 +492,51 @@ class ChatBotController extends Controller
             'telefono' => ['nullable', 'digits:10'],
         ]);
 
-        $passwordPlano = $data['cedula'];
+        $codigo = (string) random_int(100000, 999999);
+        $pendingKey = $this->pendingRegistrationCacheKey($data['cedula'], $data['email']);
+        $otpKey = $this->codigoCacheKey($data['cedula'], $data['email']);
 
-        $user = User::create([
-            'name'     => $data['nombre'],
+        Cache::put($pendingKey, [
+            'nombre'   => $data['nombre'],
+            'cedula'   => $data['cedula'],
             'email'    => $data['email'],
-            'password' => Hash::make($passwordPlano),
             'telefono' => $data['telefono'] ?? null,
-            'dni'      => $data['cedula'],
-            'status'   => User::STATUS_ACTIVE,
-        ]);
+        ], now()->addMinutes(10));
 
-        $role = Role::where('name', 'paciente')->first();
-        if ($role) {
-            $user->roles()->attach($role->id);
+        Cache::put($otpKey, $codigo, now()->addMinutes(10));
+
+        $request->session()->put(ChatbotSessionKeys::SESSION_OTP_LAST_SENT_AT, now()->timestamp);
+        $request->session()->forget(ChatbotSessionKeys::SESSION_OTP_VERIFY_ATTEMPTS);
+
+        try {
+            Mail::raw("Tu código de verificación es {$codigo}. Vence en 10 minutos.", function ($message) use ($data) {
+                $message->to($data['email'])
+                    ->subject('Código de verificación - Clínica');
+            });
+        } catch (\Throwable $e) {
+            Log::error('Chatbot: No se pudo enviar el correo del codigo OTP al registrar usuario.', [
+                'exception_class' => get_class($e),
+                'message' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'ok' => false,
+                'message' => 'No pudimos enviar el correo con el código de verificación.',
+            ], 500);
         }
-
-        $credResult = $this->enviarCredencialesChatbot($user, $passwordPlano);
-
-        $request->session()->put(ChatbotSessionKeys::SESSION_CHATBOT_USER_ID, $user->id);
-        $request->session()->put(ChatbotSessionKeys::SESSION_CHATBOT_OTP_VERIFIED, true);
 
         $response = [
-            'ok'                   => true,
-            'usuario_creado'       => true,
-            'credenciales_enviadas' => $credResult['sent'],
-            'message'              => 'Usuario registrado e identificado correctamente.',
-            'paciente'             => [
-                'id'       => $user->id,
-                'nombre'   => $user->name,
-                'email'    => $user->email,
-                'telefono' => $user->telefono,
+            'ok'             => true,
+            'usuario_creado' => false,
+            'requiere_otp'   => true,
+            'message'        => 'Hemos enviado un código de verificación de 6 dígitos a tu correo.',
+            'paciente'       => [
+                'nombre'   => $data['nombre'],
+                'email'    => $data['email'],
+                'telefono' => $data['telefono'] ?? null,
             ],
-            'dependientes' => [],
+            'dependientes'   => [],
         ];
-
-        if (! $credResult['sent']) {
-            $response['credenciales_error'] = 'Registramos tu usuario, pero no pudimos enviar el correo con tus credenciales.';
-        }
 
         return response()->json($response);
     }
@@ -469,101 +548,55 @@ class ChatBotController extends Controller
         SlotHoldService $slotHoldService
     ): JsonResponse
     {
-        // ── Resolve patient ──────────────────────────────────────────────────
-        // Priority 1: Identified session (post-OTP flow)
+        // ── Resolve patient from verified OTP session ───────────────────────
         $chatbotUserId = $request->session()->get(ChatbotSessionKeys::SESSION_CHATBOT_USER_ID);
+        $otpVerified   = (bool) $request->session()->get(ChatbotSessionKeys::SESSION_CHATBOT_OTP_VERIFIED, false);
 
-        // Priority 2: Guest flow – datos de identidad vienen en el body
-        $usuarioCreado        = false;
-        $credencialesEnviadas  = false;
-        $credencialesError     = null;
+        if (! $chatbotUserId || ! $otpVerified) {
+            return response()->json([
+                'ok'      => false,
+                'message' => 'Sesión de chatbot no identificada. Por favor, verifica tu identidad mediante OTP.',
+                'error'   => 'identity_required',
+            ], 401);
+        }
 
-        if ($chatbotUserId) {
-            $user = User::find($chatbotUserId);
-            if (! $user) {
-                return response()->json(['ok' => false, 'message' => 'Sesión inválida.'], 401);
-            }
-            // Update phone if provided by this request and not yet stored
-            if ($request->filled('telefono') && ! $user->telefono) {
-                $user->forceFill(['telefono' => $request->input('telefono')])->saveQuietly();
-                $user->refresh();
-            }
-        } else {
-            // ── Validate guest identity fields ───────────────────────────────
-            $guestRules = [
-                'nombre'   => ['required', 'string', 'max:255'],
-                'cedula'   => ['required', 'digits:10'],
-                'email'    => ['required', 'email', 'max:255'],
-                'telefono' => ['nullable', 'digits:10'],
-                'motivo'   => ValidationRules::motivoConsulta(false),
-                'crear_usuario' => ['nullable', 'boolean'],
-                'paciente_id'   => ['nullable', 'integer'],
-            ];
-            $guestData = $request->validate($guestRules);
+        $user = User::query()->role('paciente')->find($chatbotUserId);
+        if (! $user || ! $user->isActive()) {
+            $this->clearChatbotIdentitySession($request);
 
-            $crearUsuario = (bool) ($guestData['crear_usuario'] ?? false);
-            $pacienteId   = $guestData['paciente_id'] ?? null;
+            return response()->json([
+                'ok'      => false,
+                'message' => 'Tu cuenta de paciente se encuentra inactiva o bloqueada.',
+                'error'   => 'user_inactive',
+            ], 403);
+        }
 
-            // If paciente_id provided, verify email matches (identified guest)
-            if ($pacienteId) {
-                $user = User::find($pacienteId);
-                if (! $user) {
-                    return response()->json(['ok' => false, 'message' => 'Paciente no encontrado.'], 404);
-                }
-                if (strtolower(trim($user->email)) !== strtolower(trim($guestData['email']))) {
-                    return response()->json([
-                        'ok'      => false,
-                        'message' => 'El correo no coincide con tu perfil.',
-                    ], 403);
-                }
-            } else {
-                $normalizedCedula = \App\Services\IdentityDocumentService::normalize($guestData['cedula']);
-                $byEmail  = User::where('email', $guestData['email'])->first();
-                $byCedula = User::where('dni', $normalizedCedula)->first();
-                $byCedulaDep = Dependiente::where('dni', $normalizedCedula)->first();
+        // The client cannot decide or spoof patient identity
+        if ($request->filled('paciente_id') && (int) $request->input('paciente_id') !== (int) $user->id) {
+            return response()->json([
+                'ok'      => false,
+                'message' => 'No estás autorizado para agendar en nombre de otro paciente.',
+            ], 403);
+        }
 
-                if ($byEmail && $byCedula && $byEmail->id === $byCedula->id && ! $byCedulaDep) {
-                    // Existing user – reuse without creating, no credentials email
-                    $user = $byEmail;
-                    // Update phone if given and missing
-                    if (isset($guestData['telefono']) && ! $user->telefono) {
-                        $user->forceFill(['telefono' => $guestData['telefono']])->saveQuietly();
-                    }
-                } elseif ($byEmail || $byCedula || $byCedulaDep) {
-                    // Partial match – email or cedula belongs to a different user/dependiente
-                    return response()->json([
-                        'ok'      => false,
-                        'message' => 'Este número de cédula ya está registrado para otra persona.',
-                    ], 409);
-                } else {
-                    // Brand-new user – create
-                    $passwordPlano = $guestData['cedula'];
-                    $password      = $crearUsuario ? Hash::make($passwordPlano) : Hash::make(Str::random(32));
+        if ($request->filled('email') && strcasecmp(trim((string) $request->input('email')), (string) $user->email) !== 0) {
+            return response()->json([
+                'ok'      => false,
+                'message' => 'El correo no coincide con tu perfil verificado.',
+            ], 403);
+        }
 
-                    $role = Role::where('name', 'paciente')->first();
+        if ($request->filled('cedula') && trim((string) $request->input('cedula')) !== (string) $user->dni) {
+            return response()->json([
+                'ok'      => false,
+                'message' => 'La cédula no coincide con tu perfil verificado.',
+            ], 403);
+        }
 
-                    $user = User::create([
-                        'name'     => $guestData['nombre'],
-                        'email'    => $guestData['email'],
-                        'password' => $password,
-                        'telefono' => $guestData['telefono'] ?? null,
-                        'dni'      => $guestData['cedula'],
-                        'status'   => User::STATUS_ACTIVE,
-                    ]);
-
-                    if ($role) {
-                        $user->roles()->attach($role->id);
-                    }
-
-                    $usuarioCreado = true;
-
-                    if ($crearUsuario) {
-                        $credResult           = $this->enviarCredencialesChatbot($user, $passwordPlano);
-                        $credencialesEnviadas  = $credResult['sent'];
-                        $credencialesError     = $credResult['error'] ?? null;
-                    }
-                }
-            }
+        // Update phone if provided by this request and not yet stored
+        if ($request->filled('telefono') && ! $user->telefono) {
+            $user->forceFill(['telefono' => $request->input('telefono')])->saveQuietly();
+            $user->refresh();
         }
 
         // Accept both 'motivo' (guest/test compat) and 'motivo_consulta' (widget flow)
@@ -725,8 +758,8 @@ class ChatBotController extends Controller
         $agendarResponse = [
             'ok'                   => true,
             'message'              => 'Tu cita ha sido agendada correctamente. Conserva el comprobante para validarla en recepción.',
-            'usuario_creado'       => $usuarioCreado,
-            'credenciales_enviadas' => $credencialesEnviadas,
+            'usuario_creado'       => false,
+            'credenciales_enviadas' => false,
             'cita'                 => [
                 'id'               => $cita->id,
                 'folio_cita'       => $cita->folio_cita,
@@ -739,10 +772,6 @@ class ChatBotController extends Controller
                 'paciente'         => $cita->nombrePacienteReal(),
             ],
         ];
-
-        if ($credencialesError) {
-            $agendarResponse['credenciales_error'] = 'La cita fue registrada, pero no pudimos enviar el correo con tus credenciales.';
-        }
 
         return response()->json($agendarResponse);
     }
@@ -956,6 +985,13 @@ class ChatBotController extends Controller
             ], 422);
         }
 
+        if (! $cita->esReprogramable()) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Esta cita ya no puede ser reprogramada.',
+            ], 422);
+        }
+
         $doctorActivo = User::query()
             ->onlyActive()
             ->whereKey($cita->doctor_id)
@@ -995,9 +1031,72 @@ class ChatBotController extends Controller
             ], 422);
         }
 
+        $citaId = (int) $cita->id;
+        $transition = null;
+
         try {
-            $cita = DB::transaction(function () use ($cita, $nuevaFecha, $slot, $request, $priorityEvaluator) {
-                $cita = Cita::query()->whereKey($cita->id)->lockForUpdate()->firstOrFail();
+            $transition = DB::transaction(function () use ($citaId, $user, $nuevaFecha, $slot, $request, $priorityEvaluator, $scheduleService) {
+                $cita = Cita::query()->whereKey($citaId)->lockForUpdate()->firstOrFail();
+
+                if ($cita->paciente_id !== $user->id) {
+                    return [
+                        'ok' => false,
+                        'status' => 403,
+                        'message' => 'No tienes permisos para reprogramar esta cita.',
+                    ];
+                }
+
+                if ($cita->dependiente_id) {
+                    $dep = Dependiente::where('id', $cita->dependiente_id)->where('user_id', $user->id)->first();
+                    if (!$dep) {
+                        return [
+                            'ok' => false,
+                            'status' => 403,
+                            'message' => 'El dependiente asociado a esta cita no es válido.',
+                        ];
+                    }
+                    if (!$dep->activo) {
+                        return [
+                            'ok' => false,
+                            'status' => 422,
+                            'message' => 'No se puede reprogramar la cita porque el paciente está inactivo.',
+                        ];
+                    }
+                }
+
+                if (Carbon::parse($cita->fecha)->isPast()) {
+                    return [
+                        'ok' => false,
+                        'status' => 422,
+                        'message' => 'No se pueden reprogramar citas pasadas.',
+                    ];
+                }
+
+                if (! $cita->esReprogramable()) {
+                    return [
+                        'ok' => false,
+                        'status' => 422,
+                        'message' => 'Esta cita ya no puede ser reprogramada.',
+                    ];
+                }
+
+                User::query()->whereKey((int) $cita->doctor_id)->lockForUpdate()->firstOrFail();
+
+                $conflict = $scheduleService->hasConflict(
+                    professionalId: (int) $cita->doctor_id,
+                    date: $nuevaFecha,
+                    slot: $slot,
+                    interval: 30,
+                    exceptCitaId: (int) $cita->id
+                );
+
+                if ($conflict) {
+                    return [
+                        'ok' => false,
+                        'status' => 422,
+                        'message' => 'Ese horario ya no está disponible.',
+                    ];
+                }
 
                 $cita->fecha = $nuevaFecha;
                 $cita->hora = $slot->format('H:i:00');
@@ -1011,7 +1110,11 @@ class ChatBotController extends Controller
                 $priorityEvaluator->apply($cita);
                 $cita->save();
 
-                return $cita->refresh();
+                return [
+                    'ok' => true,
+                    'status' => 200,
+                    'cita' => $cita->refresh(),
+                ];
             });
         } catch (QueryException $e) {
             $isDuplicate = false;
@@ -1032,6 +1135,14 @@ class ChatBotController extends Controller
             throw $e;
         }
 
+        if (! $transition['ok']) {
+            return response()->json([
+                'ok' => false,
+                'message' => $transition['message'],
+            ], $transition['status']);
+        }
+
+        $cita = $transition['cita'];
         app(CitaComprobanteService::class)->sincronizarComprobante($cita);
         NotificarCambioEstadoCitaJob::dispatch($cita, 'reagendada', 'paciente');
 
@@ -1189,6 +1300,12 @@ class ChatBotController extends Controller
         return 'chatbot:codigo:' . sha1($cedula . '|' . $emailHash);
     }
 
+    protected function pendingRegistrationCacheKey(string $cedula, string $email): string
+    {
+        $emailHash = hash('sha256', strtolower(trim($email)));
+        return 'chatbot:pending_reg:' . sha1($cedula . '|' . $emailHash);
+    }
+
     protected function otpSendCooldownKey(Request $request, string $email): string
     {
         $sessionBucket = $this->otpSendSessionBucket($request);
@@ -1215,6 +1332,14 @@ class ChatBotController extends Controller
         }
 
         return $bucket;
+    }
+
+    protected function clearChatbotIdentitySession(Request $request): void
+    {
+        $request->session()->forget([
+            ChatbotSessionKeys::SESSION_CHATBOT_USER_ID,
+            ChatbotSessionKeys::SESSION_CHATBOT_OTP_VERIFIED,
+        ]);
     }
 
     protected function calcularSlotsDisponibles(int $doctorId, string $fecha, $bloques = null): array

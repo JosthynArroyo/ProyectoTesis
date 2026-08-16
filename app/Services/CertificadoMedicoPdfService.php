@@ -33,13 +33,20 @@ class CertificadoMedicoPdfService
 
         $storage = $docService->storeCertificatePdf($certificado, $pdfOutput);
 
-        $certificado->forceFill([
-            'csv' => $csv,
-            'pdf_path' => $storage['pdf_path'],
-            'pdf_disk' => $storage['pdf_disk'],
-        ])->saveQuietly();
+        try {
+            $certificado->forceFill([
+                'csv' => $csv,
+                'pdf_path' => $storage['pdf_path'],
+                'pdf_disk' => $storage['pdf_disk'],
+            ])->saveQuietly();
+        } catch (\Throwable $dbException) {
+            $docService->deleteQuietly($storage['pdf_path'], $storage['pdf_disk']);
+            throw $dbException;
+        }
 
-        $docService->cleanupOldPdf($oldPath, $oldDisk);
+        if ($oldPath && $oldPath !== $storage['pdf_path']) {
+            $docService->cleanupOldPdf($oldPath, $oldDisk);
+        }
 
         return $storage['pdf_path'];
     }

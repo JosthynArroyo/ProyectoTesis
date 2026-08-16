@@ -95,7 +95,9 @@ class PedidoLaboratorioResultadoController extends Controller
         $hasDraft = $pedido->resultados->contains(fn (PedidoLaboratorioResultado $resultado) => $resultado->estado === PedidoLaboratorioResultado::ESTADO_BORRADOR);
 
         if ($latestPublished && $pedido->resultado_publicado_at && ! $hasDraft) {
-            return back()->with('info', 'Este resultado ya fue publicado. Usa la corrección versionada si necesitas cambiarlo.');
+            return redirect()
+                ->route('laboratorio.pedidos.index')
+                ->with('info', 'Este resultado ya fue publicado. Usa la corrección versionada si necesitas cambiarlo.');
         }
 
         $uuid = (string) Str::uuid();
@@ -103,14 +105,14 @@ class PedidoLaboratorioResultadoController extends Controller
         $disk = Storage::disk('r2_private');
 
         try {
-            $resultado = DB::transaction(function () use ($pedido, $validated, $pdfs, $catalogConfig, $request, $uuid, $disk, &$pdfPath) {
+            [$resultado, $isNewPublication] = DB::transaction(function () use ($pedido, $validated, $pdfs, $catalogConfig, $request, $uuid, $disk, &$pdfPath) {
                 $pedido = $this->loadPedido(
                     PedidoLaboratorio::query()->with(['resultados', 'cita.paciente', 'cita.dependiente.responsable', 'cita.doctor', 'doctor', 'paciente'])->whereKey($pedido->id)->lockForUpdate()->firstOrFail()
                 );
 
                 $latest = $pedido->resultados()->orderByDesc('version')->first();
                 if ($latest && $latest->estado === PedidoLaboratorioResultado::ESTADO_PUBLICADO && $pedido->resultado_publicado_at && ! $pedido->resultados()->where('estado', PedidoLaboratorioResultado::ESTADO_BORRADOR)->exists()) {
-                    return $latest->fresh(['pedido']);
+                    return [$latest->fresh(['pedido']), false];
                 }
 
                 $resultado = $this->editableResultado($pedido);
@@ -185,7 +187,7 @@ class PedidoLaboratorioResultadoController extends Controller
                     'path' => $key,
                 ]);
 
-                return $resultado->fresh(['pedido']);
+                return [$resultado->fresh(['pedido']), true];
             });
         } catch (\Throwable $e) {
             if ($pdfPath && $disk->exists($pdfPath)) {
@@ -198,7 +200,17 @@ class PedidoLaboratorioResultadoController extends Controller
             throw $e;
         }
 
-        EnviarResultadoPedidoLaboratorioJob::dispatch($resultado->id);
+        if (! $isNewPublication) {
+            return redirect()
+                ->route('laboratorio.pedidos.index')
+                ->with('info', 'Este resultado ya fue publicado. Usa la corrección versionada si necesitas cambiarlo.');
+        }
+
+        try {
+            EnviarResultadoPedidoLaboratorioJob::dispatch($resultado->id);
+        } catch (\Throwable $dispatchException) {
+            \Illuminate\Support\Facades\Log::error('Error despachando job de envío de resultado de laboratorio: ' . $dispatchException->getMessage());
+        }
 
         return redirect()
             ->route('laboratorio.pedidos.index')

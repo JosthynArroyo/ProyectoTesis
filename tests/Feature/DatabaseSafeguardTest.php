@@ -2,11 +2,12 @@
 
 namespace Tests\Feature;
 
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class DatabaseSafeguardTest extends TestCase
 {
-    /** @test */
+    #[Test]
     public function test_database_safeguard_prevents_running_on_production_database()
     {
         $originalDb = config('database.connections.mysql.database');

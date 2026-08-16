@@ -6,6 +6,7 @@ use App\Jobs\NotificarCambioEstadoCitaJob;
 use App\Models\Cita;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class CitaNoShowService
@@ -32,16 +33,14 @@ class CitaNoShowService
                             ->whereTime('hora', '<=', $hora);
                     });
             })
-            ->select(['id', 'estado', 'activo', 'fecha', 'hora'])
+            ->select(['id'])
             ->orderBy('id')
-            ->chunkById(100, function (Collection $vencidas) use ($citas): void {
-                foreach ($vencidas as $cita) {
-                    $cita->estado = Cita::ESTADO_NO_SE_PRESENTO;
-                    $cita->activo = false;
-                    $cita->save();
-                    $this->dispatchNoShowNotification($cita);
-                    $this->syncComprobanteSafely($cita, 'marcarVencidas');
-                    $citas->push($cita);
+            ->chunkById(100, function (Collection $candidatos) use ($citas, $tz, $duracionMin): void {
+                foreach ($candidatos as $candidate) {
+                    $candidateModel = Cita::find($candidate->id);
+                    if ($candidateModel && $this->marcarSiVencio($candidateModel, $tz, $duracionMin)) {
+                        $citas->push($candidateModel->refresh());
+                    }
                 }
             });
 
@@ -50,20 +49,42 @@ class CitaNoShowService
 
     public function marcarSiVencio(Cita $cita, string $tz = 'America/Guayaquil', int $duracionMin = 30): bool
     {
-        if (! in_array($cita->estado, [Cita::ESTADO_PENDIENTE, Cita::ESTADO_CONFIRMADA], true)) {
+        $marcada = DB::transaction(function () use ($cita, $tz, $duracionMin): ?Cita {
+            /** @var Cita|null $citaBloqueada */
+            $citaBloqueada = Cita::query()
+                ->whereKey($cita->getKey())
+                ->lockForUpdate()
+                ->first();
+
+            if (! $citaBloqueada) {
+                return null;
+            }
+
+            if (! in_array($citaBloqueada->estado, [Cita::ESTADO_PENDIENTE, Cita::ESTADO_CONFIRMADA], true)) {
+                return null;
+            }
+
+            if (! $citaBloqueada->activo) {
+                return null;
+            }
+
+            if (! $citaBloqueada->estaVencida($tz, $duracionMin)) {
+                return null;
+            }
+
+            $citaBloqueada->estado = Cita::ESTADO_NO_SE_PRESENTO;
+            $citaBloqueada->activo = false;
+            $citaBloqueada->save();
+
+            return $citaBloqueada;
+        });
+
+        if (! $marcada) {
             return false;
         }
 
-        if (! $cita->estaVencida($tz, $duracionMin)) {
-            return false;
-        }
-
-        $cita->estado = Cita::ESTADO_NO_SE_PRESENTO;
-        $cita->activo = false;
-        $cita->save();
-
-        $this->dispatchNoShowNotification($cita);
-        $this->syncComprobanteSafely($cita, 'marcarSiVencio');
+        $this->dispatchNoShowNotification($marcada);
+        $this->syncComprobanteSafely($marcada, 'marcarSiVencio');
 
         return true;
     }

@@ -260,4 +260,74 @@ class PagoServiceTest extends TestCase
 
         $this->assertTrue(app(PagoService::class)->pacienteTieneBloqueo($paciente->id));
     }
+
+    public function test_cambiar_estado_bajo_lock_rechaza_transicion_de_paciente_si_pago_ya_esta_pagado(): void
+    {
+        $paciente = User::factory()->create();
+        $pacienteRole = Role::firstOrCreate(['name' => 'paciente']);
+        $paciente->roles()->attach($pacienteRole->id);
+
+        $doctor = User::factory()->create();
+        $especialidad = Especialidad::factory()->create();
+        $cita = Cita::factory()->create([
+            'paciente_id' => $paciente->id,
+            'doctor_id' => $doctor->id,
+            'especialidad_id' => $especialidad->id,
+        ]);
+
+        $pago = Pago::query()->create([
+            'cita_id' => $cita->id,
+            'paciente_id' => $paciente->id,
+            'monto' => 45.00,
+            'moneda' => 'USD',
+            'estado' => Pago::ESTADO_PAGADO,
+        ]);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Este pago ya fue aprobado y no admite más modificaciones.');
+
+        app(PagoService::class)->cambiarEstado(
+            pago: $pago,
+            nuevoEstado: Pago::ESTADO_EN_VERIFICACION,
+            actor: $paciente
+        );
+    }
+
+    public function test_cambiar_estado_bajo_lock_permite_transiciones_administrativas_validas(): void
+    {
+        $admin = User::factory()->create();
+        $adminRole = Role::firstOrCreate(['name' => 'administrador']);
+        $admin->roles()->attach($adminRole->id);
+
+        $paciente = User::factory()->create();
+        $doctor = User::factory()->create();
+        $especialidad = Especialidad::factory()->create();
+        $cita = Cita::factory()->create([
+            'paciente_id' => $paciente->id,
+            'doctor_id' => $doctor->id,
+            'especialidad_id' => $especialidad->id,
+        ]);
+
+        $pago = Pago::query()->create([
+            'cita_id' => $cita->id,
+            'paciente_id' => $paciente->id,
+            'monto' => 45.00,
+            'moneda' => 'USD',
+            'metodo_pago' => Pago::METODO_EFECTIVO,
+            'estado' => Pago::ESTADO_PENDIENTE,
+        ]);
+
+        $service = app(PagoService::class);
+
+        // Transición válida: pendiente -> pagado
+        $actualizado = $service->cambiarEstado(
+            pago: $pago,
+            nuevoEstado: Pago::ESTADO_PAGADO,
+            actor: $admin,
+            motivo: 'Aprobado en efectivo en recepcion'
+        );
+
+        $this->assertSame(Pago::ESTADO_PAGADO, $actualizado->estado);
+        $this->assertSame($admin->id, $actualizado->aprobado_por);
+    }
 }

@@ -10,7 +10,6 @@ use App\Models\User;
 use App\Services\CitaNoShowService;
 use App\Services\CitaRecordatorioService;
 use App\Services\DashboardAnalyticsService;
-use App\Services\ImageOptimizer;
 use App\Services\ProfileAvatarService;
 use App\Support\DateField;
 use App\Support\ImageUrl;
@@ -722,73 +721,6 @@ class AdminController extends Controller
         return false;
     }
 
-    // ===== Alta rápida Doctor (atajo legado) =====
-    public function crearDoctor()
-    {
-        $especialidades = Especialidad::orderBy('nombre')->get();
-
-        return view('admin.doctor-create', compact('especialidades'));
-    }
-
-    public function storeDoctor(Request $request, ImageOptimizer $imageOptimizer)
-    {
-        return $this->guardarDoctor($request, $imageOptimizer);
-    }
-
-    public function guardarDoctor(Request $request, ImageOptimizer $imageOptimizer)
-    {
-        DateField::mergeIntoRequest($request, 'fecha_nacimiento');
-        $rules = [
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ValidationRules::emailUnique(),
-            'password' => ValidationRules::passwordRequired(),
-            'telefono' => ValidationRules::telefono(),
-            'tipo_documento' => ['nullable', 'in:cedula,pasaporte'],
-            'nacionalidad' => ['required_if:tipo_documento,pasaporte', 'nullable', 'string', function ($attribute, $value, $fail) use ($request) {
-                if ($request->input('tipo_documento') === 'pasaporte' && (! $value || ! \App\Support\CountryCatalog::isValidCode($value))) {
-                    $fail('La nacionalidad es obligatoria cuando el documento es pasaporte.');
-                }
-            }],
-            'dni' => ValidationRules::cedulaUnique(),
-            'direccion' => ['required', 'string', 'max:255'],
-            'fecha_nacimiento' => ValidationRules::birthDate(),
-            'sexo' => ['required', 'in:Masculino,Femenino,Otro'],
-            'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,svg', 'max:2048'],
-            'especialidad_id' => ['required', 'integer', 'exists:especialidades,id'],
-            'precio_consulta' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
-            'moneda' => ['required', 'in:USD'],
-        ];
-
-        $validated = $request->validate($rules);
-
-        $user = new User;
-        $user->name = $validated['name'];
-        $user->email = $validated['email'];
-        $user->password = Hash::make($validated['password']);
-        $user->telefono = $validated['telefono'] ?? null;
-        $user->tipo_documento = $validated['tipo_documento'] ?? 'cedula';
-        $user->nacionalidad = ($validated['tipo_documento'] ?? 'cedula') === 'pasaporte' ? ($validated['nacionalidad'] ?? null) : null;
-        $user->dni = $validated['dni'] ?? null;
-        $user->direccion = $validated['direccion'] ?? null;
-        $user->fecha_nacimiento = $validated['fecha_nacimiento'] ?? null;
-        $user->sexo = $validated['sexo'] ?? null;
-        $user->precio_consulta = $validated['precio_consulta'] ?? null;
-        $user->moneda = 'USD';
-        $user->status = User::STATUS_ACTIVE;
-
-        if ($request->hasFile('avatar')) {
-            $user->avatar = $imageOptimizer->optimizeAndStore($request->file('avatar'), 'doctors');
-        }
-
-        $user->save();
-
-        $role = Role::where('name', 'doctor')->firstOrFail();
-        $user->roles()->sync([$role->id]);
-        $user->especialidades()->sync([$validated['especialidad_id']]);
-
-        return redirect()->route('admin.usuarios.index')->with('success', 'Doctor creado correctamente.');
-    }
-
     public function doctoresPorEspecialidad(Especialidad $especialidad, ImageUrl $imageUrl)
     {
         $rol = $especialidad->isLaboratorioClinico()
@@ -837,53 +769,6 @@ class AdminController extends Controller
             ->values();
 
         return response()->json($doctores);
-    }
-
-    public function crearPaciente()
-    {
-        return view('admin.paciente-create');
-    }
-
-    public function storePaciente(Request $request)
-    {
-        DateField::mergeIntoRequest($request, 'fecha_nacimiento');
-        $rules = [
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ValidationRules::emailUnique(),
-            'password' => ValidationRules::passwordRequired(),
-            'telefono' => ValidationRules::telefono(),
-            'tipo_documento' => ['nullable', 'in:cedula,pasaporte'],
-            'nacionalidad' => ['required_if:tipo_documento,pasaporte', 'nullable', 'string', function ($attribute, $value, $fail) use ($request) {
-                if ($request->input('tipo_documento') === 'pasaporte' && (! $value || ! \App\Support\CountryCatalog::isValidCode($value))) {
-                    $fail('La nacionalidad es obligatoria cuando el documento es pasaporte.');
-                }
-            }],
-            'dni' => ValidationRules::cedulaUnique(),
-            'direccion' => ['required', 'string', 'max:255'],
-            'fecha_nacimiento' => ValidationRules::birthDate(),
-            'sexo' => ['required', 'in:Masculino,Femenino,Otro'],
-        ];
-
-        $data = $request->validate($rules);
-
-        $user = new User;
-        $user->name = $data['name'];
-        $user->email = $data['email'];
-        $user->password = Hash::make($data['password']);
-        $user->telefono = $data['telefono'] ?? null;
-        $user->tipo_documento = $data['tipo_documento'] ?? 'cedula';
-        $user->nacionalidad = ($data['tipo_documento'] ?? 'cedula') === 'pasaporte' ? ($data['nacionalidad'] ?? null) : null;
-        $user->dni = $data['dni'];
-        $user->direccion = $data['direccion'] ?? null;
-        $user->fecha_nacimiento = $data['fecha_nacimiento'] ?? null;
-        $user->sexo = $data['sexo'] ?? null;
-        $user->status = User::STATUS_ACTIVE;
-        $user->save();
-
-        $role = Role::where('name', 'paciente')->firstOrFail();
-        $user->roles()->sync([$role->id]);
-
-        return redirect()->route('admin.usuarios.index')->with('success', 'Paciente creado correctamente.');
     }
 
     // ===== Exportes (respetan buscar + role) =====

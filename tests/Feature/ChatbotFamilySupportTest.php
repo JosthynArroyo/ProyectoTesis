@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Mail;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class ChatbotFamilySupportTest extends TestCase
@@ -31,7 +32,7 @@ class ChatbotFamilySupportTest extends TestCase
         \Illuminate\Support\Facades\Storage::fake('r2_public');
     }
 
-    /** @test */
+    #[Test]
     public function test_captcha_images_are_not_publicly_accessible()
     {
         $this->assertDirectoryDoesNotExist(public_path('captcha_animals'));
@@ -39,7 +40,7 @@ class ChatbotFamilySupportTest extends TestCase
         $response->assertStatus(404);
     }
 
-    /** @test */
+    #[Test]
     public function test_challenge_response_does_not_expose_database_ids_or_class_keys()
     {
         $classes = config('captcha.classes', ['giraffe', 'horse', 'koala', 'kangaroo']);
@@ -63,7 +64,7 @@ class ChatbotFamilySupportTest extends TestCase
         $response->assertJsonMissing(['id']);
     }
 
-    /** @test */
+    #[Test]
     public function test_captcha_image_serving_checks_session_token_and_position()
     {
         $classes = config('captcha.classes', ['giraffe', 'horse', 'koala', 'kangaroo']);
@@ -85,7 +86,7 @@ class ChatbotFamilySupportTest extends TestCase
         $invalidPosResponse->assertStatus(404);
     }
 
-    /** @test */
+    #[Test]
     public function test_concurrent_captcha_requests_serialize_and_keep_single_challenge_active()
     {
         $classes = config('captcha.classes', ['giraffe', 'horse', 'koala', 'kangaroo']);
@@ -103,7 +104,7 @@ class ChatbotFamilySupportTest extends TestCase
         $this->assertEquals($secondToken, session(ChatbotSessionKeys::SESSION_CHALLENGE_TOKEN));
     }
 
-    /** @test */
+    #[Test]
     public function test_otp_verification_flow_enforces_rate_limiting_and_failed_attempts_invalidation()
     {
         $user = User::factory()->create([
@@ -158,7 +159,7 @@ class ChatbotFamilySupportTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function test_otp_independence_keeps_patient_verified_beyond_captcha_five_minutes()
     {
         $user = User::factory()->create([
@@ -184,7 +185,7 @@ class ChatbotFamilySupportTest extends TestCase
         $response->assertStatus(200);
     }
 
-    /** @test */
+    #[Test]
     public function test_inactive_dependents_rules()
     {
         $user = User::factory()->create();
@@ -249,7 +250,7 @@ class ChatbotFamilySupportTest extends TestCase
         $this->assertEquals(Cita::ESTADO_CANCELADA, $cita->estado);
     }
 
-    /** @test */
+    #[Test]
     public function test_booking_conflict_concurrency_returns_422()
     {
         $user = User::factory()->create();

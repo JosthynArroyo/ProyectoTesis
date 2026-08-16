@@ -7,12 +7,12 @@
     title="Tu cuenta ya está disponible"
     intro="Creamos tu acceso al sistema de la clínica a partir de la información que registraste en el asistente web."
     badge="Credenciales iniciales"
-    preheader="Ya puedes ingresar al portal de la clínica con tu correo y tu cédula."
-    footer-note="Por seguridad, cambia esta contraseña inicial apenas completes tu primer ingreso."
+    preheader="Ya puedes ingresar al portal de la clínica con tu correo y tu contraseña temporal."
+    footer-note="Por seguridad, el sistema te solicitará cambiar esta contraseña temporal en tu primer ingreso."
 >
     <p style="margin:0 0 22px; font-size:15px; line-height:1.7; color:#334155;">
         Hola {{ $user->name }}, desde ahora puedes gestionar citas, revisar resultados y dar seguimiento a tu atención médica desde el portal de {{ $clinicIdentity->name() }}.
-        Tu usuario será el correo que registraste y tu contraseña inicial será tu número de cédula.
+        Tu usuario será el correo que registraste y tu contraseña temporal de acceso es la indicada a continuación.
     </p>
 
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%; border-collapse:separate; border-spacing:0; border:1px solid #dbe4ee; border-radius:22px; overflow:hidden; background:#ffffff;">
@@ -26,17 +26,17 @@
             <td style="padding:14px 20px; border-bottom:1px solid #eef2f7; font-size:14px; font-weight:600; color:#0f172a;">{{ $user->email }}</td>
         </tr>
         <tr>
-            <td style="padding:14px 20px; font-size:13px; font-weight:700; color:#64748b;">Contraseña inicial</td>
+            <td style="padding:14px 20px; font-size:13px; font-weight:700; color:#64748b;">Contraseña temporal</td>
             <td style="padding:14px 20px; font-size:14px; font-weight:700; color:#0f172a;">{{ $passwordPlano }}</td>
         </tr>
     </table>
 
     <div style="margin-top:20px; padding:20px; border-radius:22px; background:#f8fafc; border:1px solid #dbe4ee;">
         <div style="font-size:13px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#0f766e;">
-            Siguiente paso recomendado
+            Siguiente paso obligatorio
         </div>
         <p style="margin:10px 0 0; font-size:14px; line-height:1.7; color:#475569;">
-            Inicia sesión con tu correo y tu cédula, y luego actualiza tu contraseña desde el perfil de usuario para mantener segura tu cuenta.
+            Inicia sesión con tu correo y tu contraseña temporal. El sistema te pedirá establecer una contraseña personal y segura antes de continuar.
         </p>
     </div>
 

@@ -72,6 +72,17 @@ class Cita extends Model
 
     public const FUENTE_PRIORIDAD_MANUAL = 'MANUAL';
 
+    public const ESTADOS_TERMINALES = [
+        self::ESTADO_CANCELADA,
+        self::ESTADO_REALIZADA,
+        self::ESTADO_NO_SE_PRESENTO,
+    ];
+
+    public const ESTADOS_REPROGRAMABLES = [
+        self::ESTADO_PENDIENTE,
+        self::ESTADO_CONFIRMADA,
+    ];
+
     public const ESTADOS = [
         self::ESTADO_PENDIENTE,
         self::ESTADO_CONFIRMADA,
@@ -254,6 +265,28 @@ class Cita extends Model
         return Carbon::now($tz)->greaterThanOrEqualTo(
             $this->finProgramado($tz, $duracionMin)
         );
+    }
+
+    public function esReprogramable(string $tz = 'America/Guayaquil', int $duracionMin = 30): bool
+    {
+        if (! $this->activo) {
+            return false;
+        }
+
+        if (! in_array($this->estado, self::ESTADOS_REPROGRAMABLES, true)) {
+            return false;
+        }
+
+        if ($this->estaVencida($tz, $duracionMin)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    public function esTerminal(): bool
+    {
+        return in_array($this->estado, self::ESTADOS_TERMINALES, true);
     }
 
     public function tieneComprobanteCita(): bool

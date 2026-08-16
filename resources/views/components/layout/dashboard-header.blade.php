@@ -185,7 +185,7 @@
                 <button type="button" class="flex w-full cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-gray-600 hover:bg-gray-50" data-legal-open="terms-service-modal">
                     <i class="ri-file-text-line"></i> Términos de servicio
                 </button>
-                <a href="{{ route('salir') }}"
+                <a href="#"
                    onclick="event.preventDefault(); document.getElementById('logout-form-header').submit();"
                    class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-rose-600 hover:bg-rose-50">
                     <i class="ri-logout-circle-r-line"></i> Cerrar sesión

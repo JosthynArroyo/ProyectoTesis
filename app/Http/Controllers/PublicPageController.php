@@ -95,11 +95,9 @@ class PublicPageController extends Controller
 
     public function logout(Request $request): RedirectResponse
     {
-        if ($request->user() || $request->isMethod('post')) {
-            auth()->logout();
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
-        }
+        auth()->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
 
         return redirect('/');
     }
