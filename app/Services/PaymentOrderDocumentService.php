@@ -16,7 +16,9 @@ class PaymentOrderDocumentService
 
     public function getDisk(): string
     {
-        if (app()->environment('testing')) {
+        $disk = (string) config('private_documents.disk', self::DISK);
+
+        if (app()->environment('testing') && $disk === self::DISK) {
             try {
                 $adapterClass = get_class(Storage::disk(self::DISK)->getAdapter());
                 if (! str_contains($adapterClass, 'Local')) {
@@ -27,7 +29,7 @@ class PaymentOrderDocumentService
             }
         }
 
-        return self::DISK;
+        return $disk;
     }
 
     public function generateAndStoreOrderPdf(Pago $pago, PagoDocumentoService $documentoService): string

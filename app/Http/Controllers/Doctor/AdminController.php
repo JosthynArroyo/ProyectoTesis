@@ -70,13 +70,23 @@ class AdminController extends Controller
 
         $base = Cita::query()->where('doctor_id', $user->id);
 
-        $citasHoy = (clone $base)->whereDate('fecha', $hoy)->count();
-        $citasRealizadas = (clone $base)->whereDate('fecha', $hoy)->where('estado', 'realizada')->count();
-        $citasPendientes = (clone $base)->whereDate('fecha', $hoy)->where('estado', 'pendiente')->count();
+        $citasHoyGroup = (clone $base)->whereDate('fecha', $hoy)
+            ->selectRaw('estado, COUNT(*) as total')
+            ->groupBy('estado')
+            ->pluck('total', 'estado');
 
-        $citasConfirmadas2h = (clone $base)->where('estado', 'confirmada')->where('updated_at', '>=', $desde2h)->count();
-        $citasRealizadas2h = (clone $base)->where('estado', 'realizada')->where('updated_at', '>=', $desde2h)->count();
-        $citasCanceladas2h = (clone $base)->where('estado', 'cancelada')->where('updated_at', '>=', $desde2h)->count();
+        $citasHoy = (int) $citasHoyGroup->sum();
+        $citasRealizadas = (int) ($citasHoyGroup['realizada'] ?? 0);
+        $citasPendientes = (int) ($citasHoyGroup['pendiente'] ?? 0);
+
+        $citas2hGroup = (clone $base)->where('updated_at', '>=', $desde2h)
+            ->selectRaw('estado, COUNT(*) as total')
+            ->groupBy('estado')
+            ->pluck('total', 'estado');
+
+        $citasConfirmadas2h = (int) ($citas2hGroup['confirmada'] ?? 0);
+        $citasRealizadas2h = (int) ($citas2hGroup['realizada'] ?? 0);
+        $citasCanceladas2h = (int) ($citas2hGroup['cancelada'] ?? 0);
         $totalPacientes = (clone $base)->distinct('paciente_id')->count('paciente_id');
 
         $citas = (clone $base)

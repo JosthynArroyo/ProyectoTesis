@@ -14,7 +14,7 @@
 @php
     $hasRight = $__env->hasSection('right');
     $activeSidebar = trim($__env->yieldContent('activeSidebar'));
-    $sidebarRoutes = ['doctor.dashboard', 'doctor.perfil.edit', 'doctor.citas', 'doctor.pacientes.index', 'doctor.recetas.index', 'doctor.agenda', 'doctor.horario.index'];
+    $sidebarRoutes = ['doctor.dashboard', 'doctor.perfil.edit', 'doctor.citas', 'doctor.pacientes.index', 'doctor.recetas.index', 'doctor.agenda', 'doctor.horario.index', 'doctor.pedidos-laboratorio.index'];
     $headerTitle = trim($__env->yieldContent('header-title')) ?: 'Panel médico';
     $headerSubtitle = trim($__env->yieldContent('header-subtitle')) ?: 'Gestión de consultas y agenda';
     $panelBackDefaultUrl = match (true) {

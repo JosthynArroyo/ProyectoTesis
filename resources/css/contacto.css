@@ -1,164 +1,271 @@
 /* resources/css/contacto.css */
-/* Tipografía moderna */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-/* ================== Tokens ================== */
-:root{
-  --bg:linear-gradient(180deg,#f8fafc 0%, #f3f4f6 40%, #eef2f7 100%);
-  --card:#ffffff;
-  --ink:#0f172a;           /* slate-900 */
-  --muted:#64748b;         /* slate-500 */
-  --line:#e5e7eb;          /* gray-200 */
-  --brand:#2563eb;         /* blue-600 */
-  --brand-2:#1e40af;       /* blue-800 */
-  --ring:rgba(37,99,235,.18);
-  --shadow:0 18px 40px rgba(15,23,42,.10),0 6px 16px rgba(15,23,42,.06);
-  --radius-xl:18px;
-  --radius-lg:14px;
-  --radius-sm:10px;
+/* ── Contacto page layout & tokens ── */
+.ct-page-shell {
+  min-height: calc(100vh - 4.5rem);
+  display: flex;
+  flex-direction: column;
+}
+.ct-section { padding: 2rem 0 3rem; }
+.ct-grid {
+  display: grid;
+  gap: 1.5rem;
+  align-items: start;
+}
+@media (min-width: 1024px) {
+  .ct-grid { grid-template-columns: 0.9fr 1.1fr; }
 }
 
-/* ================== Base ================== */
-*{box-sizing:border-box}
-html,body{height:100%}
-body{
-  margin:0; font-family:"Inter",system-ui,-apple-system,Segoe UI,Roboto,Arial;
-  color:var(--ink); background:var(--bg);
+/* ── Left card ── */
+.ct-card {
+  background: rgba(255,255,255,0.97);
+  border: 1px solid rgba(148,163,184,0.55);
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(15,23,42,0.07);
+  padding: 1.75rem;
+}
+.ct-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.ct-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.875rem;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 0.75rem;
+}
+.ct-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--ink);
+  margin: 0 0 0.5rem;
+  line-height: 1.2;
+}
+.ct-subtitle {
+  font-size: 0.875rem;
+  color: var(--muted);
+  line-height: 1.65;
+  margin: 0 0 1.5rem;
+}
+/* Ilustración decorativa */
+.ct-illustration {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+.ct-illustration span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 1.4rem;
+}
+/* Bloques de info */
+.ct-info-list { display: flex; flex-direction: column; gap: 0; }
+.ct-info-item {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 0.875rem 0;
+  border-bottom: 1px solid rgba(148,163,184,0.28);
+  cursor: default;
+}
+.ct-info-item:last-child { border-bottom: none; }
+.ct-info-item--top {
+  align-items: flex-start;
+}
+.ct-info-item--top .ct-info-icon {
+  margin-top: 0.2rem;
+}
+.ct-info-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 10px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+.ct-info-body { flex: 1; min-width: 0; }
+.ct-info-label {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0 0 0.15rem;
+}
+.ct-info-value {
+  font-size: 0.775rem;
+  color: var(--muted);
+  line-height: 1.5;
+  margin: 0;
+}
+.ct-info-arrow {
+  font-size: 1rem;
+  color: rgba(148,163,184,0.7);
+  flex-shrink: 0;
+}
+/* Mapa */
+.ct-map-wrap {
+  margin-top: 1.25rem;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(148,163,184,0.45);
+}
+/* Info segura */
+.ct-secure {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  background: var(--accent-soft);
+  border-radius: 10px;
+  padding: 0.875rem 1rem;
+  margin-top: 1.25rem;
+}
+.ct-secure i { color: var(--accent); font-size: 1.1rem; flex-shrink: 0; margin-top: 2px; }
+.ct-secure-title { font-size: 0.8125rem; font-weight: 700; color: var(--ink); margin: 0 0 0.15rem; }
+.ct-secure-text  { font-size: 0.75rem; color: var(--muted); margin: 0; line-height: 1.5; }
+
+/* ── Form card ── */
+.ct-form-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+.ct-form-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.875rem;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  border: 1px solid rgba(15,118,110,0.2);
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+.ct-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+@media (max-width: 639px) {
+  .ct-form-grid { grid-template-columns: 1fr; }
+}
+/* Inputs */
+.ct-field { display: flex; flex-direction: column; gap: 0.35rem; }
+.ct-field--full {
+  grid-column: 1 / -1;
+}
+.ct-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+.ct-input, .ct-textarea {
+  width: 100%;
+  padding: 0.65rem 0.875rem;
+  border: 1.5px solid rgba(148,163,184,0.55);
+  border-radius: 8px;
+  font-size: 0.875rem;
+  color: var(--ink);
+  background: #fff;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+.ct-input:focus, .ct-textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(15,118,110,0.12);
+}
+.ct-input::placeholder, .ct-textarea::placeholder { color: #94a3b8; }
+.ct-textarea { resize: vertical; min-height: 130px; }
+.ct-help { font-size: 0.72rem; color: var(--muted); margin: 0.25rem 0 0; }
+.ct-help--error { color: #e11d48; }
+/* Submit */
+.ct-submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.85rem 1.5rem;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(15,118,110,0.22);
+  transition: background 0.2s, transform 0.15s;
+  margin-top: 1.25rem;
+}
+.ct-submit:hover { background: var(--accent-strong); transform: translateY(-1px); }
+.ct-submit:disabled,
+.ct-submit[aria-disabled="true"] {
+  background: #64748b;
+  color: #f8fafc;
+  box-shadow: none;
+  cursor: not-allowed;
+  opacity: 0.72;
+  transform: none;
+  filter: grayscale(0.1);
+}
+.ct-submit:disabled:hover,
+.ct-submit[aria-disabled="true"]:hover {
+  background: #64748b;
+  transform: none;
 }
 
-/* Limpia decoraciones del navbar en esta vista */
-.cnav__link,.cnav__link:link,.cnav__link:visited,
-.cnav__social-link,.cnav__social-link:link,.cnav__social-link:visited{
-  text-decoration:none!important; border-bottom:0!important; box-shadow:none!important
+/* ── 3 bottom cards ── */
+.ct-features { display: grid; grid-template-columns: repeat(3,1fr); gap: 1rem; margin-top: 1.5rem; }
+.ct-feat {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.875rem;
+  background: rgba(255,255,255,0.97);
+  border: 1px solid rgba(148,163,184,0.55);
+  border-radius: 12px;
+  padding: 1.25rem;
+  box-shadow: 0 6px 18px rgba(15,23,42,0.05);
 }
-.cnav__link.is-active::after,.cnav__social-link::after{content:none!important}
+.ct-feat__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 10px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+.ct-feat__title { font-size: 0.875rem; font-weight: 700; color: var(--ink); margin: 0 0 0.2rem; }
+.ct-feat__text  { font-size: 0.775rem; color: var(--muted); line-height: 1.5; margin: 0; }
 
-/* ================== Layout ================== */
-.contacto{min-height:calc(100svh - 64px); padding:56px 20px}
-.centro{max-width:1200px; margin:0 auto}
-.contacto__grid{
-  width:min(1200px,100%); margin:0 auto;
-  display:grid; grid-template-columns:1.05fr .95fr; gap:28px; align-items:start;
-}
-
-/* ================== Tarjeta Info + Mapa ================== */
-.info{
-  background:var(--card); border:1px solid var(--line);
-  border-radius:var(--radius-xl); box-shadow:var(--shadow);
-  padding:26px 24px;
-}
-.info__title{
-  margin:4px 0 8px; font-size:clamp(24px,2.8vw,30px); font-weight:700;
-  letter-spacing:.2px;
-}
-.info__desc{color:var(--muted); margin-bottom:16px}
-
-.info__list{
-  display:grid; gap:14px; margin-bottom:16px;
-}
-.info__list > div{
-  padding:10px 12px; border:1px solid var(--line); border-radius:var(--radius-sm);
-  background:#fafafa;
-}
-.info__list h3{
-  margin:0 0 4px 0; font-size:12px; color:#5b6b84; text-transform:uppercase; letter-spacing:0
-}
-.info__list p{margin:0; font-weight:600}
-
-.mapa{
-  margin-top:14px; border-radius:var(--radius-lg); overflow:hidden; border:1px solid var(--line);
-  background:#e9eef6;
-  aspect-ratio: 16 / 10;            /* mapa fluido */
-}
-.mapa iframe{width:100%; height:100%; display:block; border:0}
-
-/* ================== Tarjeta Formulario ================== */
-.contacto__card{
-  background:var(--card); border:1px solid var(--line);
-  border-radius:var(--radius-xl); box-shadow:var(--shadow);
-  padding:28px 24px;
-}
-.contacto__title{
-  margin:6px 0 18px; font-size:clamp(24px,2.6vw,30px); text-align:center; font-weight:700;
-}
-
-/* Grupos y campos */
-.form-group{margin:16px 0}
-.form-group label{
-  display:block; margin-bottom:6px; font-weight:600; color:#0b1220; font-size:14px;
-}
-.form-group input,
-.form-group textarea,
-.form-group select{
-  width:100%; padding:12px 14px; border-radius:12px; border:1px solid var(--line);
-  outline:none; font-size:15px; background:#fff;
-  transition:border-color .15s ease, box-shadow .15s ease, background-color .15s ease;
-}
-.form-group input::placeholder,
-.form-group textarea::placeholder{color:#94a3b8}
-
-.form-group select{
-  appearance:none;
-  background-image:
-    linear-gradient(45deg,transparent 50%,#9aa2ad 50%),
-    linear-gradient(135deg,#9aa2ad 50%,transparent 50%),
-    linear-gradient(to right,#fff,#fff);
-  background-position:calc(100% - 18px) 16px, calc(100% - 12px) 16px, 100% 0;
-  background-size:6px 6px,6px 6px,2.5rem 100%;
-  background-repeat:no-repeat;
-}
-
-.form-group input:focus,
-.form-group textarea:focus,
-.form-group select:focus{
-  border-color:var(--brand);
-  box-shadow:0 0 0 3px var(--ring);
-  background:#fff;
-}
-
-.form-group textarea{min-height:170px; resize:vertical}
-
-/* Estados */
-.hint{display:block; color:var(--muted); margin-top:6px; font-size:12px}
-.err{display:block; color:#b91c1c; margin-top:6px; font-size:13px}
-
-/* Botón */
-.btn-submit{
-  width:100%; margin-top:16px; padding:13px 16px; border:none; border-radius:14px;
-  background:var(--brand); color:#fff; font-weight:700; font-size:16px; cursor:pointer;
-  transition:transform .08s ease, filter .15s ease, background .15s ease;
-  box-shadow:0 10px 22px rgba(37,99,235,.18);
-}
-.btn-submit:hover{background:var(--brand-2)}
-.btn-submit:active{transform:translateY(1px)}
-.btn-submit:disabled{opacity:.6; cursor:not-allowed}
-
-/* Alertas */
-.alert-success{
-  background:#10b981; color:#fff; padding:10px 12px; border-radius:12px;
-  margin-bottom:12px; text-align:center; box-shadow:0 6px 16px rgba(16,185,129,.18);
-}
-
-/* honeypot */
-.hp{position:absolute; left:-10000px; top:auto; width:1px; height:1px; overflow:hidden}
-
-/* Espacio extra con header fijo */
-.cnav-header + main .contacto{padding-top:calc(var(--cnav-h) + 6px)}
-
-/* ================== Micro-interacciones ================== */
-.form-group input:hover,
-.form-group textarea:hover,
-.form-group select:hover{background:#fcfcfd}
-
-.info__list > div:hover{background:#f6f8fb}
-
-/* ================== Responsive ================== */
-@media (max-width:1100px){
-  .contacto__grid{grid-template-columns:1fr; gap:22px}
-  .mapa{aspect-ratio: 16 / 11}
-}
-@media (max-width:640px){
-  .contacto{padding:44px 14px}
-  .contacto__card, .info{padding:22px}
-  .info__title{font-size:22px}
-}
+/* ── Responsive ── */
+@media (max-width: 1023px) { .ct-features { grid-template-columns: 1fr; } }
+@media (max-width: 639px)  { .ct-features { grid-template-columns: 1fr; } }

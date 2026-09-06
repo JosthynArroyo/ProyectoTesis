@@ -45,7 +45,7 @@
       @error('buscar')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
 
       @php $roleSel = request('role'); @endphp
-      <select class="form-select" name="role" onchange="this.form.submit()">
+      <select class="form-select" name="role" data-auto-submit>
         <option value="all" @selected($roleSel === '' || $roleSel === 'all')>Todos los roles</option>
         <option value="doctor" @selected($roleSel === 'doctor')>Doctores</option>
         <option value="paciente" @selected($roleSel === 'paciente')>Pacientes</option>
@@ -57,13 +57,16 @@
         <button type="button" class="btn btn-outline btn-sm" id="btn-more-filters" aria-expanded="{{ $filtersOpen ? 'true' : 'false' }}">
           <i class="ri-equalizer-line"></i> Filtros avanzados
         </button>
-        <select class="form-select" name="per_page" onchange="this.form.submit()">
+        <select class="form-select" name="per_page" data-auto-submit>
           @foreach([12,24,48,96] as $pp)
             <option value="{{ $pp }}" @selected(($perPage ?? 12) == $pp)>{{ $pp }}/pag</option>
           @endforeach
         </select>
         @error('per_page')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
         <button class="btn btn-primary btn-sm" type="submit"><i class="ri-check-line"></i> Aplicar</button>
+        <a href="{{ route('admin.usuarios.index') }}" class="btn btn-ghost btn-sm">
+          <i class="ri-refresh-line"></i> Limpiar
+        </a>
       </div>
     </div>
 
@@ -209,7 +212,7 @@
             @endif
 
             @if(in_array('contacto',$cols))
-              <td data-label="Contacto" class="user-detail-cell">
+              <td data-label="Contacto">
                 <div class="space-y-1">
                   <p class="break-all text-sm text-gray-700">{{ $u->email }}</p>
                   @if(!empty($u->telefono))
@@ -220,7 +223,7 @@
             @endif
 
             @if(in_array('rol',$cols))
-              <td data-label="Rol" class="user-detail-cell">
+              <td data-label="Rol">
                 <span class="badge {{ $roleTone }}">{{ $roleLabel }}</span>
               </td>
             @endif

@@ -2766,4 +2766,8 @@
     .dark\:text-teal-700:is(.panel-theme-dark *) {
         color: var(--accent) !important;
     }
+
+    [data-global-action-lock-spinner] {
+        background: var(--accent-soft);
+    }
 }

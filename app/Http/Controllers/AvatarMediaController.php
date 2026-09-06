@@ -35,7 +35,7 @@ class AvatarMediaController extends Controller
         $targetPath = $this->resolveVariantPath($avatarPath, $variant);
 
         try {
-            $disk = Storage::disk(config('image_optimization.avatar_disk', 'r2_private'));
+            $disk = Storage::disk(config('image_optimization.avatar_disk', 'local'));
 
             if ($disk->exists($targetPath)) {
                 $contents = $disk->get($targetPath);

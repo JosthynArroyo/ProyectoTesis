@@ -53,6 +53,9 @@ const buildRow = (item) => {
 };
 
 const refreshDashboard = async (root) => {
+  if (document.hidden) {
+    return;
+  }
   const endpoint = root.dataset.dashboardEndpoint;
   const form = root.querySelector(FORM_SELECTOR);
   const tbody = document.getElementById('tbody-citas');

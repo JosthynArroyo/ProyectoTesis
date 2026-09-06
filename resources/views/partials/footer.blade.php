@@ -41,7 +41,7 @@
           <button
             type="button"
             class="cursor-pointer text-left transition-colors hover:text-gray-800"
-            onclick="window.toggleChatbotWidget && window.toggleChatbotWidget()"
+            data-chatbot-toggle
           >
             {{ $siteSettings->get('footer.assistant_label', 'Asistente virtual') }}
           </button>

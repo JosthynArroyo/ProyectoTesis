@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Mail\ContactoRecibido;
 use App\Models\ContactMessage;
+use App\Services\ApplicationModeService;
+use App\Services\CommercialContactService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -11,8 +13,9 @@ use Throwable;
 
 class ContactoController extends Controller
 {
-    public function __construct()
-    {
+    public function __construct(
+        private readonly ApplicationModeService $appMode
+    ) {
         $this->middleware('throttle:contacto')->only(['storeContacto', 'enviarFormulario']);
     }
 
@@ -21,7 +24,7 @@ class ContactoController extends Controller
         return view('contacto');
     }
 
-    public function storeContacto(Request $request)
+    public function storeContacto(Request $request, CommercialContactService $commercialService)
     {
         $t0 = (int) $request->input('t0', 0);
         $isBot = filled($request->input('empresa'));
@@ -41,6 +44,20 @@ class ContactoController extends Controller
             't0' => ['required', 'integer'],
         ]);
 
+        if ($commercialService->isAuthorizedCommercialRequest($request)) {
+            try {
+                $commercialService->send($datos);
+
+                return back()->with('success', 'Tu mensaje ha sido enviado correctamente.');
+            } catch (Throwable $exception) {
+                Log::error('Fallo en la entrega SMTP del formulario comercial JA MedSys', [
+                    'error' => $exception->getMessage(),
+                ]);
+
+                return back()->withInput()->with('error', 'En este momento no se pudo enviar el correo comercial. Por favor contáctanos directamente por WhatsApp.');
+            }
+        }
+
         $contactMessage = ContactMessage::create([
             'nombre' => $datos['nombre'],
             'correo' => $datos['email'],
@@ -51,7 +68,9 @@ class ContactoController extends Controller
         ]);
 
         try {
-            $recipient = config('mail.contact_to');
+            $recipient = $this->appMode->isDemo()
+                ? 'contacto@demo-clinigest.test'
+                : config('mail.contact_to');
 
             if ($recipient) {
                 Mail::to($recipient)->send(new ContactoRecibido($datos));
@@ -66,8 +85,8 @@ class ContactoController extends Controller
         return back()->with('success', 'Tu mensaje ha sido enviado correctamente.');
     }
 
-    public function enviarFormulario(Request $request)
+    public function enviarFormulario(Request $request, CommercialContactService $commercialService)
     {
-        return $this->storeContacto($request);
+        return $this->storeContacto($request, $commercialService);
     }
 }

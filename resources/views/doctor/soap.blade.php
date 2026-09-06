@@ -196,6 +196,7 @@
             <h3 class="text-lg font-semibold text-gray-900">Signos vitales y exploración</h3>
           </div>
 
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="relative">
               <label class="sr-only" for="sv_ta">Presión arterial en mmHg</label>
               <input id="sv_ta" name="sv_ta" class="form-input pr-20" placeholder="Presión arterial" value="{{ old('sv_ta', $sv['ta'] ?? '') }}" aria-describedby="sv_ta_unit" required @if($isSigned) readonly @endif>
@@ -439,6 +440,16 @@
           <a href="{{ route('doctor.citas') }}" class="btn btn-ghost">Volver</a>
         </x-slot>
         @if(!$isSigned)
+          <div
+            id="soap-autosave-indicator"
+            data-soap-autosave-status
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border border-gray-200 bg-gray-50 text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 transition-all duration-200"
+            role="status"
+            aria-live="polite"
+          >
+            <i class="ri-time-line text-gray-400"></i>
+            <span data-soap-autosave-text>Autoguardado activo</span>
+          </div>
           <button class="btn btn-outline" type="submit">Guardar borrador</button>
           <button class="btn btn-primary" type="submit" formaction="{{ route('doctor.citas.soap.firmar', $cita->id) }}">Firmar y cerrar</button>
         @endif
@@ -492,94 +503,7 @@
 </div>
 
 @push('styles')
-  <style>
-    #soap-page .soap-action-bar {
-      --soap-action-bar-bg: rgba(255, 255, 255, 0.94);
-      --soap-action-bar-border: #e5e7eb;
-      --soap-action-bar-shadow: 0 -12px 30px rgba(17, 24, 39, 0.08);
-      --soap-action-bar-backdrop: blur(10px);
-    }
-
-    html.dashboard-root.panel-theme-dark #soap-page .soap-action-bar {
-      --soap-action-bar-bg: linear-gradient(180deg, rgba(15, 23, 42, 0.98) 0%, rgba(17, 24, 39, 0.98) 100%);
-      --soap-action-bar-border: #334155;
-      --soap-action-bar-shadow: 0 -12px 30px rgba(2, 6, 23, 0.36);
-    }
-
-    html.dashboard-root.panel-theme-dark #soap-page .soap-plan-control-box,
-    html.dashboard-root.panel-theme-dark #soap-page .soap-enmienda-card,
-    html.dashboard-root.panel-theme-dark #soap-page .soap-soft-note {
-      border-color: #334155;
-      background: rgba(15, 23, 42, 0.92);
-      color: #e2e8f0;
-    }
-
-    html.dashboard-root.panel-theme-dark #soap-page .text-gray-900 {
-      color: #f8fafc;
-    }
-
-    html.dashboard-root.panel-theme-dark #soap-page .text-gray-800 {
-      color: #e2e8f0;
-    }
-
-    html.dashboard-root.panel-theme-dark #soap-page .text-gray-700 {
-      color: #d1d5db;
-    }
-
-    html.dashboard-root.panel-theme-dark #soap-page .text-gray-600 {
-      color: #94a3b8;
-    }
-
-    html.dashboard-root.panel-theme-dark #soap-page .text-gray-500 {
-      color: #64748b;
-    }
-
-    html.dashboard-root.panel-theme-dark #soap-page .border-gray-200 {
-      border-color: #334155;
-    }
-
-    html.dashboard-root.panel-theme-dark #soap-page .soap-allergy-checkbox {
-      appearance: none;
-      -webkit-appearance: none;
-      display: inline-grid;
-      place-content: center;
-      flex: none;
-      width: 1rem;
-      height: 1rem;
-      margin: 0;
-      border: 1px solid #475569;
-      border-radius: 0.25rem;
-      background: #0f172a;
-      box-shadow: inset 0 1px 2px rgba(2, 6, 23, 0.32);
-      color: var(--accent);
-      cursor: pointer;
-    }
-
-    html.dashboard-root.panel-theme-dark #soap-page .soap-allergy-checkbox:checked {
-      border-color: var(--accent);
-      background-color: var(--accent);
-      background-repeat: no-repeat;
-      background-position: center;
-      background-size: 0.75rem 0.75rem;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M3.5 8.5l3 3 6-6' stroke='%23fff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-    }
-
-    html.dashboard-root.panel-theme-dark #soap-page .soap-allergy-checkbox:focus-visible {
-      outline: 2px solid color-mix(in srgb, var(--accent) 56%, white);
-      outline-offset: 2px;
-    }
-
-    html.dashboard-root.panel-theme-dark #soap-page .soap-allergy-checkbox:disabled {
-      cursor: not-allowed;
-      opacity: 0.75;
-    }
-
-    @media (max-width: 768px) {
-      html.dashboard-root.panel-theme-dark #soap-page .soap-action-bar {
-        --soap-action-bar-shadow: 0 -10px 24px rgba(2, 6, 23, 0.42);
-      }
-    }
-  </style>
+  @vite('resources/css/doctor/soap.css')
 @endpush
 
 @push('scripts')

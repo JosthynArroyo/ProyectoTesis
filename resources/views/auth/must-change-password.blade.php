@@ -57,7 +57,7 @@
 
             <x-ui.form-actions>
               <x-slot:left>
-                <button type="button" onclick="event.preventDefault(); document.getElementById('logout-form-cancel').submit();" class="btn btn-ghost" data-action-lock-ignore>Cerrar sesión</button>
+                <button type="button" data-logout-trigger data-logout-form="logout-form-cancel" class="btn btn-ghost" data-action-lock-ignore>Cerrar sesión</button>
               </x-slot>
               <button type="submit" class="btn btn-primary" data-loading-text="Actualizando contraseña...">Actualizar contraseña</button>
             </x-ui.form-actions>

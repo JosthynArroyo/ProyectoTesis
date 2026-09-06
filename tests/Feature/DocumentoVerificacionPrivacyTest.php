@@ -26,6 +26,7 @@ class DocumentoVerificacionPrivacyTest extends TestCase
     {
         parent::setUp();
 
+        config(['app.mode' => 'production']);
         config(['private_documents.disk' => 'r2_private']);
         config(['private_documents.recipe_disk' => 'r2_private']);
         config(['private_documents.certificate_disk' => 'r2_private']);
@@ -221,12 +222,14 @@ class DocumentoVerificacionPrivacyTest extends TestCase
     }
 
     /**
-     * Test invalid CSV returns 404
+     * Test invalid CSV redirects to verification form with friendly error and input
      */
-    public function test_invalid_csv_returns_404(): void
+    public function test_invalid_csv_redirects_to_verification_form_with_friendly_error(): void
     {
         $response = $this->get(route('documentos.verificar.show', ['csv' => 'INVALID-CSV-999']));
-        $response->assertStatus(404);
+        $response->assertRedirect(route('documentos.verificar.form'));
+        $response->assertSessionHasErrors(['csv']);
+        $response->assertSessionHasInput('csv', 'INVALID-CSV-999');
     }
 
     /**

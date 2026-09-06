@@ -74,8 +74,8 @@
 .mr-antecedente-card__title i{font-size:.95rem;color:var(--mr-primary)}
 .mr-antecedente-card__body{font-size:.8rem;color:var(--mr-muted);line-height:1.4}
 .mr-antecedente-card__body .detail{color:var(--mr-text);font-size:.82rem;margin-bottom:.2rem}
-.mr-antecedente-card__body .link{display:inline-flex;align-items:center;gap:.25rem;color:var(--mr-primary);font-weight:600;font-size:.78rem;text-decoration:none;margin-top:.3rem}
-.mr-antecedente-card__body .link:hover{text-decoration:underline}
+.mr-antecedente-card__more{display:inline-flex;align-items:center;gap:.25rem;color:var(--mr-primary);font-weight:600;font-size:.78rem;text-decoration:none;margin-top:.3rem;cursor:default}
+.mr-antecedente-card__more:hover{text-decoration:underline}
 
 /* --- Bottom Grid (main + sidebar) --- */
 .mr-bottom-grid{display:grid;grid-template-columns:1fr minmax(280px,.45fr);gap:1rem;margin-top:1rem;align-items:start}

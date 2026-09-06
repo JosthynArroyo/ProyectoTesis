@@ -37,7 +37,15 @@
       </div>
       <div>
         <p class="text-xs uppercase tracking-wide text-gray-400">Correo</p>
-        <a href="mailto:{{ $contactMessage->correo }}" class="mt-1 inline-flex font-semibold text-teal-700 hover:underline">{{ $contactMessage->correo }}</a>
+        @php
+          $emailDestino = trim((string) $contactMessage->correo);
+          $asuntoOriginal = trim((string) ($contactMessage->asunto ?: 'Contacto'));
+          $asuntoLimpio = preg_replace('/[\r\n]+/', ' ', $asuntoOriginal);
+          $subjectFormatted = str_starts_with(strtolower($asuntoLimpio), 're:') ? $asuntoLimpio : 'Re: ' . $asuntoLimpio;
+          $mailtoQuery = http_build_query(['subject' => $subjectFormatted], '', '&', PHP_QUERY_RFC3986);
+          $mailtoHref = 'mailto:' . $emailDestino . ($mailtoQuery !== '' ? '?' . $mailtoQuery : '');
+        @endphp
+        <a href="{{ $mailtoHref }}" class="mt-1 inline-flex font-semibold text-teal-700 hover:underline" data-action-lock-ignore="1" data-no-loader="1">{{ $contactMessage->correo }}</a>
       </div>
       <div>
         <p class="text-xs uppercase tracking-wide text-gray-400">Telefono</p>
@@ -55,7 +63,7 @@
     </div>
 
     <div class="mt-6 flex flex-wrap gap-3">
-      <a href="mailto:{{ $contactMessage->correo }}" class="btn btn-primary">
+      <a href="{{ $mailtoHref }}" class="btn btn-primary" data-action-lock-ignore="1" data-no-loader="1">
         <i class="ri-mail-send-line"></i> Responder por correo
       </a>
       <a href="{{ route('admin.contacto.mensajes') }}" class="btn btn-ghost">

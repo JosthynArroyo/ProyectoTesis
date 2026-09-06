@@ -104,8 +104,28 @@ class PedidoLaboratorioPdfService
         $diskName = $resultado->pdf_disk ?: 'local';
         $disk = Storage::disk($diskName);
 
-        if (!$resultado->pdf_path || !$disk->exists($resultado->pdf_path)) {
-            abort(404, 'Archivo de resultado no encontrado.');
+        if (! $resultado->pdf_path || ! $disk->exists($resultado->pdf_path)) {
+            $pedido = $resultado->pedido ?: PedidoLaboratorio::find($resultado->pedido_laboratorio_id);
+            if ($pedido) {
+                $html = $this->previewHtml($pedido, $resultado);
+                $pdfBytes = $this->renderPdfOutput($html);
+                $path = $resultado->pdf_path ?: "documents/laboratory-results/{$resultado->id}/resultado_{$resultado->id}.pdf";
+                $diskName = $resultado->pdf_disk ?: 'local';
+                $disk = Storage::disk($diskName);
+                $disk->put($path, $pdfBytes);
+                $resultado->forceFill([
+                    'pdf_path' => $path,
+                    'pdf_disk' => $diskName,
+                ])->saveQuietly();
+
+                if ($pedido->resultado_path !== $path) {
+                    $pedido->forceFill([
+                        'resultado_path' => $path,
+                    ])->saveQuietly();
+                }
+            } else {
+                abort(404, 'Archivo de resultado no encontrado.');
+            }
         }
 
         $filename = 'resultado_laboratorio_' . $resultado->pedido_laboratorio_id . '_v' . $resultado->version . '.pdf';

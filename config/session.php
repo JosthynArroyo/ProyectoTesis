@@ -129,7 +129,7 @@ return [
 
     'cookie' => env(
         'SESSION_COOKIE',
-        Str::snake((string) env('APP_NAME', 'laravel')).'_session'
+        Str::snake((string) env('APP_NAME', 'laravel')).(strtolower(trim((string) env('APP_MODE', 'production'))) === 'demo' ? '_demo_session' : '_session')
     ),
 
     /*

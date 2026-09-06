@@ -2,9 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Models\CaptchaImage;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\File;
 
 class CaptchaImagesSeeder extends Seeder
 {

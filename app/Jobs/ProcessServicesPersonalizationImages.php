@@ -65,8 +65,8 @@ class ProcessServicesPersonalizationImages implements ShouldQueue
         $webpGenerationSeconds = 0.0;
 
         try {
-            if ($imageOptimizer->disk() !== 'r2_public') {
-                throw new \RuntimeException('Services requiere r2_public como destino final de imágenes.');
+            if (! in_array($imageOptimizer->disk(), ['r2_public', 'public'], true)) {
+                throw new \RuntimeException('Services requiere un disco público válido (r2_public o public).');
             }
 
             $settingsPayload = $payload['text_settings'] ?? [];
@@ -80,18 +80,16 @@ class ProcessServicesPersonalizationImages implements ShouldQueue
             // 1. Process Hero Image if provided
             $heroTempPath = $payload['hero_image_temp_path'] ?? null;
             $currentHeroImage = $payload['hero_image_current_path'] ?? $settings->get('services.hero_image');
+            $heroStagingDisk = $this->resolveStagingDisk($heroTempPath);
 
-            if ($heroTempPath && Storage::disk('r2_private')->exists($heroTempPath)) {
+            if ($heroTempPath && Storage::disk($heroStagingDisk)->exists($heroTempPath)) {
                 $heroProfile = 'public_hero';
                 $heroVariantCount = count($imageOptimizer->profileSizes($heroProfile));
                 $heroStartedAt = microtime(true);
-                // Use UUID baseName so each upload creates a unique R2 key.
-                // This prevents any stale-path guard from treating a legitimate
-                // R2 path (images/services/medium/services-hero.webp) as the
-                // un-uploaded default and falling back to the local static file.
+                // Use UUID baseName so each upload creates a unique key.
                 $heroBaseName = 'services-hero-'.Str::uuid()->toString();
                 $newHeroPath = $imageOptimizer->optimizeStoredPath(
-                    sourceDisk: 'r2_private',
+                    sourceDisk: $heroStagingDisk,
                     sourcePath: $heroTempPath,
                     folder: 'services',
                     baseName: $heroBaseName,
@@ -129,14 +127,15 @@ class ProcessServicesPersonalizationImages implements ShouldQueue
                 $specTempPath = $specData['temp_path'] ?? null;
                 $currentImagePath = $specData['current_path'] ?? null;
                 $finalImagePath = $currentImagePath;
+                $specStagingDisk = $this->resolveStagingDisk($specTempPath);
 
-                if ($specTempPath && Storage::disk('r2_private')->exists($specTempPath)) {
+                if ($specTempPath && Storage::disk($specStagingDisk)->exists($specTempPath)) {
                     $specProfile = 'public_card';
                     $specVariantCount = count($imageOptimizer->profileSizes($specProfile));
                     $specStartedAt = microtime(true);
                     $specBaseName = 'service-'.$id.'-'.Str::uuid()->toString();
                     $newSpecPath = $imageOptimizer->optimizeStoredPath(
-                        sourceDisk: 'r2_private',
+                        sourceDisk: $specStagingDisk,
                         sourcePath: $specTempPath,
                         folder: 'services',
                         baseName: $specBaseName,
@@ -168,14 +167,15 @@ class ProcessServicesPersonalizationImages implements ShouldQueue
             foreach ($nuevasData as $newIndex => $newData) {
                 $newTempPath = $newData['temp_path'] ?? null;
                 $finalImagePath = null;
+                $newSpecStagingDisk = $this->resolveStagingDisk($newTempPath);
 
-                if ($newTempPath && Storage::disk('r2_private')->exists($newTempPath)) {
+                if ($newTempPath && Storage::disk($newSpecStagingDisk)->exists($newTempPath)) {
                     $newProfile = 'public_card';
                     $newVariantCount = count($imageOptimizer->profileSizes($newProfile));
                     $newStartedAt = microtime(true);
                     $newSpecBaseName = 'service-new-'.$newIndex.'-'.Str::uuid()->toString();
                     $newSpecPath = $imageOptimizer->optimizeStoredPath(
-                        sourceDisk: 'r2_private',
+                        sourceDisk: $newSpecStagingDisk,
                         sourcePath: $newTempPath,
                         folder: 'services',
                         baseName: $newSpecBaseName,
@@ -199,6 +199,8 @@ class ProcessServicesPersonalizationImages implements ShouldQueue
                 $newEspecialidades[$newIndex] = $newData;
             }
 
+            $databaseCommitted = false;
+
             // 4. Atomic Database Transaction
             \App\Services\ServicesPersonalizationAsyncService::saveToDatabase(
                 $settings,
@@ -207,6 +209,7 @@ class ProcessServicesPersonalizationImages implements ShouldQueue
                 $updatedEspecialidades,
                 $newEspecialidades
             );
+            $databaseCommitted = true;
 
             // 5. Mark batch completed & trigger cleanup
             $batch->update([
@@ -233,8 +236,8 @@ class ProcessServicesPersonalizationImages implements ShouldQueue
                 'error' => $exception->getMessage(),
             ]);
 
-            // Clean up newly created variants on R2/public storage
-            if (! empty($newlyUploadedPaths)) {
+            // Clean up newly created variants on R2/public storage ONLY if DB transaction did not commit
+            if (! ($databaseCommitted ?? false) && ! empty($newlyUploadedPaths)) {
                 try {
                     $imageOptimizer->deleteManyByStoredPaths($newlyUploadedPaths, 'services');
                 } catch (Throwable) {
@@ -263,16 +266,32 @@ class ProcessServicesPersonalizationImages implements ShouldQueue
         }
     }
 
+    private function resolveStagingDisk(?string $path = null): string
+    {
+        if ($path && Storage::disk('r2_private')->exists($path)) {
+            return 'r2_private';
+        }
+
+        if ($path && Storage::disk('local')->exists($path)) {
+            return 'local';
+        }
+
+        return config('private_documents.disk', 'local') === 'r2_private' ? 'r2_private' : 'local';
+    }
+
     private function cleanupStaging(?string $directory): void
     {
         if (! $directory) {
             return;
         }
 
+        $stagingDisk = $this->resolveStagingDisk();
         try {
-            Storage::disk('r2_private')->deleteDirectory($directory);
+            if (Storage::disk($stagingDisk)->exists($directory)) {
+                Storage::disk($stagingDisk)->deleteDirectory($directory);
+            }
         } catch (Throwable $exception) {
-            Log::warning('No se pudo limpiar staging R2 de Services.', [
+            Log::warning('No se pudo limpiar staging de Services.', [
                 'batch_uuid' => $this->batchUuid,
                 'directory' => $directory,
                 'error' => $exception->getMessage(),

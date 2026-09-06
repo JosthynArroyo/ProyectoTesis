@@ -18,7 +18,7 @@ class EnsureAccountActive
         if (Auth::check()) {
             $u = $request->user();
 
-            if (! $u->isBlocked() && ! $u->isSuspended()) {
+            if (! $request->is('logout') && ! $request->is('salir') && ! $u->isBlocked() && ! $u->isSuspended()) {
                 $this->touchLastActivityIfDue($request);
             }
 

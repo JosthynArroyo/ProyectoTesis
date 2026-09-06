@@ -158,5 +158,5 @@
 @endsection
 
 @push('scripts')
-    @vite(['resources/js/paciente/perfil.js'])
+    @vite(['resources/js/shared/profile-avatar.js'])
 @endpush

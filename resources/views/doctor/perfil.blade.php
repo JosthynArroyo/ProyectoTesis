@@ -196,6 +196,6 @@
 @endsection
 
 @push('scripts')
-  @vite('resources/js/doctor/perfil.js')
+  @vite('resources/js/shared/profile-avatar.js')
 @endpush
 

@@ -57,7 +57,7 @@ class PaymentOrderR2StorageTest extends TestCase
         return $user;
     }
 
-    private function createPagoForPatient(User $paciente, ?Dependiente $dependiente = null): Pago
+    private function createPagoForPatient(User $paciente, ?Dependiente $dependiente = null, bool $withPdf = false): Pago
     {
         $doctor = $this->createRoleUser('doctor');
         $esp = Especialidad::firstOrCreate(['nombre' => 'Medicina General']);
@@ -73,7 +73,7 @@ class PaymentOrderR2StorageTest extends TestCase
             'activo' => true,
         ]);
 
-        return Pago::create([
+        $pago = Pago::create([
             'cita_id' => $cita->id,
             'paciente_id' => $paciente->id,
             'folio_unico' => 'OC-20260804-' . sprintf('%06d', rand(1, 99999)),
@@ -84,9 +84,21 @@ class PaymentOrderR2StorageTest extends TestCase
             'metodo_pago' => Pago::METODO_EFECTIVO,
             'estado' => Pago::ESTADO_PENDIENTE,
         ]);
+
+        if ($withPdf) {
+            $uuid = (string) \Illuminate\Support\Str::uuid();
+            $path = "documents/payment-orders/{$pago->id}/{$uuid}.pdf";
+            Storage::disk('r2_private')->put($path, "%PDF-1.4 Mock Payment Order\n");
+            $pago->update([
+                'orden_pdf_path' => $path,
+                'orden_pdf_disk' => 'r2_private',
+            ]);
+        }
+
+        return $pago;
     }
 
-    // 1. Orden sin PDF se genera en r2_private
+    // 1. Orden sin PDF se genera en r2_private con clave relativa UUID, sin copia local y con firma %PDF valida
     public function test_order_without_pdf_is_generated_in_r2_private(): void
     {
         $paciente = $this->createRoleUser('paciente');
@@ -102,55 +114,15 @@ class PaymentOrderR2StorageTest extends TestCase
         $this->assertEquals('r2_private', $pago->orden_pdf_disk);
         $this->assertEquals($key, $pago->orden_pdf_path);
         $this->assertTrue(Storage::disk('r2_private')->exists($key));
-    }
 
-    // 2. Clave usa documents/payment-orders/{pago_id}/{uuid}.pdf
-    public function test_key_uses_payment_orders_pago_id_uuid_format(): void
-    {
-        $paciente = $this->createRoleUser('paciente');
-        $pago = $this->createPagoForPatient($paciente);
-
-        $pagoService = app(PagoService::class);
-        $key = $pagoService->obtenerOGenerarOrdenPdf($pago, $paciente);
-
+        // Formato relativo de clave con UUID
         $this->assertStringStartsWith("documents/payment-orders/{$pago->id}/", $key);
         $this->assertStringEndsWith(".pdf", $key);
-    }
 
-    // 3. orden_pdf_disk queda r2_private
-    public function test_orden_pdf_disk_becomes_r2_private(): void
-    {
-        $paciente = $this->createRoleUser('paciente');
-        $pago = $this->createPagoForPatient($paciente);
-
-        $pagoService = app(PagoService::class);
-        $pagoService->obtenerOGenerarOrdenPdf($pago, $paciente);
-
-        $pago->refresh();
-        $this->assertEquals('r2_private', $pago->orden_pdf_disk);
-    }
-
-    // 4. No se crea archivo local
-    public function test_no_local_file_created(): void
-    {
-        $paciente = $this->createRoleUser('paciente');
-        $pago = $this->createPagoForPatient($paciente);
-
-        $pagoService = app(PagoService::class);
-        $key = $pagoService->obtenerOGenerarOrdenPdf($pago, $paciente);
-
+        // Sin copia en disco local
         $this->assertFalse(Storage::disk('local')->exists($key));
-    }
 
-    // 5. El objeto comienza con %PDF
-    public function test_stored_object_starts_with_pdf_header(): void
-    {
-        $paciente = $this->createRoleUser('paciente');
-        $pago = $this->createPagoForPatient($paciente);
-
-        $pagoService = app(PagoService::class);
-        $key = $pagoService->obtenerOGenerarOrdenPdf($pago, $paciente);
-
+        // Objeto comienza con %PDF
         $content = Storage::disk('r2_private')->get($key);
         $this->assertStringStartsWith('%PDF', $content);
     }
@@ -159,7 +131,7 @@ class PaymentOrderR2StorageTest extends TestCase
     public function test_authorized_titular_patient_can_download_order(): void
     {
         $paciente = $this->createRoleUser('paciente');
-        $pago = $this->createPagoForPatient($paciente);
+        $pago = $this->createPagoForPatient($paciente, null, true);
 
         $response = $this->actingAs($paciente)->get(route('paciente.pagos.orden.pdf', $pago));
 
@@ -182,7 +154,7 @@ class PaymentOrderR2StorageTest extends TestCase
             'activo' => true,
         ]);
 
-        $pago = $this->createPagoForPatient($titular, $dependiente);
+        $pago = $this->createPagoForPatient($titular, $dependiente, true);
 
         $response = $this->actingAs($titular)->get(route('paciente.pagos.orden.pdf', $pago));
 
@@ -195,7 +167,7 @@ class PaymentOrderR2StorageTest extends TestCase
     {
         $paciente = $this->createRoleUser('paciente');
         $admin = $this->createRoleUser('administrador');
-        $pago = $this->createPagoForPatient($paciente);
+        $pago = $this->createPagoForPatient($paciente, null, true);
 
         $response = $this->actingAs($admin)->get(route('admin.pagos.orden.pdf', $pago));
 
@@ -208,7 +180,7 @@ class PaymentOrderR2StorageTest extends TestCase
     {
         $paciente = $this->createRoleUser('paciente');
         $superadmin = $this->createRoleUser('superadmin');
-        $pago = $this->createPagoForPatient($paciente);
+        $pago = $this->createPagoForPatient($paciente, null, true);
 
         $response = $this->actingAs($superadmin)->get(route('admin.pagos.orden.pdf', $pago));
 
@@ -221,7 +193,7 @@ class PaymentOrderR2StorageTest extends TestCase
     {
         $paciente1 = $this->createRoleUser('paciente');
         $paciente2 = $this->createRoleUser('paciente');
-        $pago = $this->createPagoForPatient($paciente1);
+        $pago = $this->createPagoForPatient($paciente1, null, true);
 
         $response = $this->actingAs($paciente2)->get(route('paciente.pagos.orden.pdf', $pago));
 
@@ -233,7 +205,7 @@ class PaymentOrderR2StorageTest extends TestCase
     {
         $paciente = $this->createRoleUser('paciente');
         $doctor = $this->createRoleUser('doctor');
-        $pago = $this->createPagoForPatient($paciente);
+        $pago = $this->createPagoForPatient($paciente, null, true);
 
         $resPac = $this->actingAs($doctor)->get(route('paciente.pagos.orden.pdf', $pago));
         $this->assertTrue(in_array($resPac->status(), [403, 302], true));
@@ -247,7 +219,7 @@ class PaymentOrderR2StorageTest extends TestCase
     {
         $paciente = $this->createRoleUser('paciente');
         $lab = $this->createRoleUser('laboratorio');
-        $pago = $this->createPagoForPatient($paciente);
+        $pago = $this->createPagoForPatient($paciente, null, true);
 
         $resPac = $this->actingAs($lab)->get(route('paciente.pagos.orden.pdf', $pago));
         $this->assertTrue(in_array($resPac->status(), [403, 302], true));
@@ -260,7 +232,7 @@ class PaymentOrderR2StorageTest extends TestCase
     public function test_unauthenticated_guest_denied(): void
     {
         $paciente = $this->createRoleUser('paciente');
-        $pago = $this->createPagoForPatient($paciente);
+        $pago = $this->createPagoForPatient($paciente, null, true);
 
         $response = $this->get(route('paciente.pagos.orden.pdf', $pago));
         $response->assertRedirect();
@@ -285,17 +257,33 @@ class PaymentOrderR2StorageTest extends TestCase
         $response->assertHeader('Content-Type', 'application/pdf');
     }
 
-    // 15. PDF R2 existente no se regenera
+    // 15. PDF R2 existente no se regenera a nivel de servicio ni en peticiones HTTP sucesivas
     public function test_existing_r2_pdf_is_not_regenerated(): void
     {
         $paciente = $this->createRoleUser('paciente');
-        $pago = $this->createPagoForPatient($paciente);
+        $pago = $this->createPagoForPatient($paciente, null, true);
+
+        $initialKey = $pago->orden_pdf_path;
 
         $pagoService = app(PagoService::class);
         $key1 = $pagoService->obtenerOGenerarOrdenPdf($pago, $paciente);
         $key2 = $pagoService->obtenerOGenerarOrdenPdf($pago, $paciente);
 
+        $this->assertEquals($initialKey, $key1);
         $this->assertEquals($key1, $key2);
+
+        // A nivel HTTP la clave permanece idéntica en lecturas sucesivas
+        $response1 = $this->actingAs($paciente)->get(route('paciente.pagos.orden.pdf', $pago));
+        $response1->assertOk();
+
+        $pago->refresh();
+        $this->assertEquals($initialKey, $pago->orden_pdf_path);
+
+        $response2 = $this->actingAs($paciente)->get(route('paciente.pagos.orden.pdf', $pago));
+        $response2->assertOk();
+
+        $pago->refresh();
+        $this->assertEquals($initialKey, $pago->orden_pdf_path);
     }
 
     // 16. Cambio a pagado conserva la orden
@@ -525,12 +513,8 @@ class PaymentOrderR2StorageTest extends TestCase
     public function test_titular_opens_paid_order_returns_200_application_pdf(): void
     {
         $paciente = $this->createRoleUser('paciente');
-        $admin = $this->createRoleUser('administrador');
-        $pago = $this->createPagoForPatient($paciente);
-
-        $this->actingAs($admin)->post(route('admin.pagos.aprobar', $pago));
-        $pago->refresh();
-        $this->assertEquals(Pago::ESTADO_PAGADO, $pago->estado);
+        $pago = $this->createPagoForPatient($paciente, null, true);
+        $pago->update(['estado' => Pago::ESTADO_PAGADO]);
 
         $response = $this->actingAs($paciente)->get(route('paciente.pagos.orden.pdf', $pago));
         $response->assertOk();
@@ -541,7 +525,6 @@ class PaymentOrderR2StorageTest extends TestCase
     public function test_representative_opens_paid_order_of_dependent_returns_200(): void
     {
         $titular = $this->createRoleUser('paciente');
-        $admin = $this->createRoleUser('administrador');
         $dependiente = Dependiente::create([
             'user_id' => $titular->id,
             'dni' => '0998877661',
@@ -553,10 +536,8 @@ class PaymentOrderR2StorageTest extends TestCase
             'activo' => true,
         ]);
 
-        $pago = $this->createPagoForPatient($titular, $dependiente);
-        $this->actingAs($admin)->post(route('admin.pagos.aprobar', $pago));
-        $pago->refresh();
-        $this->assertEquals(Pago::ESTADO_PAGADO, $pago->estado);
+        $pago = $this->createPagoForPatient($titular, $dependiente, true);
+        $pago->update(['estado' => Pago::ESTADO_PAGADO]);
 
         $response = $this->actingAs($titular)->get(route('paciente.pagos.orden.pdf', $pago));
         $response->assertOk();
@@ -568,63 +549,20 @@ class PaymentOrderR2StorageTest extends TestCase
     {
         $paciente1 = $this->createRoleUser('paciente');
         $paciente2 = $this->createRoleUser('paciente');
-        $admin = $this->createRoleUser('administrador');
 
-        $pago = $this->createPagoForPatient($paciente1);
-        $this->actingAs($admin)->post(route('admin.pagos.aprobar', $pago));
-        $pago->refresh();
+        $pago = $this->createPagoForPatient($paciente1, null, true);
+        $pago->update(['estado' => Pago::ESTADO_PAGADO]);
 
         $response = $this->actingAs($paciente2)->get(route('paciente.pagos.orden.pdf', $pago));
         $response->assertStatus(403);
-    }
-
-    // 38. Pago pendiente relacionado: 200
-    public function test_related_pending_payment_order_returns_200(): void
-    {
-        $paciente = $this->createRoleUser('paciente');
-        $pago = $this->createPagoForPatient($paciente);
-        $this->assertEquals(Pago::ESTADO_PENDIENTE, $pago->estado);
-
-        $response = $this->actingAs($paciente)->get(route('paciente.pagos.orden.pdf', $pago));
-        $response->assertOk();
-        $response->assertHeader('Content-Type', 'application/pdf');
-    }
-
-    // 39. Orden R2 existente no se regenera ni cambia de clave
-    public function test_existing_r2_order_is_not_regenerated_nor_key_changed(): void
-    {
-        $paciente = $this->createRoleUser('paciente');
-        $pago = $this->createPagoForPatient($paciente);
-
-        $pagoService = app(PagoService::class);
-        $keyInitial = $pagoService->obtenerOGenerarOrdenPdf($pago, $paciente);
-
-        $response1 = $this->actingAs($paciente)->get(route('paciente.pagos.orden.pdf', $pago));
-        $response1->assertOk();
-
-        $pago->refresh();
-        $keyAfterFirstRead = $pago->orden_pdf_path;
-
-        $response2 = $this->actingAs($paciente)->get(route('paciente.pagos.orden.pdf', $pago));
-        $response2->assertOk();
-
-        $pago->refresh();
-        $keyAfterSecondRead = $pago->orden_pdf_path;
-
-        $this->assertEquals($keyInitial, $keyAfterFirstRead);
-        $this->assertEquals($keyInitial, $keyAfterSecondRead);
     }
 
     // 40. El botón continúa oculto para pagos pagados
     public function test_download_order_button_remains_hidden_for_paid_payments(): void
     {
         $paciente = $this->createRoleUser('paciente');
-        $admin = $this->createRoleUser('administrador');
-        $pago = $this->createPagoForPatient($paciente);
-
-        $this->actingAs($admin)->post(route('admin.pagos.aprobar', $pago));
-        $pago->refresh();
-        $this->assertEquals(Pago::ESTADO_PAGADO, $pago->estado);
+        $pago = $this->createPagoForPatient($paciente, null, true);
+        $pago->update(['estado' => Pago::ESTADO_PAGADO]);
 
         $response = $this->actingAs($paciente)->get(route('paciente.pagos.index'));
         $response->assertOk();

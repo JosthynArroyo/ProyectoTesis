@@ -74,8 +74,8 @@ class ProcessWelcomePersonalizationImages implements ShouldQueue
         $webpGenerationSeconds  = 0.0;
 
         try {
-            if ($imageOptimizer->disk() !== 'r2_public') {
-                throw new \RuntimeException('Welcome requiere r2_public como destino final de imágenes.');
+            if (! in_array($imageOptimizer->disk(), ['r2_public', 'public'], true)) {
+                throw new \RuntimeException('Welcome requiere un disco público válido (r2_public o public).');
             }
 
             // ─────────────────────────────────────────────────────────────
@@ -84,14 +84,13 @@ class ProcessWelcomePersonalizationImages implements ShouldQueue
             $logoTempPath    = $payload['logo_temp_path'] ?? null;
             $currentLogoPath = $payload['logo_current_path'] ?? null;
             $finalLogoPath   = $currentLogoPath;
+            $logoStagingDisk = $this->resolveStagingDisk($logoTempPath);
 
-            if ($logoTempPath && Storage::disk('r2_private')->exists($logoTempPath)) {
-                $logoBaseName    = $currentLogoPath
-                    ? pathinfo((string) $currentLogoPath, PATHINFO_FILENAME)
-                    : 'branding-header-logo';
+            if ($logoTempPath && Storage::disk($logoStagingDisk)->exists($logoTempPath)) {
+                $logoBaseName    = 'branding-header-logo-'.Str::uuid()->toString();
                 $t0 = microtime(true);
                 $newLogoPath = $imageOptimizer->optimizeStoredPath(
-                    sourceDisk: 'r2_private',
+                    sourceDisk: $logoStagingDisk,
                     sourcePath: $logoTempPath,
                     folder: 'branding',
                     baseName: $logoBaseName,
@@ -120,12 +119,13 @@ class ProcessWelcomePersonalizationImages implements ShouldQueue
             $faviconTempPath    = $payload['favicon_temp_path'] ?? null;
             $currentFaviconPath = $payload['favicon_current_path'] ?? null;
             $finalFaviconPath   = $currentFaviconPath;
+            $faviconStagingDisk = $this->resolveStagingDisk($faviconTempPath);
 
-            if ($faviconTempPath && Storage::disk('r2_private')->exists($faviconTempPath)) {
+            if ($faviconTempPath && Storage::disk($faviconStagingDisk)->exists($faviconTempPath)) {
                 $faviconBase  = 'favicon-'.Str::uuid()->toString();
                 $t0 = microtime(true);
                 $newFaviconPath = $imageOptimizer->optimizeStoredPath(
-                    sourceDisk: 'r2_private',
+                    sourceDisk: $faviconStagingDisk,
                     sourcePath: $faviconTempPath,
                     folder: 'branding',
                     baseName: $faviconBase,
@@ -158,12 +158,13 @@ class ProcessWelcomePersonalizationImages implements ShouldQueue
                 $tempPath    = $slide['temp_path'] ?? null;
                 $currentPath = $slide['image_path'] ?? null;
                 $finalPath   = $currentPath;
+                $slideStagingDisk = $this->resolveStagingDisk($tempPath);
 
-                if ($tempPath && Storage::disk('r2_private')->exists($tempPath)) {
+                if ($tempPath && Storage::disk($slideStagingDisk)->exists($tempPath)) {
                     $slideBase   = 'slide-'.Str::uuid()->toString();
                     $t0 = microtime(true);
                     $newSlidePath = $imageOptimizer->optimizeStoredPath(
-                        sourceDisk: 'r2_private',
+                        sourceDisk: $slideStagingDisk,
                         sourcePath: $tempPath,
                         folder: 'banners',
                         baseName: $slideBase,
@@ -200,12 +201,13 @@ class ProcessWelcomePersonalizationImages implements ShouldQueue
                 $tempPath    = $doctor['temp_path'] ?? null;
                 $currentPath = $doctor['photo_path'] ?? null;
                 $finalPath   = $currentPath;
+                $doctorStagingDisk = $this->resolveStagingDisk($tempPath);
 
-                if ($tempPath && Storage::disk('r2_private')->exists($tempPath)) {
+                if ($tempPath && Storage::disk($doctorStagingDisk)->exists($tempPath)) {
                     $doctorBase = 'doctor-'.Str::uuid()->toString();
                     $t0 = microtime(true);
                     $newDoctorPath = $imageOptimizer->optimizeStoredPath(
-                        sourceDisk: 'r2_private',
+                        sourceDisk: $doctorStagingDisk,
                         sourcePath: $tempPath,
                         folder: 'doctors',
                         baseName: $doctorBase,
@@ -232,6 +234,8 @@ class ProcessWelcomePersonalizationImages implements ShouldQueue
                 $processedDoctors[$index] = array_merge($doctor, ['final_path' => $finalPath]);
             }
 
+            $databaseCommitted = false;
+
             // ─────────────────────────────────────────────────────────────
             // 5. Atomic database transaction — commit all changes at once
             // ─────────────────────────────────────────────────────────────
@@ -253,39 +257,33 @@ class ProcessWelcomePersonalizationImages implements ShouldQueue
                 );
             });
             $settings->forgetCache();
+            $databaseCommitted = true;
 
             // ─────────────────────────────────────────────────────────────
             // 6. Mark completed
             // ─────────────────────────────────────────────────────────────
             $batch->update([
-                'status'          => 'completed',
-                'processed_items' => $batch->total_items,
-                'finished_at'     => now(),
+                'status'               => 'completed',
+                'processed_items'      => $processedCount,
+                'error_message'        => null,
+                'finished_at'          => now(),
+                'approximate_r2_writes'=> $approximateWriteCount,
             ]);
 
-            Log::info('Welcome batch summary', [
-                'batch_uuid'               => $batch->uuid,
-                'status'                   => 'completed',
-                'images'                   => $batch->total_items,
-                'variants'                 => $generatedVariantCount,
-                'waiting_seconds'          => $batch->waiting_seconds,
-                'processing_seconds'       => $batch->processing_seconds,
-                'webp_generation_seconds'  => round($webpGenerationSeconds, 3),
-                'approximate_r2_writes'    => $approximateWriteCount,
-                'total_seconds'            => $batch->elapsed_seconds,
-            ]);
-
-            // Cleanup obsolete R2 objects (old slides, doctors, logo) in background
+            // ─────────────────────────────────────────────────────────────
+            // 7. Prune superseded / replaced image files
+            // ─────────────────────────────────────────────────────────────
             if (! empty($pathsToDelete)) {
-                $manager = app(LandingWelcomeManager::class);
-                $safePaths = array_filter(
-                    $pathsToDelete,
-                    fn ($p) => $manager->isDeletableManagedPath($p)
-                );
-                if (! empty($safePaths)) {
-                    CleanupReplacedServiceImagesJob::dispatch(array_values($safePaths), 'welcome');
-                }
+                $imageOptimizer->deleteManyByStoredPaths($pathsToDelete, 'welcome');
             }
+
+            $this->logBatchSummary(
+                $batch,
+                $processedCount,
+                $generatedVariantCount,
+                $approximateWriteCount,
+                $webpGenerationSeconds
+            );
 
         } catch (Throwable $exception) {
             Log::error('Fallo en procesamiento asíncrono de imágenes de bienvenida:', [
@@ -293,8 +291,8 @@ class ProcessWelcomePersonalizationImages implements ShouldQueue
                 'error'      => $exception->getMessage(),
             ]);
 
-            // Roll back newly created R2 objects
-            if (! empty($newlyUploadedPaths)) {
+            // Roll back newly created R2 objects ONLY if the database transaction did not commit
+            if (! ($databaseCommitted ?? false) && ! empty($newlyUploadedPaths)) {
                 try {
                     $imageOptimizer->deleteManyByStoredPaths($newlyUploadedPaths, 'welcome');
                 } catch (Throwable) {
@@ -308,21 +306,53 @@ class ProcessWelcomePersonalizationImages implements ShouldQueue
                 'finished_at'   => now(),
             ]);
 
-            Log::info('Welcome batch summary', [
-                'batch_uuid'               => $batch->uuid,
-                'status'                   => 'failed',
-                'images'                   => $processedCount,
-                'variants'                 => $generatedVariantCount,
-                'waiting_seconds'          => $batch->waiting_seconds,
-                'processing_seconds'       => $batch->processing_seconds,
-                'webp_generation_seconds'  => round($webpGenerationSeconds, 3),
-                'approximate_r2_writes'    => $approximateWriteCount,
-            ]);
+            $this->logBatchSummary(
+                $batch,
+                $processedCount,
+                $generatedVariantCount,
+                $approximateWriteCount,
+                $webpGenerationSeconds,
+                'failed'
+            );
 
             throw $exception;
         } finally {
             $this->cleanupStaging($tempDirectory);
         }
+    }
+
+    private function logBatchSummary(
+        MediaProcessingBatch $batch,
+        int $imageCount,
+        int $variantCount,
+        int $approximateWriteCount,
+        float $webpGenerationSeconds,
+        ?string $statusOverride = null
+    ): void {
+        Log::info('Welcome batch summary', [
+            'batch_uuid' => $batch->uuid,
+            'status' => $statusOverride ?: $batch->status,
+            'images' => $imageCount,
+            'variants' => $variantCount,
+            'waiting_seconds' => $batch->waiting_seconds,
+            'processing_seconds' => $batch->processing_seconds,
+            'webp_generation_seconds' => round($webpGenerationSeconds, 3),
+            'approximate_r2_writes' => $approximateWriteCount,
+            'total_seconds' => $batch->elapsed_seconds,
+        ]);
+    }
+
+    private function resolveStagingDisk(?string $path = null): string
+    {
+        if ($path && Storage::disk('r2_private')->exists($path)) {
+            return 'r2_private';
+        }
+
+        if ($path && Storage::disk('local')->exists($path)) {
+            return 'local';
+        }
+
+        return config('private_documents.disk', 'local') === 'r2_private' ? 'r2_private' : 'local';
     }
 
     private function cleanupStaging(?string $directory): void
@@ -331,10 +361,13 @@ class ProcessWelcomePersonalizationImages implements ShouldQueue
             return;
         }
 
+        $stagingDisk = $this->resolveStagingDisk();
         try {
-            Storage::disk('r2_private')->deleteDirectory($directory);
+            if (Storage::disk($stagingDisk)->exists($directory)) {
+                Storage::disk($stagingDisk)->deleteDirectory($directory);
+            }
         } catch (Throwable $exception) {
-            Log::warning('No se pudo limpiar staging R2 de Welcome.', [
+            Log::warning('No se pudo limpiar staging de Welcome.', [
                 'batch_uuid' => $this->batchUuid,
                 'directory' => $directory,
                 'error' => $exception->getMessage(),

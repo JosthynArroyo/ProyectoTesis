@@ -1097,6 +1097,25 @@ function installFetchGuard() {
   };
 }
 
+function isDownloadTarget(link, url) {
+  if (link.hasAttribute('download') || link.dataset.download === '1' || link.dataset.actionLockDownload === '1') {
+    return true;
+  }
+
+  const path = (url.pathname || '').toLowerCase();
+  if (
+    path.includes('/download') ||
+    path.includes('/descargar') ||
+    path.includes('/export-pdf') ||
+    url.searchParams.get('disposition') === 'attachment' ||
+    url.searchParams.get('download') === '1'
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
 function openNavigation(event) {
   const link = event.target?.closest?.('a[href]');
   if (!link || event.defaultPrevented) {
@@ -1104,7 +1123,6 @@ function openNavigation(event) {
   }
 
   if (
-    link.hasAttribute('download') ||
     link.hasAttribute('target') ||
     link.hasAttribute('data-action-lock-ignore') ||
     link.hasAttribute('data-skip-page-loader') ||
@@ -1160,6 +1178,10 @@ function openNavigation(event) {
 
   const current = new URL(window.location.href);
   if (url.pathname === current.pathname && url.search === current.search && url.hash && url.hash !== current.hash) {
+    return;
+  }
+
+  if (isDownloadTarget(link, url)) {
     return;
   }
 

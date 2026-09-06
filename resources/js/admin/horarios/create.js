@@ -95,8 +95,8 @@ import { populateHoursSelects, getClinicHoursConfig } from '../../shared/horario
 
   function syncMode(){
     const on=!!same.checked;
-    boxGlobal.style.display=on ? '' : 'none';
-    boxPerDay.style.display=on ? 'none' : '';
+    boxGlobal.classList.toggle('hidden', !on);
+    boxPerDay.classList.toggle('hidden', on);
     toggleRows();
     updateKPI();
     syncGlobalSelectors();

@@ -7,6 +7,10 @@ use App\Models\User;
 
 class FeatureAccessService
 {
+    public function __construct(
+        private readonly ApplicationModeService $applicationMode,
+    ) {}
+
     public function hasAccess(?User $user, string $feature): bool
     {
         if (! $user) {
@@ -14,6 +18,13 @@ class FeatureAccessService
         }
 
         if ($user->hasRole('superadmin')) {
+            return true;
+        }
+
+        // In demo mode, administradores may explore any feature without a FeatureAccessRequest.
+        // This exception is strictly scoped: only ApplicationModeService::isDemo() + administrador role.
+        // Production always requires an active approved FeatureAccessRequest (fail-closed).
+        if ($this->applicationMode->isDemo() && $user->hasRole('administrador')) {
             return true;
         }
 

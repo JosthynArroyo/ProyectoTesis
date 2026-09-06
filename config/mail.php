@@ -73,4 +73,6 @@ return [
 
     'contact_to' => env('CONTACTO_TO', env('MAIL_FROM_ADDRESS', 'hello@example.com')),
 
+    'commercial_to' => env('MAIL_COMMERCIAL_TO', env('MAIL_CONTACT_TO', env('CONTACTO_TO', env('MAIL_FROM_ADDRESS', 'alejandroucenriquez@gmail.com')))),
+
 ];

@@ -13,7 +13,7 @@ class SiteSettingsService
 
     public const MAINTENANCE_CACHE_KEY = 'site_settings.maintenance';
 
-    private const CACHE_TTL_SECONDS = 300;
+    private const CACHE_TTL_SECONDS = 86400;
 
     private const MAINTENANCE_CACHE_TTL_SECONDS = 60;
 

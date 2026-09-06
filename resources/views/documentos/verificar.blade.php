@@ -42,13 +42,17 @@
               type="text"
               value="{{ old('csv') }}"
               placeholder="ABC-12345-XYZ"
-              class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-base text-slate-900 outline-none transition focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent-soft)]"
+              class="w-full rounded-2xl border @error('csv') border-rose-300 ring-2 ring-rose-100 focus:border-rose-500 focus:ring-rose-200 @else border-slate-300 focus:border-[var(--accent)] focus:ring-[var(--accent-soft)] @enderror bg-white px-4 py-3 text-base text-slate-900 outline-none transition focus:ring-4"
               autocomplete="off"
               spellcheck="false"
               required
+              @error('csv') aria-invalid="true" aria-describedby="csv-error" autofocus @enderror
             >
             @error('csv')
-              <p class="mt-2 text-sm text-rose-600">{{ $message }}</p>
+              <p id="csv-error" class="mt-2 flex items-center gap-1.5 text-sm font-medium text-rose-600" role="alert">
+                <i class="ri-error-warning-line shrink-0 text-base" aria-hidden="true"></i>
+                <span>{{ $message }}</span>
+              </p>
             @enderror
           </div>
 

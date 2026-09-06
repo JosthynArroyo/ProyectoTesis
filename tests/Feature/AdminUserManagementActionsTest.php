@@ -231,4 +231,30 @@ class AdminUserManagementActionsTest extends TestCase
         $response->assertSee('data-confirm-form="unsuspend-'.$userSuspended->id.'"', false);
         $response->assertSee('Levantar suspensión');
     }
+
+    /** 14. El formulario de usuario utiliza clases declarativas hidden sin inline styles y JS usa classList.toggle */
+    public function test_admin_user_form_declarative_visibility_and_no_inline_styles(): void
+    {
+        $admin = $this->createRoleUser('administrador');
+
+        $response = $this->actingAs($admin)->get(route('admin.usuarios.create'));
+        $response->assertOk()
+            ->assertSee('id="patient-flags-section"', false)
+            ->assertSee('id="doctor-only-esp"', false)
+            ->assertSee('id="doctor-only-precio"', false)
+            ->assertDontSee('style="display:none"', false);
+
+        $bladePath = resource_path('views/admin/users/form.blade.php');
+        $this->assertFileExists($bladePath);
+        $blade = file_get_contents($bladePath);
+        $this->assertStringNotContainsString('style=', $blade);
+
+        $jsPath = resource_path('js/admin/users/form.js');
+        $this->assertFileExists($jsPath);
+        $js = file_get_contents($jsPath);
+        $this->assertStringContainsString("esp.classList.toggle('hidden', !isDoctor)", $js);
+        $this->assertStringContainsString("precio.classList.toggle('hidden', !(isDoctor||isLab))", $js);
+        $this->assertStringContainsString("flags.classList.toggle('hidden', !isPaciente)", $js);
+        $this->assertStringNotContainsString('style.display', $js);
+    }
 }

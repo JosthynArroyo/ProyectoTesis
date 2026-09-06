@@ -70,6 +70,25 @@ class RecipeDocumentR2ConsistencyTest extends TestCase
         ]);
     }
 
+    private function createInitialRecipe(Cita $cita, string $diag = 'Diagnóstico inicial', string $meds = 'Medicamento inicial'): Receta
+    {
+        $receta = Receta::create([
+            'cita_id' => $cita->id,
+            'diagnostico' => $diag,
+            'medicamentos' => $meds,
+            'csv' => 'REC-' . strtoupper(bin2hex(random_bytes(4))),
+            'pdf_path' => '',
+            'pdf_disk' => 'r2_private',
+        ]);
+
+        $uuid = (string) \Illuminate\Support\Str::uuid();
+        $path = "documents/recipes/{$receta->id}/{$uuid}.pdf";
+        Storage::disk('r2_private')->put($path, "%PDF-1.4 Mock Initial Recipe\n");
+        $receta->update(['pdf_path' => $path]);
+
+        return $receta;
+    }
+
     /**
      * PR1 — Store normal
      */
@@ -188,13 +207,7 @@ class RecipeDocumentR2ConsistencyTest extends TestCase
         $cita = $this->createRealizedCita($doctor, $paciente);
 
         // Crear receta inicial
-        $this->actingAs($doctor)->post(route('doctor.recetas.store'), [
-            'cita_id' => $cita->id,
-            'diagnostico' => 'Diagnóstico inicial',
-            'medicamentos' => 'Medicamento inicial',
-        ]);
-
-        $receta = Receta::where('cita_id', $cita->id)->firstOrFail();
+        $receta = $this->createInitialRecipe($cita);
         $oldPdfPath = $receta->pdf_path;
         $this->assertTrue(Storage::disk('r2_private')->exists($oldPdfPath));
 
@@ -233,13 +246,7 @@ class RecipeDocumentR2ConsistencyTest extends TestCase
         $cita = $this->createRealizedCita($doctor, $paciente);
 
         // Crear receta inicial
-        $this->actingAs($doctor)->post(route('doctor.recetas.store'), [
-            'cita_id' => $cita->id,
-            'diagnostico' => 'Diagnóstico inicial',
-            'medicamentos' => 'Medicamento inicial',
-        ]);
-
-        $receta = Receta::where('cita_id', $cita->id)->firstOrFail();
+        $receta = $this->createInitialRecipe($cita);
         $oldPdfPath = $receta->pdf_path;
 
         // Simulamos fallo DB durante la actualización
@@ -284,13 +291,7 @@ class RecipeDocumentR2ConsistencyTest extends TestCase
         $paciente = $this->createRoleUser('paciente');
         $cita = $this->createRealizedCita($doctor, $paciente);
 
-        $this->actingAs($doctor)->post(route('doctor.recetas.store'), [
-            'cita_id' => $cita->id,
-            'diagnostico' => 'Diagnóstico inicial',
-            'medicamentos' => 'Medicamento inicial',
-        ]);
-
-        $receta = Receta::where('cita_id', $cita->id)->firstOrFail();
+        $receta = $this->createInitialRecipe($cita);
         $oldPdfPath = $receta->pdf_path;
 
         Receta::updating(function ($model) {
@@ -323,13 +324,7 @@ class RecipeDocumentR2ConsistencyTest extends TestCase
         $paciente = $this->createRoleUser('paciente');
         $cita = $this->createRealizedCita($doctor, $paciente);
 
-        $this->actingAs($doctor)->post(route('doctor.recetas.store'), [
-            'cita_id' => $cita->id,
-            'diagnostico' => 'Diagnóstico',
-            'medicamentos' => 'Medicamentos',
-        ]);
-
-        $receta = Receta::where('cita_id', $cita->id)->firstOrFail();
+        $receta = $this->createInitialRecipe($cita);
         $oldPdfPath = $receta->pdf_path;
 
         $response = $this->actingAs($doctor)->post(route('doctor.recetas.resend', $cita->id));
@@ -351,13 +346,7 @@ class RecipeDocumentR2ConsistencyTest extends TestCase
         $paciente = $this->createRoleUser('paciente');
         $cita = $this->createRealizedCita($doctor, $paciente);
 
-        $this->actingAs($doctor)->post(route('doctor.recetas.store'), [
-            'cita_id' => $cita->id,
-            'diagnostico' => 'Diagnóstico',
-            'medicamentos' => 'Medicamentos',
-        ]);
-
-        $receta = Receta::where('cita_id', $cita->id)->firstOrFail();
+        $receta = $this->createInitialRecipe($cita);
         $oldPdfPath = $receta->pdf_path;
 
         $shouldFail = true;
@@ -394,13 +383,7 @@ class RecipeDocumentR2ConsistencyTest extends TestCase
         $paciente = $this->createRoleUser('paciente');
         $cita = $this->createRealizedCita($doctor, $paciente);
 
-        $this->actingAs($doctor)->post(route('doctor.recetas.store'), [
-            'cita_id' => $cita->id,
-            'diagnostico' => 'Diagnóstico',
-            'medicamentos' => 'Medicamentos',
-        ]);
-
-        $receta = Receta::where('cita_id', $cita->id)->firstOrFail();
+        $receta = $this->createInitialRecipe($cita);
         $pdfPath = $receta->pdf_path;
 
         $response = $this->actingAs($doctor)->get(route('doctor.recetas.download', $cita->id));
@@ -423,13 +406,7 @@ class RecipeDocumentR2ConsistencyTest extends TestCase
         $paciente = $this->createRoleUser('paciente');
         $cita = $this->createRealizedCita($doctor, $paciente);
 
-        $this->actingAs($doctor)->post(route('doctor.recetas.store'), [
-            'cita_id' => $cita->id,
-            'diagnostico' => 'Diagnóstico',
-            'medicamentos' => 'Medicamentos',
-        ]);
-
-        $receta = Receta::where('cita_id', $cita->id)->firstOrFail();
+        $receta = $this->createInitialRecipe($cita);
         $oldPdfPath = $receta->pdf_path;
 
         // Eliminamos el archivo físico para simular archivo faltante
@@ -454,13 +431,7 @@ class RecipeDocumentR2ConsistencyTest extends TestCase
         $paciente = $this->createRoleUser('paciente');
         $cita = $this->createRealizedCita($doctor, $paciente);
 
-        $this->actingAs($doctor)->post(route('doctor.recetas.store'), [
-            'cita_id' => $cita->id,
-            'diagnostico' => 'Diagnóstico',
-            'medicamentos' => 'Medicamentos',
-        ]);
-
-        $receta = Receta::where('cita_id', $cita->id)->firstOrFail();
+        $receta = $this->createInitialRecipe($cita);
         $oldPdfPath = $receta->pdf_path;
         Storage::disk('r2_private')->delete($oldPdfPath);
 

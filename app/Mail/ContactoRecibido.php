@@ -12,15 +12,20 @@ class ContactoRecibido extends Mailable
     use Queueable, SerializesModels;
 
     public array $datos;
+    public ?string $asuntoPersonalizado;
 
-    public function __construct(array $datos)
+    public function __construct(array $datos, ?string $asuntoPersonalizado = null)
     {
         $this->datos = $datos;
+        $this->asuntoPersonalizado = $asuntoPersonalizado;
     }
 
     public function build()
     {
-        return $this->subject(app(ClinicIdentityService::class)->subject('Nuevo mensaje de contacto'))
+        $subject = $this->asuntoPersonalizado
+            ?: app(ClinicIdentityService::class)->subject('Nuevo mensaje de contacto');
+
+        return $this->subject($subject)
             ->replyTo($this->datos['email'], $this->datos['nombre'])
             ->view('emails.contacto_recibido');
     }

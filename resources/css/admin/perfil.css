@@ -292,52 +292,6 @@ body{background:#f5f7fb;}
 }
 .field-help.error{color:var(--danger);}
 
-.face-enroll-card{
-  display:grid;
-  gap:12px;
-  border:1px dashed var(--border);
-  border-radius:14px;
-  padding:12px;
-  background:#f8fbff;
-}
-.face-enroll-video{
-  position:relative;
-  border-radius:12px;
-  overflow:hidden;
-  background:#0f172a;
-  min-height:220px;
-}
-.is-hidden{display:none!important;}
-.face-enroll-video video{width:100%;height:100%;object-fit:cover;}
-.face-enroll-video #faceEnrollOverlay{
-  position:absolute;
-  inset:0;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  padding:12px;
-  color:#fff;
-  text-align:center;
-  font-weight:700;
-  background:linear-gradient(180deg,rgba(0,0,0,.35),rgba(0,0,0,.55));
-}
-.face-enroll-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;}
-.face-enroll-progress{
-  flex:1 1 180px;
-  height:8px;
-  border-radius:999px;
-  background:rgba(15,23,42,.12);
-  overflow:hidden;
-}
-.face-enroll-progress__bar{
-  display:block;
-  width:0%;
-  height:100%;
-  background:var(--primary);
-  transition:width .2s ease;
-}
-.face-enroll-status{margin:0;color:var(--muted);font-weight:700;}
-
 .profile-actions{
   display:flex;
   justify-content:flex-end;
@@ -397,7 +351,6 @@ body{background:#f5f7fb;}
   .summary-card,
   .form-card,
   .section-block,
-  .face-enroll-card,
   .profile-actions{
     width:100%;
     box-sizing:border-box;
@@ -406,7 +359,7 @@ body{background:#f5f7fb;}
     position:static;
   }
   .fields-grid{grid-template-columns:1fr;}
-  .face-enroll-actions,.profile-actions{flex-direction:column;}
+  .profile-actions{flex-direction:column;}
   .btn{width:100%;}
   .hero-summary{display:grid;}
   .desktop-only{display:none;}

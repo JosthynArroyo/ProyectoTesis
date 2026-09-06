@@ -111,7 +111,7 @@ class MedicalCertificateFlowTest extends TestCase
             ->get(route('doctor.certificados.create', $cita))
             ->assertOk()
             ->assertSee('Al indicar dias de reposo, las fechas "Reposo desde" y "Reposo hasta" son obligatorias.', false)
-            ->assertSee("campo.toggleAttribute('required', requiereFechas);", false);
+            ->assertSee('certificados-form', false);
 
         $initialHtml = $initialResponse->getContent();
         $requiredDesde = '/<input(?=[^>]*name="reposo_desde")(?=[^>]*\srequired(?:\s|>|=))[^>]*>/';

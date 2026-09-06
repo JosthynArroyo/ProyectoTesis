@@ -170,7 +170,7 @@
 
           @if(!in_array($cita->estado, ['cancelada','realizada','no_se_presento']))
             <div class="mt-4 flex flex-wrap gap-2">
-              <form action="{{ route('paciente.citas.cancelar', $cita->id) }}" method="POST" style="display:inline-block">
+              <form action="{{ route('paciente.citas.cancelar', $cita->id) }}" method="POST" class="inline-block">
                 @csrf
                 <button type="submit" class="btn btn-danger btn-sm" aria-label="Cancelar cita">
                   <i class="ri-close-line"></i>
@@ -197,19 +197,5 @@
 @endsection
 
 @push('scripts')
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-  const highlightId = @json($highlightCita);
-  if (!highlightId) {
-    return;
-  }
-
-  const target = document.getElementById(`cita-${highlightId}`);
-  if (!target) {
-    return;
-  }
-
-  target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-});
-</script>
+  @vite('resources/js/shared/record-highlight-scroll.js')
 @endpush

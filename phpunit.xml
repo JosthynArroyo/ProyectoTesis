@@ -10,16 +10,13 @@
         </testsuite>
         <testsuite name="Feature">
             <directory>tests/Feature</directory>
-            <exclude>tests/Feature/AuditFunctionalFlowTest.php</exclude>
-        </testsuite>
-        <testsuite name="Audit">
-            <file>tests/Feature/AuditFunctionalFlowTest.php</file>
         </testsuite>
     </testsuites>
     <php>
         <ini name="memory_limit" value="-1"/>
         <!-- Entorno para testing -->
         <env name="APP_ENV" value="testing"/>
+        <env name="APP_MODE" value="production"/>
         <env name="DB_CONNECTION" value="mysql"/>
         <env name="DB_HOST" value="127.0.0.1"/>
         <env name="DB_PORT" value="3307"/>
@@ -42,5 +39,9 @@
         <env name="R2_PRIVATE_BUCKET" value="r2-private-test-bucket"/>
         <env name="R2_PUBLIC_BUCKET" value="r2-public-test-bucket"/>
         <env name="R2_ENDPOINT" value="https://testing.r2.cloudflarestorage.com"/>
+        <env name="FILESYSTEM_DISK" value="local"/>
+        <env name="IMAGE_STORAGE_DISK" value="public"/>
+        <env name="AVATAR_STORAGE_DISK" value="local"/>
+        <env name="PRIVATE_DOCUMENT_STORAGE_DISK" value="local"/>
     </php>
 </phpunit>

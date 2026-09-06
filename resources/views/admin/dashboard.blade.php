@@ -104,11 +104,9 @@
               <button type="submit" class="btn btn-outline btn-sm">
                 <i class="ri-filter-3-line"></i> Filtrar
               </button>
-              @if(($prioridad ?? '') !== '')
-                <a href="{{ route('admin.dashboard') }}" class="btn btn-ghost btn-sm">
-                  <i class="ri-refresh-line"></i> Limpiar
-                </a>
-              @endif
+              <a href="{{ route('admin.dashboard') }}" class="btn btn-ghost btn-sm">
+                <i class="ri-refresh-line"></i> Limpiar
+              </a>
             </form>
             <form id="exportForm" action="{{ route('admin.citas.export') }}" method="GET">
               <button type="submit" class="btn btn-outline btn-sm">

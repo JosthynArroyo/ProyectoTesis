@@ -25,7 +25,7 @@
         <input type="search" name="buscar" value="{{ $buscar ?? '' }}" placeholder="Buscar por nombre, correo o cédula">
       </div>
       @error('buscar')<span class="text-xs text-rose-600">{{ $message }}</span>@enderror
-      <select class="form-select" name="per_page" onchange="this.form.submit()">
+      <select class="form-select" name="per_page" data-auto-submit>
         @foreach([12,24,48] as $pp)
           <option value="{{ $pp }}" @selected(($perPage ?? 12) == $pp)>{{ $pp }}/pag</option>
         @endforeach

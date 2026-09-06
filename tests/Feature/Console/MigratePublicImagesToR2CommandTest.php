@@ -13,6 +13,11 @@ class MigratePublicImagesToR2CommandTest extends TestCase
 {
     public function test_historical_migration_commands_are_fail_closed_and_do_not_touch_storage(): void
     {
+        config([
+            'filesystems.default' => 'r2_private',
+            'image_optimization.disk' => 'r2_public',
+        ]);
+
         $this->assertSame('r2_private', config('filesystems.default'));
         $this->assertSame('r2_public', config('image_optimization.disk'));
         $this->assertTrue((bool) config('filesystems.disks.r2_private.throw'));

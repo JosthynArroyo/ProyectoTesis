@@ -84,7 +84,28 @@ class PaymentReceiptR2StorageTest extends TestCase
         ]);
     }
 
-    // 1. Aprobacion de pago crea recibo en r2_private
+    private function createPagoWithReceipt(User $paciente, ?Dependiente $dependiente = null): Pago
+    {
+        $pago = $this->createPagoForPatient($paciente, $dependiente);
+        $pago->update(['estado' => Pago::ESTADO_PAGADO]);
+
+        $receiptPath = "documents/payment-receipts/{$pago->id}/receipt.pdf";
+        Storage::disk('r2_private')->put($receiptPath, "%PDF-1.4 Mock Receipt\n");
+
+        PaymentReceipt::create([
+            'pago_id' => $pago->id,
+            'folio_recibo' => 'RP-TEST-' . uniqid(),
+            'emitido_en' => now(),
+            'metodo_pago' => 'efectivo',
+            'monto' => $pago->monto,
+            'pdf_path' => $receiptPath,
+            'pdf_disk' => 'r2_private',
+        ]);
+
+        return $pago->fresh(['receipt']);
+    }
+
+    // 1. Aprobacion de pago crea recibo en r2_private con clave UUID unica, sin copia local y con firma %PDF valida
     public function test_payment_approval_creates_receipt_in_r2_private(): void
     {
         $paciente = $this->createRoleUser('paciente');
@@ -98,59 +119,16 @@ class PaymentReceiptR2StorageTest extends TestCase
         $this->assertEquals('r2_private', $receipt->pdf_disk);
         $this->assertStringStartsWith("documents/payment-receipts/{$receipt->pago_id}/", $receipt->pdf_path);
         $this->assertTrue(Storage::disk('r2_private')->exists($receipt->pdf_path));
-    }
 
-    // 2. Se almacena una sola clave PDF
-    public function test_single_pdf_key_is_stored(): void
-    {
-        $paciente = $this->createRoleUser('paciente');
-        $admin = $this->createRoleUser('administrador');
-        $pago = $this->createPagoForPatient($paciente);
-
-        $this->actingAs($admin)->post(route('admin.pagos.aprobar', $pago));
-        $receipt = PaymentReceipt::where('pago_id', $pago->id)->firstOrFail();
-
+        // Se almacena una sola clave PDF
         $r2Files = Storage::disk('r2_private')->allFiles("documents/payment-receipts/{$receipt->pago_id}");
         $this->assertCount(1, $r2Files);
         $this->assertEquals($receipt->pdf_path, $r2Files[0]);
-    }
 
-    // 3. No se crea copia local
-    public function test_no_local_copy_created(): void
-    {
-        $paciente = $this->createRoleUser('paciente');
-        $admin = $this->createRoleUser('administrador');
-        $pago = $this->createPagoForPatient($paciente);
-
-        $this->actingAs($admin)->post(route('admin.pagos.aprobar', $pago));
-        $receipt = PaymentReceipt::where('pago_id', $pago->id)->firstOrFail();
-
+        // No se crea copia local
         $this->assertFalse(Storage::disk('local')->exists($receipt->pdf_path));
-    }
 
-    // 4. pdf_disk queda r2_private
-    public function test_pdf_disk_is_r2_private(): void
-    {
-        $paciente = $this->createRoleUser('paciente');
-        $admin = $this->createRoleUser('administrador');
-        $pago = $this->createPagoForPatient($paciente);
-
-        $this->actingAs($admin)->post(route('admin.pagos.aprobar', $pago));
-        $receipt = PaymentReceipt::where('pago_id', $pago->id)->firstOrFail();
-
-        $this->assertEquals('r2_private', $receipt->pdf_disk);
-    }
-
-    // 5. El objeto comienza con %PDF
-    public function test_stored_object_starts_with_pdf_header(): void
-    {
-        $paciente = $this->createRoleUser('paciente');
-        $admin = $this->createRoleUser('administrador');
-        $pago = $this->createPagoForPatient($paciente);
-
-        $this->actingAs($admin)->post(route('admin.pagos.aprobar', $pago));
-        $receipt = PaymentReceipt::where('pago_id', $pago->id)->firstOrFail();
-
+        // El objeto comienza con %PDF
         $content = Storage::disk('r2_private')->get($receipt->pdf_path);
         $this->assertStringStartsWith('%PDF', $content);
     }
@@ -309,10 +287,7 @@ class PaymentReceiptR2StorageTest extends TestCase
     public function test_authorized_titular_patient_can_download_receipt(): void
     {
         $paciente = $this->createRoleUser('paciente');
-        $admin = $this->createRoleUser('administrador');
-        $pago = $this->createPagoForPatient($paciente);
-
-        $this->actingAs($admin)->post(route('admin.pagos.aprobar', $pago));
+        $pago = $this->createPagoWithReceipt($paciente);
 
         $response = $this->actingAs($paciente)->get(route('paciente.pagos.recibo.pdf', $pago));
         $response->assertOk();
@@ -323,7 +298,6 @@ class PaymentReceiptR2StorageTest extends TestCase
     public function test_authorized_representative_can_download_receipt(): void
     {
         $titular = $this->createRoleUser('paciente');
-        $admin = $this->createRoleUser('administrador');
         $dependiente = Dependiente::create([
             'user_id' => $titular->id,
             'dni' => '0998877665',
@@ -335,8 +309,7 @@ class PaymentReceiptR2StorageTest extends TestCase
             'activo' => true,
         ]);
 
-        $pago = $this->createPagoForPatient($titular, $dependiente);
-        $this->actingAs($admin)->post(route('admin.pagos.aprobar', $pago));
+        $pago = $this->createPagoWithReceipt($titular, $dependiente);
 
         $response = $this->actingAs($titular)->get(route('paciente.pagos.recibo.pdf', $pago));
         $response->assertOk();
@@ -347,10 +320,8 @@ class PaymentReceiptR2StorageTest extends TestCase
     {
         $paciente1 = $this->createRoleUser('paciente');
         $paciente2 = $this->createRoleUser('paciente');
-        $admin = $this->createRoleUser('administrador');
 
-        $pago = $this->createPagoForPatient($paciente1);
-        $this->actingAs($admin)->post(route('admin.pagos.aprobar', $pago));
+        $pago = $this->createPagoWithReceipt($paciente1);
 
         $response = $this->actingAs($paciente2)->get(route('paciente.pagos.recibo.pdf', $pago));
         $response->assertStatus(403);
@@ -361,9 +332,7 @@ class PaymentReceiptR2StorageTest extends TestCase
     {
         $paciente = $this->createRoleUser('paciente');
         $admin = $this->createRoleUser('administrador');
-        $pago = $this->createPagoForPatient($paciente);
-
-        $this->actingAs($admin)->post(route('admin.pagos.aprobar', $pago));
+        $pago = $this->createPagoWithReceipt($paciente);
 
         $response = $this->actingAs($admin)->get(route('admin.pagos.recibo.pdf', $pago));
         $response->assertOk();
@@ -374,11 +343,8 @@ class PaymentReceiptR2StorageTest extends TestCase
     public function test_superadmin_can_download_receipt(): void
     {
         $paciente = $this->createRoleUser('paciente');
-        $admin = $this->createRoleUser('administrador');
         $superadmin = $this->createRoleUser('superadmin');
-        $pago = $this->createPagoForPatient($paciente);
-
-        $this->actingAs($admin)->post(route('admin.pagos.aprobar', $pago));
+        $pago = $this->createPagoWithReceipt($paciente);
 
         $response = $this->actingAs($superadmin)->get(route('admin.pagos.recibo.pdf', $pago));
         $response->assertOk();
@@ -388,11 +354,9 @@ class PaymentReceiptR2StorageTest extends TestCase
     public function test_doctor_denied(): void
     {
         $paciente = $this->createRoleUser('paciente');
-        $admin = $this->createRoleUser('administrador');
         $doctor = $this->createRoleUser('doctor');
 
-        $pago = $this->createPagoForPatient($paciente);
-        $this->actingAs($admin)->post(route('admin.pagos.aprobar', $pago));
+        $pago = $this->createPagoWithReceipt($paciente);
 
         $resPac = $this->actingAs($doctor)->get(route('paciente.pagos.recibo.pdf', $pago));
         $this->assertTrue(in_array($resPac->status(), [403, 302], true));
@@ -405,11 +369,9 @@ class PaymentReceiptR2StorageTest extends TestCase
     public function test_laboratory_denied(): void
     {
         $paciente = $this->createRoleUser('paciente');
-        $admin = $this->createRoleUser('administrador');
         $lab = $this->createRoleUser('laboratorio');
 
-        $pago = $this->createPagoForPatient($paciente);
-        $this->actingAs($admin)->post(route('admin.pagos.aprobar', $pago));
+        $pago = $this->createPagoWithReceipt($paciente);
 
         $resPac = $this->actingAs($lab)->get(route('paciente.pagos.recibo.pdf', $pago));
         $this->assertTrue(in_array($resPac->status(), [403, 302], true));
@@ -422,9 +384,7 @@ class PaymentReceiptR2StorageTest extends TestCase
     public function test_unauthenticated_guest_denied(): void
     {
         $paciente = $this->createRoleUser('paciente');
-        $admin = $this->createRoleUser('administrador');
-        $pago = $this->createPagoForPatient($paciente);
-        $this->actingAs($admin)->post(route('admin.pagos.aprobar', $pago));
+        $pago = $this->createPagoWithReceipt($paciente);
 
         $response = $this->get(route('paciente.pagos.recibo.pdf', $pago));
         $response->assertRedirect();
@@ -435,8 +395,7 @@ class PaymentReceiptR2StorageTest extends TestCase
     {
         $paciente = $this->createRoleUser('paciente');
         $admin = $this->createRoleUser('administrador');
-        $pago = $this->createPagoForPatient($paciente);
-        $this->actingAs($admin)->post(route('admin.pagos.aprobar', $pago));
+        $pago = $this->createPagoWithReceipt($paciente);
 
         $receipt = PaymentReceipt::where('pago_id', $pago->id)->firstOrFail();
 
@@ -521,6 +480,13 @@ class PaymentReceiptR2StorageTest extends TestCase
         $resIndex->assertDontSee($receipt->pdf_path);
     }
 
+    private function createDummyDocService(): \App\Services\PagoDocumentoService
+    {
+        $mock = $this->createMock(\App\Services\PagoDocumentoService::class);
+        $mock->method('generarReciboPagoPdfContent')->willReturn('%PDF-1.4 DUMMY PDF CONTENT FOR TESTING');
+        return $mock;
+    }
+
     /**
      * CASO 1 — put() retorna false
      */
@@ -531,7 +497,7 @@ class PaymentReceiptR2StorageTest extends TestCase
         $receipt = new PaymentReceipt(['pago_id' => $pago->id, 'folio_recibo' => 'TEST-01']);
 
         $service = app(PaymentReceiptDocumentService::class);
-        $docService = app(\App\Services\PagoDocumentoService::class);
+        $docService = $this->createDummyDocService();
 
         $diskMock = \Mockery::mock(\Illuminate\Contracts\Filesystem\Filesystem::class);
         $diskMock->shouldReceive('put')->once()->andReturn(false);
@@ -554,7 +520,7 @@ class PaymentReceiptR2StorageTest extends TestCase
         $receipt = new PaymentReceipt(['pago_id' => $pago->id, 'folio_recibo' => 'TEST-02']);
 
         $service = app(PaymentReceiptDocumentService::class);
-        $docService = app(\App\Services\PagoDocumentoService::class);
+        $docService = $this->createDummyDocService();
 
         $diskMock = \Mockery::mock(\Illuminate\Contracts\Filesystem\Filesystem::class);
         $capturedKey = null;
@@ -594,7 +560,7 @@ class PaymentReceiptR2StorageTest extends TestCase
         $receipt = new PaymentReceipt(['pago_id' => $pago->id, 'folio_recibo' => 'TEST-03']);
 
         $service = app(PaymentReceiptDocumentService::class);
-        $docService = app(\App\Services\PagoDocumentoService::class);
+        $docService = $this->createDummyDocService();
 
         $diskMock = \Mockery::mock(\Illuminate\Contracts\Filesystem\Filesystem::class);
         $capturedKey = null;
@@ -629,7 +595,7 @@ class PaymentReceiptR2StorageTest extends TestCase
         $receipt = new PaymentReceipt(['pago_id' => $pago->id, 'folio_recibo' => 'TEST-04']);
 
         $service = app(PaymentReceiptDocumentService::class);
-        $docService = app(\App\Services\PagoDocumentoService::class);
+        $docService = $this->createDummyDocService();
 
         $diskMock = \Mockery::mock(\Illuminate\Contracts\Filesystem\Filesystem::class);
         $capturedKey = null;
@@ -743,7 +709,7 @@ class PaymentReceiptR2StorageTest extends TestCase
         $receipt = new PaymentReceipt(['pago_id' => $pago->id, 'folio_recibo' => 'TEST-07']);
 
         $service = app(PaymentReceiptDocumentService::class);
-        $docService = app(\App\Services\PagoDocumentoService::class);
+        $docService = $this->createDummyDocService();
 
         $key = $service->generateAndStoreReceiptPdfContentOnly($pago, $receipt, $docService);
 
@@ -762,7 +728,7 @@ class PaymentReceiptR2StorageTest extends TestCase
         $receipt = new PaymentReceipt(['pago_id' => $pago->id, 'folio_recibo' => 'TEST-CLEANUP-FAIL']);
 
         $service = app(PaymentReceiptDocumentService::class);
-        $docService = app(\App\Services\PagoDocumentoService::class);
+        $docService = $this->createDummyDocService();
 
         $diskMock = \Mockery::mock(\Illuminate\Contracts\Filesystem\Filesystem::class);
         $capturedKey = null;

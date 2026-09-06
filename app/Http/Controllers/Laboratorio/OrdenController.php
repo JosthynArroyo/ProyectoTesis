@@ -471,7 +471,9 @@ class OrdenController extends Controller
             'preparation' => null,
             'notes' => null,
             'result_summary' => $pedido->resultado_resumen,
-            'download_url' => $pedido->resultado_path ? route('laboratorio.pedidos.download-resultado', $pedido->id) : null,
+            'download_url' => ($pedido->resultado_path || ($pedido->relationLoaded('resultados') && $pedido->resultados->where('estado', 'publicado')->isNotEmpty()) || $pedido->estado === PedidoLaboratorio::ESTADO_RESULTADO_LISTO)
+                ? route('laboratorio.pedidos.download-resultado', $pedido->id)
+                : null,
             'mark_sample_url' => route('laboratorio.pedidos.muestra', $pedido->id),
             'upload_result_url' => route('laboratorio.pedidos.resultado', $pedido->id),
             'can_mark_sample' => $pedido->estado === PedidoLaboratorio::ESTADO_PENDIENTE_TOMA,
@@ -509,7 +511,7 @@ class OrdenController extends Controller
             ->get()
             ->keyBy('id');
 
-        $pedidoOrders = PedidoLaboratorio::with(['cita.paciente', 'cita.dependiente', 'doctor', 'paciente'])
+        $pedidoOrders = PedidoLaboratorio::with(['cita.paciente', 'cita.dependiente', 'doctor', 'paciente', 'resultados'])
             ->whereIn('id', $pedidoIds)
             ->get()
             ->keyBy('id');

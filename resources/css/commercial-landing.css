@@ -1,0 +1,107 @@
+/* resources/css/commercial-landing.css */
+@import 'tailwindcss';
+
+/* Custom utilities and refined tokens for CliniGest Commercial Landing */
+:root {
+  --cg-primary: #0891b2;
+  --cg-primary-dark: #0e7490;
+  --cg-primary-light: #06b6d4;
+  --cg-primary-subtle: #ecfeff;
+  --cg-accent: #10b981;
+  --cg-accent-dark: #059669;
+  --cg-slate-ink: #0f172a;
+  --cg-slate-muted: #475569;
+  --cg-border-subtle: rgba(226, 232, 240, 0.8);
+}
+
+/* Micro-enhancements & Modern SaaS polish */
+.cg-glass-nav {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.85);
+}
+
+.cg-hero-mesh {
+  background: 
+    radial-gradient(at 10% 15%, rgba(8, 145, 178, 0.08) 0px, transparent 50%),
+    radial-gradient(at 90% 10%, rgba(16, 185, 129, 0.06) 0px, transparent 50%),
+    radial-gradient(at 50% 85%, rgba(14, 165, 233, 0.05) 0px, transparent 50%),
+    #f8fafc;
+}
+
+.cg-device-mockup {
+  box-shadow: 
+    0 25px 60px -15px rgba(15, 23, 42, 0.22),
+    0 0 0 1px rgba(15, 23, 42, 0.08),
+    0 0 0 6px rgba(255, 255, 255, 0.5);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .cg-device-mockup:hover {
+    transform: translateY(-4px);
+    box-shadow: 
+      0 32px 70px -18px rgba(8, 145, 178, 0.25),
+      0 0 0 1px rgba(15, 23, 42, 0.1),
+      0 0 0 6px rgba(255, 255, 255, 0.8);
+  }
+}
+
+.cg-card-elevated {
+  background: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.04), 0 2px 4px -2px rgba(15, 23, 42, 0.03);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .cg-card-elevated:hover {
+    transform: translateY(-3px);
+    border-color: rgba(8, 145, 178, 0.3);
+    box-shadow: 0 16px 32px -8px rgba(15, 23, 42, 0.08), 0 4px 8px -2px rgba(8, 145, 178, 0.04);
+  }
+}
+
+/* Explicit responsive navigation rules ensuring zero overflow and clean mobile drawer toggle */
+@media (max-width: 1279px) {
+  .cg-desktop-nav {
+    display: none !important;
+  }
+  .cg-mobile-toggle {
+    display: inline-flex !important;
+  }
+}
+
+@media (min-width: 1280px) {
+  .cg-desktop-nav {
+    display: flex !important;
+  }
+  .cg-mobile-toggle {
+    display: none !important;
+    visibility: hidden !important;
+  }
+  #mobile-menu {
+    display: none !important;
+  }
+}
+
+/* Accessible focus ring standards */
+.cg-focus-ring:focus-visible {
+  outline: 2px solid #0891b2;
+  outline-offset: 3px;
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .cg-device-mockup:hover,
+  .cg-card-elevated:hover {
+    transform: none !important;
+  }
+}

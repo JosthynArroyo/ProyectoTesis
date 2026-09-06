@@ -57,7 +57,7 @@ class PaymentProofStorageService
         }
         $uuid = Str::uuid()->toString();
         $key = "documents/payment-proofs/{$pagoId}/{$uuid}.{$ext}";
-        $disk = self::DISK;
+        $disk = (string) (config('private_documents.disk') ?: self::DISK);
 
         $filePath = $file->getPathname();
         $stream = @fopen($filePath, 'r');

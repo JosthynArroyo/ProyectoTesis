@@ -81,7 +81,7 @@
     </div>
   </section>
 
-  <section class="card p-6" id="patient-flags-section" style="display:none">
+  <section class="card p-6 hidden" id="patient-flags-section">
     <div>
       <p class="text-xs uppercase tracking-widest text-gray-500">Prioridad del paciente</p>
       <h3 class="mt-2 text-lg font-semibold text-gray-900">Indicadores clínicos</h3>
@@ -137,7 +137,7 @@
         @error('role_id')<small class="text-xs text-rose-600">{{ $message }}</small>@enderror
       </div>
 
-      <div id="doctor-only-esp" style="display:none">
+      <div id="doctor-only-esp" class="hidden">
         <label for="especialidad_id" class="form-label">Especialidad (solo doctor)</label>
         <select class="form-select" id="especialidad_id" name="especialidad_id">
           <option value="">Seleccione</option>
@@ -148,7 +148,7 @@
         @error('especialidad_id')<small class="text-xs text-rose-600">{{ $message }}</small>@enderror
       </div>
 
-      <div id="doctor-only-precio" style="display:none">
+      <div id="doctor-only-precio" class="hidden">
         <label for="precio_consulta" class="form-label">Precio de consulta (USD)</label>
         <input class="form-input" id="precio_consulta" name="precio_consulta" type="number" step="0.01" min="0" value="{{ old('precio_consulta', $u->precio_consulta) }}" required>
         @error('precio_consulta')<small class="text-xs text-rose-600">{{ $message }}</small>@enderror

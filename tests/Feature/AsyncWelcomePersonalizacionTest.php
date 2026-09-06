@@ -25,6 +25,10 @@ class AsyncWelcomePersonalizacionTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        config([
+            'app.mode' => 'production',
+            'private_documents.disk' => 'r2_private',
+        ]);
         Storage::fake('r2_private');
     }
 
@@ -55,8 +59,11 @@ class AsyncWelcomePersonalizacionTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('data-media-processing-overlay', false);
+        $response->assertSee('data-media-processing-icon-wrap', false);
         $response->assertSee('data-batch-status-url-template', false);
         $response->assertSee('hidden', false);
+        $response->assertDontSee('style="display: none;"', false);
+        $response->assertDontSee('style="width: 0%', false);
         $response->assertSee('Preparando imágenes...', false);
 
         $this->assertSame($initialBatchCount, MediaProcessingBatch::query()->count());
@@ -82,7 +89,10 @@ class AsyncWelcomePersonalizacionTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('data-media-processing-overlay', false);
+        $response->assertSee('data-media-processing-icon-wrap', false);
         $response->assertSee('data-batch-status-url-template', false);
+        $response->assertDontSee('style="display: none;"', false);
+        $response->assertDontSee('style="width: 0%', false);
 
         $this->assertSame($initialBatchCount, MediaProcessingBatch::query()->count());
         Queue::assertNothingPushed();
@@ -461,5 +471,153 @@ class AsyncWelcomePersonalizacionTest extends TestCase
         $this->assertNotNull($welcomeSetting);
         $this->assertSame('Título Mixto Con Imagen', $welcomeSetting->hero_title);
         $this->assertStringContainsString('branding', $welcomeSetting->header_logo);
+    }
+
+    public function test_welcome_batch_status_returns_404_for_nonexistent_batch(): void
+    {
+        $superadmin = $this->makeUserWithRole('superadmin');
+
+        $response = $this->actingAs($superadmin)
+            ->getJson(route('superadmin.personalizacion.bienvenida.batch', ['uuid' => 'non-existent-batch-uuid']));
+
+        $response->assertStatus(404);
+        $response->assertJsonPath('message', 'Lote no encontrado.');
+    }
+
+    public function test_welcome_batch_status_returns_403_for_unauthorized_user(): void
+    {
+        $creatorAdmin = $this->makeUserWithRole('administrador');
+        $otherAdmin = $this->makeUserWithRole('administrador');
+        \App\Models\FeatureAccessRequest::query()->create([
+            'user_id' => $otherAdmin->id,
+            'feature' => 'personalizacion',
+            'status' => 'approved',
+            'approved_at' => now(),
+        ]);
+
+        $batch = MediaProcessingBatch::query()->create([
+            'uuid' => 'forbidden-welcome-batch-uuid',
+            'user_id' => $creatorAdmin->id,
+            'type' => 'welcome_personalization',
+            'status' => 'pending',
+            'total_items' => 2,
+            'processed_items' => 0,
+            'payload' => [],
+        ]);
+
+        $response = $this->actingAs($otherAdmin)
+            ->getJson(route('admin.personalizacion.bienvenida.batch', ['uuid' => $batch->uuid]));
+
+        $response->assertStatus(403);
+        $response->assertJsonPath('message', 'No autorizado.');
+    }
+
+    public function test_welcome_batch_status_reports_processing_progress_percentage(): void
+    {
+        $superadmin = $this->makeUserWithRole('superadmin');
+
+        $batch = MediaProcessingBatch::query()->create([
+            'uuid' => 'processing-welcome-batch-uuid',
+            'user_id' => $superadmin->id,
+            'type' => 'welcome_personalization',
+            'status' => 'processing',
+            'total_items' => 4,
+            'processed_items' => 2,
+            'payload' => [],
+        ]);
+
+        $response = $this->actingAs($superadmin)
+            ->getJson(route('superadmin.personalizacion.bienvenida.batch', ['uuid' => $batch->uuid]));
+
+        $response->assertOk();
+        $response->assertJson([
+            'status' => 'processing',
+            'total' => 4,
+            'processed' => 2,
+            'percentage' => 50,
+            'worker_absent' => false,
+        ]);
+        $this->assertStringContainsString('2 de 4', (string) $response->json('message'));
+    }
+
+    public function test_welcome_batch_status_reports_completed_status(): void
+    {
+        $superadmin = $this->makeUserWithRole('superadmin');
+
+        $batch = MediaProcessingBatch::query()->create([
+            'uuid' => 'completed-welcome-batch-uuid',
+            'user_id' => $superadmin->id,
+            'type' => 'welcome_personalization',
+            'status' => 'completed',
+            'total_items' => 3,
+            'processed_items' => 3,
+            'payload' => [],
+        ]);
+
+        $response = $this->actingAs($superadmin)
+            ->getJson(route('superadmin.personalizacion.bienvenida.batch', ['uuid' => $batch->uuid]));
+
+        $response->assertOk();
+        $response->assertJson([
+            'status' => 'completed',
+            'total' => 3,
+            'processed' => 3,
+            'percentage' => 100,
+            'message' => 'Personalización guardada correctamente.',
+        ]);
+    }
+
+    public function test_welcome_upload_under_sync_queue_runs_job_synchronously_and_reports_completed_status(): void
+    {
+        Storage::fake('local');
+        Storage::fake('r2_public');
+        config([
+            'image_optimization.disk' => 'r2_public',
+            'queue.default' => 'sync',
+            'queue.media_connection' => 'sync',
+        ]);
+
+        $superadmin = $this->makeUserWithRole('superadmin');
+        $logoFile = $this->fakeImage('logo_sync.png');
+
+        $response = $this->actingAs($superadmin)
+            ->withHeader('Accept', 'application/json')
+            ->withHeader('X-Requested-With', 'XMLHttpRequest')
+            ->put(route('superadmin.personalizacion.bienvenida.update'), [
+                'header_logo' => $logoFile,
+            ]);
+
+        $response->assertStatus(202);
+        $batchUuid = $response->json('batch_uuid');
+        $this->assertNotEmpty($batchUuid);
+
+        $statusResponse = $this->actingAs($superadmin)
+            ->getJson(route('superadmin.personalizacion.bienvenida.batch', ['uuid' => $batchUuid]));
+
+        $statusResponse->assertOk();
+        $statusResponse->assertJson([
+            'status' => 'completed',
+            'total' => 1,
+            'processed' => 1,
+            'percentage' => 100,
+            'message' => 'Personalización guardada correctamente.',
+        ]);
+    }
+
+    public function test_welcome_page_in_demo_mode_renders_cleanly_and_isolates_storage(): void
+    {
+        config(['app.mode' => 'demo']);
+        $admin = $this->makeUserWithRole('administrador');
+        \App\Models\FeatureAccessRequest::query()->create([
+            'user_id' => $admin->id,
+            'feature' => 'personalizacion',
+            'status' => 'approved',
+            'approved_at' => now(),
+        ]);
+
+        $response = $this->actingAs($admin)->get(route('admin.personalizacion.bienvenida.edit'));
+        $response->assertOk();
+        $response->assertSee('data-media-processing-overlay', false);
+        $response->assertSee('data-batch-status-url-template', false);
     }
 }

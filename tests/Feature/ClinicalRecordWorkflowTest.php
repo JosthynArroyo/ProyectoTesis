@@ -147,6 +147,16 @@ class ClinicalRecordWorkflowTest extends TestCase
             'clinical_record_id' => $record->id,
             'title' => 'Riesgo de reaccion alergica',
         ]);
+
+        $this->actingAs($doctorA)
+            ->get(route('doctor.pacientes.historial', $patient))
+            ->assertOk()
+            ->assertSee('css/medical-record.css', false)
+            ->assertSee('css/medical-record-v2.css', false)
+            ->assertSee('mt-3', false)
+            ->assertDontSee('style="cursor:default"', false)
+            ->assertDontSee('style="margin-top:.75rem"', false)
+            ->assertDontSee('style="opacity:.7"', false);
     }
 
     public function test_soap_encoding_does_not_have_regression(): void

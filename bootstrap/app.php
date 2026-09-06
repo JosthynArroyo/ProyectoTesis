@@ -1,7 +1,7 @@
 <?php
 
 use App\Http\Middleware\Authenticate;
-use App\Http\Middleware\DemoIsolation;
+use App\Http\Middleware\DemoDatabaseIsolation;
 use App\Http\Middleware\EnsureAccountActive;
 use App\Http\Middleware\EnsureFeatureAccess;
 use App\Http\Middleware\EnsureNoPendingPaymentsForBooking;
@@ -11,7 +11,6 @@ use App\Http\Middleware\PreventRequestsDuringMaintenance;
 use App\Http\Middleware\RedirectIfAuthenticated;
 use Illuminate\Http\Exceptions\PostTooLargeException;
 use Illuminate\Http\Request;
-use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -22,18 +21,22 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
-    ->withSchedule(function (Schedule $schedule): void {
-        $schedule->command('users:deactivate-inactive')->dailyAt('02:30')->withoutOverlapping();
-        $schedule->command('citas:marcar-no-show')->everyTenMinutes()->withoutOverlapping();
-        $schedule->command('citas:sync-recordatorios')->everyTenMinutes()->withoutOverlapping();
-    })
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->trustHosts();
+        $middleware->replace(
+            \Illuminate\Http\Middleware\TrustHosts::class,
+            \App\Http\Middleware\TrustHosts::class,
+        );
+
         $middleware->appendToGroup('web', [
             PreventRequestsDuringMaintenance::class,
             PreventBackHistory::class,
             EnsureAccountActive::class,
             \App\Http\Middleware\CheckMustChangePassword::class,
+            \App\Http\Middleware\EnsureSessionModeIsolation::class,
+            DemoDatabaseIsolation::class,
         ]);
+
         $middleware->alias([
             'auth' => Authenticate::class,
             'guest' => RedirectIfAuthenticated::class,
@@ -42,9 +45,13 @@ return Application::configure(basePath: dirname(__DIR__))
             'no_pending_payments' => EnsureNoPendingPaymentsForBooking::class,
             'captcha_verified' => \App\Http\Middleware\EnsureCaptchaVerified::class,
             'chatbot_identity' => \App\Http\Middleware\EnsureChatbotIdentityVerified::class,
-            // Aislamiento global de todas las rutas /demo.
-            'demo.isolation' => DemoIsolation::class,
         ]);
+    })
+    ->booted(function (): void {
+        $trustedProxies = (array) config('app.trusted_proxies', []);
+        if (! empty($trustedProxies)) {
+            \Illuminate\Http\Middleware\TrustProxies::at($trustedProxies);
+        }
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (PostTooLargeException $exception, Request $request) {

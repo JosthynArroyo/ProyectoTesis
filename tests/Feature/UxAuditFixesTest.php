@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Models\Role;
 use App\Models\Cita;
 use App\Models\Especialidad;
-use App\Models\FaceProfile;
 use App\Models\Horario;
 use App\Models\NotaSoap;
 use App\Models\NotaSoapDiagnostico;
@@ -301,8 +300,9 @@ class UxAuditFixesTest extends TestCase
             ->assertOk()
             ->assertSee('data-legal-open="privacy-policy-modal"', false)
             ->assertSee('id="privacy-policy-modal"', false)
-            ->assertSee('window.__legalModalsInitialized', false)
-            ->assertSee('window.openLegalModal', false);
+            ->assertSee('id="terms-service-modal"', false)
+            ->assertSee('data-legal-modal', false)
+            ->assertSee('data-legal-close', false);
     }
 
 

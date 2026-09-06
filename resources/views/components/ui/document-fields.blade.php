@@ -36,7 +36,7 @@
   </div>
 
   <!-- Nacionalidad (Solo para Pasaporte) -->
-  <div id="{{ $nacWrapId }}" data-nacionalidad-wrap style="{{ $currentTipo === 'pasaporte' ? '' : 'display: none;' }}">
+  <div id="{{ $nacWrapId }}" class="{{ $currentTipo === 'pasaporte' ? '' : 'hidden' }}" data-nacionalidad-wrap>
     <label for="{{ $nacId }}" class="form-label">Nacionalidad <span class="text-rose-500">*</span></label>
     <select class="form-select" id="{{ $nacId }}" name="nacionalidad" data-nacionalidad-select {{ $currentTipo === 'pasaporte' ? 'required' : '' }}>
       <option value="">Seleccione una nacionalidad</option>
@@ -73,72 +73,3 @@
     @error('dni')<small class="text-xs text-rose-600 block mt-1">{{ $message }}</small>@enderror
   </div>
 </div>
-
-@once
-@push('scripts')
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-  document.querySelectorAll('[data-document-fields-wrap]').forEach(function (wrap) {
-    const tipoSelect = wrap.querySelector('[data-tipo-doc-select]');
-    const nacWrap = wrap.querySelector('[data-nacionalidad-wrap]');
-    const nacSelect = wrap.querySelector('[data-nacionalidad-select]');
-    const docLabel = wrap.querySelector('[data-doc-label]');
-    const docInput = wrap.querySelector('[data-doc-input]');
-    const docHelp = wrap.querySelector('[data-doc-help]');
-
-    if (!tipoSelect || !docInput) return;
-
-    function updateFields() {
-      const isPasaporte = tipoSelect.value === 'pasaporte';
-
-      if (nacWrap) {
-        nacWrap.style.display = isPasaporte ? '' : 'none';
-      }
-      if (nacSelect) {
-        if (isPasaporte) {
-          nacSelect.setAttribute('required', 'required');
-        } else {
-          nacSelect.removeAttribute('required');
-        }
-      }
-
-      if (isPasaporte) {
-        if (docLabel) docLabel.innerHTML = 'Número de pasaporte <span class="text-rose-500">*</span>';
-        docInput.setAttribute('inputmode', 'text');
-        docInput.setAttribute('pattern', '[A-Za-z0-9-]{5,20}');
-        docInput.setAttribute('minlength', '5');
-        docInput.setAttribute('maxlength', '20');
-        docInput.setAttribute('placeholder', 'AB123456');
-        if (docHelp) docHelp.textContent = 'De 5 a 20 caracteres (letras, números o guion).';
-      } else {
-        if (docLabel) docLabel.innerHTML = 'Número de cédula <span class="text-rose-500">*</span>';
-        docInput.setAttribute('inputmode', 'numeric');
-        docInput.setAttribute('pattern', '\\d{10}');
-        docInput.setAttribute('minlength', '10');
-        docInput.setAttribute('maxlength', '10');
-        docInput.setAttribute('placeholder', '1721820659');
-        if (docHelp) docHelp.textContent = 'Ingresa exactamente 10 dígitos.';
-      }
-    }
-
-    tipoSelect.addEventListener('change', function () {
-      updateFields();
-      if (tipoSelect.value === 'cedula' && docInput.value) {
-        docInput.value = docInput.value.replace(/[^0-9]/g, '');
-      } else if (tipoSelect.value === 'pasaporte' && docInput.value) {
-        docInput.value = docInput.value.toUpperCase().replace(/\s+/g, '');
-      }
-    });
-
-    docInput.addEventListener('input', function () {
-      if (tipoSelect.value === 'pasaporte') {
-        this.value = this.value.toUpperCase().replace(/\s+/g, '');
-      }
-    });
-
-    updateFields();
-  });
-});
-</script>
-@endpush
-@endonce

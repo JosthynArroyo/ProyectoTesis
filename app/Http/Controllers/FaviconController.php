@@ -20,6 +20,21 @@ class FaviconController extends Controller
         try {
             $path = $identity->faviconPath();
             if ($path !== null && $path !== '') {
+                $publicPath = public_path($path);
+                if (is_file($publicPath)) {
+                    $extension = strtolower(pathinfo($publicPath, PATHINFO_EXTENSION));
+                    $mime = match ($extension) {
+                        'ico' => 'image/x-icon',
+                        'png' => 'image/png',
+                        'svg' => 'image/svg+xml',
+                        default => 'image/png',
+                    };
+
+                    return response()->file($publicPath, array_merge(self::NO_CACHE_HEADERS, [
+                        'Content-Type' => $mime,
+                    ]));
+                }
+
                 $url = $identity->faviconUrl();
                 if (is_string($url) && $url !== '' && ! str_contains($url, 'placeholders/default.svg')) {
                     return redirect()->away($url, 302, self::NO_CACHE_HEADERS);

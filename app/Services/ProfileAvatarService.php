@@ -23,7 +23,7 @@ class ProfileAvatarService
 
     public function disk(): string
     {
-        return (string) config('image_optimization.avatar_disk', 'r2_private');
+        return (string) config('image_optimization.avatar_disk', 'local');
     }
 
     public function replace(User $user, UploadedFile $file, ?string $folder = null): string

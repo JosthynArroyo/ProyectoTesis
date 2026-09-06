@@ -76,7 +76,26 @@ class GlobalActionLockCoverageTest extends TestCase
         $this->actingAs($superadmin)
             ->get(route('superadmin.dashboard'))
             ->assertOk()
-            ->assertSee('id="global-action-lock"', false);
+            ->assertSee('id="global-action-lock"', false)
+            ->assertSee('data-global-action-lock-spinner', false)
+            ->assertDontSee('style="background: var(--accent-soft);"', false);
+    }
+
+    public function test_global_action_lock_component_uses_external_css_rule(): void
+    {
+        $bladePath = resource_path('views/components/ui/global-action-lock.blade.php');
+        $this->assertFileExists($bladePath);
+        $blade = file_get_contents($bladePath);
+
+        $this->assertStringContainsString('data-global-action-lock-spinner', $blade);
+        $this->assertStringNotContainsString('style=', $blade);
+
+        $cssPath = resource_path('css/app.css');
+        $this->assertFileExists($cssPath);
+        $css = file_get_contents($cssPath);
+
+        $this->assertStringContainsString('[data-global-action-lock-spinner]', $css);
+        $this->assertStringContainsString('background: var(--accent-soft);', $css);
     }
 
     private function userWithRole(string $roleName): User

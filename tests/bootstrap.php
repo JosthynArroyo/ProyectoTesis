@@ -4,6 +4,12 @@ $basePath = dirname(__DIR__);
 $dbConnection = $_ENV['DB_CONNECTION'] ?? $_SERVER['DB_CONNECTION'] ?? getenv('DB_CONNECTION') ?: null;
 $dbDatabase = $_ENV['DB_DATABASE'] ?? $_SERVER['DB_DATABASE'] ?? getenv('DB_DATABASE') ?: null;
 
+if ($testDbPassword = ($_ENV['TEST_DB_PASSWORD'] ?? $_SERVER['TEST_DB_PASSWORD'] ?? getenv('TEST_DB_PASSWORD') ?: null)) {
+    putenv('DB_PASSWORD='.$testDbPassword);
+    $_ENV['DB_PASSWORD'] = $testDbPassword;
+    $_SERVER['DB_PASSWORD'] = $testDbPassword;
+}
+
 if ($dbConnection === 'sqlite' && is_string($dbDatabase) && $dbDatabase !== '' && $dbDatabase !== ':memory:') {
     $processToken = $_ENV['TEST_TOKEN'] ?? $_SERVER['TEST_TOKEN'] ?? getenv('TEST_TOKEN') ?: getmypid();
     $databasePath = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $dbDatabase);

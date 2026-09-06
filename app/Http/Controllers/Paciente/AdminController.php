@@ -53,23 +53,20 @@ class AdminController extends Controller
         $totalPagos = (int) $pagosPorEstado->sum();
         $pagosPendientes = (int) (($pagosPorEstado[Pago::ESTADO_PENDIENTE] ?? 0) + ($pagosPorEstado[Pago::ESTADO_EN_VERIFICACION] ?? 0));
         $pagosPagados = (int) ($pagosPorEstado[Pago::ESTADO_PAGADO] ?? 0);
-        $bloqueoPagosPendientes = app(PagoService::class)->pacienteTieneBloqueo($user->id);
+        $bloqueoPagosPendientes = app(\App\Services\LayoutMetricsService::class)->patientHasPaymentBlock($user);
 
         $desde2h = now()->subHours(2);
-        $citasAgendadas2h = Cita::query()
+        $recentCitasGroup = Cita::query()
             ->where('paciente_id', $user->id)
-            ->where('created_at', '>=', $desde2h)
-            ->count();
-        $citasCompletadas2h = Cita::query()
-            ->where('paciente_id', $user->id)
-            ->where('estado', Cita::ESTADO_REALIZADA)
-            ->where('updated_at', '>=', $desde2h)
-            ->count();
-        $citasCanceladas2h = Cita::query()
-            ->where('paciente_id', $user->id)
-            ->where('estado', Cita::ESTADO_CANCELADA)
-            ->where('updated_at', '>=', $desde2h)
-            ->count();
+            ->where(function ($q) use ($desde2h) {
+                $q->where('created_at', '>=', $desde2h)
+                    ->orWhere('updated_at', '>=', $desde2h);
+            })
+            ->get(['estado', 'created_at', 'updated_at']);
+
+        $citasAgendadas2h = $recentCitasGroup->filter(fn ($c) => $c->created_at >= $desde2h)->count();
+        $citasCompletadas2h = $recentCitasGroup->filter(fn ($c) => $c->estado === Cita::ESTADO_REALIZADA && $c->updated_at >= $desde2h)->count();
+        $citasCanceladas2h = $recentCitasGroup->filter(fn ($c) => $c->estado === Cita::ESTADO_CANCELADA && $c->updated_at >= $desde2h)->count();
 
         $labResultados = LaboratorioOrden::with(['cita:id,paciente_id,fecha,hora'])
             ->whereHas('cita', function ($q) use ($user) {
@@ -80,42 +77,22 @@ class AdminController extends Controller
             ->limit(4)
             ->get(['id', 'cita_id', 'tipo_examen', 'estado', 'resultado_path', 'resultado_publicado_at']);
 
-        $labOrdenPacienteBase = fn () => LaboratorioOrden::query()
-            ->whereHas('cita', function ($q) use ($user) {
-                $q->where('paciente_id', $user->id);
-            });
-
-        $labOrdenProgramada = $labOrdenPacienteBase()
-            ->select('laboratorio_ordenes.*')
+        $allPatientLabOrders = LaboratorioOrden::query()
             ->join('citas_medicas', 'laboratorio_ordenes.cita_id', '=', 'citas_medicas.id')
+            ->where('citas_medicas.paciente_id', $user->id)
             ->with(['cita:id,paciente_id,fecha,hora'])
-            ->whereIn('laboratorio_ordenes.estado', [
-                LaboratorioOrden::ESTADO_ORDEN_CREADA,
-                LaboratorioOrden::ESTADO_CITA_PROGRAMADA,
-            ])
-            ->whereNotNull('citas_medicas.fecha')
-            ->orderBy('citas_medicas.fecha')
-            ->orderBy('citas_medicas.hora')
+            ->select('laboratorio_ordenes.*')
+            ->orderByDesc('laboratorio_ordenes.id')
+            ->get();
+
+        $labOrdenProgramada = $allPatientLabOrders
+            ->filter(fn ($o) => in_array($o->estado, [LaboratorioOrden::ESTADO_ORDEN_CREADA, LaboratorioOrden::ESTADO_CITA_PROGRAMADA], true) && $o->cita?->fecha)
+            ->sortBy(fn ($o) => optional($o->cita->fecha)->toDateString().' '.$o->cita->hora)
             ->first();
 
-        $labOrdenEnCurso = $labOrdenPacienteBase()
-            ->with(['cita:id,paciente_id,fecha,hora'])
-            ->where('estado', LaboratorioOrden::ESTADO_MUESTRA_TOMADA)
-            ->orderByDesc('id')
-            ->first();
-
-        $labResultadoDestacado = $labOrdenPacienteBase()
-            ->with(['cita:id,paciente_id,fecha,hora'])
-            ->where('estado', LaboratorioOrden::ESTADO_RESULTADO_DISPONIBLE)
-            ->orderByDesc('resultado_publicado_at')
-            ->orderByDesc('updated_at')
-            ->orderByDesc('id')
-            ->first();
-
-        $labOrdenReciente = $labOrdenPacienteBase()
-            ->with(['cita:id,paciente_id,fecha,hora'])
-            ->orderByDesc('id')
-            ->first();
+        $labOrdenEnCurso = $allPatientLabOrders->firstWhere('estado', LaboratorioOrden::ESTADO_MUESTRA_TOMADA);
+        $labResultadoDestacado = $allPatientLabOrders->where('estado', LaboratorioOrden::ESTADO_RESULTADO_DISPONIBLE)->sortByDesc('resultado_publicado_at')->first();
+        $labOrdenReciente = $allPatientLabOrders->first();
 
         $labOrdenPrincipal = $labOrdenProgramada
             ?? $labOrdenEnCurso

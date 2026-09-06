@@ -115,23 +115,28 @@ class WeeklyCalendarData
         $rowCount = (int) ceil(($endMinutes - $startMinutes) / $interval);
         $endMinutes = $startMinutes + ($rowCount * $interval);
 
-        $days = collect(range(0, 6))->map(function (int $offset) use ($weekStart, $todayKey) {
+        $dayLaneMaps = $items->groupBy('date')->map(function (Collection $entries) {
+            return $entries->pluck('lane_key')->unique()->values()->flip();
+        });
+
+        $days = collect(range(0, 6))->map(function (int $offset) use ($weekStart, $todayKey, $dayLaneMaps) {
             $date = $weekStart->copy()->addDays($offset);
+            $dateStr = $date->toDateString();
+            $laneCount = max(1, $dayLaneMaps->get($dateStr, collect())->count());
 
             return [
-                'key' => $date->toDateString(),
+                'key' => $dateStr,
                 'day_short' => mb_strtoupper($date->locale('es')->isoFormat('ddd'), 'UTF-8'),
                 'day_name' => $date->locale('es')->isoFormat('dddd'),
                 'day_number' => $date->format('d'),
                 'month_short' => mb_strtoupper($date->locale('es')->isoFormat('MMM'), 'UTF-8'),
-                'is_today' => $date->toDateString() === $todayKey,
+                'is_today' => $dateStr === $todayKey,
+                'lane_count' => $laneCount,
             ];
         })->values();
 
+        $maxLaneCount = max(1, (int) ($days->max('lane_count') ?? 1));
         $dayColumns = $days->pluck('key')->flip();
-        $dayLaneMaps = $items->groupBy('date')->map(function (Collection $entries) {
-            return $entries->pluck('lane_key')->unique()->values()->flip();
-        });
         $gridRows = collect(range(0, $rowCount - 1))->map(function (int $offset) use ($interval, $startMinutes) {
             $minutes = $startMinutes + ($offset * $interval);
             $label = $minutes % 60 === 0 ? self::fromMinutes($minutes) : null;
@@ -179,6 +184,7 @@ class WeeklyCalendarData
             'days' => $days->all(),
             'rows' => $gridRows->all(),
             'row_count' => $rowCount,
+            'max_lane_count' => $maxLaneCount,
             'background_events' => $normalizedItems->where('layer', 'background')->values()->all(),
             'events' => $normalizedItems->where('layer', 'foreground')->values()->all(),
             'start_label' => self::fromMinutes($startMinutes),

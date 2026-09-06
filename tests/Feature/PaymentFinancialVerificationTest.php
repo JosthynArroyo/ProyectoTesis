@@ -310,6 +310,8 @@ class PaymentFinancialVerificationTest extends TestCase
         $this->assertStringNotContainsString('0912345678', $response->getContent());
         $this->assertStringNotContainsString('josthyn@test.com', $response->getContent());
         $this->assertStringNotContainsString('BANK-SECRET-123', $response->getContent());
+        $this->assertStringNotContainsString('style=', $response->getContent());
+        $response->assertSee('detail-value--token', false);
         $response->assertSee('Josthyn A.');
     }
 

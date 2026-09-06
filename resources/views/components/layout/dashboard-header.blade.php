@@ -84,6 +84,8 @@
     $notificacionesTotal = (int) ($headerMetrics['notificacionesTotal'] ?? ($pendingPagos + $conflictosHorarios));
 @endphp
 
+<x-layout.demo-preview-bar />
+
 <header class="dashboard-topbar dashboard-topbar--with-sidebar border-b border-gray-200/80 bg-white" data-dashboard-topbar>
     <div class="page-shell flex h-full min-w-0 flex-wrap items-center justify-between gap-3 px-3 py-2 sm:gap-4">
         <div class="flex min-w-0 flex-1 items-center gap-3">
@@ -186,7 +188,8 @@
                     <i class="ri-file-text-line"></i> Términos de servicio
                 </button>
                 <a href="#"
-                   onclick="event.preventDefault(); document.getElementById('logout-form-header').submit();"
+                   data-logout-trigger
+                   data-logout-form="logout-form-header"
                    class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-rose-600 hover:bg-rose-50">
                     <i class="ri-logout-circle-r-line"></i> Cerrar sesión
                 </a>

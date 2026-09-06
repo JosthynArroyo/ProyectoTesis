@@ -278,6 +278,94 @@ class AdminHorarioCreateValidationTest extends TestCase
         $this->assertEquals('09:00', app(ProfessionalScheduleService::class)->getClinicHours(1)['opening']);
     }
 
+    public function test_admin_horario_create_view_declarative_visibility_and_no_inline_styles(): void
+    {
+        $admin = $this->createUserWithRole('administrador');
+        $this->createUserWithRole('doctor');
+
+        $this->actingAs($admin)
+            ->get(route('admin.horarios.create'))
+            ->assertOk()
+            ->assertSee('id="franjas-por-dia"', false)
+            ->assertSee('id="franja-global"', false)
+            ->assertDontSee('style="display:none"', false);
+
+        $bladePath = resource_path('views/admin/horarios/create.blade.php');
+        $this->assertFileExists($bladePath);
+        $blade = file_get_contents($bladePath);
+        $this->assertStringNotContainsString('style=', $blade);
+
+        $jsPath = resource_path('js/admin/horarios/create.js');
+        $this->assertFileExists($jsPath);
+        $js = file_get_contents($jsPath);
+        $this->assertStringContainsString("boxGlobal.classList.toggle('hidden', !on)", $js);
+        $this->assertStringContainsString("boxPerDay.classList.toggle('hidden', on)", $js);
+        $this->assertStringNotContainsString('boxGlobal.style.display', $js);
+        $this->assertStringNotContainsString('boxPerDay.style.display', $js);
+    }
+
+    public function test_validation_error_with_misma_franja_checked_preserves_global_mode_ssr(): void
+    {
+        $admin = $this->createUserWithRole('administrador');
+        $doctor = $this->createUserWithRole('doctor');
+
+        // Post invalid data (missing required hours) with misma_franja=1
+        $response = $this->actingAs($admin)
+            ->from(route('admin.horarios.create'))
+            ->post(route('admin.horarios.store'), [
+                'doctor_id' => $doctor->id,
+                'fecha_inicio' => now()->toDateString(),
+                'fecha_fin' => now()->addDays(2)->toDateString(),
+                'dias' => [1],
+                'misma_franja' => '1',
+                // omit hora_inicio and hora_fin to trigger validation error
+            ]);
+
+        $response->assertRedirect(route('admin.horarios.create'))
+            ->assertSessionHasErrors(['hora_inicio']);
+
+        // Follow redirect to inspect rendered SSR HTML
+        $followResponse = $this->actingAs($admin)
+            ->get(route('admin.horarios.create'));
+
+        $followResponse->assertOk()
+            ->assertSee('id="misma_franja"', false)
+            ->assertSee('checked', false)
+            ->assertSee('<div id="franja-global" class="grid gap-4 sm:grid-cols-2 ">', false)
+            ->assertSee('<div id="franjas-por-dia" class="mt-4 space-y-3 hidden">', false);
+    }
+
+    public function test_validation_error_with_misma_franja_unchecked_preserves_per_day_mode_ssr(): void
+    {
+        $admin = $this->createUserWithRole('administrador');
+        $doctor = $this->createUserWithRole('doctor');
+
+        // Post invalid data (missing required hours array) with misma_franja=0
+        $response = $this->actingAs($admin)
+            ->from(route('admin.horarios.create'))
+            ->post(route('admin.horarios.store'), [
+                'doctor_id' => $doctor->id,
+                'fecha_inicio' => now()->toDateString(),
+                'fecha_fin' => now()->addDays(2)->toDateString(),
+                'dias' => [1],
+                'misma_franja' => '0',
+                // omit horas to trigger validation error in per-day mode
+            ]);
+
+        $response->assertRedirect(route('admin.horarios.create'))
+            ->assertSessionHasErrors(['horas']);
+
+        // Follow redirect to inspect rendered SSR HTML
+        $followResponse = $this->actingAs($admin)
+            ->get(route('admin.horarios.create'));
+
+        $followResponse->assertOk()
+            ->assertSee('id="misma_franja"', false)
+            ->assertDontSee('id="misma_franja" name="misma_franja" value="1" checked', false)
+            ->assertSee('<div id="franja-global" class="grid gap-4 sm:grid-cols-2 hidden">', false)
+            ->assertSee('<div id="franjas-por-dia" class="mt-4 space-y-3 ">', false);
+    }
+
     private function createUserWithRole(string $roleName): User
     {
         $role = Role::firstOrCreate(['name' => $roleName]);

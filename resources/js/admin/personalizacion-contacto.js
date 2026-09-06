@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
       formBadge: getValue(formRoot, 'contact_form_badge', 'Mensaje para la clinica'),
       submitText: getValue(formRoot, 'contact_form_submit_text', 'Enviar'),
       nameLabel: getValue(formRoot, 'contact_form_name_label', 'Nombre'),
-      namePlaceholder: getValue(formRoot, 'contact_form_name_placeholder', 'Ej. Josthyn Arroyo'),
+      namePlaceholder: getValue(formRoot, 'contact_form_name_placeholder', 'Ej. Carlos Mendoza'),
       emailLabel: getValue(formRoot, 'contact_form_email_label', 'Correo electronico'),
       emailPlaceholder: getValue(formRoot, 'contact_form_email_placeholder', 'Ej. contacto@clinica.test'),
       phoneFieldLabel: getValue(formRoot, 'contact_form_phone_label', 'Telefono'),
@@ -222,7 +222,60 @@ document.addEventListener('DOMContentLoaded', () => {
 
   formRoot.addEventListener('input', scheduleRender);
   formRoot.addEventListener('change', scheduleRender);
+
+  formRoot.querySelectorAll('[data-clinic-hours-day]').forEach((checkbox) => {
+    checkbox.addEventListener('change', () => {
+      const day = checkbox.dataset.clinicHoursDay;
+      if (day) {
+        toggleClinicHoursRow(day);
+      }
+    });
+  });
+
+  const copyBtn = formRoot.querySelector('[data-copy-monday-schedule]');
+  if (copyBtn) {
+    copyBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      copyMondayScheduleToOpenDays();
+    });
+  }
 });
+
+export function toggleClinicHoursRow(day) {
+  const checkbox = document.getElementById(`clinic_hours_${day}_status`);
+  const opening = document.getElementById(`clinic_hours_${day}_opening`);
+  const closing = document.getElementById(`clinic_hours_${day}_closing`);
+  const badge = document.getElementById(`badge_clinic_hours_${day}`);
+  if (checkbox && opening && closing) {
+    opening.disabled = !checkbox.checked;
+    closing.disabled = !checkbox.checked;
+    opening.required = checkbox.checked;
+    closing.required = checkbox.checked;
+    if (badge) {
+      if (checkbox.checked) {
+        badge.textContent = 'Abierto';
+        badge.className = 'badge text-xs badge-success';
+      } else {
+        badge.textContent = 'Cerrado';
+        badge.className = 'badge text-xs badge-neutral';
+      }
+    }
+  }
+}
+
+export function copyMondayScheduleToOpenDays() {
+  const monOpening = document.getElementById('clinic_hours_1_opening')?.value || '08:00';
+  const monClosing = document.getElementById('clinic_hours_1_closing')?.value || '18:00';
+  for (let i = 2; i <= 7; i++) {
+    const checkbox = document.getElementById(`clinic_hours_${i}_status`);
+    if (checkbox && checkbox.checked) {
+      const op = document.getElementById(`clinic_hours_${i}_opening`);
+      const cl = document.getElementById(`clinic_hours_${i}_closing`);
+      if (op) op.value = monOpening;
+      if (cl) cl.value = monClosing;
+    }
+  }
+}
 
 function parseJson(raw) {
   try {

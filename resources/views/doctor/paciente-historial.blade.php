@@ -350,9 +350,31 @@
         'alerts' => $hasErrorPrefix(['alerts']),
     ];
 
-    $noteUrl = function ($citaId) use ($noteRouteName) {
+    $noteUrl = function ($target) use ($noteRouteName) {
         $route = $noteRouteName ?? (Route::has('doctor.citas.soap') ? 'doctor.citas.soap' : null);
-        return $route && $citaId ? route($route, $citaId) : null;
+        if (! $route || ! $target) {
+            return null;
+        }
+
+        if ($route === 'admin.historial.nota' || $route === 'historial.nota') {
+            if ($target instanceof \App\Models\NotaSoap) {
+                return route($route, $target->id);
+            }
+            if ($target instanceof \App\Models\Cita) {
+                $noteId = $target->notaSoap?->id;
+                return $noteId ? route($route, $noteId) : null;
+            }
+            return route($route, $target);
+        }
+
+        if ($target instanceof \App\Models\NotaSoap) {
+            return route($route, $target->cita_id);
+        }
+        if ($target instanceof \App\Models\Cita) {
+            return route($route, $target->id);
+        }
+
+        return route($route, $target);
     };
 
     $prescriptionUrl = function ($citaId) use ($prescriptionRouteName) {

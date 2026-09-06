@@ -52,7 +52,7 @@
         <form class="doctor-patients-sort-card" method="GET" action="{{ route('doctor.pacientes.index') }}">
             <span class="doctor-patients-sort-card__label">Ordenar por</span>
             <label class="doctor-patients-select-shell" for="sort">
-                <select id="sort" name="sort" onchange="this.form.submit()">
+                <select id="sort" name="sort" data-auto-submit>
                     <option value="recientes" @selected($sort === 'recientes')>Última consulta reciente</option>
                     <option value="alfabetico" @selected($sort === 'alfabetico')>Nombre A-Z</option>
                     <option value="laboratorios" @selected($sort === 'laboratorios')>Más laboratorios pendientes</option>

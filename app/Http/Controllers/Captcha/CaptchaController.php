@@ -20,8 +20,7 @@ class CaptchaController extends Controller
 {
     public function __construct(
         private readonly CaptchaImageSynchronizer $synchronizer,
-    ) {
-    }
+    ) {}
 
     public function challenge(Request $request): JsonResponse
     {
@@ -39,7 +38,7 @@ class CaptchaController extends Controller
                 return $this->buildChallengeResponse($request, $classKeys, $labelsEs);
             });
         } catch (\Throwable $e) {
-            Log::error('Error al generar el CAPTCHA: ' . $e->getMessage(), [
+            Log::error('Error al generar el CAPTCHA: '.$e->getMessage(), [
                 'exception' => $e::class,
             ]);
 
@@ -181,10 +180,14 @@ class CaptchaController extends Controller
 
         $contentType = mime_content_type($fullPath) ?: 'application/octet-stream';
 
-        return response()->file($fullPath, [
-            'Cache-Control' => 'private, max-age=300',
+        $fileResponse = response()->file($fullPath, [
             'Content-Type' => $contentType,
         ])->setContentDisposition('inline', 'captcha.jpg');
+
+        $fileResponse->setPrivate();
+        $fileResponse->setMaxAge(300);
+
+        return $fileResponse;
     }
 
     private function buildChallengeResponse(Request $request, array $classKeys, array $labelsEs, array $excludeTargetKeys = [], array $excludeImageIds = []): JsonResponse

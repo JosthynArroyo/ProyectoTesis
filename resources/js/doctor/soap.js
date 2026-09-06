@@ -170,6 +170,7 @@ function initSoapAutosave() {
   }
 
   let submitting = false;
+  let isSaving = false;
   form.addEventListener('submit', () => {
     submitting = true;
   });
@@ -178,23 +179,39 @@ function initSoapAutosave() {
     if (!status) {
       return;
     }
-    status.textContent = message;
-    status.classList.remove('text-gray-500', 'text-emerald-700', 'text-rose-600');
+    const textEl = status.querySelector('[data-soap-autosave-text]') || status;
+    const iconEl = status.querySelector('i');
+
+    textEl.textContent = message;
+
+    status.className = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all duration-200';
     if (tone === 'success') {
-      status.classList.add('text-emerald-700');
+      status.classList.add('border-emerald-200', 'bg-emerald-50', 'text-emerald-800', 'dark:border-emerald-900/60', 'dark:bg-emerald-950/60', 'dark:text-emerald-300');
+      if (iconEl) iconEl.className = 'ri-checkbox-circle-line text-emerald-600 dark:text-emerald-400';
+      return;
+    }
+    if (tone === 'saving') {
+      status.classList.add('border-blue-200', 'bg-blue-50', 'text-blue-700', 'dark:border-blue-900/60', 'dark:bg-blue-950/60', 'dark:text-blue-300');
+      if (iconEl) iconEl.className = 'ri-loader-4-line animate-spin text-blue-600 dark:text-blue-400';
       return;
     }
     if (tone === 'error') {
-      status.classList.add('text-rose-600');
+      status.classList.add('border-rose-200', 'bg-rose-50', 'text-rose-800', 'dark:border-rose-900/60', 'dark:bg-rose-950/60', 'dark:text-rose-300');
+      if (iconEl) iconEl.className = 'ri-error-warning-line text-rose-600 dark:text-rose-400';
       return;
     }
-    status.classList.add('text-gray-500');
+
+    status.classList.add('border-gray-200', 'bg-gray-50', 'text-gray-600', 'dark:border-gray-700', 'dark:bg-gray-800', 'dark:text-gray-300');
+    if (iconEl) iconEl.className = 'ri-time-line text-gray-400';
   };
 
   const autosave = async () => {
-    if (submitting || document.hidden) {
+    if (submitting || isSaving || document.hidden) {
       return;
     }
+
+    isSaving = true;
+    setStatus('Guardando...', 'saving');
 
     const formData = new FormData(form);
     try {
@@ -209,14 +226,18 @@ function initSoapAutosave() {
       });
 
       if (!response.ok) {
-        setStatus('No se pudo autoguardar el borrador.', 'error');
+        setStatus('No se pudo guardar automáticamente', 'error');
         return;
       }
 
-      const stamp = new Date().toLocaleTimeString();
-      setStatus(`Borrador autoguardado ${stamp}.`, 'success');
+      const now = new Date();
+      const hh = String(now.getHours()).padStart(2, '0');
+      const mm = String(now.getMinutes()).padStart(2, '0');
+      setStatus(`Guardado automáticamente · ${hh}:${mm}`, 'success');
     } catch (error) {
-      setStatus('No se pudo autoguardar el borrador.', 'error');
+      setStatus('No se pudo guardar automáticamente', 'error');
+    } finally {
+      isSaving = false;
     }
   };
 

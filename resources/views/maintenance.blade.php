@@ -3,7 +3,7 @@
 @section('title','Sitio en mantenimiento')
 
 @section('main')
-<div style="min-height:calc(100vh - 4.5rem);display:flex;flex-direction:column;">
+<div class="flex min-h-[calc(100vh-4.5rem)] flex-col">
   <section class="section-pad section-pad--first">
     <div class="page-shell">
       <div class="card p-8 text-center space-y-4">

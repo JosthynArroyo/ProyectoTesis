@@ -15,6 +15,8 @@ class RecetaMedicaMail extends Mailable
 
     public $cita;
 
+    public ?Receta $receta = null;
+
     public $relativePath;
 
     public $pdfOutput;
@@ -51,10 +53,17 @@ class RecetaMedicaMail extends Mailable
             ->with([
                 'cita' => $this->cita,
                 'motivo' => $this->motivo,
+                'receta' => $this->receta,
             ]);
 
         if (! empty($this->pdfOutput)) {
             $email->attachData($this->pdfOutput, $this->fileName, ['mime' => 'application/pdf']);
+        } elseif ($this->receta) {
+            $docService = app(RecipeDocumentService::class);
+            $attachment = $docService->getMailAttachment($this->receta, $this->fileName);
+            if ($attachment) {
+                $email->attach($attachment);
+            }
         }
 
         return $email;

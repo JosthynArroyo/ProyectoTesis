@@ -64,10 +64,11 @@ class SecurePostLogoutTest extends TestCase
     }
 
     /**
-     * Caso L5: Todos los roles reales del sistema pueden cerrar sesión vía POST.
+     * Caso L5: Todos los roles reales del sistema pueden cerrar sesión vía POST en modo producción y redirigen a /.
      */
     public function test_l5_all_roles_can_log_out_safely_via_post(): void
     {
+        config(['app.mode' => 'production']);
         $roles = ['superadmin', 'administrador', 'doctor', 'paciente', 'laboratorio'];
 
         foreach ($roles as $roleName) {
@@ -76,7 +77,27 @@ class SecurePostLogoutTest extends TestCase
             $response = $this->actingAs($user)->post(route('salir'));
 
             $response->assertRedirect('/');
+            $this->assertStringNotContainsString('/demo/acceso', (string) $response->headers->get('Location'));
             $this->assertGuest();
+        }
+    }
+
+    /**
+     * Caso L6: Todos los roles en modo demo redirigen al selector demo /demo/acceso tras POST salir.
+     */
+    public function test_l6_all_roles_in_demo_mode_redirect_to_demo_selector_on_logout(): void
+    {
+        config(['app.mode' => 'demo']);
+        $roles = ['superadmin', 'administrador', 'doctor', 'paciente', 'laboratorio'];
+
+        foreach ($roles as $roleName) {
+            $user = $this->createUserWithRole($roleName);
+
+            $response = $this->actingAs($user)->post(route('salir'));
+
+            $response->assertRedirect(route('demo.access.selector'));
+            $this->assertGuest();
+            $this->assertFalse(auth()->check());
         }
     }
 

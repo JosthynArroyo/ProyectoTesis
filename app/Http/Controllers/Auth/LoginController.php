@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Services\ApplicationModeService;
 use App\Services\MaintenanceAccessService;
 use App\Services\SiteSettingsService;
 use Illuminate\Foundation\Auth\AuthenticatesUsers;
@@ -16,8 +17,9 @@ class LoginController extends Controller
 
     private const MAINTENANCE_LOGIN_MESSAGE = 'El sistema está en mantenimiento. Intenta nuevamente más tarde.';
 
-    public function __construct()
-    {
+    public function __construct(
+        private readonly ApplicationModeService $applicationMode
+    ) {
         $this->middleware('guest')->except('logout');
         $this->middleware('auth')->only('logout');
     }
@@ -97,6 +99,10 @@ class LoginController extends Controller
 
     protected function loggedOut(Request $request)
     {
+        if ($this->applicationMode->isDemo()) {
+            return redirect()->route('demo.access.selector');
+        }
+
         return redirect('/');
     }
 

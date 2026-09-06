@@ -7,7 +7,7 @@
 <div class="space-y-6">
   <form class="card p-5" method="GET" action="{{ route('superadmin.solicitudes.personalizacion.index') }}">
     <div class="flex flex-wrap items-center gap-4">
-      <select class="form-select" name="status" onchange="this.form.submit()" required>
+      <select class="form-select" name="status" data-auto-submit required>
         <option value="all" @selected($status==='' || $status==='all')>Todos los estados</option>
         @foreach(['pending' => 'Pendiente', 'approved' => 'Aprobado', 'expired' => 'Expirado', 'rejected' => 'Rechazado', 'revoked' => 'Revocado'] as $value => $label)
           <option value="{{ $value }}" @selected($status===$value)>{{ $label }}</option>

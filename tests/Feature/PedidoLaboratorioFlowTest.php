@@ -23,6 +23,7 @@ class PedidoLaboratorioFlowTest extends TestCase
     {
         parent::setUp();
 
+        config(['private_documents.disk' => 'r2_private']);
         Storage::fake('local');
         Storage::fake('r2_private');
         Mail::fake();

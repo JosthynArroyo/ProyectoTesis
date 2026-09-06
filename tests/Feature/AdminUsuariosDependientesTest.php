@@ -22,6 +22,7 @@ class AdminUsuariosDependientesTest extends TestCase
         parent::setUp();
         DB::table('identity_documents')->where('numero_documento', '0987654329')->delete();
         DB::table('dependientes')->where('dni', '0987654329')->delete();
+        $this->purgeExistingValidUsers();
     }
 
     public function test_admin_can_view_users_index_and_expand_the_correct_dependientes_without_n_plus_one(): void
@@ -120,77 +121,92 @@ class AdminUsuariosDependientesTest extends TestCase
         $this->cleanupCreatedUsers();
         $this->purgeExistingValidUsers();
 
-        $this->insertFixedUser(1, 'superadmin', [
-            'name' => 'Superadmin',
-            'email' => 'superadmin@clinic.test',
-        ]);
-        $this->insertFixedUser(2, 'administrador', [
-            'name' => 'Josthyn Admin',
-            'email' => 'manuellandazuri778@gmail.com',
-        ]);
-        $patient = $this->insertFixedUser(3, 'paciente', [
-            'name' => 'Josthyn Arroyo',
-            'email' => 'josthynarroyo627@gmail.com',
-        ]);
-        $this->insertFixedUser(4, 'doctor', [
-            'name' => 'Josthyn Doctor',
-            'email' => 'alejandroucenriquez@gmail.com',
-        ]);
-        $this->insertFixedUser(5, 'laboratorio', [
-            'name' => 'Laboratorio Clinico',
-            'email' => 'laboratorio@clinic.test',
-        ]);
+        try {
+            $this->insertFixedUser(1, 'superadmin', [
+                'name' => 'Superadmin',
+                'email' => 'superadmin@clinic.test',
+            ]);
+            $this->insertFixedUser(2, 'administrador', [
+                'name' => 'Josthyn Admin',
+                'email' => 'admin@clinic.test',
+            ]);
+            $patient = $this->insertFixedUser(3, 'paciente', [
+                'name' => 'Josthyn Arroyo',
+                'email' => 'paciente@clinic.test',
+            ]);
+            $this->insertFixedUser(4, 'doctor', [
+                'name' => 'Josthyn Doctor',
+                'email' => 'doctor@clinic.test',
+            ]);
+            $this->insertFixedUser(5, 'laboratorio', [
+                'name' => 'Laboratorio Clinico',
+                'email' => 'laboratorio@clinic.test',
+            ]);
 
-        Dependiente::create([
-            'user_id' => $patient->id,
-            'nombre' => 'Anabel Arroyo',
-            'dni' => '0987654329',
-            'fecha_nacimiento' => '2010-06-15',
-            'sexo' => 'Femenino',
-            'parentesco' => 'hija',
-            'activo' => true,
-        ]);
+            Dependiente::create([
+                'user_id' => $patient->id,
+                'nombre' => 'Anabel Arroyo',
+                'dni' => '0987654329',
+                'fecha_nacimiento' => '2010-06-15',
+                'sexo' => 'Femenino',
+                'parentesco' => 'hija',
+                'activo' => true,
+            ]);
 
-        $alienOne = $this->userWithRole(null, [
-            'name' => 'Usuario Falso 1',
-            'email' => 'falso1@example.test',
-        ]);
-        $alienTwo = $this->userWithRole(null, [
-            'name' => 'Usuario Falso 2',
-            'email' => 'falso2@example.test',
-        ]);
+            $alienOne = $this->userWithRole(null, [
+                'name' => 'Usuario Falso 1',
+                'email' => 'falso1@example.test',
+            ]);
+            $alienTwo = $this->userWithRole(null, [
+                'name' => 'Usuario Falso 2',
+                'email' => 'falso2@example.test',
+            ]);
 
-        $alienUsers = User::query()
-            ->with('roles')
-            ->where('id', '>', 5)
-            ->orderBy('id')
-            ->get();
+            $alienUsers = User::query()
+                ->with('roles')
+                ->where('id', '>', 5)
+                ->orderBy('id')
+                ->get();
 
-        foreach ($alienUsers as $user) {
-            $user->roles()->detach();
-            $user->especialidades()->detach();
-            DB::table('users')->where('id', $user->id)->delete();
+            foreach ($alienUsers as $user) {
+                $user->roles()->detach();
+                $user->especialidades()->detach();
+                DB::table('users')->where('id', $user->id)->delete();
+            }
+
+            DB::getPdo()->exec('ALTER TABLE users AUTO_INCREMENT = 6');
+
+            $this->assertSame(5, (int) User::query()->max('id'));
+            $this->assertSame(5, User::query()->count());
+            $this->assertDatabaseMissing('users', ['id' => $alienOne->id]);
+            $this->assertDatabaseMissing('users', ['id' => $alienTwo->id]);
+
+            $users = User::query()->with(['roles', 'dependientes'])->whereBetween('id', [1, 5])->orderBy('id')->get();
+            $this->assertCount(5, $users);
+            $this->assertTrue($users->firstWhere('id', 1)->hasRole('superadmin'));
+            $this->assertTrue($users->firstWhere('id', 2)->hasRole('administrador'));
+            $this->assertTrue($users->firstWhere('id', 3)->hasRole('paciente'));
+            $this->assertTrue($users->firstWhere('id', 4)->hasRole('doctor'));
+            $this->assertTrue($users->firstWhere('id', 5)->hasRole('laboratorio'));
+
+            try {
+                DB::statement('SET SESSION information_schema_stats_expiry = 0');
+            } catch (\Throwable) {
+                // Compatible con motores o versiones sin caché de estadísticas de information_schema
+            }
+
+            $autoIncrement = DB::selectOne("SELECT AUTO_INCREMENT AS next_id FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users'");
+            $this->assertSame(6, (int) ($autoIncrement->next_id ?? 0));
+
+            // Contrato real del motor: el próximo usuario autogenerado recibe ID 6 (MAX(id) + 1)
+            $probe = $this->userWithRole(null, [
+                'name' => 'Probe AutoIncrement',
+                'email' => 'probe.autoincrement@example.test',
+            ]);
+            $this->assertSame(6, (int) $probe->id);
+        } finally {
+            $this->purgeExistingValidUsers();
         }
-
-        DB::getPdo()->exec('ALTER TABLE users AUTO_INCREMENT = 6');
-
-        $this->assertSame(5, (int) User::query()->max('id'));
-        $this->assertSame(5, User::query()->count());
-        $this->assertDatabaseMissing('users', ['id' => $alienOne->id]);
-        $this->assertDatabaseMissing('users', ['id' => $alienTwo->id]);
-
-        $users = User::query()->with(['roles', 'dependientes'])->whereBetween('id', [1, 5])->orderBy('id')->get();
-        $this->assertCount(5, $users);
-        $this->assertTrue($users->firstWhere('id', 1)->hasRole('superadmin'));
-        $this->assertTrue($users->firstWhere('id', 2)->hasRole('administrador'));
-        $this->assertTrue($users->firstWhere('id', 3)->hasRole('paciente'));
-        $this->assertTrue($users->firstWhere('id', 4)->hasRole('doctor'));
-        $this->assertTrue($users->firstWhere('id', 5)->hasRole('laboratorio'));
-
-        $autoIncrement = DB::selectOne("SELECT AUTO_INCREMENT AS next_id FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users'");
-        $this->assertSame(6, (int) ($autoIncrement->next_id ?? 0));
-
-        $this->purgeExistingValidUsers();
     }
 
     private function userWithRole(?string $roleName, array $attributes = []): User
@@ -246,6 +262,7 @@ class AdminUsuariosDependientesTest extends TestCase
     protected function tearDown(): void
     {
         $this->cleanupCreatedUsers();
+        $this->purgeExistingValidUsers();
 
         DB::disableQueryLog();
 
@@ -276,16 +293,28 @@ class AdminUsuariosDependientesTest extends TestCase
 
     private function purgeExistingValidUsers(): void
     {
-        Dependiente::query()->forceDelete();
-        IdentityDocument::query()->delete();
-
         $validEmails = [
             'superadmin@clinic.test',
-            'manuellandazuri778@gmail.com',
-            'josthynarroyo627@gmail.com',
-            'alejandroucenriquez@gmail.com',
+            'admin@clinic.test',
+            'paciente@clinic.test',
+            'doctor@clinic.test',
             'laboratorio@clinic.test',
         ];
+
+        Dependiente::query()
+            ->whereIn('user_id', [1, 2, 3, 4, 5])
+            ->orWhere('dni', '0987654329')
+            ->forceDelete();
+
+        IdentityDocument::query()
+            ->where(function ($q) use ($validEmails) {
+                $q->where('numero_documento', '0987654329')
+                    ->orWhere(function ($sub) {
+                        $sub->where('documentable_type', User::class)
+                            ->whereIn('documentable_id', [1, 2, 3, 4, 5]);
+                    });
+            })
+            ->delete();
 
         $users = User::query()
             ->with(['roles', 'especialidades'])
@@ -302,6 +331,10 @@ class AdminUsuariosDependientesTest extends TestCase
             $user->especialidades()->detach();
             DB::table('users')->where('id', $user->id)->delete();
         }
+
+        DB::table('role_user')->whereIn('user_id', [1, 2, 3, 4, 5])->delete();
+        DB::table('users')->whereIn('id', [1, 2, 3, 4, 5])->delete();
+        DB::table('users')->whereIn('email', $validEmails)->delete();
     }
 
     private function extractPanelHtml(string $html, int $userId): string

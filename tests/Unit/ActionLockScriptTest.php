@@ -48,4 +48,21 @@ class ActionLockScriptTest extends TestCase
         $resolveOperationCopyCode = substr($script, strpos($script, 'function resolveOperationCopy'));
         $this->assertStringNotContainsString('sanitizedFormText', $resolveOperationCopyCode, 'La resolucion contextual de operaciones no debe depender del texto completo del formulario.');
     }
+
+    public function test_download_links_keep_native_navigation_without_activating_the_global_lock(): void
+    {
+        $script = file_get_contents(__DIR__.'/../../resources/js/action-lock.js');
+
+        $this->assertIsString($script);
+        $this->assertStringContainsString("path.includes('/download')", $script);
+        $this->assertStringContainsString("path.includes('/descargar')", $script);
+        $this->assertStringNotContainsString('function executeDownload', $script);
+
+        $matched = preg_match('/if \(isDownloadTarget\(link, url\)\) \{\s*return;\s*\}/', $script, $matches);
+        $this->assertSame(1, $matched);
+
+        $downloadBranch = $matches[0];
+        $this->assertStringNotContainsString('preventDefault', $downloadBranch);
+        $this->assertStringNotContainsString('fetch', $downloadBranch);
+    }
 }

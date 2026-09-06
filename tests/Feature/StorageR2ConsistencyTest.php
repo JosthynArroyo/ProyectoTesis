@@ -13,10 +13,12 @@ use App\Models\Pago;
 use App\Models\PaymentReceipt;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\AppointmentConfirmationDocumentService;
 use App\Services\CertificadoMedicoPdfService;
 use App\Services\MedicalCertificateDocumentService;
 use App\Services\PagoService;
 use App\Services\PaymentProofStorageService;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -31,6 +33,10 @@ class StorageR2ConsistencyTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        config([
+            'private_documents.disk' => 'r2_private',
+            'private_documents.recipe_disk' => 'r2_private',
+        ]);
         Storage::fake('local');
         Storage::fake('r2_private');
     }
@@ -455,6 +461,216 @@ class StorageR2ConsistencyTest extends TestCase
         ]);
 
         return [$patient, $pago];
+    }
+
+    /**
+     * Verificación canónica de consistencia DB <-> Storage para entidades documentales.
+     *
+     * @param Model $model
+     * @return array{consistent: bool, disk: ?string, path: ?string, error: ?string}
+     */
+    public function checkModelStorageConsistency(Model $model): array
+    {
+        if ($model instanceof Pago) {
+            $path = $model->comprobante_path;
+            $disk = $model->comprobante_disk ?: 'r2_private';
+            if (empty($path)) {
+                return ['consistent' => true, 'disk' => null, 'path' => null, 'error' => null];
+            }
+            $exists = Storage::disk($disk)->exists($path);
+            return [
+                'consistent' => $exists,
+                'disk' => $disk,
+                'path' => $path,
+                'error' => $exists ? null : "Comprobante de pago [{$path}] no existe en disco [{$disk}].",
+            ];
+        }
+
+        if ($model instanceof CertificadoMedico) {
+            $path = $model->pdf_path;
+            $disk = $model->pdf_disk ?: 'r2_private';
+            if (empty($path)) {
+                return ['consistent' => true, 'disk' => null, 'path' => null, 'error' => null];
+            }
+            $exists = Storage::disk($disk)->exists($path);
+            return [
+                'consistent' => $exists,
+                'disk' => $disk,
+                'path' => $path,
+                'error' => $exists ? null : "Certificado médico [{$path}] no existe en disco [{$disk}].",
+            ];
+        }
+
+        if ($model instanceof Cita) {
+            $path = $model->comprobante_pdf_path;
+            $disk = $model->comprobante_pdf_disk;
+
+            // Cita sin comprobante: permitido por contrato (no es inconsistencia)
+            if (empty($path)) {
+                return ['consistent' => true, 'disk' => null, 'path' => null, 'error' => null];
+            }
+
+            // Resuelve storage usando el servicio canónico respetando el disco persistido
+            $service = app(AppointmentConfirmationDocumentService::class);
+            $stored = $service->resolveStorage($path, $disk);
+
+            if (! $stored) {
+                return [
+                    'consistent' => false,
+                    'disk' => $disk,
+                    'path' => $path,
+                    'error' => "Comprobante de confirmación de cita [{$path}] no existe en disco [{$disk}].",
+                ];
+            }
+
+            return [
+                'consistent' => true,
+                'disk' => $stored['disk'],
+                'path' => $stored['path'],
+                'error' => null,
+            ];
+        }
+
+        return ['consistent' => true, 'disk' => null, 'path' => null, 'error' => null];
+    }
+
+    /**
+     * Caso A1 — Confirmación existente:
+     * Cita con comprobante generado válidamente en R2, BD actualizada con path/disk
+     * y la verificación canónica confirma consistencia completa (PASS).
+     */
+    public function test_caso_a1_successful_appointment_confirmation_creates_db_and_r2_pdf_and_passes_consistency(): void
+    {
+        [$doctor, $cita] = $this->createDoctorAndCompletedCita();
+        $service = app(AppointmentConfirmationDocumentService::class);
+
+        // Generar comprobante canónico en R2
+        $cita = $service->generateAndStoreR2($cita);
+
+        $this->assertNotNull($cita->comprobante_pdf_path);
+        $this->assertSame('r2_private', $cita->comprobante_pdf_disk);
+        $this->assertMatchesRegularExpression(
+            "#^documents/appointment-confirmations/{$cita->id}/[0-9a-f\-]{36}\.pdf$#",
+            $cita->comprobante_pdf_path
+        );
+
+        // Objeto existe físicamente en R2
+        Storage::disk('r2_private')->assertExists($cita->comprobante_pdf_path);
+
+        // Verificación canónica DB <-> Storage debe ser consistente (PASS)
+        $result = $this->checkModelStorageConsistency($cita);
+        $this->assertTrue($result['consistent']);
+        $this->assertSame('r2_private', $result['disk']);
+        $this->assertSame($cita->comprobante_pdf_path, $result['path']);
+        $this->assertNull($result['error']);
+    }
+
+    /**
+     * Caso A2 — Objeto inexistente:
+     * Cita con path y disk válidos en BD pero archivo inexistente en storage
+     * es detectada correctamente como inconsistencia.
+     */
+    public function test_caso_a2_appointment_confirmation_missing_file_is_detected_as_inconsistency(): void
+    {
+        [$doctor, $cita] = $this->createDoctorAndCompletedCita();
+        $cita->update([
+            'comprobante_pdf_path' => 'documents/appointment-confirmations/' . $cita->id . '/missing-uuid.pdf',
+            'comprobante_pdf_disk' => 'r2_private',
+        ]);
+
+        // Asegurar que el archivo no existe en el almacenamiento
+        Storage::disk('r2_private')->assertMissing($cita->comprobante_pdf_path);
+
+        // La verificación canónica DEBE detectar que el archivo falta
+        $result = $this->checkModelStorageConsistency($cita);
+        $this->assertFalse(
+            $result['consistent'],
+            'La verificación canónica debe detectar que el comprobante de cita referenciado falta en el almacenamiento.'
+        );
+        $this->assertSame('r2_private', $result['disk']);
+        $this->assertSame($cita->comprobante_pdf_path, $result['path']);
+        $this->assertNotNull($result['error']);
+        $this->assertStringContainsString('no existe en disco', $result['error']);
+    }
+
+    /**
+     * Caso A3 — Cita sin comprobante:
+     * Una cita sin comprobante_pdf_path es válida por contrato y NO debe generar falso positivo.
+     */
+    public function test_caso_a3_appointment_without_confirmation_is_valid_and_consistent(): void
+    {
+        [$doctor, $cita] = $this->createDoctorAndCompletedCita();
+
+        // Cita recién creada sin comprobante
+        $this->assertNull($cita->comprobante_pdf_path);
+        $this->assertNull($cita->comprobante_pdf_disk);
+
+        // La verificación canónica debe considerar válida la ausencia
+        $result = $this->checkModelStorageConsistency($cita);
+        $this->assertTrue($result['consistent'], 'La ausencia de comprobante no debe considerarse un error.');
+        $this->assertNull($result['error']);
+    }
+
+    /**
+     * Caso A4 — Contrato de disco persistido (local vs r2_private):
+     * La verificación respeta comprobante_pdf_disk persistido y no hardcodea r2_private.
+     */
+    public function test_caso_a4_appointment_confirmation_respects_persisted_disk_contract(): void
+    {
+        [$doctor, $cita] = $this->createDoctorAndCompletedCita();
+
+        $localPath = "citas/comprobantes/legacy_{$cita->id}.pdf";
+        Storage::disk('local')->put($localPath, '%PDF-1.4 Mock Local Content');
+
+        $cita->update([
+            'comprobante_pdf_path' => $localPath,
+            'comprobante_pdf_disk' => 'local',
+        ]);
+
+        // Verificar que el contrato reconoce 'local' y no busca en r2_private
+        $result = $this->checkModelStorageConsistency($cita);
+        $this->assertTrue($result['consistent']);
+        $this->assertSame('local', $result['disk']);
+        $this->assertSame($localPath, $result['path']);
+        $this->assertNull($result['error']);
+
+        // Si se elimina de local, debe reportar inconsistencia en local
+        Storage::disk('local')->delete($localPath);
+        $resultMissing = $this->checkModelStorageConsistency($cita);
+        $this->assertFalse($resultMissing['consistent']);
+        $this->assertSame('local', $resultMissing['disk']);
+    }
+
+    /**
+     * Caso A5 — Regeneración limpia archivo anterior (prevención de huérfanos):
+     * Al actualizar o regenerar un comprobante de cita, el archivo anterior en R2
+     * se elimina correctamente, garantizando 0 huérfanos en documents/appointment-confirmations/.
+     */
+    public function test_caso_a5_appointment_confirmation_regeneration_cleans_up_old_r2_file(): void
+    {
+        [$doctor, $cita] = $this->createDoctorAndCompletedCita();
+        $service = app(AppointmentConfirmationDocumentService::class);
+
+        // 1. Primera generación
+        $cita = $service->generateAndStoreR2($cita);
+        $firstPath = $cita->comprobante_pdf_path;
+        Storage::disk('r2_private')->assertExists($firstPath);
+
+        // 2. Segunda generación (regeneración explícita tras cambio de cita)
+        $cita->update(['fecha' => now()->addDays(5)->toDateString()]);
+        $updatedCita = $service->generateAndStoreR2($cita);
+        $newPath = $updatedCita->comprobante_pdf_path;
+
+        $this->assertNotSame($firstPath, $newPath);
+        Storage::disk('r2_private')->assertExists($newPath);
+
+        // 3. El archivo anterior DEBE haberse eliminado de R2 (0 huérfanos)
+        Storage::disk('r2_private')->assertMissing($firstPath);
+
+        // 4. Verificación de consistencia para el nuevo estado
+        $result = $this->checkModelStorageConsistency($updatedCita);
+        $this->assertTrue($result['consistent']);
+        $this->assertSame($newPath, $result['path']);
     }
 
     private function createDoctorAndCompletedCita(): array

@@ -34,9 +34,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // 3. Auto-refresh global KPIs from data-dashboard-resumen
     const root = document.querySelector('[data-dashboard-page]');
     const resumenUrl = root?.dataset.dashboardResumen;
-
     if (resumenUrl) {
         async function refreshKPIs() {
+            if (document.hidden) {
+                return;
+            }
             try {
                 const res = await fetch(resumenUrl, {
                     headers: { 'X-Requested-With': 'XMLHttpRequest' }
@@ -58,5 +60,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         refreshKPIs();
         setInterval(refreshKPIs, 15000);
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                refreshKPIs();
+            }
+        });
     }
 });

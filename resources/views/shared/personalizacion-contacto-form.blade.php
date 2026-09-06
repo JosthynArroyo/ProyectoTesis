@@ -52,7 +52,9 @@
   ];
 @endphp
 
-@include('shared.personalizacion-public-preview-styles')
+@push('head')
+  @vite('resources/css/admin/personalizacion-preview.css')
+@endpush
 
 <div class="personalizacion-public-editor" data-contacto-form>
   <div class="personalizacion-public-surface space-y-6">
@@ -179,7 +181,7 @@
         <p class="text-sm text-gray-500 dark:text-gray-400">Configura los límites de atención institucionales. Los horarios de los doctores y laboratorios se validan e intersectan contra estas franjas.</p>
       <div class="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-4 dark:border-gray-800">
         <p class="text-xs text-gray-500 dark:text-gray-400">Marca los días laborables y configura el horario de apertura y cierre de cada uno.</p>
-        <button type="button" onclick="copyMondayScheduleToOpenDays()" class="btn btn-ghost btn-sm text-xs">
+        <button type="button" data-copy-monday-schedule class="btn btn-ghost btn-sm text-xs">
           <i class="ri-file-copy-line"></i> Copiar horario de Lunes a días abiertos
         </button>
       </div>
@@ -212,7 +214,7 @@
           <div class="grid grid-cols-1 gap-3 border-b border-gray-100 pb-4 last:border-0 last:pb-0 dark:border-gray-850 md:grid-cols-12 md:gap-4 md:items-center">
             <div class="col-span-4 flex items-center gap-3">
               <input type="hidden" name="clinic_hours[{{ $i }}][status]" value="0">
-              <input type="checkbox" id="clinic_hours_{{ $i }}_status" name="clinic_hours[{{ $i }}][status]" value="1" class="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500 dark:border-gray-700 dark:bg-gray-800" @checked($status == '1') onchange="toggleClinicHoursRow({{ $i }})">
+              <input type="checkbox" id="clinic_hours_{{ $i }}_status" name="clinic_hours[{{ $i }}][status]" value="1" data-clinic-hours-day="{{ $i }}" class="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500 dark:border-gray-700 dark:bg-gray-800" @checked($status == '1')>
               <label for="clinic_hours_{{ $i }}_status" class="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-2 cursor-pointer">
                 <span>{{ $diaNombre }}</span>
                 <span id="badge_clinic_hours_{{ $i }}" class="badge text-xs {{ $status == '1' ? 'badge-success' : 'badge-neutral' }}">
@@ -234,44 +236,6 @@
         @endforeach
       </div>
     </section>
-
-    <script>
-      function toggleClinicHoursRow(day) {
-        const checkbox = document.getElementById(`clinic_hours_${day}_status`);
-        const opening = document.getElementById(`clinic_hours_${day}_opening`);
-        const closing = document.getElementById(`clinic_hours_${day}_closing`);
-        const badge = document.getElementById(`badge_clinic_hours_${day}`);
-        if (checkbox && opening && closing) {
-          opening.disabled = !checkbox.checked;
-          closing.disabled = !checkbox.checked;
-          opening.required = checkbox.checked;
-          closing.required = checkbox.checked;
-          if (badge) {
-            if (checkbox.checked) {
-              badge.textContent = 'Abierto';
-              badge.className = 'badge text-xs badge-success';
-            } else {
-              badge.textContent = 'Cerrado';
-              badge.className = 'badge text-xs badge-neutral';
-            }
-          }
-        }
-      }
-
-      function copyMondayScheduleToOpenDays() {
-        const monOpening = document.getElementById('clinic_hours_1_opening')?.value || '08:00';
-        const monClosing = document.getElementById('clinic_hours_1_closing')?.value || '18:00';
-        for (let i = 2; i <= 7; i++) {
-          const checkbox = document.getElementById(`clinic_hours_${i}_status`);
-          if (checkbox && checkbox.checked) {
-            const op = document.getElementById(`clinic_hours_${i}_opening`);
-            const cl = document.getElementById(`clinic_hours_${i}_closing`);
-            if (op) op.value = monOpening;
-            if (cl) cl.value = monClosing;
-          }
-        }
-      }
-    </script>
 
     <section class="card border border-gray-200/80 bg-white/95 p-6 dark:border-gray-800/80 dark:bg-gray-900/95" data-public-preview-form-card>
       <div>

@@ -166,15 +166,30 @@ class PedidoLaboratorioController extends Controller
     }
 
     /**
-     * Descarga el PDF de resultados subidos por el laboratorio.
+     * Descarga el PDF de resultados subidos o publicados para el pedido de laboratorio.
      */
-    public function downloadResultado(PedidoLaboratorio $pedido, LaboratoryResultStorageService $resultStorage)
+    public function downloadResultado(Request $request, PedidoLaboratorio $pedido, \App\Services\PedidoLaboratorioPdfService $pdfs, LaboratoryResultStorageService $resultStorage)
     {
-        if (! $pedido->resultado_path || ! $resultStorage->resolve($pedido->resultado_path)) {
-            return back()->withErrors(['error' => 'El documento de resultados no está disponible.']);
+        $resultado = $pedido->resultados()
+            ->where('estado', \App\Models\PedidoLaboratorioResultado::ESTADO_PUBLICADO)
+            ->orderByDesc('version')
+            ->first();
+
+        if ($resultado) {
+            abort_unless($pdfs->usuarioAutorizadoParaResultado($pedido, $resultado, $request->user()), 403);
+
+            $disposition = $request->query('disposition', 'attachment');
+
+            return $pdfs->streamResultadoFile($resultado, $disposition);
         }
 
-        $name = 'resultado_pedido_' . $pedido->id . '.pdf';
-        return $resultStorage->download($pedido->resultado_path, $name);
+        if ($pedido->resultado_path && $resultStorage->resolve($pedido->resultado_path)) {
+            $name = 'resultado_pedido_' . $pedido->id . '.pdf';
+
+            return $resultStorage->download($pedido->resultado_path, $name);
+        }
+
+        return back()->withErrors(['error' => 'El documento de resultados no está disponible.']);
     }
 }
+

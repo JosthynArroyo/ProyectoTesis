@@ -4,6 +4,7 @@
 @section('title', $clinicIdentity->name())
 
 @push('styles')
+  @vite('resources/css/welcome.css')
   @php
     $welcomeSoftPrimary = $siteSettings->get('visual.soft_primary', '#e2e8f0');
     $welcomeSoftSecondary = $siteSettings->get('visual.soft_secondary', '#f1f5f9');
@@ -19,681 +20,12 @@
       --welcome-gradient-end: {{ $welcomeGradientEnd }};
       --welcome-badge-soft: {{ $welcomeBadgeSoft }};
     }
-
-    @keyframes welcomeInfoMarquee {
-      from {
-        transform: translate3d(0, 0, 0);
-      }
-      to {
-        transform: translate3d(-50%, 0, 0);
-      }
-    }
-
-    .welcome-info-marquee {
-      --welcome-info-duration: 38s;
-    }
-
-    .welcome-info-marquee__track {
-      animation: welcomeInfoMarquee var(--welcome-info-duration) linear infinite;
-      will-change: transform;
-    }
-
-    .welcome-info-marquee:hover .welcome-info-marquee__track,
-    .welcome-info-marquee:focus-within .welcome-info-marquee__track {
-      animation-play-state: paused;
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      .welcome-info-marquee__viewport {
-        overflow-x: auto;
-        scroll-behavior: auto;
-      }
-
-      .welcome-info-marquee__track {
-        animation: none;
-        transform: none;
-      }
-
-      .welcome-info-marquee__copy[aria-hidden='true'] {
-        display: none;
-      }
-    }
-
-    /* ============================================================
-       HERO REDESIGN — colores del sistema: var(--accent) #0f766e
-    ============================================================ */
-
-    /* ── Layout hero ── */
-    .wh-hero {
-      padding: 1.5rem 0 2rem;
-      overflow: hidden;
-      background:
-        radial-gradient(circle at top left, color-mix(in srgb, var(--welcome-gradient-start) 48%, transparent), transparent 36%),
-        radial-gradient(circle at top right, color-mix(in srgb, var(--welcome-gradient-end) 40%, transparent), transparent 28%),
-        linear-gradient(180deg, color-mix(in srgb, var(--welcome-soft-primary) 22%, white), transparent 80%);
-    }
-    .wh-hero__shell {
-      display: grid;
-      align-items: center;
-      gap: 3rem;
-    }
-    @media (min-width: 1024px) {
-      .wh-hero__shell {
-        grid-template-columns: 1.1fr 0.9fr;
-        gap: 4rem;
-      }
-    }
-
-    /* ── Columna izquierda ── */
-    .wh-hero__left { display: flex; flex-direction: column; gap: 1.5rem; }
-
-    /* Badge */
-    .wh-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.375rem 1rem;
-      border-radius: 999px;
-      background: color-mix(in srgb, var(--welcome-badge-soft) 82%, white);
-      color: var(--accent);
-      font-size: 0.7rem;
-      font-weight: 700;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      width: fit-content;
-    }
-
-    /* Título */
-    .wh-title {
-      font-size: clamp(2rem, 5vw, 3.25rem);
-      font-weight: 800;
-      line-height: 1.15;
-      color: var(--ink);
-      margin: 0;
-    }
-    .wh-title__accent {
-      color: var(--accent);
-      display: block;
-    }
-
-    /* Subtítulo */
-    .wh-subtitle {
-      font-size: 1rem;
-      color: var(--muted);
-      line-height: 1.7;
-      max-width: 38rem;
-      margin: 0;
-    }
-
-    /* Mini-cards 2 columnas iguales */
-    .wh-info-cards {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 0.875rem;
-    }
-    .wh-info-card {
-      display: flex;
-      align-items: flex-start;
-      gap: 0.75rem;
-      padding: 0.875rem 1rem;
-      background: rgba(255,255,255,0.96);
-      border: 1px solid rgba(148,163,184,0.62);
-      border-radius: 10px;
-      box-shadow: 0 4px 12px rgba(15,23,42,0.06);
-    }
-    .wh-info-card__icon {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 2.25rem;
-      height: 2.25rem;
-      border-radius: 8px;
-      background: var(--accent-soft);
-      color: var(--accent);
-      font-size: 1.1rem;
-      flex-shrink: 0;
-    }
-    .wh-info-card__title {
-      font-size: 0.8125rem;
-      font-weight: 700;
-      color: var(--ink);
-      margin: 0 0 0.2rem;
-    }
-    .wh-info-card__text {
-      font-size: 0.75rem;
-      color: var(--muted);
-      line-height: 1.5;
-      margin: 0;
-    }
-
-    /* Botones CTA */
-    .wh-cta-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.875rem;
-      align-items: center;
-    }
-    .wh-btn-primary {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.7rem 1.4rem;
-      background: var(--accent);
-      color: #fff;
-      border-radius: 8px;
-      border: 1px solid color-mix(in srgb, var(--accent) 82%, black);
-      font-size: 0.875rem;
-      font-weight: 700;
-      text-decoration: none;
-      box-shadow: 0 10px 22px rgba(15,23,42,0.16);
-      transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
-    }
-    .wh-btn-primary:hover {
-      background: var(--accent-strong);
-      transform: translateY(-1px);
-      box-shadow: 0 14px 28px rgba(15,23,42,0.20);
-    }
-    .wh-btn-secondary {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.7rem 1.4rem;
-      background: rgba(255,255,255,0.96);
-      color: var(--ink);
-      border-radius: 8px;
-      border: 1px solid rgba(148,163,184,0.62);
-      font-size: 0.875rem;
-      font-weight: 600;
-      text-decoration: none;
-      box-shadow: 0 2px 8px rgba(15,23,42,0.06);
-      transition: background 0.2s, transform 0.15s, border-color 0.2s;
-    }
-    .wh-btn-secondary:hover {
-      background: #f8fafc;
-      border-color: #94a3b8;
-      transform: translateY(-1px);
-    }
-
-    /* ── Galería / carousel derecho ── */
-    .wh-hero__right { min-width: 0; }
-    .wh-gallery {
-      position: relative;
-      border-radius: 16px;
-      overflow: hidden;
-      border: 1px solid rgba(148,163,184,0.62);
-      box-shadow: 0 20px 60px rgba(15,23,42,0.14);
-      background: #0f172a;
-    }
-    .wh-gallery__track {
-      display: flex;
-      transition: transform 0.5s ease;
-    }
-    .wh-gallery__slide {
-      min-width: 100%;
-      position: relative;
-    }
-    .wh-gallery__img {
-      width: 100%;
-      height: clamp(280px, 42vw, 420px);
-      object-fit: cover;
-      object-position: center;
-      display: block;
-    }
-    /* Overlay inferior oscuro con info */
-    .wh-gallery__overlay {
-      position: absolute;
-      inset-x: 0;
-      bottom: 0;
-      background: linear-gradient(to top, rgba(15,23,42,0.82), rgba(15,23,42,0.45) 50%, transparent);
-      padding: 1.5rem 1.25rem 1.25rem;
-      display: flex;
-      align-items: center;
-      gap: 0.875rem;
-      color: #fff;
-    }
-    .wh-gallery__overlay-icon {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 2.5rem;
-      height: 2.5rem;
-      border-radius: 8px;
-      background: rgba(255,255,255,0.18);
-      backdrop-filter: blur(4px);
-      font-size: 1.1rem;
-      flex-shrink: 0;
-    }
-    .wh-gallery__overlay-title {
-      font-size: 0.9375rem;
-      font-weight: 700;
-      margin: 0 0 0.2rem;
-    }
-    .wh-gallery__overlay-subtitle {
-      font-size: 0.72rem;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: color-mix(in srgb, var(--accent-soft) 34%, white);
-      margin: 0 0 0.3rem;
-    }
-    .wh-gallery__overlay-text {
-      font-size: 0.8rem;
-      color: rgba(255,255,255,0.82);
-      margin: 0;
-      line-height: 1.5;
-    }
-    /* Controles del carousel */
-    .wh-gallery__ctrl {
-      position: absolute;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 2.5rem;
-      height: 2.5rem;
-      border-radius: 50%;
-      border: 0;
-      background: rgba(255,255,255,0.22);
-      backdrop-filter: saturate(160%) blur(4px);
-      color: #fff;
-      font-size: 1.25rem;
-      display: grid;
-      place-items: center;
-      cursor: pointer;
-      transition: background 0.2s;
-      z-index: 5;
-    }
-    .wh-gallery__ctrl:hover { background: rgba(255,255,255,0.38); }
-    .wh-gallery__ctrl--prev { left: 0.75rem; }
-    .wh-gallery__ctrl--next { right: 0.75rem; }
-    /* Dots */
-    .wh-gallery__dots {
-      position: absolute;
-      bottom: 0.875rem;
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      gap: 0.4rem;
-      z-index: 5;
-    }
-    .wh-gallery__dot {
-      width: 0.5rem;
-      height: 0.5rem;
-      border-radius: 999px;
-      border: 1.5px solid rgba(255,255,255,0.8);
-      background: transparent;
-      cursor: pointer;
-      transition: background 0.2s, width 0.2s;
-      padding: 0;
-    }
-    .wh-gallery__dot.is-active {
-      background: #fff;
-      width: 1.25rem;
-    }
-
-    /* ── Sección pasos compacta ── */
-    .wh-steps-section {
-      padding: 1.25rem 0;
-    }
-    .wh-steps-wrap {
-      background: rgba(255,255,255,0.96);
-      border: 1px solid rgba(148,163,184,0.62);
-      border-radius: 12px;
-      padding: 1.25rem 1.75rem;
-      box-shadow: 0 8px 24px rgba(15,23,42,0.06);
-    }
-    .wh-steps-heading {
-      font-size: 0.9375rem;
-      font-weight: 700;
-      color: var(--ink);
-      margin: 0 0 1rem;
-    }
-    .wh-steps-row {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 0.5rem;
-    }
-    .wh-step {
-      display: flex;
-      align-items: flex-start;
-      gap: 0.625rem;
-    }
-    .wh-step__num {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 1.75rem;
-      height: 1.75rem;
-      border-radius: 50%;
-      background: var(--accent-soft);
-      color: var(--accent);
-      font-size: 0.8rem;
-      font-weight: 800;
-      flex-shrink: 0;
-    }
-    .wh-step__icon {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 2rem;
-      height: 2rem;
-      border-radius: 8px;
-      background: var(--accent-soft);
-      color: var(--accent);
-      font-size: 1rem;
-      flex-shrink: 0;
-    }
-    .wh-step__title {
-      font-size: 0.8125rem;
-      font-weight: 700;
-      color: var(--ink);
-      margin: 0 0 0.15rem;
-    }
-    .wh-step__text {
-      font-size: 0.72rem;
-      color: var(--muted);
-      line-height: 1.45;
-      margin: 0;
-    }
-
-    /* ── 3 cards inferiores ── */
-    .wh-cards-section {
-      padding: 0 0 2rem;
-    }
-    .wh-cards-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 1rem;
-    }
-    .wh-card {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      padding: 1.25rem 1rem 1.25rem 1.25rem;
-      background: rgba(255,255,255,0.96);
-      border: 1px solid rgba(148,163,184,0.62);
-      border-radius: 12px;
-      box-shadow: 0 8px 24px rgba(15,23,42,0.06);
-      text-decoration: none;
-      color: inherit;
-      transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
-    }
-    .wh-card:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 16px 36px rgba(15,23,42,0.1);
-      border-color: rgba(15,118,110,0.35);
-    }
-    .wh-card__icon {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 2.75rem;
-      height: 2.75rem;
-      border-radius: 10px;
-      background: var(--accent-soft);
-      color: var(--accent);
-      font-size: 1.25rem;
-      flex-shrink: 0;
-    }
-    .wh-card__body { flex: 1; min-width: 0; }
-    .wh-card__title {
-      font-size: 0.9375rem;
-      font-weight: 700;
-      color: var(--ink);
-      margin: 0 0 0.2rem;
-    }
-    .wh-card__text {
-      font-size: 0.775rem;
-      color: var(--muted);
-      line-height: 1.5;
-      margin: 0;
-    }
-    .wh-card__arrow {
-      font-size: 1.25rem;
-      color: var(--accent);
-      flex-shrink: 0;
-      transition: transform 0.2s;
-    }
-    .wh-card:hover .wh-card__arrow { transform: translateX(3px); }
-
-    /* ── Responsive ── */
-    @media (max-width: 1023px) {
-      .wh-steps-row { grid-template-columns: repeat(2, 1fr); gap: 0.875rem; }
-      .wh-cards-grid { grid-template-columns: 1fr; }
-    }
-    @media (max-width: 767px) {
-      .wh-info-cards { grid-template-columns: 1fr; }
-      .wh-steps-row  { grid-template-columns: 1fr 1fr; }
-      .wh-gallery__img { height: 240px; }
-    }
-    @media (max-width: 639px) {
-      .wh-cards-grid { grid-template-columns: 1fr; }
-      .wh-steps-row  { grid-template-columns: 1fr; }
-    }
-
-    /* ===== AGENDA PASO A PASO + TARIFARIO ===== */
-    /* Paleta alineada con los tokens del sistema (app.css) */
-    .ws-section {
-      background: transparent; /* usa el fondo global del body */
-    }
-
-    /* --- PASOS --- */
-    .welcome-steps-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 1.5rem;           /* 24px gap entre cards */
-      background: transparent;
-    }
-    .welcome-step-card {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
-      padding: 1.5rem 1rem;
-      background: rgba(255,255,255,0.96);       /* mismo que --panel-strong */
-      border: 1px solid rgba(148,163,184,0.62); /* mismo que .card */
-      border-radius: 12px;                      /* alineado con .btn y .card del sistema */
-      min-height: 160px;
-      text-align: center;
-      box-shadow: 0 12px 30px rgba(15,23,42,0.07);
-    }
-    .welcome-step-num {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 2rem;
-      height: 2rem;
-      border-radius: 50%;
-      background: rgba(17, 24, 39, 0.05); /* neutral decorative */
-      font-size: 0.875rem;
-      font-weight: 700;
-      color: var(--accent);             /* #0f766e — teal del botón Ingresar */
-      margin-bottom: 0.875rem;
-      flex-shrink: 0;
-    }
-    .welcome-step-icon {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 3.25rem;
-      height: 3.25rem;
-      border-radius: 10px;
-      background: rgba(17, 24, 39, 0.05); /* neutral decorative */
-      margin-bottom: 0.875rem;
-      flex-shrink: 0;
-    }
-    .welcome-step-icon i {
-      font-size: 1.4rem;
-      color: var(--accent);             /* #0f766e */
-    }
-    .welcome-step-title {
-      font-size: 0.9375rem;
-      font-weight: 700;
-      color: var(--ink);                /* #0f172a — mismo que headings del sistema */
-      margin: 0 0 0.3rem;
-    }
-    .welcome-step-desc {
-      font-size: 0.8125rem;
-      color: var(--muted);              /* #475569 — token real del sistema */
-      line-height: 1.5;
-      margin: 0;
-    }
-
-    /* --- TARIFARIO --- */
-    .welcome-prices-grid {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) 300px;
-      gap: 1.5rem;
-      align-items: start;
-    }
-    .welcome-price-cards {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-      gap: 1rem;
-    }
-    .welcome-price-card {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
-      padding: 1rem 0.75rem;
-      background: rgba(255,255,255,0.96);
-      border: 1px solid rgba(148,163,184,0.62);
-      border-radius: 12px;
-      height: 140px;                    /* altura fija: TODAS iguales */
-      text-align: center;
-      overflow: hidden;
-      box-shadow: 0 8px 20px rgba(15,23,42,0.06);
-    }
-    .welcome-price-icon {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 2.5rem;
-      height: 2.5rem;
-      border-radius: 50%;
-      background: rgba(17, 24, 39, 0.05); /* neutral decorative */
-      flex-shrink: 0;
-    }
-    .welcome-price-icon i {
-      font-size: 1.15rem;
-      color: var(--accent);             /* #0f766e */
-    }
-    .welcome-price-name {
-      font-size: 0.75rem;
-      font-weight: 600;
-      color: var(--ink);                /* #0f172a */
-      line-height: 1.25;
-      display: -webkit-box;
-      -webkit-box-orient: vertical;
-      -webkit-line-clamp: 2;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 100%;
-    }
-    .welcome-price-amount {
-      font-size: 1rem;
-      font-weight: 700;
-      color: var(--accent);             /* #0f766e — mismo teal del sistema */
-      white-space: nowrap;              /* "Consultar" nunca se parte */
-      letter-spacing: -0.01em;
-    }
-
-    /* --- TARJETA DERECHA: Atención en clínica --- */
-    .ws-clinic-card-icon {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 2.25rem;
-      height: 2.25rem;
-      border-radius: 8px;
-      background: var(--accent-soft);
-      flex-shrink: 0;
-    }
-    .ws-clinic-card-icon i {
-      font-size: 1.1rem;
-      color: var(--accent);
-    }
-    .ws-clinic-bullet i {
-      color: var(--accent);
-    }
-
-    .welcome-service-icon {
-      background: color-mix(in srgb, var(--accent-soft) 76%, white);
-      color: var(--accent);
-      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 10%, white);
-    }
-
-    .welcome-team-badge {
-      border: 1px solid color-mix(in srgb, var(--accent-soft) 86%, white);
-      background: color-mix(in srgb, var(--welcome-badge-soft) 84%, white);
-      color: var(--accent);
-      box-shadow: 0 10px 26px color-mix(in srgb, var(--accent-soft) 38%, white);
-    }
-
-    .welcome-team-divider {
-      background: linear-gradient(90deg, var(--accent), var(--accent-strong));
-    }
-
-    .welcome-team-chip,
-    .welcome-team-icon,
-    .welcome-team-specialty,
-    .welcome-team-foot,
-    .welcome-team-cta-icon {
-      color: var(--accent);
-    }
-
-    .welcome-team-chip {
-      box-shadow: 0 14px 28px color-mix(in srgb, var(--accent-soft) 42%, white);
-    }
-
-    .welcome-team-avatar {
-      box-shadow: 0 14px 35px color-mix(in srgb, var(--accent-soft) 40%, white);
-    }
-
-    .welcome-team-cta-block {
-      background: color-mix(in srgb, var(--welcome-soft-secondary) 18%, white);
-    }
-
-    .welcome-team-cta-box {
-      background: color-mix(in srgb, var(--accent-soft) 72%, white);
-      color: var(--accent);
-    }
-
-    /* --- RESPONSIVE --- */
-    @media (max-width: 1023px) {
-      .welcome-prices-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-    @media (max-width: 1023px) and (min-width: 768px) {
-      .welcome-steps-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
-      .welcome-price-cards {
-        grid-template-columns: repeat(3, 1fr);
-      }
-    }
-    @media (max-width: 767px) {
-      .welcome-steps-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
-      .welcome-price-cards {
-        grid-template-columns: repeat(2, 1fr);
-      }
-    }
-    @media (max-width: 479px) {
-      .welcome-steps-grid {
-        grid-template-columns: 1fr;
-      }
-      .welcome-price-cards {
-        grid-template-columns: 1fr;
-      }
-    }
   </style>
 @endpush
 
 @section('main')
   @php
+    $isDemo = ($applicationMode?->isDemo() ?? app(\App\Services\ApplicationModeService::class)->isDemo());
     $heroPrimaryText = $landingWelcome->get('hero_primary_text', 'Agendar cita');
     $heroSecondaryText = $landingWelcome->get('hero_secondary_text', 'Explorar servicios');
     $heroSlides = array_values(array_filter($landingWelcome->slides(), fn ($slide) => $slide['is_active'] ?? false));
@@ -926,7 +258,7 @@
                 {{ $heroPrimaryText }}
               </a>
             @else
-              <a href="{{ url('/') . '?login=1' }}" class="wh-btn-primary" data-login-trigger>
+              <a href="{{ $isDemo ? route('demo.access.selector') : (url('/') . '?login=1') }}" class="wh-btn-primary" @if(! $isDemo) data-login-trigger @endif>
                 <i class="ri-calendar-2-line" aria-hidden="true"></i>
                 {{ $heroPrimaryText }}
               </a>
@@ -938,7 +270,12 @@
               {{ $heroSecondaryText }}
             </a>
           @endif
-          
+          @if($isDemo && \Illuminate\Support\Facades\Route::has('demo.access.selector'))
+            <a href="{{ route('demo.access.selector') }}" class="wh-btn-secondary border border-sky-300 text-sky-700 bg-sky-50/80 hover:bg-sky-100 hover:text-sky-800" data-demo-preview-cta>
+              <i class="ri-sparkling-line text-sky-500" aria-hidden="true"></i>
+              Explorar sistema
+            </a>
+          @endif
         </div>
 
       </div>{{-- /left --}}
@@ -1005,7 +342,7 @@
   ============================================================ --}}
   <section class="wh-cards-section">
     <div class="page-shell wh-cards-grid">
-      <a href="{{ auth()->check() ? route('paciente.citas') : url('/?login=1') }}" class="wh-card" @guest data-login-trigger @endguest>
+      <a href="{{ auth()->check() ? route('paciente.citas') : ($isDemo ? route('demo.access.selector') : url('/?login=1')) }}" class="wh-card" @guest @if(! $isDemo) data-login-trigger @endif @endguest>
         <span class="wh-card__icon"><i class="ri-calendar-2-line" aria-hidden="true"></i></span>
         <div class="wh-card__body">
           <p class="wh-card__title">Citas médicas</p>
@@ -1013,7 +350,7 @@
         </div>
         <i class="ri-arrow-right-line wh-card__arrow" aria-hidden="true"></i>
       </a>
-      <a href="{{ auth()->check() ? route('paciente.laboratorio.index') : url('/?login=1') }}" class="wh-card" @guest data-login-trigger @endguest>
+      <a href="{{ auth()->check() ? route('paciente.laboratorio.index') : ($isDemo ? route('demo.access.selector') : url('/?login=1')) }}" class="wh-card" @guest @if(! $isDemo) data-login-trigger @endif @endguest>
         <span class="wh-card__icon"><i class="ri-file-text-line" aria-hidden="true"></i></span>
         <div class="wh-card__body">
           <p class="wh-card__title">Documentos médicos</p>
@@ -1021,7 +358,7 @@
         </div>
         <i class="ri-arrow-right-line wh-card__arrow" aria-hidden="true"></i>
       </a>
-      <a href="{{ auth()->check() ? route('paciente.citas') : url('/?login=1') }}" class="wh-card" @guest data-login-trigger @endguest>
+      <a href="{{ auth()->check() ? route('paciente.citas') : ($isDemo ? route('demo.access.selector') : url('/?login=1')) }}" class="wh-card" @guest @if(! $isDemo) data-login-trigger @endif @endguest>
         <span class="wh-card__icon"><i class="ri-notification-3-line" aria-hidden="true"></i></span>
         <div class="wh-card__body">
           <p class="wh-card__title">Recordatorios</p>
@@ -1062,16 +399,16 @@
 
     @if($pricesList->isNotEmpty())
       {{-- ===== ENCABEZADO: AGENDA PASO A PASO ===== --}}
-      <section class="welcome-section ws-section" style="padding-top:3rem; padding-bottom:0;">
+      <section class="welcome-section ws-section ws-section--steps">
         <div class="page-shell">
-          <div style="text-align:center; margin-bottom:2rem;">
+          <div class="ws-steps-header">
             {{-- Ícono calendario — usa accent-soft del sistema --}}
-            <div style="display:inline-flex; align-items:center; justify-content:center; width:3rem; height:3rem; border-radius:50%; background:var(--accent-soft); margin-bottom:0.875rem;">
-              <i class="ri-calendar-2-line" style="font-size:1.4rem; color:var(--accent);" aria-hidden="true"></i>
+            <div class="ws-steps-badge">
+              <i class="ri-calendar-2-line" aria-hidden="true"></i>
             </div>
             {{-- Título en negro elegante — igual que h2 del resto del welcome --}}
-            <h2 style="font-size:clamp(1.5rem,3vw,2rem); font-weight:700; color:var(--ink); margin:0 0 0.5rem;">{{ $pricesVisitTitle }}</h2>
-            <p style="font-size:0.95rem; color:var(--muted); max-width:36rem; margin:0 auto; line-height:1.65;">{{ $pricesVisitSubtitle }}</p>
+            <h2 class="ws-steps-title">{{ $pricesVisitTitle }}</h2>
+            <p class="ws-steps-subtitle">{{ $pricesVisitSubtitle }}</p>
           </div>
 
           {{-- 4 PASOS — clases CSS definidas arriba con tokens del sistema --}}
@@ -1089,15 +426,15 @@
       </section>
 
       {{-- ===== SECCIÓN TARIFARIO ===== --}}
-      <section class="welcome-section ws-section" style="padding-top:2rem;">
+      <section class="welcome-section ws-section ws-section--prices">
         <div class="page-shell">
-          <div class="welcome-prices-grid" style="align-items:stretch;">
+          <div class="welcome-prices-grid">
 
             {{-- Columna izquierda: tarifario --}}
-            <div style="background:rgba(255,255,255,0.96); border-radius:12px; box-shadow:0 12px 30px rgba(15,23,42,0.08); padding:2rem; border:1px solid rgba(148,163,184,0.62);">
-              <p style="font-size:0.7rem; font-weight:700; letter-spacing:0.18em; text-transform:uppercase; color:var(--accent); margin:0 0 0.4rem;">{{ $pricesBadge }}</p>
-              <h2 style="font-size:1.5rem; font-weight:700; color:var(--ink); margin:0 0 0.4rem;">{{ $pricesTitle }}</h2>
-              <p style="font-size:0.875rem; color:var(--muted); line-height:1.65; margin:0 0 1.5rem;">{{ $pricesSubtitle }}</p>
+            <div class="ws-prices-card">
+              <p class="ws-prices-badge">{{ $pricesBadge }}</p>
+              <h2 class="ws-prices-title">{{ $pricesTitle }}</h2>
+              <p class="ws-prices-subtitle">{{ $pricesSubtitle }}</p>
 
               {{-- Grid de especialidades --}}
               <div class="welcome-price-cards">
@@ -1114,27 +451,27 @@
             </div>
 
             {{-- Columna derecha: atención en clínica (igual alto que tarifario) --}}
-            <div style="background:rgba(255,255,255,0.96); border-radius:12px; border:1px solid rgba(148,163,184,0.62); padding:1.75rem 1.5rem 2rem; box-shadow:0 12px 30px rgba(15,23,42,0.07); display:flex; flex-direction:column; justify-content:center; height:100%;">
-              <div style="display:flex; align-items:flex-start; gap:0.75rem; margin-bottom:1.25rem;">
+            <div class="ws-clinic-card">
+              <div class="ws-clinic-card-header">
                 <div class="ws-clinic-card-icon">
                   <i class="ri-shield-cross-line" aria-hidden="true"></i>
                 </div>
                 <div>
-                  <h3 style="font-size:0.9375rem; font-weight:700; color:var(--ink); margin:0 0 0.25rem;">{{ $pricesHighlightTitle }}</h3>
-                  <p style="font-size:0.8rem; color:var(--muted); line-height:1.55; margin:0;">{{ $pricesHighlightSubtitle }}</p>
+                  <h3 class="ws-clinic-card-title">{{ $pricesHighlightTitle }}</h3>
+                  <p class="ws-clinic-card-subtitle">{{ $pricesHighlightSubtitle }}</p>
                 </div>
               </div>
-              <ul style="list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:0.75rem;">
-                <li class="ws-clinic-bullet" style="display:flex; align-items:center; gap:0.5rem; font-size:0.8125rem; color:var(--muted);">
-                  <i class="ri-checkbox-circle-fill" style="font-size:1rem; flex-shrink:0;"></i>
+              <ul class="ws-clinic-bullets">
+                <li class="ws-clinic-bullet">
+                  <i class="ri-checkbox-circle-fill"></i>
                   Información segura y confidencial
                 </li>
-                <li class="ws-clinic-bullet" style="display:flex; align-items:center; gap:0.5rem; font-size:0.8125rem; color:var(--muted);">
-                  <i class="ri-checkbox-circle-fill" style="font-size:1rem; flex-shrink:0;"></i>
+                <li class="ws-clinic-bullet">
+                  <i class="ri-checkbox-circle-fill"></i>
                   Proceso rápido y organizado
                 </li>
-                <li class="ws-clinic-bullet" style="display:flex; align-items:center; gap:0.5rem; font-size:0.8125rem; color:var(--muted);">
-                  <i class="ri-checkbox-circle-fill" style="font-size:1rem; flex-shrink:0;"></i>
+                <li class="ws-clinic-bullet">
+                  <i class="ri-checkbox-circle-fill"></i>
                   Atención profesional y cercana
                 </li>
               </ul>
@@ -1214,7 +551,7 @@
                         {{ data_get($doctorCard, 'cta_text', 'Agendar cita') }}
                       </a>
                     @else
-                      <a href="{{ url('/') . '?login=1' }}" class="btn btn-primary btn-lg w-full justify-center" data-login-trigger>
+                      <a href="{{ $isDemo ? route('demo.access.selector') : (url('/') . '?login=1') }}" class="btn btn-primary btn-lg w-full justify-center" @if(! $isDemo) data-login-trigger @endif>
                         <i class="ri-login-circle-line" aria-hidden="true"></i>
                         {{ data_get($doctorCard, 'cta_text', 'Agendar cita') }}
                       </a>
@@ -1248,7 +585,7 @@
                     Agendar cita ahora
                   </a>
                 @else
-                  <a href="{{ url('/') . '?login=1' }}" class="btn btn-primary btn-lg" data-login-trigger>
+                  <a href="{{ $isDemo ? route('demo.access.selector') : (url('/') . '?login=1') }}" class="btn btn-primary btn-lg" @if(! $isDemo) data-login-trigger @endif>
                     <i class="ri-login-circle-line" aria-hidden="true"></i>
                     Agendar cita ahora
                   </a>

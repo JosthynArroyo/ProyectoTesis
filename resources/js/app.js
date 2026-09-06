@@ -130,9 +130,19 @@ const bootDeferredModules = () => {
     'No se pudo inicializar recordar acceso.'
   );
   loadModule(
+    () => hasElement('[data-logout-trigger]'),
+    () => import('./auth/logout'),
+    'No se pudo inicializar el cierre de sesion.'
+  );
+  loadModule(
     () => hasElement('[data-panel-back-anchor]'),
     () => import('./panel-back-button'),
     'No se pudo inicializar volver del panel.'
+  );
+  loadModule(
+    () => hasElement('[data-document-fields-wrap]'),
+    () => import('./forms/document-fields'),
+    'No se pudieron inicializar los campos de documento.'
   );
   loadModule(
     () => hasElement('input[data-digits]'),
@@ -153,6 +163,11 @@ const bootDeferredModules = () => {
     () => hasElement('[data-dashboard-page]'),
     () => import('./dashboard-charts'),
     'No se pudieron inicializar las graficas del dashboard.'
+  );
+  loadModule(
+    () => hasElement('[data-auto-submit]'),
+    () => import('./forms/auto-submit'),
+    'No se pudo inicializar el auto-submit de filtros.'
   );
   loadDatepickers();
   loadNativeDatePickers();

@@ -14,7 +14,7 @@
       <form method="GET" action="{{ route('paciente.historial') }}" class="flex flex-wrap items-end gap-3">
         <div class="w-full md:w-72">
           <label class="form-label" for="paciente">Filtrar por paciente</label>
-          <select id="paciente" name="paciente" class="form-select" onchange="this.form.submit()">
+          <select id="paciente" name="paciente" class="form-select" data-auto-submit>
             <option value="all" @selected($pacienteFilter === 'all')>Todos</option>
             <option value="principal" @selected($pacienteFilter === 'principal')>{{ Auth::user()->name }} (cuenta principal)</option>
             @foreach($dependientes as $dep)

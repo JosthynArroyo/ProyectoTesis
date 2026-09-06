@@ -4,6 +4,9 @@
 @section('header-subtitle', 'Control de respaldos cifrados en Cloudflare R2')
 
 @section('main')
+@php
+  $isDemo = app(\App\Services\ApplicationModeService::class)->isDemo();
+@endphp
 <div class="space-y-6">
 
   {{-- Alerts --}}
@@ -142,9 +145,10 @@
     </form>
   </div>
 
-  {{-- Backups Table --}}
+  {{-- Backups Table (Desktop) & Card Stack (Mobile) --}}
   <div class="card overflow-hidden">
-    <div class="overflow-x-auto">
+    {{-- Desktop Table --}}
+    <div class="hidden md:block overflow-x-auto">
       <table class="w-full text-left text-sm text-gray-600">
         <thead class="bg-gray-50 text-xs font-semibold uppercase tracking-wider text-gray-500 border-b border-gray-100">
           <tr>
@@ -224,23 +228,41 @@
 
               <td class="px-4 py-3 whitespace-nowrap text-right space-x-1">
                 @if($backup->isCompleted())
-                  <a
-                    href="{{ route('superadmin.respaldos.download', $backup->id) }}"
-                    class="btn btn-xs btn-ghost text-blue-600 hover:text-blue-800"
-                    title="Descargar respaldo cifrado"
-                    download
-                    data-action-lock-ignore
-                    data-skip-page-loader
-                  >
-                    <i class="ri-download-2-line text-sm"></i> Descargar
-                  </a>
+                  @if($isDemo)
+                    <button
+                      type="button"
+                      class="btn btn-xs btn-ghost text-blue-600 hover:text-blue-800"
+                      title="Descargar respaldo cifrado"
+                    >
+                      <i class="ri-download-2-line text-sm"></i> Descargar
+                    </button>
 
-                  <form method="POST" action="{{ route('superadmin.respaldos.verify', $backup->id) }}" class="inline">
-                    @csrf
-                    <button type="submit" class="btn btn-xs btn-ghost text-emerald-600 hover:text-emerald-800" title="Verificar integridad de archivo y descifrado">
+                    <button
+                      type="button"
+                      class="btn btn-xs btn-ghost text-emerald-600 hover:text-emerald-800"
+                      title="Verificar integridad de archivo y descifrado"
+                    >
                       <i class="ri-shield-check-line text-sm"></i> Verificar
                     </button>
-                  </form>
+                  @else
+                    <a
+                      href="{{ route('superadmin.respaldos.download', $backup->id) }}"
+                      class="btn btn-xs btn-ghost text-blue-600 hover:text-blue-800"
+                      title="Descargar respaldo cifrado"
+                      download
+                      data-action-lock-ignore
+                      data-skip-page-loader
+                    >
+                      <i class="ri-download-2-line text-sm"></i> Descargar
+                    </a>
+
+                    <form method="POST" action="{{ route('superadmin.respaldos.verify', $backup->id) }}" class="inline">
+                      @csrf
+                      <button type="submit" class="btn btn-xs btn-ghost text-emerald-600 hover:text-emerald-800" title="Verificar integridad de archivo y descifrado">
+                        <i class="ri-shield-check-line text-sm"></i> Verificar
+                      </button>
+                    </form>
+                  @endif
                 @else
                   <span class="text-xs text-gray-400 font-italic">No disponible</span>
                 @endif
@@ -255,6 +277,120 @@
           @endforelse
         </tbody>
       </table>
+    </div>
+
+    {{-- Mobile Card Stack --}}
+    <div class="md:hidden divide-y divide-gray-100">
+      @forelse($backups as $backup)
+        <article class="p-4 space-y-3" data-backup-card>
+          <div class="flex items-center justify-between gap-2">
+            <div>
+              @if($backup->type === 'manual')
+                <span class="inline-flex items-center gap-1 rounded bg-purple-50 px-2 py-0.5 text-xs text-purple-700 font-medium dark:bg-purple-950/80 dark:text-purple-300">
+                  <i class="ri-user-setting-line"></i> Manual
+                </span>
+              @else
+                <span class="inline-flex items-center gap-1 rounded bg-blue-50 px-2 py-0.5 text-xs text-blue-700 font-medium dark:bg-blue-950/80 dark:text-blue-300">
+                  <i class="ri-time-line"></i> {{ ucfirst($backup->type) }}
+                </span>
+              @endif
+            </div>
+            <div>
+              @if($backup->status === 'verified')
+                <span class="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300">
+                  <i class="ri-checkbox-circle-line"></i> Verificado
+                </span>
+              @elseif($backup->status === 'completed')
+                <span class="inline-flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-800 dark:bg-green-950/80 dark:text-green-300">
+                  <i class="ri-check-line"></i> Completado
+                </span>
+              @elseif($backup->status === 'processing')
+                <span class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800 animate-pulse dark:bg-amber-950/80 dark:text-amber-300">
+                  <i class="ri-loader-4-line animate-spin"></i> Procesando...
+                </span>
+              @elseif($backup->status === 'pending')
+                <span class="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                  <i class="ri-time-line"></i> Pendiente
+                </span>
+              @else
+                <span class="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-semibold text-rose-800 dark:bg-rose-950/80 dark:text-rose-300" title="{{ $backup->error_message }}">
+                  <i class="ri-error-warning-line"></i> Fallido
+                </span>
+              @endif
+            </div>
+          </div>
+
+          <div class="text-xs text-gray-500 flex items-center gap-1.5">
+            <i class="ri-calendar-line"></i>
+            <span>{{ $backup->created_at ? $backup->created_at->timezone('America/Guayaquil')->format('d/m/Y H:i:s') : '-' }}</span>
+          </div>
+
+          <dl class="grid grid-cols-2 gap-2 text-xs rounded-xl bg-gray-50 p-3 border border-gray-100">
+            <div>
+              <dt class="text-gray-500 uppercase font-medium">Tamaño</dt>
+              <dd class="font-mono font-semibold text-gray-900 mt-0.5">{{ $backup->formattedSize() }}</dd>
+            </div>
+            <div>
+              <dt class="text-gray-500 uppercase font-medium">Duración</dt>
+              <dd class="text-gray-900 mt-0.5">{{ $backup->duration_seconds ? $backup->duration_seconds . 's' : '-' }}</dd>
+            </div>
+            <div>
+              <dt class="text-gray-500 uppercase font-medium">Solicitado por</dt>
+              <dd class="text-gray-900 mt-0.5 truncate">{{ $backup->user ? $backup->user->name : 'Sistema (Automático)' }}</dd>
+            </div>
+            <div>
+              <dt class="text-gray-500 uppercase font-medium">SHA-256</dt>
+              <dd class="font-mono text-gray-500 truncate mt-0.5" title="{{ $backup->sha256 }}">{{ $backup->sha256 ? substr($backup->sha256, 0, 10) . '...' : '-' }}</dd>
+            </div>
+          </dl>
+
+          <div class="flex items-center justify-end gap-2 pt-1 border-t border-gray-100">
+            @if($backup->isCompleted())
+              @if($isDemo)
+                <button
+                  type="button"
+                  class="btn btn-sm btn-ghost text-blue-600 hover:text-blue-800"
+                  title="Descargar respaldo cifrado"
+                >
+                  <i class="ri-download-2-line"></i> Descargar
+                </button>
+
+                <button
+                  type="button"
+                  class="btn btn-sm btn-ghost text-emerald-600 hover:text-emerald-800"
+                  title="Verificar integridad de archivo y descifrado"
+                >
+                  <i class="ri-shield-check-line"></i> Verificar
+                </button>
+              @else
+                <a
+                  href="{{ route('superadmin.respaldos.download', $backup->id) }}"
+                  class="btn btn-sm btn-ghost text-blue-600 hover:text-blue-800"
+                  title="Descargar respaldo cifrado"
+                  download
+                  data-action-lock-ignore
+                  data-skip-page-loader
+                >
+                  <i class="ri-download-2-line"></i> Descargar
+                </a>
+
+                <form method="POST" action="{{ route('superadmin.respaldos.verify', $backup->id) }}" class="inline">
+                  @csrf
+                  <button type="submit" class="btn btn-sm btn-ghost text-emerald-600 hover:text-emerald-800" title="Verificar integridad de archivo y descifrado">
+                    <i class="ri-shield-check-line"></i> Verificar
+                  </button>
+                </form>
+              @endif
+            @else
+              <span class="text-xs text-gray-400 font-italic">No disponible</span>
+            @endif
+          </div>
+        </article>
+      @empty
+        <div class="p-8 text-center text-gray-500">
+          No se encontraron respaldos registrados.
+        </div>
+      @endforelse
     </div>
 
     @if($backups->hasPages())

@@ -73,8 +73,24 @@
     </div>
   @endif
 
+@php
+  $dayGridColumns = collect($days)->map(function ($day) {
+    $laneCount = (int) ($day['lane_count'] ?? 1);
+    $minWidth = max(130, $laneCount * 110);
+    return "minmax({$minWidth}px, 1fr)";
+  })->implode(' ');
+
+  $totalMinBoardWidth = 64 + collect($days)->sum(function ($day) {
+    $laneCount = (int) ($day['lane_count'] ?? 1);
+    return max(130, $laneCount * 110);
+  });
+@endphp
+
   <div class="weekly-schedule__viewport" role="region" aria-label="{{ $title }}">
-    <div class="weekly-schedule__board" style="--week-row-count: {{ $calendar['row_count'] ?? 1 }};">
+    <div
+      class="weekly-schedule__board"
+      style="--week-row-count: {{ $calendar['row_count'] ?? 1 }}; grid-template-columns: 64px {{ $dayGridColumns }}; min-width: {{ $totalMinBoardWidth }}px; width: max(100%, {{ $totalMinBoardWidth }}px);"
+    >
       <div class="weekly-schedule__corner">
         <span>Hora</span>
       </div>
@@ -110,9 +126,13 @@
       @endforeach
 
       @foreach($backgroundEvents as $event)
+        @php
+          $eventTitleText = $event['title'] . (!empty($event['subtitle']) ? ' · ' . $event['subtitle'] : '') . ' (' . $event['start'] . ' - ' . $event['end'] . ')';
+        @endphp
         <div
           class="weekly-schedule__event weekly-schedule__event--background weekly-schedule__event--{{ $event['tone'] ?? 'slate' }}"
           style="grid-column: {{ $event['column'] }}; grid-row: {{ $event['row_start'] }} / span {{ $event['row_span'] }}; --event-lane-index: {{ $event['lane_index'] ?? 0 }}; --event-lane-count: {{ $event['lane_count'] ?? 1 }};"
+          title="{{ $eventTitleText }}"
         >
           @if(!empty($event['eyebrow']))
             <span class="weekly-schedule__event-eyebrow">{{ $event['eyebrow'] }}</span>
@@ -125,11 +145,15 @@
       @endforeach
 
       @foreach($events as $event)
+        @php
+          $eventTitleText = $event['title'] . (!empty($event['subtitle']) ? ' · ' . $event['subtitle'] : '') . ' (' . $event['start'] . ' - ' . $event['end'] . ')';
+        @endphp
         @if(!empty($event['url']))
           <a
             href="{{ $event['url'] }}"
             class="weekly-schedule__event weekly-schedule__event--card weekly-schedule__event--{{ $event['tone'] ?? 'slate' }} {{ $event['classes'] ?? '' }}"
             style="grid-column: {{ $event['column'] }}; grid-row: {{ $event['row_start'] }} / span {{ $event['row_span'] }}; --event-lane-index: {{ $event['lane_index'] ?? 0 }}; --event-lane-count: {{ $event['lane_count'] ?? 1 }};"
+            title="{{ $eventTitleText }}"
           >
             @if(!empty($event['eyebrow']))
               <span class="weekly-schedule__event-eyebrow">{{ $event['eyebrow'] }}</span>
@@ -147,6 +171,7 @@
           <article
             class="weekly-schedule__event weekly-schedule__event--card weekly-schedule__event--{{ $event['tone'] ?? 'slate' }} {{ $event['classes'] ?? '' }}"
             style="grid-column: {{ $event['column'] }}; grid-row: {{ $event['row_start'] }} / span {{ $event['row_span'] }}; --event-lane-index: {{ $event['lane_index'] ?? 0 }}; --event-lane-count: {{ $event['lane_count'] ?? 1 }};"
+            title="{{ $eventTitleText }}"
           >
             @if(!empty($event['eyebrow']))
               <span class="weekly-schedule__event-eyebrow">{{ $event['eyebrow'] }}</span>

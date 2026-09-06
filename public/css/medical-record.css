@@ -841,6 +841,10 @@
   background: #fff4f4;
 }
 
+.medical-activity--inactive {
+  opacity: 0.7;
+}
+
 .medical-timeline__meta {
   margin-top: 0.25rem !important;
   color: var(--mr-muted) !important;

@@ -30,6 +30,7 @@ class PaymentApprovalReceiptConcurrencySafetyTest extends TestCase
     {
         parent::setUp();
         Carbon::setTestNow('2026-08-01 08:00:00');
+        config(['private_documents.disk' => 'r2_private']);
         Storage::fake('r2_private');
         $this->seedRoles();
     }

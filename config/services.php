@@ -29,10 +29,4 @@ return [
         'default_country' => env('WHATSAPP_DEFAULT_COUNTRY', 'EC'),
     ],
 
-    'face' => [
-        // Umbral ajustado para reducir falsos negativos en cambios moderados (ej. corte de cabello).
-        'threshold' => env('FACE_MATCH_THRESHOLD', 0.60),
-        'max_failures' => env('FACE_MAX_FAILURES', 5),
-    ],
-
 ];

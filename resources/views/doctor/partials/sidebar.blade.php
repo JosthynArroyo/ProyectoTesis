@@ -47,7 +47,7 @@
         </a>
 
         <form id="doctor-logout-form" action="{{ route('salir') }}" method="POST" class="hidden">@csrf</form>
-        <a href="#" onclick="event.preventDefault(); document.getElementById('doctor-logout-form').submit();" class="mt-5 flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 text-rose-600 transition-colors hover:bg-rose-50">
+        <a href="#" data-logout-trigger data-logout-form="doctor-logout-form" class="mt-5 flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 text-rose-600 transition-colors hover:bg-rose-50">
             <i class="ri-logout-circle-r-line text-lg"></i> Cerrar sesión
         </a>
     </nav>

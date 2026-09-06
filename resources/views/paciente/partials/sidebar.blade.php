@@ -41,7 +41,7 @@
         </a>
 
         <a href="{{ route('paciente.pagos.index') }}" @class(['flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors', 'bg-gray-100 text-gray-900 font-medium' => request()->routeIs('paciente.pagos.*'), 'text-gray-600 hover:bg-gray-50' => !request()->routeIs('paciente.pagos.*')])>
-            <i class="ri-wallet-3-line text-lg"></i> Órdenes de cobro
+            <i class="ri-wallet-3-line text-lg"></i> Pagos y recibos
         </a>
 
         <a href="{{ route('paciente.dependientes.index') }}" @class(['flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors', 'bg-gray-100 text-gray-900 font-medium' => request()->routeIs('paciente.dependientes.*'), 'text-gray-600 hover:bg-gray-50' => !request()->routeIs('paciente.dependientes.*')])>
@@ -53,7 +53,7 @@
         </a>
 
         <form id="logout-form" action="{{ route('salir') }}" method="POST" class="hidden">@csrf</form>
-        <a href="#" class="mt-5 flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors text-rose-600 hover:bg-rose-50" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
+        <a href="#" data-logout-trigger class="mt-5 flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors text-rose-600 hover:bg-rose-50">
             <i class="ri-logout-circle-r-line text-lg"></i> Cerrar sesión
         </a>
     </nav>

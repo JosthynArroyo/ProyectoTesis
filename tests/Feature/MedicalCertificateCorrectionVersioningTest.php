@@ -141,7 +141,8 @@ class MedicalCertificateCorrectionVersioningTest extends TestCase
             ->assertOk()
             ->assertSee('Indica el rango de reposo cuando registras dias de reposo.')
             ->assertSee('Al indicar dias de reposo, las fechas "Reposo desde" y "Reposo hasta" son obligatorias.', false)
-            ->assertSee("campo.toggleAttribute('required', requiereFechas);", false);
+            ->assertSee('data-certificado-reposo-form', false)
+            ->assertSee('certificados-form', false);
 
         $html = $response->getContent();
         $this->assertMatchesRegularExpression('/<input(?=[^>]*name="reposo_desde")(?=[^>]*\srequired(?:\s|>|=))[^>]*>/', $html);

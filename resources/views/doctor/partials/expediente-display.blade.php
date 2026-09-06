@@ -126,7 +126,7 @@
             </div>
         @endif
 
-        @php $latestNoteUrl = $latestNote?->cita_id ? $noteUrl($latestNote->cita_id) : null; @endphp
+        @php $latestNoteUrl = $latestNote ? $noteUrl($latestNote) : null; @endphp
         @if($latestNoteUrl)
             <div class="mr-clinical-actions">
                 <a href="{{ $latestNoteUrl }}" class="btn btn-primary btn-sm"><i class="ri-stethoscope-line"></i> Abrir consulta</a>
@@ -192,7 +192,7 @@
                             <div class="detail">{{ $item->title }}{{ $item->occurred_on ? ' · '.$item->occurred_on->format('d/m/Y') : '' }}</div>
                         @endforeach
                         @if($group['items']->count() > 3)
-                            <span class="link" style="cursor:default">+{{ $group['items']->count() - 3 }} más</span>
+                            <span class="mr-antecedente-card__more">+{{ $group['items']->count() - 3 }} más</span>
                         @endif
                     @else
                         Sin registros.
@@ -212,7 +212,7 @@
                     @foreach($notes->take(6) as $note)
                         @php
                             $noteDate = $note->cita ? $formatDateTime($note->cita->fecha, $note->cita->hora) : 'Sin fecha';
-                            $noteDetailUrl = $note->cita_id ? $noteUrl($note->cita_id) : null;
+                            $noteDetailUrl = $note ? $noteUrl($note) : null;
                         @endphp
                         <article class="medical-entry medical-entry--compact">
                             <header class="medical-entry__header">
@@ -239,7 +239,7 @@
         </x-medical.card>
 
         @if($activeProblems->isNotEmpty() || $resolvedProblems->isNotEmpty())
-        <x-medical.card title="Problemas clínicos" subtitle="Diagnósticos longitudinales" icon="ri-heart-pulse-line" style="margin-top:.75rem">
+        <x-medical.card title="Problemas clínicos" subtitle="Diagnósticos longitudinales" icon="ri-heart-pulse-line" class="mt-3">
             <div class="medical-stack medical-stack--compact">
                 @foreach($activeProblems as $problem)
                     <article class="medical-activity">
@@ -259,7 +259,7 @@
         @endif
 
         @if($currentMedications->isNotEmpty() || $inactiveMedications->isNotEmpty())
-        <x-medical.card title="Medicación habitual" subtitle="Tratamientos del expediente" icon="ri-medicine-bottle-line" style="margin-top:.75rem">
+        <x-medical.card title="Medicación habitual" subtitle="Tratamientos del expediente" icon="ri-medicine-bottle-line" class="mt-3">
             <div class="medical-stack medical-stack--compact">
                 @foreach($currentMedications as $med)
                     <article class="medical-activity">
@@ -269,7 +269,7 @@
                     </article>
                 @endforeach
                 @foreach($inactiveMedications->take(2) as $med)
-                    <article class="medical-activity" style="opacity:.7">
+                    <article class="medical-activity medical-activity--inactive">
                         <strong>{{ $med->name }}</strong>
                         <span>{{ $medicationStatusLabels[$med->status] ?? ucfirst($med->status) }}{{ $med->ended_at ? ' · Hasta '.$med->ended_at->format('d/m/Y') : '' }}</span>
                     </article>

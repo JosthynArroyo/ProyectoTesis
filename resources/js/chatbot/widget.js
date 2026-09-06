@@ -13,6 +13,16 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
+  function openPanel() {
+    var isClosed = !panel.classList.contains('is-open');
+    if (isClosed) {
+      panel.classList.add('is-open');
+      panel.setAttribute('aria-hidden', 'false');
+      toggle.setAttribute('aria-expanded', 'true');
+    }
+    setTimeout(focusInput, 120);
+  }
+
   function togglePanel() {
     var isOpen = panel.classList.toggle('is-open');
     panel.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
@@ -23,7 +33,21 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   toggle.addEventListener('click', togglePanel);
-  window.toggleChatbotWidget = togglePanel;
+
+  document.addEventListener('click', function (event) {
+    var openTrigger = event.target.closest('[data-chatbot-open]');
+    if (openTrigger) {
+      event.preventDefault();
+      openPanel();
+      return;
+    }
+
+    var toggleTrigger = event.target.closest('[data-chatbot-toggle]');
+    if (toggleTrigger && toggleTrigger !== toggle) {
+      event.preventDefault();
+      togglePanel();
+    }
+  });
 
   const log   = document.getElementById('chat-log');
   const form  = document.getElementById('chatbot-form');
@@ -391,7 +415,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
       const data = await res.json().catch(() => ({}));
       if (!res.ok || data.ok === false) {
-        addMessage('bot', data.message || 'Ese horario ya no esta disponible. Elige otro.');
+        addMessage('bot', data.message || (res.status === 429
+          ? 'Has realizado demasiadas solicitudes de reserva temporal. Por favor espera un momento antes de continuar.'
+          : 'Ese horario ya no esta disponible. Elige otro.'));
         await pedirHorarios(fecha);
         return false;
       }

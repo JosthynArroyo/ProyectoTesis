@@ -15,7 +15,7 @@ class LaboratoryOrderDocumentService
 {
     public function getOrderDiskName(): string
     {
-        return config('private_documents.disk') ?: 'r2_private';
+        return (string) (config('private_documents.disk') ?: 'local');
     }
 
     public function resolveDisk(?string $pdfDisk = null): string
@@ -105,13 +105,15 @@ class LaboratoryOrderDocumentService
 
     public function cleanupOldPdf(?string $oldPath, ?string $oldDisk): void
     {
-        if ($oldDisk === 'r2_private' && ! empty($oldPath)) {
+        $disk = $oldDisk === 'r2_private' ? 'r2_private' : 'local';
+        if (! empty($oldPath)) {
             try {
-                if (Storage::disk('r2_private')->exists($oldPath)) {
-                    Storage::disk('r2_private')->delete($oldPath);
+                if (Storage::disk($disk)->exists($oldPath)) {
+                    Storage::disk($disk)->delete($oldPath);
                 }
             } catch (\Throwable $e) {
-                Log::warning('Failed to delete old R2 laboratory order PDF', [
+                Log::warning('Failed to delete old laboratory order PDF', [
+                    'old_pdf_disk' => $disk,
                     'old_pdf_path' => $oldPath,
                     'error' => $e->getMessage(),
                 ]);
@@ -172,8 +174,14 @@ class LaboratoryOrderDocumentService
         $filename = $filename ?: "pedido_laboratorio_{$pedido->id}.pdf";
         $diskName = $this->resolveDisk($pedido->pdf_disk);
 
-        if (! Storage::disk($diskName)->exists($pedido->pdf_path)) {
-            return back()->withErrors(['error' => 'El archivo de la orden de laboratorio no existe en el almacenamiento.']);
+        if (! $pedido->pdf_path || ! Storage::disk($diskName)->exists($pedido->pdf_path)) {
+            [$pdfBinary] = $this->generatePdfOutput($pedido);
+            $st = $this->storeOrderPdf($pedido, $pdfBinary);
+            $pedido->forceFill([
+                'pdf_path' => $st['pdf_path'],
+                'pdf_disk' => $st['pdf_disk'],
+            ])->saveQuietly();
+            $diskName = $this->resolveDisk($pedido->pdf_disk);
         }
 
         if ($diskName === 'local') {
@@ -197,20 +205,23 @@ class LaboratoryOrderDocumentService
         $filename = $filename ?: "orden_medica_{$pedido->id}.pdf";
         $diskName = $this->resolveDisk($pedido->pdf_disk);
 
-        if (! Storage::disk($diskName)->exists($pedido->pdf_path)) {
-            abort(404, 'Archivo de orden de laboratorio no encontrado.');
+        if (! $pedido->pdf_path || ! Storage::disk($diskName)->exists($pedido->pdf_path)) {
+            [$pdfBinary] = $this->generatePdfOutput($pedido);
+            $st = $this->storeOrderPdf($pedido, $pdfBinary);
+            $pedido->forceFill([
+                'pdf_path' => $st['pdf_path'],
+                'pdf_disk' => $st['pdf_disk'],
+            ])->saveQuietly();
+            $diskName = $this->resolveDisk($pedido->pdf_disk);
         }
 
-        if ($diskName === 'local') {
-            return response()->file(Storage::disk('local')->path($pedido->pdf_path), [
-                'Content-Type' => 'application/pdf',
-                'Content-Disposition' => 'inline; filename="'.$filename.'"',
-            ]);
-        }
-
-        $content = Storage::disk('r2_private')->get($pedido->pdf_path);
-
-        return response($content, 200, [
+        return response()->stream(function () use ($diskName, $pedido) {
+            $stream = Storage::disk($diskName)->readStream($pedido->pdf_path);
+            if ($stream) {
+                fpassthru($stream);
+                fclose($stream);
+            }
+        }, 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="'.$filename.'"',
             'X-Content-Type-Options' => 'nosniff',

@@ -1,5 +1,8 @@
 {{-- resources/views/chatbot/widget.blade.php --}}
 @once
+  @push('styles')
+    @vite('resources/css/chatbot/widget.css')
+  @endpush
   @push('scripts')
     @vite('resources/js/chatbot/widget.js')
   @endpush
@@ -13,7 +16,6 @@
   <button id="chatbot-toggle"
           type="button"
           class="flex h-14 w-14 cursor-pointer items-center justify-center rounded-full text-white shadow-lg"
-          style="background: var(--accent); box-shadow: 0 18px 32px color-mix(in srgb, var(--accent) 28%, transparent);"
           aria-controls="chatbot-panel"
           aria-expanded="false"
           aria-label="Abrir asistente de la clínica">

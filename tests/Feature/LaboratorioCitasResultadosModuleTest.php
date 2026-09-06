@@ -12,6 +12,7 @@ use App\Models\PedidoLaboratorio;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use App\Services\LaboratoryResultStorageService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
@@ -172,8 +173,8 @@ class LaboratorioCitasResultadosModuleTest extends TestCase
         $orden->refresh();
         $this->assertSame(LaboratorioOrden::ESTADO_RESULTADO_DISPONIBLE, $orden->estado);
         $this->assertStringStartsWith('documents/laboratory-results/legacy-orders/', $orden->resultado_path);
-        Storage::disk('r2_private')->assertExists($orden->resultado_path);
-        Storage::disk('local')->assertMissing($orden->resultado_path);
+        $clinicalDisk = app(LaboratoryResultStorageService::class)->disk();
+        Storage::disk($clinicalDisk)->assertExists($orden->resultado_path);
 
         // 3. Download result as Laboratorio user
         $downloadResp = $this->actingAs($labUser)->get(route('laboratorio.ordenes.download', $orden));
@@ -213,8 +214,8 @@ class LaboratorioCitasResultadosModuleTest extends TestCase
 
         $order->refresh();
         $this->assertStringStartsWith('documents/laboratory-results/self-service-orders/', $order->resultado_path);
-        Storage::disk('r2_private')->assertExists($order->resultado_path);
-        Storage::disk('local')->assertMissing($order->resultado_path);
+        $clinicalDisk = app(LaboratoryResultStorageService::class)->disk();
+        Storage::disk($clinicalDisk)->assertExists($order->resultado_path);
 
         $this->actingAs($labUser)
             ->get(route('laboratorio.lab-orders.download', $order))

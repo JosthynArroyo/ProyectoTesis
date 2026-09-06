@@ -275,38 +275,35 @@ class LandingWelcomeService
 
     public function stats(bool $onlyActive = false): array
     {
-        if ($this->statsCache !== null) {
-            return $onlyActive
-                ? array_values(array_filter($this->statsCache, fn ($stat) => $stat['is_active']))
-                : $this->statsCache;
+        if ($this->statsCache === null) {
+            $this->statsCache = \Illuminate\Support\Facades\Cache::remember(
+                'landing_welcome.stats',
+                now()->addSeconds(86400),
+                function (): array {
+                    if (! Schema::hasTable('landing_welcome_stats')) {
+                        return $this->defaultStats;
+                    }
+
+                    $stats = LandingWelcomeStat::query()
+                        ->orderBy('sort_order')
+                        ->orderBy('id')
+                        ->get()
+                        ->map(fn (LandingWelcomeStat $stat) => [
+                            'id' => $stat->id,
+                            'label' => $stat->label,
+                            'value' => $stat->value,
+                            'note' => $stat->note,
+                            'is_active' => $stat->is_active,
+                            'sort_order' => $stat->sort_order,
+                        ])
+                        ->all();
+
+                    return empty($stats)
+                        ? $this->defaultStats
+                        : array_map(fn (array $stat) => $this->normalizeStatCopy($stat), $stats);
+                }
+            );
         }
-
-        $startedAt = microtime(true);
-        if (! Schema::hasTable('landing_welcome_stats')) {
-            $this->statsCache = $this->defaultStats;
-
-            return $onlyActive
-                ? array_values(array_filter($this->statsCache, fn ($stat) => $stat['is_active']))
-                : $this->statsCache;
-        }
-
-        $stats = LandingWelcomeStat::query()
-            ->orderBy('sort_order')
-            ->orderBy('id')
-            ->get()
-            ->map(fn (LandingWelcomeStat $stat) => [
-                'id' => $stat->id,
-                'label' => $stat->label,
-                'value' => $stat->value,
-                'note' => $stat->note,
-                'is_active' => $stat->is_active,
-                'sort_order' => $stat->sort_order,
-            ])
-            ->all();
-
-        $this->statsCache = empty($stats)
-            ? $this->defaultStats
-            : array_map(fn (array $stat) => $this->normalizeStatCopy($stat), $stats);
 
         return $onlyActive
             ? array_values(array_filter($this->statsCache, fn ($stat) => $stat['is_active']))
@@ -315,73 +312,71 @@ class LandingWelcomeService
 
     public function slides(): array
     {
-        if ($this->slidesCache !== null) {
-            return $this->slidesCache;
+        if ($this->slidesCache === null) {
+            $this->slidesCache = \Illuminate\Support\Facades\Cache::remember(
+                'landing_welcome.slides',
+                now()->addSeconds(86400),
+                function (): array {
+                    if (! Schema::hasTable('landing_welcome_slides')) {
+                        return $this->defaultSlides;
+                    }
+
+                    $slides = LandingWelcomeSlide::query()
+                        ->orderBy('sort_order')
+                        ->orderBy('id')
+                        ->get()
+                        ->map(fn (LandingWelcomeSlide $slide) => [
+                            'id' => $slide->id,
+                            'image_path' => $slide->image_path,
+                            'alt' => $slide->alt,
+                            'title' => $slide->title,
+                            'subtitle' => $slide->subtitle,
+                            'text' => $slide->text,
+                            'is_active' => $slide->is_active,
+                            'sort_order' => $slide->sort_order,
+                        ])
+                        ->all();
+
+                    return empty($slides) ? $this->defaultSlides : $slides;
+                }
+            );
         }
-
-        $startedAt = microtime(true);
-        if (! Schema::hasTable('landing_welcome_slides')) {
-            $this->slidesCache = $this->defaultSlides;
-
-            return $this->slidesCache;
-        }
-
-        $slides = LandingWelcomeSlide::query()
-            ->orderBy('sort_order')
-            ->orderBy('id')
-            ->get()
-            ->map(fn (LandingWelcomeSlide $slide) => [
-                'id' => $slide->id,
-                'image_path' => $slide->image_path,
-                'alt' => $slide->alt,
-                'title' => $slide->title,
-                'subtitle' => $slide->subtitle,
-                'text' => $slide->text,
-                'is_active' => $slide->is_active,
-                'sort_order' => $slide->sort_order,
-            ])
-            ->all();
-
-        $this->slidesCache = empty($slides) ? $this->defaultSlides : $slides;
 
         return $this->slidesCache;
     }
 
     public function infoCards(bool $onlyActive = false): array
     {
-        if ($this->infoCardsCache !== null) {
-            return $onlyActive
-                ? array_values(array_filter($this->infoCardsCache, fn ($card) => $card['is_active']))
-                : $this->infoCardsCache;
+        if ($this->infoCardsCache === null) {
+            $this->infoCardsCache = \Illuminate\Support\Facades\Cache::remember(
+                'landing_welcome.info_cards',
+                now()->addSeconds(86400),
+                function (): array {
+                    if (! Schema::hasTable('landing_welcome_info_cards')) {
+                        return $this->defaultInfoCards;
+                    }
+
+                    $cards = LandingWelcomeInfoCard::query()
+                        ->orderBy('sort_order')
+                        ->orderBy('id')
+                        ->get()
+                        ->map(fn (LandingWelcomeInfoCard $card) => [
+                            'id' => $card->id,
+                            'title' => $card->title,
+                            'value' => $card->value,
+                            'description' => $card->description,
+                            'icon' => $card->icon,
+                            'is_active' => $card->is_active,
+                            'sort_order' => $card->sort_order,
+                        ])
+                        ->all();
+
+                    return empty($cards)
+                        ? $this->defaultInfoCards
+                        : array_map(fn (array $card) => $this->normalizeInfoCardCopy($card), $cards);
+                }
+            );
         }
-
-        $startedAt = microtime(true);
-        if (! Schema::hasTable('landing_welcome_info_cards')) {
-            $this->infoCardsCache = $this->defaultInfoCards;
-
-            return $onlyActive
-                ? array_values(array_filter($this->infoCardsCache, fn ($card) => $card['is_active']))
-                : $this->infoCardsCache;
-        }
-
-        $cards = LandingWelcomeInfoCard::query()
-            ->orderBy('sort_order')
-            ->orderBy('id')
-            ->get()
-            ->map(fn (LandingWelcomeInfoCard $card) => [
-                'id' => $card->id,
-                'title' => $card->title,
-                'value' => $card->value,
-                'description' => $card->description,
-                'icon' => $card->icon,
-                'is_active' => $card->is_active,
-                'sort_order' => $card->sort_order,
-            ])
-            ->all();
-
-        $this->infoCardsCache = empty($cards)
-            ? $this->defaultInfoCards
-            : array_map(fn (array $card) => $this->normalizeInfoCardCopy($card), $cards);
 
         return $onlyActive
             ? array_values(array_filter($this->infoCardsCache, fn ($card) => $card['is_active']))
@@ -390,42 +385,39 @@ class LandingWelcomeService
 
     public function doctors(bool $onlyActive = false): array
     {
-        if ($this->doctorsCache !== null) {
-            return $onlyActive
-                ? array_values(array_filter($this->doctorsCache, fn ($doctor) => $doctor['is_active']))
-                : $this->doctorsCache;
+        if ($this->doctorsCache === null) {
+            $this->doctorsCache = \Illuminate\Support\Facades\Cache::remember(
+                'landing_welcome.doctors',
+                now()->addSeconds(86400),
+                function (): array {
+                    if (! Schema::hasTable('landing_welcome_doctors')) {
+                        return $this->defaultDoctors;
+                    }
+
+                    $doctors = LandingWelcomeDoctor::query()
+                        ->orderBy('sort_order')
+                        ->orderBy('id')
+                        ->get()
+                        ->map(fn (LandingWelcomeDoctor $doctor) => [
+                            'id' => $doctor->id,
+                            'name' => $doctor->name,
+                            'specialty' => $doctor->specialty,
+                            'photo_path' => $doctor->photo_path,
+                            'experience_label' => $doctor->experience_label,
+                            'featured_label' => $doctor->featured_label,
+                            'attendance_label' => $doctor->attendance_label,
+                            'availability_label' => $doctor->availability_label,
+                            'cta_text' => $doctor->cta_text,
+                            'pill_text' => $doctor->pill_text,
+                            'is_active' => $doctor->is_active,
+                            'sort_order' => $doctor->sort_order,
+                        ])
+                        ->all();
+
+                    return empty($doctors) ? $this->defaultDoctors : $doctors;
+                }
+            );
         }
-
-        $startedAt = microtime(true);
-        if (! Schema::hasTable('landing_welcome_doctors')) {
-            $this->doctorsCache = $this->defaultDoctors;
-
-            return $onlyActive
-                ? array_values(array_filter($this->doctorsCache, fn ($doctor) => $doctor['is_active']))
-                : $this->doctorsCache;
-        }
-
-        $doctors = LandingWelcomeDoctor::query()
-            ->orderBy('sort_order')
-            ->orderBy('id')
-            ->get()
-            ->map(fn (LandingWelcomeDoctor $doctor) => [
-                'id' => $doctor->id,
-                'name' => $doctor->name,
-                'specialty' => $doctor->specialty,
-                'photo_path' => $doctor->photo_path,
-                'experience_label' => $doctor->experience_label,
-                'featured_label' => $doctor->featured_label,
-                'attendance_label' => $doctor->attendance_label,
-                'availability_label' => $doctor->availability_label,
-                'cta_text' => $doctor->cta_text,
-                'pill_text' => $doctor->pill_text,
-                'is_active' => $doctor->is_active,
-                'sort_order' => $doctor->sort_order,
-            ])
-            ->all();
-
-        $this->doctorsCache = empty($doctors) ? $this->defaultDoctors : $doctors;
 
         return $onlyActive
             ? array_values(array_filter($this->doctorsCache, fn ($doctor) => $doctor['is_active']))
@@ -434,35 +426,32 @@ class LandingWelcomeService
 
     public function prices(bool $onlyActive = false): array
     {
-        if ($this->pricesCache !== null) {
-            return $onlyActive
-                ? array_values(array_filter($this->pricesCache, fn ($row) => $row['is_active']))
-                : $this->pricesCache;
+        if ($this->pricesCache === null) {
+            $this->pricesCache = \Illuminate\Support\Facades\Cache::remember(
+                'landing_welcome.prices',
+                now()->addSeconds(86400),
+                function (): array {
+                    if (! Schema::hasTable('landing_welcome_prices')) {
+                        return $this->defaultPrices;
+                    }
+
+                    $rows = LandingWelcomePrice::query()
+                        ->orderBy('sort_order')
+                        ->orderBy('id')
+                        ->get()
+                        ->map(fn (LandingWelcomePrice $row) => [
+                            'id' => $row->id,
+                            'service' => $row->service,
+                            'price' => $row->price,
+                            'is_active' => $row->is_active,
+                            'sort_order' => $row->sort_order,
+                        ])
+                        ->all();
+
+                    return empty($rows) ? $this->defaultPrices : $rows;
+                }
+            );
         }
-
-        $startedAt = microtime(true);
-        if (! Schema::hasTable('landing_welcome_prices')) {
-            $this->pricesCache = $this->defaultPrices;
-
-            return $onlyActive
-                ? array_values(array_filter($this->pricesCache, fn ($row) => $row['is_active']))
-                : $this->pricesCache;
-        }
-
-        $rows = LandingWelcomePrice::query()
-            ->orderBy('sort_order')
-            ->orderBy('id')
-            ->get()
-            ->map(fn (LandingWelcomePrice $row) => [
-                'id' => $row->id,
-                'service' => $row->service,
-                'price' => $row->price,
-                'is_active' => $row->is_active,
-                'sort_order' => $row->sort_order,
-            ])
-            ->all();
-
-        $this->pricesCache = empty($rows) ? $this->defaultPrices : $rows;
 
         return $onlyActive
             ? array_values(array_filter($this->pricesCache, fn ($row) => $row['is_active']))
@@ -471,24 +460,25 @@ class LandingWelcomeService
 
     public function featuredSpecialtyIds(): array
     {
-        if ($this->featuredIdsCache !== null) {
-            return $this->featuredIdsCache;
+        if ($this->featuredIdsCache === null) {
+            $this->featuredIdsCache = \Illuminate\Support\Facades\Cache::remember(
+                'landing_welcome.featured_specialties',
+                now()->addSeconds(86400),
+                function (): array {
+                    if (! Schema::hasTable('landing_welcome_featured_specialties')) {
+                        return [];
+                    }
+
+                    $ids = LandingWelcomeFeaturedSpecialty::query()
+                        ->orderBy('sort_order')
+                        ->orderBy('id')
+                        ->pluck('especialidad_id')
+                        ->all();
+
+                    return array_slice(array_values(array_unique(array_filter($ids))), 0, 3);
+                }
+            );
         }
-
-        $startedAt = microtime(true);
-        if (! Schema::hasTable('landing_welcome_featured_specialties')) {
-            $this->featuredIdsCache = [];
-
-            return $this->featuredIdsCache;
-        }
-
-        $ids = LandingWelcomeFeaturedSpecialty::query()
-            ->orderBy('sort_order')
-            ->orderBy('id')
-            ->pluck('especialidad_id')
-            ->all();
-
-        $this->featuredIdsCache = array_slice(array_values(array_unique(array_filter($ids))), 0, 3);
 
         return $this->featuredIdsCache;
     }
@@ -637,6 +627,30 @@ class LandingWelcomeService
         return $card;
     }
 
+    public function forgetCache(): void
+    {
+        $this->settings = null;
+        $this->settingsArray = null;
+        $this->statsCache = null;
+        $this->slidesCache = null;
+        $this->infoCardsCache = null;
+        $this->doctorsCache = null;
+        $this->pricesCache = null;
+        $this->featuredIdsCache = null;
+        $this->settingsLoaded = false;
+
+        try {
+            \Illuminate\Support\Facades\Cache::forget('landing_welcome.stats');
+            \Illuminate\Support\Facades\Cache::forget('landing_welcome.slides');
+            \Illuminate\Support\Facades\Cache::forget('landing_welcome.info_cards');
+            \Illuminate\Support\Facades\Cache::forget('landing_welcome.doctors');
+            \Illuminate\Support\Facades\Cache::forget('landing_welcome.prices');
+            \Illuminate\Support\Facades\Cache::forget('landing_welcome.featured_specialties');
+            \Illuminate\Support\Facades\Cache::forget('landing_welcome.settings');
+        } catch (\Throwable) {
+        }
+    }
+
     private function settings(): ?LandingWelcomeSetting
     {
         if ($this->settingsLoaded) {
@@ -645,11 +659,21 @@ class LandingWelcomeService
 
         $this->settingsLoaded = true;
 
-        if (! Schema::hasTable('landing_welcome_settings')) {
-            return null;
-        }
+        try {
+            $this->settings = \Illuminate\Support\Facades\Cache::remember(
+                'landing_welcome.settings',
+                now()->addSeconds(86400),
+                function (): ?LandingWelcomeSetting {
+                    if (! Schema::hasTable('landing_welcome_settings')) {
+                        return null;
+                    }
 
-        $this->settings = LandingWelcomeSetting::query()->first();
+                    return LandingWelcomeSetting::query()->first();
+                }
+            );
+        } catch (\Throwable) {
+            $this->settings = null;
+        }
 
         return $this->settings;
     }

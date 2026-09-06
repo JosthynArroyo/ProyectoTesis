@@ -8,19 +8,30 @@ use Illuminate\Http\Request;
 
 class DocumentoVerificacionController extends Controller
 {
+    public const ERROR_DOCUMENTO_NO_ENCONTRADO = 'No se encontró un documento asociado al código ingresado. Verifique el código e intente nuevamente.';
+
     public function create()
     {
         return view('documentos.verificar');
     }
 
-    public function search(Request $request)
+    public function search(Request $request, DocumentoCsvService $documents)
     {
         $data = $request->validate([
             'csv' => ['required', 'string', 'max:32'],
         ]);
 
+        $csv = strtoupper(trim($data['csv']));
+        $documento = $documents->findDocumento($csv);
+
+        if (! $documento) {
+            return back()
+                ->withErrors(['csv' => self::ERROR_DOCUMENTO_NO_ENCONTRADO])
+                ->withInput();
+        }
+
         return redirect()->route('documentos.verificar.show', [
-            'csv' => strtoupper(trim($data['csv'])),
+            'csv' => $csv,
         ]);
     }
 
@@ -29,13 +40,19 @@ class DocumentoVerificacionController extends Controller
         $documento = $documents->findDocumento($csv);
 
         if (! $documento) {
-            abort(404);
+            return redirect()
+                ->route('documentos.verificar.form')
+                ->withErrors(['csv' => self::ERROR_DOCUMENTO_NO_ENCONTRADO])
+                ->withInput(['csv' => $csv]);
         }
 
         $viewData = $this->buildVerificationData($documento, $csv, $clinic);
 
         if ($viewData === null) {
-            abort(404);
+            return redirect()
+                ->route('documentos.verificar.form')
+                ->withErrors(['csv' => self::ERROR_DOCUMENTO_NO_ENCONTRADO])
+                ->withInput(['csv' => $csv]);
         }
 
         return view('documentos.verificacion-show', $viewData);

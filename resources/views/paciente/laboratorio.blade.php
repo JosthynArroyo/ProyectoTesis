@@ -209,19 +209,5 @@
 @endsection
 
 @push('scripts')
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-  const highlightId = @json($highlightItem);
-  if (!highlightId) {
-    return;
-  }
-
-  const target = document.getElementById(`lab-item-${highlightId}`);
-  if (!target) {
-    return;
-  }
-
-  target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-});
-</script>
+  @vite('resources/js/shared/record-highlight-scroll.js')
 @endpush

@@ -1,7 +1,7 @@
 @extends('layouts.laboratorio')
-@section('title', 'Pedidos de laboratorio firmados - '.$clinicIdentity->name())
+@section('title', 'Órdenes médicas internas - '.$clinicIdentity->name())
 @section('activeSidebar', 'pedidos')
-@section('header-title', 'Pedidos médicos')
+@section('header-title', 'Órdenes médicas internas')
 @section('header-subtitle', 'Órdenes firmadas y resultados estructurados')
 
 @section('main')
@@ -19,7 +19,7 @@
           <option value="all" @selected($estado === 'all')>Todos</option>
           <option value="pendiente_toma" @selected($estado === 'pendiente_toma')>Pendiente</option>
           <option value="muestra_tomada" @selected($estado === 'muestra_tomada')>En proceso</option>
-          <option value="resultado_listo" @selected($estado === 'resultado_listo')>Resultados publicados</option>
+          <option value="resultado_listo" @selected($estado === 'resultado_listo')>Resultados listos</option>
         </select>
       </div>
       <button class="btn btn-outline btn-sm" type="submit">
@@ -55,7 +55,7 @@
         $statusLabel = match ($pedido->estado) {
             'pendiente_toma' => 'Pendiente',
             'muestra_tomada' => 'En proceso',
-            'resultado_listo' => 'Resultados publicados',
+            'resultado_listo' => 'Resultado listo',
             default => ucfirst(str_replace('_', ' ', $pedido->estado))
         };
         $actionLabel = $resultadoPublicado ? 'Corregir resultados' : 'Registrar resultados';

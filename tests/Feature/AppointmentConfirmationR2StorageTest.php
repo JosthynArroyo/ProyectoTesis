@@ -24,6 +24,7 @@ class AppointmentConfirmationR2StorageTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        config(['private_documents.disk' => 'r2_private']);
         Storage::fake('r2_private');
         Storage::fake('local');
         Storage::fake('public');
@@ -39,10 +40,10 @@ class AppointmentConfirmationR2StorageTest extends TestCase
         return $user;
     }
 
-    private function createCitaForPatient(User $paciente, ?Dependiente $dependiente = null): Cita
+    private function createCitaForPatient(User $paciente, ?Dependiente $dependiente = null, bool $realPdf = false): Cita
     {
         $doctor = $this->createRoleUser('doctor');
-        $especialidad = Especialidad::create(['nombre' => 'Cardiología']);
+        $especialidad = Especialidad::firstOrCreate(['nombre' => 'Medicina General']);
 
         $cita = Cita::create([
             'paciente_id' => $paciente->id,
@@ -53,59 +54,52 @@ class AppointmentConfirmationR2StorageTest extends TestCase
             'hora' => '10:00:00',
             'motivo_consulta' => 'Consulta general',
             'estado' => Cita::ESTADO_PENDIENTE,
+            'token_validacion' => bin2hex(random_bytes(16)),
+            'csv' => 'CIT-' . strtoupper(bin2hex(random_bytes(4))),
             'activo' => true,
         ]);
 
-        $service = app(AppointmentConfirmationDocumentService::class);
-        return $service->generateAndStoreR2($cita);
+        $citaService = app(\App\Services\CitaComprobanteService::class);
+        $cita = $citaService->asegurarComprobante($cita);
+
+        if ($realPdf) {
+            $service = app(AppointmentConfirmationDocumentService::class);
+            return $service->generateAndStoreR2($cita);
+        }
+
+        $uuid = (string) \Illuminate\Support\Str::uuid();
+        $path = "documents/appointment-confirmations/{$cita->id}/{$uuid}.pdf";
+        Storage::disk('r2_private')->put($path, "%PDF-1.4 Mock Confirmation\n");
+
+        $cita->update([
+            'comprobante_pdf_path' => $path,
+            'comprobante_pdf_disk' => 'r2_private',
+            'comprobante_actualizado_en' => now(),
+        ]);
+
+        return $cita;
     }
 
-    // 1. Nueva cita guarda comprobante únicamente en R2
+    // 1. Nueva cita guarda comprobante únicamente en R2 con formato de clave relativo, firma %PDF y sin copia local
     public function test_new_appointment_stores_confirmation_only_in_r2(): void
     {
         $paciente = $this->createRoleUser('paciente');
-        $cita = $this->createCitaForPatient($paciente);
+        $cita = $this->createCitaForPatient($paciente, null, true);
 
+        // Almacenamiento en r2_private
         $this->assertEquals('r2_private', $cita->comprobante_pdf_disk);
         $this->assertNotEmpty($cita->comprobante_pdf_path);
         $this->assertTrue(Storage::disk('r2_private')->exists($cita->comprobante_pdf_path));
-    }
 
-    // 2. Clave con formato correcto
-    public function test_key_uses_appointment_confirmations_format(): void
-    {
-        $paciente = $this->createRoleUser('paciente');
-        $cita = $this->createCitaForPatient($paciente);
-
+        // Formato de clave UUID
         $regex = "#^documents/appointment-confirmations/{$cita->id}/[0-9a-f\-]{36}\.pdf$#";
         $this->assertMatchesRegularExpression($regex, $cita->comprobante_pdf_path);
-    }
 
-    // 3. comprobante_pdf_disk = r2_private
-    public function test_comprobante_pdf_disk_becomes_r2_private(): void
-    {
-        $paciente = $this->createRoleUser('paciente');
-        $cita = $this->createCitaForPatient($paciente);
-
-        $this->assertEquals('r2_private', $cita->comprobante_pdf_disk);
-    }
-
-    // 4. No se crea archivo local
-    public function test_no_local_file_created(): void
-    {
-        $paciente = $this->createRoleUser('paciente');
-        $cita = $this->createCitaForPatient($paciente);
-
+        // Sin archivo local
         $this->assertFalse(Storage::disk('local')->exists($cita->comprobante_pdf_path));
         $this->assertEmpty(Storage::disk('local')->files('citas/comprobantes'));
-    }
 
-    // 5. Objeto comienza con %PDF
-    public function test_stored_object_starts_with_pdf_header(): void
-    {
-        $paciente = $this->createRoleUser('paciente');
-        $cita = $this->createCitaForPatient($paciente);
-
+        // Firma binaria %PDF válida generada por Dompdf
         $content = Storage::disk('r2_private')->get($cita->comprobante_pdf_path);
         $this->assertStringStartsWith('%PDF', $content);
     }

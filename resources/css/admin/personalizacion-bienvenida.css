@@ -1,0 +1,766 @@
+/* resources/css/admin/personalizacion-bienvenida.css */
+/* ============================================================
+   CMS PERSONALIZACIÓN BIENVENIDA — Editor de inicio & Live Preview
+============================================================ */
+
+.welcome-cms-editor button,
+    .welcome-cms-editor summary,
+    .welcome-cms-editor input[type='file'],
+    .welcome-cms-editor input[type='checkbox'],
+    .welcome-cms-editor select,
+    .welcome-cms-editor [role='tab'],
+    .welcome-cms-editor [data-remove-item],
+    .welcome-cms-editor [data-add-slide],
+    .welcome-cms-editor [data-add-price],
+    .welcome-cms-editor [data-add-doctor],
+    .welcome-cms-editor [data-preview-open],
+    .welcome-cms-editor [data-preview-close],
+    .welcome-cms-editor [data-live-preview-device],
+    .welcome-cms-editor input[type='color'] {
+      cursor: pointer;
+    }
+
+    .welcome-cms-editor label:has(input[type='checkbox']),
+    .welcome-cms-editor label:has(input[type='file']) {
+      cursor: pointer;
+    }
+
+    .welcome-cms-panel[hidden] {
+      display: none;
+    }
+
+    .welcome-cms-media-frame {
+      position: relative;
+      overflow: hidden;
+      border-radius: 1.25rem;
+      border: 1px solid rgba(226, 232, 240, 0.95);
+      background:
+        linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(241, 245, 249, 0.94));
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.85),
+        0 14px 34px rgba(15, 23, 42, 0.08);
+    }
+
+    html.panel-theme-dark .welcome-cms-media-frame {
+      border-color: rgba(75, 85, 99, 0.8);
+      background: linear-gradient(145deg, #111827, #1f2937);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 14px 34px rgba(0, 0, 0, 0.4);
+    }
+
+    .welcome-cms-media-frame--slide {
+      aspect-ratio: 16 / 10;
+      min-height: 10rem;
+    }
+
+    .welcome-cms-media-frame--doctor {
+      aspect-ratio: 4 / 5;
+      min-height: 11rem;
+    }
+
+    .welcome-cms-media-frame img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .welcome-cms-media-placeholder {
+      display: flex;
+      height: 100%;
+      width: 100%;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.65rem;
+      padding: 1rem;
+      color: #94a3b8;
+      text-align: center;
+    }
+
+    .welcome-cms-media-placeholder i {
+      font-size: 1.7rem;
+      color: #64748b;
+    }
+
+    .welcome-cms-media-placeholder span {
+      font-size: 0.78rem;
+      line-height: 1.45;
+    }
+
+    .welcome-cms-tab,
+    .welcome-cms-preview-device,
+    .welcome-cms-action-button {
+      cursor: pointer;
+    }
+
+    .welcome-cms-tab.is-active {
+      background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+      border-color: color-mix(in srgb, var(--preview-accent) 24%, white);
+      color: var(--preview-accent);
+      box-shadow: 0 18px 32px rgba(15, 23, 42, 0.1);
+    }
+
+    html.panel-theme-dark .welcome-cms-tab.is-active {
+      background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+      border-color: color-mix(in srgb, var(--preview-accent) 28%, #334155);
+      color: var(--preview-accent);
+      box-shadow: 0 18px 32px rgba(15, 23, 42, 0.18);
+    }
+
+    .welcome-cms-preview-modal[hidden] {
+      display: none;
+    }
+
+    .welcome-cms-preview-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.25rem;
+      isolation: isolate;
+    }
+
+    .welcome-cms-preview-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.72);
+      backdrop-filter: blur(10px);
+    }
+
+    .welcome-cms-preview-dialog {
+      position: relative;
+      z-index: 1;
+      width: min(1440px, 100%);
+      height: min(92vh, 980px);
+      max-height: calc(100dvh - 2rem);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border-radius: 2rem;
+      border: 1px solid rgba(226, 232, 240, 0.9);
+      background: rgba(255, 255, 255, 0.98);
+      box-shadow: 0 32px 80px rgba(15, 23, 42, 0.32);
+    }
+
+    html.panel-theme-dark .welcome-cms-preview-dialog {
+      border-color: rgba(75, 85, 99, 0.8);
+      background: #111827;
+      box-shadow: 0 32px 80px rgba(0, 0, 0, 0.6);
+    }
+
+    .welcome-cms-preview-scroll {
+      flex: 1;
+      padding: 1rem;
+      overflow-y: auto;
+      overflow-x: hidden;
+      min-width: 0;
+      overscroll-behavior: contain;
+      background:
+        radial-gradient(circle at top left, rgba(191, 219, 254, 0.26), transparent 32%),
+        radial-gradient(circle at top right, rgba(167, 243, 208, 0.2), transparent 24%),
+        linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+    }
+
+    html.panel-theme-dark .welcome-cms-preview-scroll {
+      background:
+        radial-gradient(circle at top left, rgba(30, 41, 59, 0.4), transparent 32%),
+        radial-gradient(circle at top right, rgba(20, 83, 45, 0.2), transparent 24%),
+        linear-gradient(180deg, #0f172a 0%, #030712 100%);
+    }
+
+    .welcome-cms-preview-stage {
+      --preview-scale: 1;
+      --preview-desktop-width: 1180px;
+      --preview-frame-height: 0px;
+      width: 100%;
+      min-width: 0;
+      margin: 0 auto;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      overflow-x: hidden;
+    }
+
+    .welcome-cms-preview-scale {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      width: calc(var(--preview-desktop-width) * var(--preview-scale));
+      height: calc(var(--preview-frame-height) * var(--preview-scale));
+      min-height: calc(var(--preview-frame-height) * var(--preview-scale));
+      flex: none;
+      margin-inline: auto;
+    }
+
+    .welcome-cms-preview-frame {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: var(--preview-desktop-width);
+      transform: scale(var(--preview-scale));
+      transform-origin: top left;
+      will-change: transform;
+    }
+
+    .welcome-cms-preview-device.is-active {
+      background: #ffffff;
+      color: var(--preview-accent);
+      box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
+    }
+
+    .welcome-cms-live-preview-surface {
+      min-height: 760px;
+      border-radius: 1.75rem;
+      border: 1px solid rgba(203, 213, 225, 0.9);
+      background: #ffffff;
+      box-shadow: 0 18px 45px rgba(15, 23, 42, 0.12);
+      overflow: hidden;
+    }
+
+    .welcome-cms-color-input {
+      width: 4rem;
+      height: 4rem;
+      border: 0;
+      padding: 0;
+      background: transparent;
+      border-radius: 1rem;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .welcome-cms-color-input::-webkit-color-swatch-wrapper {
+      padding: 0;
+    }
+
+    .welcome-cms-color-input::-webkit-color-swatch,
+    .welcome-cms-color-input::-moz-color-swatch {
+      border: 0;
+      border-radius: 1rem;
+    }
+
+    .welcome-live-preview {
+      --preview-accent-strong: color-mix(in srgb, var(--preview-accent) 82%, black);
+      --preview-accent-soft: color-mix(in srgb, var(--preview-accent) 14%, white);
+      background:
+        radial-gradient(circle at top left, color-mix(in srgb, var(--preview-gradient-start) 48%, transparent), transparent 38%),
+        radial-gradient(circle at top right, color-mix(in srgb, var(--preview-gradient-end) 38%, transparent), transparent 28%),
+        linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+      min-height: 100%;
+      color: #0f172a;
+    }
+
+    .welcome-live-preview__inner {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      padding: 1rem;
+    }
+
+    .welcome-live-preview__section {
+      border: 1px solid rgba(226, 232, 240, 0.9);
+      border-radius: 1.5rem;
+      background: rgba(255, 255, 255, 0.94);
+      box-shadow: 0 18px 35px rgba(15, 23, 42, 0.07);
+      overflow: hidden;
+    }
+
+    .welcome-live-preview__topbar,
+    .welcome-live-preview__hero,
+    .welcome-live-preview__section-header,
+    .welcome-live-preview__prices-header,
+    .welcome-live-preview__footer-grid {
+      padding: 1rem 1.1rem;
+    }
+
+    .welcome-live-preview__topbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+      background: rgba(255, 255, 255, 0.95);
+    }
+
+    .welcome-live-preview__brand {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      min-width: 0;
+      flex: 1 1 220px;
+    }
+
+    .welcome-live-preview__brand-logo,
+    .welcome-live-preview__brand-favicon,
+    .welcome-live-preview__image-placeholder {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      border-radius: 1rem;
+      background: #f8fafc;
+      border: 1px solid rgba(226, 232, 240, 0.9);
+      color: #64748b;
+      flex-shrink: 0;
+    }
+
+    .welcome-live-preview__brand-favicon {
+      width: 2.75rem;
+      height: 2.75rem;
+    }
+
+    .welcome-live-preview__brand-logo {
+      width: 3.6rem;
+      height: 3.6rem;
+      background: #ffffff;
+    }
+
+    .welcome-live-preview__brand-logo img,
+    .welcome-live-preview__brand-favicon img,
+    .welcome-live-preview__hero-media img,
+    .welcome-live-preview__doctor-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .welcome-live-preview__brand-copy {
+      min-width: 0;
+    }
+
+    .welcome-live-preview__brand-title,
+    .welcome-live-preview__footer-title {
+      margin: 0;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #0f172a;
+      line-height: 1.3;
+    }
+
+    .welcome-live-preview__brand-subtitle,
+    .welcome-live-preview__footer-subtitle,
+    .welcome-live-preview__microcopy {
+      margin: 0.15rem 0 0;
+      font-size: 0.76rem;
+      color: #64748b;
+      line-height: 1.5;
+    }
+
+    .welcome-live-preview__nav {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.5rem;
+      flex: 1 1 240px;
+    }
+
+    .welcome-live-preview__nav-item,
+    .welcome-live-preview__cta,
+    .welcome-live-preview__ghost-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    .welcome-live-preview__nav-item {
+      padding: 0.7rem 0.95rem;
+      background: color-mix(in srgb, var(--preview-soft-primary) 42%, white);
+      color: var(--preview-accent);
+    }
+
+    .welcome-live-preview__ghost-button {
+      padding: 0.75rem 1rem;
+      border: 1px solid color-mix(in srgb, var(--preview-accent) 18%, white);
+      background: rgba(255, 255, 255, 0.94);
+      color: var(--preview-accent);
+    }
+
+    .welcome-live-preview__hero {
+      display: grid;
+      gap: 1rem;
+      background:
+        linear-gradient(135deg, color-mix(in srgb, var(--preview-gradient-start) 58%, white), color-mix(in srgb, var(--preview-gradient-end) 62%, white));
+    }
+
+    .welcome-live-preview__hero-badge,
+    .welcome-live-preview__section-kicker,
+    .welcome-live-preview__doctor-pill,
+    .welcome-live-preview__meta-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      width: fit-content;
+      padding: 0.5rem 0.8rem;
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--preview-badge-soft) 76%, white);
+      color: var(--preview-accent);
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .welcome-live-preview__meta-badge {
+      margin-top: 0.7rem;
+      text-transform: none;
+      letter-spacing: 0;
+      font-size: 0.76rem;
+      background: rgba(255, 255, 255, 0.82);
+      color: #334155;
+    }
+
+    .welcome-live-preview__hero-title {
+      margin: 0.9rem 0 0;
+      font-size: clamp(1.9rem, 3vw, 2.8rem);
+      line-height: 1.08;
+      font-weight: 800;
+      color: #0f172a;
+    }
+
+    .welcome-live-preview__hero-text,
+    .welcome-live-preview__section-text,
+    .welcome-live-preview__card-text,
+    .welcome-live-preview__footer-text,
+    .welcome-live-preview__contact-text {
+      margin: 0.8rem 0 0;
+      color: #475569;
+      font-size: 0.88rem;
+      line-height: 1.65;
+    }
+
+    .welcome-live-preview__cta-row,
+    .welcome-live-preview__footer-links,
+    .welcome-live-preview__doctor-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+      margin-top: 1rem;
+    }
+
+    .welcome-live-preview__cta {
+      padding: 0.85rem 1rem;
+    }
+
+    .welcome-live-preview__cta--primary {
+      background: linear-gradient(135deg, var(--preview-accent), var(--preview-accent-strong));
+      color: #ffffff;
+      box-shadow: 0 16px 28px color-mix(in srgb, var(--preview-accent) 24%, transparent);
+    }
+
+    .welcome-live-preview__cta--secondary {
+      border: 1px solid color-mix(in srgb, var(--preview-accent) 16%, white);
+      background: rgba(255, 255, 255, 0.92);
+      color: var(--preview-accent);
+    }
+
+    .welcome-live-preview__support-grid,
+    .welcome-live-preview__stats,
+    .welcome-live-preview__cards,
+    .welcome-live-preview__services,
+    .welcome-live-preview__prices-list,
+    .welcome-live-preview__doctors,
+    .welcome-live-preview__footer-grid,
+    .welcome-live-preview__prices-grid {
+      display: grid;
+      gap: 0.75rem;
+    }
+
+    .welcome-live-preview__support-grid {
+      margin-top: 1rem;
+    }
+
+    .welcome-live-preview__support-card,
+    .welcome-live-preview__stat,
+    .welcome-live-preview__card,
+    .welcome-live-preview__service-card,
+    .welcome-live-preview__price-row,
+    .welcome-live-preview__doctor-card,
+    .welcome-live-preview__footer-column {
+      border: 1px solid rgba(226, 232, 240, 0.85);
+      border-radius: 1.25rem;
+      background: rgba(255, 255, 255, 0.95);
+    }
+
+    .welcome-live-preview__support-card,
+    .welcome-live-preview__card,
+    .welcome-live-preview__service-card,
+    .welcome-live-preview__doctor-copy,
+    .welcome-live-preview__footer-column,
+    .welcome-live-preview__prices-highlight-copy {
+      padding: 1rem;
+    }
+
+    .welcome-live-preview__stats,
+    .welcome-live-preview__cards,
+    .welcome-live-preview__services,
+    .welcome-live-preview__prices-grid,
+    .welcome-live-preview__doctors {
+      padding: 0 1.1rem 1.1rem;
+    }
+
+    .welcome-live-preview__stat,
+    .welcome-live-preview__price-row {
+      padding: 0.9rem 1rem;
+    }
+
+    .welcome-live-preview__hero-media,
+    .welcome-live-preview__prices-highlight-image,
+    .welcome-live-preview__doctor-image {
+      overflow: hidden;
+      background: linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--preview-accent-soft) 70%, white),
+        color-mix(in srgb, var(--preview-gradient-end) 55%, white)
+      );
+    }
+
+    .welcome-live-preview__hero-media {
+      min-height: 14rem;
+      border-radius: 1.35rem;
+      border: 1px solid rgba(226, 232, 240, 0.9);
+      padding: 1rem;
+    }
+
+    .welcome-live-preview__hero-media img {
+      min-height: 14rem;
+      object-fit: cover;
+    }
+
+    .welcome-live-preview__hero-gallery {
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.85fr);
+      gap: 0.75rem;
+      min-height: 100%;
+    }
+
+    .welcome-live-preview__hero-gallery-item {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-height: 11rem;
+      border-radius: 1.2rem;
+      border: 1px solid rgba(226, 232, 240, 0.92);
+      background: rgba(255, 255, 255, 0.96);
+      box-shadow: 0 20px 40px rgba(15, 23, 42, 0.08);
+    }
+
+    .welcome-live-preview__hero-gallery-item--primary {
+      grid-row: span 2;
+      min-height: 100%;
+    }
+
+    .welcome-live-preview__hero-gallery-media {
+      min-height: 8.5rem;
+      flex: 1 1 auto;
+      overflow: hidden;
+      background: linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--preview-accent-soft) 70%, white),
+        color-mix(in srgb, var(--preview-gradient-start) 58%, white)
+      );
+    }
+
+    .welcome-live-preview__hero-gallery-media img {
+      width: 100%;
+      height: 100%;
+      min-height: 8.5rem;
+      object-fit: cover;
+      display: block;
+    }
+
+    .welcome-live-preview__hero-gallery-copy {
+      padding: 0.85rem 0.9rem 0.95rem;
+    }
+
+    .welcome-live-preview__section-title,
+    .welcome-live-preview__doctor-name,
+    .welcome-live-preview__price-title {
+      margin: 0.35rem 0 0;
+      color: #0f172a;
+      font-size: 1.05rem;
+      font-weight: 700;
+      line-height: 1.35;
+    }
+
+    .welcome-live-preview__stat-value {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #0f172a;
+      margin-top: 0.2rem;
+    }
+
+    .welcome-live-preview__stat-label,
+    .welcome-live-preview__eyebrow,
+    .welcome-live-preview__price-value {
+      font-size: 0.76rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #64748b;
+    }
+
+    .welcome-live-preview__price-value {
+      color: var(--preview-accent);
+      text-transform: none;
+      letter-spacing: 0;
+      font-size: 0.92rem;
+    }
+
+    .welcome-live-preview__cards,
+    .welcome-live-preview__services,
+    .welcome-live-preview__doctors,
+    .welcome-live-preview__footer-grid {
+      grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+    }
+
+    .welcome-live-preview__card-icon,
+    .welcome-live-preview__service-icon,
+    .welcome-live-preview__doctor-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 2.75rem;
+      height: 2.75rem;
+      border-radius: 1rem;
+      background: color-mix(in srgb, var(--preview-soft-primary) 64%, white);
+      color: var(--preview-accent);
+      font-size: 1.2rem;
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--preview-accent) 8%, white);
+    }
+
+    .welcome-live-preview__service-card {
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+    }
+
+    .welcome-live-preview__prices-highlight {
+      overflow: hidden;
+      border-radius: 1.35rem;
+      border: 1px solid rgba(226, 232, 240, 0.9);
+      background: rgba(255, 255, 255, 0.96);
+    }
+
+    .welcome-live-preview__prices-highlight-image {
+      min-height: 12rem;
+    }
+
+    .welcome-live-preview__doctor-card {
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .welcome-live-preview__doctor-image {
+      height: 11rem;
+    }
+
+    .welcome-live-preview__doctor-meta span {
+      border-radius: 999px;
+      padding: 0.45rem 0.7rem;
+      background: #f8fafc;
+      color: #475569;
+      font-size: 0.76rem;
+      font-weight: 600;
+    }
+
+    .welcome-live-preview__footer {
+      background: #ffffff;
+    }
+
+    .welcome-live-preview__footer-grid {
+      gap: 1.5rem;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .welcome-live-preview__footer-column {
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
+    }
+
+    .welcome-live-preview__footer-title {
+      margin: 0;
+      font-size: 0.88rem;
+      letter-spacing: -0.01em;
+    }
+
+    .welcome-live-preview__footer .welcome-live-preview__section-title {
+      margin-top: 0;
+      font-size: 0.82rem;
+    }
+
+    .welcome-live-preview__footer-text,
+    .welcome-live-preview__contact-text,
+    .welcome-live-preview__footer-link {
+      font-size: 0.76rem;
+      line-height: 1.7;
+    }
+
+    .welcome-live-preview__footer-link {
+      color: #475569;
+      font-weight: 500;
+    }
+
+    .welcome-live-preview__empty {
+      padding: 1rem;
+      border-radius: 1.1rem;
+      border: 1px dashed rgba(148, 163, 184, 0.5);
+      background: rgba(248, 250, 252, 0.9);
+      color: #64748b;
+      font-size: 0.84rem;
+      text-align: center;
+    }
+
+    @media (min-width: 900px) {
+      .welcome-live-preview__hero,
+      .welcome-live-preview__prices-grid {
+        grid-template-columns: minmax(0, 1.02fr) minmax(220px, 0.98fr);
+      }
+
+      .welcome-live-preview__support-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 768px) {
+      .welcome-cms-preview-modal {
+        padding: 0.75rem;
+      }
+
+      .welcome-cms-preview-dialog {
+        width: 100%;
+        height: min(94vh, 100%);
+        border-radius: 1.5rem;
+      }
+
+      .welcome-cms-preview-scroll {
+        padding: 0.75rem;
+      }
+    }
+
+    .welcome-cms-swatch { background: linear-gradient(135deg, var(--swatch-start), var(--swatch-end)); }
+
+    [data-media-processing-overlay] {
+      display: none;
+    }
+
+    [data-media-processing-icon-wrap] {
+      background: var(--accent-soft);
+    }
+
+    [data-media-processing-progress-bar] {
+      width: 0%;
+      background: var(--accent);
+    }

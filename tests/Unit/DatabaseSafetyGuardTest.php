@@ -21,6 +21,42 @@ class DatabaseSafetyGuardTest extends TestCase
 
         $effectiveDb = DB::connection()->getDatabaseName();
         $this->assertSame('clinica_donbosco_db_test', $effectiveDb);
+
+        $userRow = DB::selectOne('SELECT CURRENT_USER() as u');
+        $this->assertStringStartsWith('clinica_test_user@', (string) $userRow->u);
+
+        $grants = DB::select('SHOW GRANTS');
+        $grantStrings = array_map(fn($g) => array_values((array)$g)[0], $grants);
+        $this->assertNotEmpty($grantStrings);
+        foreach ($grantStrings as $grant) {
+            $this->assertStringNotContainsString('clinica_donbosco_db`.*', $grant);
+            $this->assertStringNotContainsString('clinica_donbosco_demo_db`.*', $grant);
+        }
+    }
+
+    public function test_testing_credentials_cannot_access_demo_database(): void
+    {
+        $configDemo = config('database.connections.mysql');
+        $configDemo['database'] = 'clinica_donbosco_demo_db';
+
+        try {
+            new PDO(
+                "mysql:host={$configDemo['host']};port={$configDemo['port']};dbname={$configDemo['database']}",
+                $configDemo['username'],
+                $configDemo['password'],
+                [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+            );
+        } catch (PDOException $exception) {
+            $this->assertSame(
+                1044,
+                (int) ($exception->errorInfo[1] ?? 0),
+                'Las credenciales de testing deben carecer de acceso a la DB demo.'
+            );
+
+            return;
+        }
+
+        $this->fail('Las credenciales de testing pudieron acceder a clinica_donbosco_demo_db.');
     }
 
     public function test_testing_credentials_can_write_test_database_but_cannot_access_manual_database(): void

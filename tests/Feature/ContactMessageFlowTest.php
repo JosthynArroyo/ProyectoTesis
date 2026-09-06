@@ -62,7 +62,9 @@ class ContactMessageFlowTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.contacto.mensajes.show', $message))
             ->assertOk()
-            ->assertSee('Necesito informacion sobre horarios de atencion.');
+            ->assertSee('Necesito informacion sobre horarios de atencion.')
+            ->assertSee('mailto:paciente@example.test?subject=Re%3A%20Consulta%20de%20horarios', false)
+            ->assertSee('Responder por correo');
     }
 
     public function test_contact_form_keeps_message_saved_when_mail_delivery_fails(): void

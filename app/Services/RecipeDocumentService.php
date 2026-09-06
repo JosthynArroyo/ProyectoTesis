@@ -18,7 +18,7 @@ class RecipeDocumentService
 {
     public function getRecipeDiskName(): string
     {
-        return config('private_documents.recipe_disk') ?: 'r2_private';
+        return (string) (config('private_documents.recipe_disk') ?: 'local');
     }
 
     public function resolveDisk(?string $pdfDisk = null): string
@@ -132,17 +132,20 @@ class RecipeDocumentService
 
     public function cleanupOldPdf(?string $oldPath, ?string $oldDisk): void
     {
-        if ($oldDisk === 'r2_private' && ! empty($oldPath)) {
-            try {
-                if (Storage::disk('r2_private')->exists($oldPath)) {
-                    Storage::disk('r2_private')->delete($oldPath);
-                }
-            } catch (\Throwable $e) {
-                Log::warning('Failed to delete old R2 recipe PDF', [
-                    'old_pdf_path' => $oldPath,
-                    'error' => $e->getMessage(),
-                ]);
+        if ($oldDisk !== 'r2_private' || empty($oldPath)) {
+            return;
+        }
+
+        try {
+            if (Storage::disk('r2_private')->exists($oldPath)) {
+                Storage::disk('r2_private')->delete($oldPath);
             }
+        } catch (\Throwable $e) {
+            Log::warning('Failed to delete old recipe PDF', [
+                'old_pdf_disk' => 'r2_private',
+                'old_pdf_path' => $oldPath,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 

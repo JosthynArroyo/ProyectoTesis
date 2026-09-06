@@ -10,6 +10,11 @@ class LaboratoryResultStorageService
 {
     public const DISK = 'r2_private';
 
+    public function disk(): string
+    {
+        return (string) config('private_documents.disk', self::DISK);
+    }
+
     public function storeUploadedPdf(UploadedFile $file, string $scope, int $ownerId): string
     {
         $scope = Str::slug($scope);
@@ -17,11 +22,12 @@ class LaboratoryResultStorageService
         $stream = fopen($file->getRealPath(), 'rb');
 
         if (! is_resource($stream)) {
-            throw new \RuntimeException('No se pudo abrir el resultado PDF para subirlo a R2.');
+            throw new \RuntimeException('No se pudo abrir el resultado PDF para subirlo.');
         }
 
+        $diskName = $this->disk();
         try {
-            $uploaded = Storage::disk(self::DISK)->put($key, $stream, [
+            $uploaded = Storage::disk($diskName)->put($key, $stream, [
                 'ContentType' => 'application/pdf',
                 'visibility' => 'private',
             ]);
@@ -29,13 +35,13 @@ class LaboratoryResultStorageService
             fclose($stream);
         }
 
-        $disk = Storage::disk(self::DISK);
+        $disk = Storage::disk($diskName);
         if (! $uploaded || ! $disk->exists($key) || $disk->size($key) <= 0) {
             if ($disk->exists($key)) {
                 $disk->delete($key);
             }
 
-            throw new \RuntimeException('No se pudo guardar el resultado PDF en R2.');
+            throw new \RuntimeException('No se pudo guardar el resultado PDF.');
         }
 
         return $key;
@@ -51,6 +57,7 @@ class LaboratoryResultStorageService
 
         $disks = array_values(array_unique(array_filter([
             in_array($preferredDisk, [self::DISK, 'local'], true) ? $preferredDisk : null,
+            $this->disk(),
             self::DISK,
             'local',
         ])));
@@ -84,7 +91,7 @@ class LaboratoryResultStorageService
 
     public function deleteNew(string $path): void
     {
-        $disk = Storage::disk(self::DISK);
+        $disk = Storage::disk($this->disk());
         if ($disk->exists($path)) {
             $disk->delete($path);
         }

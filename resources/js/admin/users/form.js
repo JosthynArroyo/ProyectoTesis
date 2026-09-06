@@ -14,8 +14,8 @@ function toggleDoctorFields(){
   const esp=document.getElementById('doctor-only-esp');
   const precio=document.getElementById('doctor-only-precio');
 
-  if(esp)esp.style.display=isDoctor ? '' : 'none';
-  if(precio)precio.style.display=(isDoctor||isLab) ? '' : 'none';
+  if(esp) esp.classList.toggle('hidden', !isDoctor);
+  if(precio) precio.classList.toggle('hidden', !(isDoctor||isLab));
 
   const espInput=document.getElementById('especialidad_id');
   const precioInput=document.getElementById('precio_consulta');
@@ -36,7 +36,7 @@ function togglePatientFlags(){
   const roleText=selectedRoleText();
   const isPaciente=preset==='paciente'||roleText.includes('paciente');
   const flags=document.getElementById('patient-flags-section');
-  if(flags)flags.style.display=isPaciente ? '' : 'none';
+  if(flags) flags.classList.toggle('hidden', !isPaciente);
 }
 
 document.addEventListener('DOMContentLoaded',()=>{

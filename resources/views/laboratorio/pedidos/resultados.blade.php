@@ -302,29 +302,17 @@
         <a href="{{ route('laboratorio.pedidos.index') }}" class="btn btn-ghost">Volver</a>
       </x-slot>
       <div class="flex flex-wrap gap-2">
-        <button type="submit" formaction="{{ route('laboratorio.pedidos.resultados.draft', $pedido) }}" class="btn btn-outline" data-submit-lock>
+        <button type="submit" formaction="{{ route('laboratorio.pedidos.resultados.draft', $pedido) }}" class="btn btn-outline" data-action-lock-title="Guardando borrador...">
           Guardar borrador
         </button>
-        <button type="submit" formaction="{{ route('laboratorio.pedidos.resultados.preview', $pedido) }}" class="btn btn-outline" data-submit-lock>
+        <button type="submit" formaction="{{ route('laboratorio.pedidos.resultados.preview', $pedido) }}" class="btn btn-outline" data-action-lock-title="Generando vista previa...">
           Vista previa PDF
         </button>
-        <button type="submit" formaction="{{ route('laboratorio.pedidos.resultados.publish', $pedido) }}" class="btn btn-primary" data-submit-lock>
+        <button type="submit" formaction="{{ route('laboratorio.pedidos.resultados.publish', $pedido) }}" class="btn btn-primary" data-action-lock-title="Publicando resultados...">
           Publicar resultados
         </button>
       </div>
     </x-ui.form-actions>
   </form>
 </section>
-
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-  const form = document.getElementById('lab-result-form');
-  if (!form) return;
-  form.addEventListener('submit', () => {
-    form.querySelectorAll('[data-submit-lock]').forEach((button) => {
-      button.disabled = true;
-    });
-  }, { once: false });
-});
-</script>
 @endsection

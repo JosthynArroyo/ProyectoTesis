@@ -460,12 +460,18 @@ class WelcomePersonalizationAsyncService
         }
     }
 
+    private function stagingDisk(): string
+    {
+        return config('private_documents.disk', 'local') === 'r2_private' ? 'r2_private' : 'local';
+    }
+
     private function stageUpload(string $directory, object $file, string $filename): string
     {
+        $disk = $this->stagingDisk();
         try {
-            $path = Storage::disk('r2_private')->putFileAs($directory, $file, $filename);
+            $path = Storage::disk($disk)->putFileAs($directory, $file, $filename);
             if (! is_string($path) || $path === '') {
-                throw new \RuntimeException('No se pudo guardar el staging de Welcome en R2.');
+                throw new \RuntimeException('No se pudo guardar el staging de Welcome.');
             }
 
             return $path;
@@ -477,10 +483,11 @@ class WelcomePersonalizationAsyncService
 
     private function cleanupStaging(string $directory): void
     {
+        $disk = $this->stagingDisk();
         try {
-            Storage::disk('r2_private')->deleteDirectory($directory);
+            Storage::disk($disk)->deleteDirectory($directory);
         } catch (Throwable $exception) {
-            Log::warning('No se pudo limpiar staging R2 de Welcome.', [
+            Log::warning('No se pudo limpiar staging de Welcome.', [
                 'directory' => $directory,
                 'error' => $exception->getMessage(),
             ]);

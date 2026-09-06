@@ -211,7 +211,7 @@
                         <button
                             type="button"
                             class="btn btn-outline"
-                            onclick="document.querySelector('[data-chatbot-toggle], [data-open-chatbot], #chatbot-toggle, .chatbot-toggle, .chatbot-button, [aria-label*=chat], [aria-label*=asistente]')?.click()"
+                            data-chatbot-open
                         >
                             <i class="ri-customer-service-2-line" aria-hidden="true"></i>
                             Abrir asistente virtual

@@ -64,7 +64,7 @@ class DependienteAvatarTest extends TestCase
 
         $response->assertRedirect(route('paciente.dependientes.index'));
 
-        $dependiente = Dependiente::where('nombre', 'Anabel Arroyo')->firstOrFail();
+        $dependiente = $titular->dependientes()->where('nombre', 'Anabel Arroyo')->firstOrFail();
         $rawAvatar = (string) $dependiente->getRawOriginal('avatar');
 
         $this->assertStringStartsWith("avatars/dependents/{$dependiente->id}/", $rawAvatar);
@@ -86,7 +86,7 @@ class DependienteAvatarTest extends TestCase
     public function test_titular_and_dependent_sharing_same_contact_have_independent_avatars(): void
     {
         $titular = $this->createRoleUser('paciente', [
-            'email' => 'josthynarroyo627@gmail.com',
+            'email' => 'paciente-titular@example.test',
             'avatar' => 'avatars/1/uuid1/original.jpg',
         ]);
 

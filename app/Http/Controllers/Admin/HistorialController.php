@@ -126,10 +126,10 @@ class HistorialController extends Controller
             'pageHeaderTitle' => 'Expediente clínico del paciente',
             'pageHeaderSubtitle' => 'Resumen longitudinal del paciente en modo de solo lectura',
             'recordEditable' => false,
-            'allowActionLinks' => false,
+            'allowActionLinks' => true,
             'backUrl' => route('admin.historial.index'),
             'backLabel' => 'Volver al historial',
-            'noteRouteName' => null,
+            'noteRouteName' => 'admin.historial.nota',
             'prescriptionRouteName' => null,
         ] + $viewData);
     }

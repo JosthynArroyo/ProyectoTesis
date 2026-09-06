@@ -120,7 +120,9 @@
           })) !!}
         </script>
 
-        <div id="franja-global" class="grid gap-4 sm:grid-cols-2">
+        @php $sameValue = (bool) old('misma_franja', 1); @endphp
+
+        <div id="franja-global" class="grid gap-4 sm:grid-cols-2 {{ $sameValue ? '' : 'hidden' }}">
           <div>
             <label class="form-label" for="hora_inicio_global">Hora inicio</label>
             <div class="flex items-center gap-2 rounded-xl border border-gray-200 bg-white/90 px-3 py-2">
@@ -142,7 +144,7 @@
           </div>
         </div>
 
-        <div id="franjas-por-dia" class="mt-4 space-y-3" style="display:none">
+        <div id="franjas-por-dia" class="mt-4 space-y-3 {{ $sameValue ? 'hidden' : '' }}">
           <div class="text-xs text-gray-500">Define horas por cada dia marcado.</div>
           @foreach($dias as $num => $lbl)
             @php $row = old("horas.$num", ['inicio'=>null,'fin'=>null]); @endphp

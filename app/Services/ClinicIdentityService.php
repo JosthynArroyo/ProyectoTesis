@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Services\ApplicationModeService;
 use App\Support\ImageUrl;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
@@ -14,6 +15,7 @@ class ClinicIdentityService
     public function __construct(
         private readonly SiteSettingsService $settings,
         private readonly ImageUrl $imageUrl,
+        private readonly ApplicationModeService $appMode,
     ) {
     }
 
@@ -21,7 +23,11 @@ class ClinicIdentityService
     {
         $value = trim((string) $this->settings->get('branding.name', ''));
 
-        return $value !== '' ? $value : 'Nombre de la clínica';
+        if ($value !== '') {
+            return $value;
+        }
+
+        return $this->appMode->isDemo() ? 'Clínica Josthyn Arroyo' : 'Nombre de la clínica';
     }
 
     public function slogan(): string
@@ -35,7 +41,11 @@ class ClinicIdentityService
     {
         $value = trim((string) $this->settings->get('branding.institutional_name', ''));
 
-        return $value !== '' ? $value : $this->name();
+        if ($value !== '') {
+            return $value;
+        }
+
+        return $this->appMode->isDemo() ? 'Clínica Josthyn Arroyo' : $this->name();
     }
 
     public function email(): ?string
@@ -72,12 +82,22 @@ class ClinicIdentityService
 
     public function logoPath(): ?string
     {
-        return $this->optionalValue('branding.logo');
+        $path = $this->optionalValue('branding.logo');
+        if ($path !== null && $path !== '') {
+            return $path;
+        }
+
+        return $this->appMode->isDemo() ? 'images/demo/logo-demo.png' : null;
     }
 
     public function faviconPath(): ?string
     {
-        return $this->optionalValue('branding.favicon');
+        $path = $this->optionalValue('branding.favicon');
+        if ($path !== null && $path !== '') {
+            return $path;
+        }
+
+        return $this->appMode->isDemo() ? 'images/demo/favicon-demo.png' : null;
     }
 
     public function footerText(): string
@@ -110,47 +130,49 @@ class ClinicIdentityService
 
     public function logoBase64(): ?string
     {
-        $logoData = $this->getLogoData($this->logoPath());
-        if (! $logoData) {
+        $path = $this->logoPath();
+        if (! $path) {
             return null;
         }
 
-        $result = $this->rememberLogoDataUri(
-            cacheKey: 'clinic-identity:logo:plain:'.$logoData['cache_key_suffix'],
-            resolver: fn () => $this->buildDataUriFromContents($logoData['contents'], $logoData['mime'])
-        );
+        $cacheKey = 'clinic-identity:logo:plain:'.sha1($path.':'.$this->appMode->getMode());
 
-        return $result;
+        return $this->rememberLogoDataUri($cacheKey, function () use ($path) {
+            $logoData = $this->getLogoData($path);
+            if (! $logoData) {
+                return null;
+            }
+
+            return $this->buildDataUriFromContents($logoData['contents'], $logoData['mime']);
+        });
     }
 
     public function logoBase64ForPdf(): ?string
     {
-        $logoData = $this->getLogoData($this->logoPath()) ?? $this->getLogoData('img/placeholders/default.svg');
+        $path = $this->logoPath() ?: 'img/placeholders/default.svg';
+        $cacheKey = 'clinic-identity:logo:pdf:'.sha1($path.':'.$this->appMode->getMode());
 
-        if (! $logoData) {
-            return null;
-        }
+        return $this->rememberLogoDataUri($cacheKey, function () use ($path) {
+            $logoData = $this->getLogoData($path) ?? $this->getLogoData('img/placeholders/default.svg');
 
-        $result = $this->rememberLogoDataUri(
-            cacheKey: 'clinic-identity:logo:pdf:'.$logoData['cache_key_suffix'],
-            resolver: function () use ($logoData) {
-                $mime = $logoData['mime'];
-                $extension = $logoData['extension'];
-                $contents = $logoData['contents'];
+            if (! $logoData) {
+                return null;
+            }
 
-                if ($mime === 'image/webp' || $extension === 'webp') {
-                    if (function_exists('imagecreatefromwebp')) {
-                        return $this->buildDataUriFromContents($contents, 'image/webp');
-                    }
+            $mime = $logoData['mime'];
+            $extension = $logoData['extension'];
+            $contents = $logoData['contents'];
 
-                    return $this->convertWebpContentsToPngDataUri($contents);
+            if ($mime === 'image/webp' || $extension === 'webp') {
+                if (function_exists('imagecreatefromwebp')) {
+                    return $this->buildDataUriFromContents($contents, 'image/webp');
                 }
 
-                return $this->buildDataUriFromContents($contents, $mime !== '' ? $mime : null);
+                return $this->convertWebpContentsToPngDataUri($contents);
             }
-        );
 
-        return $result;
+            return $this->buildDataUriFromContents($contents, $mime !== '' ? $mime : null);
+        });
     }
 
     private function getLogoData(?string $rawPath): ?array

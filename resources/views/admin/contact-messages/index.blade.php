@@ -42,7 +42,15 @@
                 <div class="text-sm font-semibold text-gray-900">{{ $message->nombre }}</div>
               </td>
               <td data-label="Correo">
-                <a href="mailto:{{ $message->correo }}" class="text-sm text-teal-700 hover:underline">{{ $message->correo }}</a>
+                @php
+                  $msgEmail = trim((string) $message->correo);
+                  $msgAsunto = trim((string) ($message->asunto ?: 'Contacto'));
+                  $msgAsuntoClean = preg_replace('/[\r\n]+/', ' ', $msgAsunto);
+                  $msgSubjectFormatted = str_starts_with(strtolower($msgAsuntoClean), 're:') ? $msgAsuntoClean : 'Re: ' . $msgAsuntoClean;
+                  $msgMailtoQuery = http_build_query(['subject' => $msgSubjectFormatted], '', '&', PHP_QUERY_RFC3986);
+                  $msgMailtoHref = 'mailto:' . $msgEmail . ($msgMailtoQuery !== '' ? '?' . $msgMailtoQuery : '');
+                @endphp
+                <a href="{{ $msgMailtoHref }}" class="text-sm text-teal-700 hover:underline" data-action-lock-ignore="1" data-no-loader="1">{{ $message->correo }}</a>
               </td>
               <td data-label="Telefono">{{ $message->telefono ?: '-' }}</td>
               <td data-label="Asunto">{{ \Illuminate\Support\Str::limit($message->asunto, 48) }}</td>

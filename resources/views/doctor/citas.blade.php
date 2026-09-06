@@ -54,11 +54,9 @@
         <button class="btn btn-primary btn-sm" type="submit">
           <i class="ri-filter-3-line"></i> Filtrar
         </button>
-        @if($estadoFiltro !== '' || $prioridadFiltro !== '')
-          <a class="btn btn-ghost btn-sm" href="{{ route('doctor.citas') }}">
-            <i class="ri-refresh-line"></i> Limpiar
-          </a>
-        @endif
+        <a class="btn btn-ghost btn-sm" href="{{ route('doctor.citas') }}">
+          <i class="ri-refresh-line"></i> Limpiar
+        </a>
       </form>
       <div class="flex flex-wrap gap-2">
         <a class="btn btn-outline btn-sm btn-full-mobile" href="{{ route('doctor.citas.export.excel', request()->query()) }}">

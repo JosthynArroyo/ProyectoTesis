@@ -29,3 +29,30 @@ Schedule::call(function () {
 ->name('database-backups:scheduled-job')
 ->withoutOverlapping(60)
 ->onOneServer();
+
+Schedule::command('users:deactivate-inactive')
+    ->dailyAt('02:30')
+    ->withoutOverlapping();
+
+Schedule::command('citas:marcar-no-show')
+    ->everyTenMinutes()
+    ->withoutOverlapping();
+
+Schedule::command('citas:sync-recordatorios')
+    ->everyTenMinutes()
+    ->withoutOverlapping();
+
+Schedule::command('citas:expirar-slot-holds')
+    ->everyMinute()
+    ->withoutOverlapping();
+
+Schedule::command('citas:recalcular-prioridad')
+    ->everyThirtyMinutes()
+    ->withoutOverlapping();
+
+Schedule::command('demo:maintain-schedules')
+    ->dailyAt('03:00')
+    ->withoutOverlapping()
+    ->when(fn () => app(\App\Services\ApplicationModeService::class)->isDemo());
+
+

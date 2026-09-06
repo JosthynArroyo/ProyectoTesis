@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Especialidad;
+use App\Services\ApplicationModeService;
 use App\Services\LandingWelcomeService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -10,8 +11,32 @@ use Illuminate\View\View;
 
 class PublicPageController extends Controller
 {
+    public function __construct(
+        private readonly ApplicationModeService $applicationMode
+    ) {}
+
+    /**
+     * Serve root endpoint: commercial landing in demo mode, real clinic page in production.
+     */
     public function welcome(LandingWelcomeService $welcome): View
     {
+        if ($this->applicationMode->isDemo()) {
+            return view('landing.commercial');
+        }
+
+        return $this->clinicWelcome($welcome);
+    }
+
+    /**
+     * Serve the public clinic page (Welcome). In production, this is the main page.
+     * In demo mode, this is accessible via /demo/clinica as part of the preview flow.
+     */
+    public function clinicWelcome(LandingWelcomeService $welcome): View
+    {
+        if (request()->routeIs('demo.*') && ! $this->applicationMode->isDemo()) {
+            abort(404);
+        }
+
         $featured = $welcome->featuredSpecialties();
 
         $especialidadesDestacadas = ! empty($featured)
@@ -98,6 +123,10 @@ class PublicPageController extends Controller
         auth()->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
+
+        if ($this->applicationMode->isDemo()) {
+            return redirect()->route('demo.access.selector');
+        }
 
         return redirect('/');
     }

@@ -1,6 +1,6 @@
 @extends('layouts.doctor')
 @section('title', 'Pedidos de laboratorio')
-@section('activeSidebar', 'citas')
+@section('activeSidebar', 'pedidos-laboratorio')
 @section('header-title', 'Pedidos de laboratorio')
 @section('header-subtitle', 'Consulta órdenes emitidas y resultados publicados')
 

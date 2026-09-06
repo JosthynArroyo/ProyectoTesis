@@ -32,6 +32,7 @@
 <body class="min-h-screen text-gray-900 m-0 p-0">
   @php
     use Illuminate\Support\Facades\Route as R;
+    $isDemo = ($applicationMode?->isDemo() ?? app(\App\Services\ApplicationModeService::class)->isDemo());
     $errors = $errors ?? new \Illuminate\Support\ViewErrorBag();
     $loginErrors = $errors->getBag('login');
     $loginModalUrl = url('/') . '?login=1';
@@ -43,8 +44,8 @@
         'label' => 'Inicio',
         'icon' => 'ri-home-4-line',
         'visible' => $siteSettings->getBool('header.show_home', true),
-        'url' => url('/'),
-        'active' => request()->is('/'),
+        'url' => $isDemo && R::has('demo.clinic') ? route('demo.clinic') : url('/'),
+        'active' => request()->is('/') || request()->routeIs('demo.clinic'),
       ],
       [
         'key' => 'services',
@@ -72,11 +73,11 @@
       ],
       [
         'key' => 'demo',
-        'label' => 'Explorar demo',
+        'label' => 'Vista previa',
         'icon' => 'ri-eye-line',
-        'visible' => R::has('demo.index'),
-        'url' => R::has('demo.index') ? route('demo.index') : '#',
-        'active' => request()->routeIs('demo.*'),
+        'visible' => $isDemo && R::has('demo.access.selector'),
+        'url' => R::has('demo.access.selector') ? route('demo.access.selector') : '#',
+        'active' => request()->routeIs('demo.access.*'),
       ],
     ])->keyBy('key');
     $orderedNavItems = collect($navigationOrder)
@@ -91,20 +92,20 @@
     id="cnav-header">
     <nav class="page-shell" aria-label="Barra de navegación principal">
       <div class="flex min-w-0 items-center justify-between gap-3 py-4 sm:gap-4">
-        <a href="{{ url('/') }}" class="flex min-w-0 items-center gap-3" aria-label="Inicio">
+        <a href="{{ $isDemo && R::has('demo.clinic') ? route('demo.clinic') : url('/') }}" class="flex min-w-0 items-center gap-3 shrink min-w-0" aria-label="Inicio">
           @php
             $logoImage = $headerLogo ? $imageUrl->variants($headerLogo, entity: 'banner') : null;
           @endphp
           @if($logoImage)
             <img src="{{ $logoImage['thumb'] }}" @if($logoImage['srcset']) srcset="{{ $logoImage['srcset'] }}"
-            sizes="160px" @endif alt="{{ $headerName }}" class="h-10 w-auto" loading="eager" decoding="async">
+            sizes="160px" @endif alt="{{ $headerName }}" class="h-10 w-auto shrink-0" loading="eager" decoding="async">
           @else
             <span
-              class="flex h-10 w-10 items-center justify-center rounded-2xl border border-gray-200 bg-gray-50 text-gray-500">
+              class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-gray-200 bg-gray-50 text-gray-500">
               <i class="ri-hospital-line text-lg"></i>
             </span>
           @endif
-          <span class="hidden min-w-0 sm:inline">
+          <span class="hidden min-w-0 sm:inline truncate max-w-[180px] md:max-w-[240px] lg:max-w-[280px] xl:max-w-none">
             <span
               class="block truncate text-sm font-semibold uppercase tracking-wide text-gray-500">{{ $headerName }}</span>
             @if(filled($navbarText))
@@ -114,7 +115,7 @@
         </a>
 
         <div id="cnav-menu"
-          class="cnav__menu fixed inset-0 z-50 hidden flex-col bg-white text-gray-700 lg:static lg:flex lg:flex-row lg:items-center lg:gap-4 lg:bg-transparent lg:p-0">
+          class="cnav__menu fixed inset-0 z-50 hidden flex-col bg-white text-gray-700 lg:static lg:flex lg:flex-row lg:items-center lg:gap-3 xl:gap-4 lg:bg-transparent lg:p-0 lg:shrink-0">
           <div class="flex items-center justify-between border-b border-gray-200 px-5 py-4 lg:hidden">
             <span class="text-base font-semibold text-gray-700">Menú</span>
             <button
@@ -125,44 +126,44 @@
           </div>
 
           <ul
-            class="flex flex-col gap-1 px-4 py-4 text-base font-semibold lg:flex-row lg:items-center lg:gap-4 lg:px-0 lg:py-0 lg:text-sm"
+            class="flex flex-col gap-1 px-4 py-4 text-base font-semibold lg:flex-row lg:flex-nowrap lg:items-center lg:gap-2 xl:gap-3 lg:px-0 lg:py-0 lg:text-sm lg:shrink-0"
             role="menubar">
             @foreach($orderedNavItems as $item)
-              <li role="none">
+              <li role="none" class="lg:shrink-0">
                 <a role="menuitem" href="{{ $item['url'] }}"
-                  class="{{ $item['key'] === 'demo' ? 'btn cnav-demo-link flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-base lg:min-h-0 lg:w-auto lg:rounded-full lg:px-4 lg:py-2 lg:text-sm' : 'flex min-h-[48px] items-center gap-3 rounded-xl px-4 py-3 transition-colors lg:min-h-0 lg:rounded-full lg:px-4 lg:py-2' }} {{ $item['key'] === 'demo' ? ($item['active'] ? 'is-active' : '') : ($item['active'] ? 'bg-gray-100 text-gray-900 font-medium' : 'text-gray-600 hover:bg-gray-50 active:bg-gray-100') }}">
-                  <i class="{{ $item['icon'] }} text-lg"></i>{{ $item['label'] }}
+                  class="{{ $item['key'] === 'demo' ? 'btn cnav-demo-link flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-base whitespace-nowrap lg:min-h-0 lg:w-auto lg:rounded-full lg:px-3.5 lg:py-2 lg:text-sm lg:shrink-0' : 'flex min-h-[48px] items-center gap-2 rounded-xl px-4 py-3 transition-colors whitespace-nowrap lg:min-h-0 lg:rounded-full lg:px-3 lg:py-2 lg:shrink-0' }} {{ $item['key'] === 'demo' ? ($item['active'] ? 'is-active' : '') : ($item['active'] ? 'bg-gray-100 text-gray-900 font-medium' : 'text-gray-600 hover:bg-gray-50 active:bg-gray-100') }}">
+                  <i class="{{ $item['icon'] }} text-lg"></i><span>{{ $item['label'] }}</span>
                 </a>
               </li>
             @endforeach
 
             @auth
-              <li role="none">
+              <li role="none" class="lg:shrink-0">
                 @php
                   $user = Auth::user();
                   $panel = $user?->dashboardPath() ?? route('home');
                 @endphp
                 <a role="menuitem" href="{{ $panel }}"
-                  class="flex min-h-[48px] items-center gap-3 rounded-xl px-4 py-3 transition-colors lg:min-h-0 lg:rounded-full lg:px-4 lg:py-2 {{ request()->routeIs('home') ? 'bg-gray-100 text-gray-900 font-medium' : 'text-gray-600 hover:bg-gray-50 active:bg-gray-100' }}">
-                  <i class="ri-dashboard-line text-lg"></i>Mi panel
+                  class="flex min-h-[48px] items-center gap-2 rounded-xl px-4 py-3 transition-colors whitespace-nowrap lg:min-h-0 lg:rounded-full lg:px-3.5 lg:py-2 lg:shrink-0 {{ request()->routeIs('home') ? 'bg-gray-100 text-gray-900 font-medium' : 'text-gray-600 hover:bg-gray-50 active:bg-gray-100' }}">
+                  <i class="ri-dashboard-line text-lg"></i><span>Mi panel</span>
                 </a>
               </li>
-              <li role="none" class="mt-2 border-t border-gray-100 pt-2 lg:mt-0 lg:border-0 lg:pt-0">
-                <form method="POST" action="{{ route('salir') }}">
+              <li role="none" class="mt-2 border-t border-gray-100 pt-2 lg:mt-0 lg:border-0 lg:pt-0 lg:shrink-0">
+                <form method="POST" action="{{ route('salir') }}" class="m-0 p-0 lg:inline-flex lg:items-center lg:shrink-0">
                   @csrf
                   <button type="submit"
-                    class="flex min-h-[48px] w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-rose-600 transition-colors hover:bg-rose-50 active:bg-rose-100 lg:min-h-0 lg:w-auto lg:rounded-full lg:px-4 lg:py-2">
-                    <i class="ri-logout-box-line text-lg"></i>Salir
+                    class="flex min-h-[48px] w-full items-center gap-2 rounded-xl px-4 py-3 text-left text-rose-600 transition-colors hover:bg-rose-50 active:bg-rose-100 whitespace-nowrap lg:min-h-0 lg:w-auto lg:rounded-full lg:px-3.5 lg:py-2 lg:shrink-0 lg:inline-flex">
+                    <i class="ri-logout-box-line text-lg"></i><span>Salir</span>
                   </button>
                 </form>
               </li>
             @else
-              @if(R::has('login'))
-                <li role="none" class="mt-3 lg:mt-0">
+              @if(! $isDemo && R::has('login'))
+                <li role="none" class="mt-3 lg:mt-0 lg:shrink-0">
                   <a role="menuitem" href="{{ $loginModalUrl }}"
-                    class="btn btn-primary flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl text-base lg:min-h-0 lg:w-auto lg:rounded-full lg:text-sm"
+                    class="btn btn-primary flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl text-base whitespace-nowrap lg:min-h-0 lg:w-auto lg:rounded-full lg:px-4 lg:py-2 lg:text-sm lg:shrink-0"
                     data-login-trigger>
-                    <i class="ri-login-box-line text-lg"></i>{{ $headerLoginText }}
+                    <i class="ri-login-box-line text-lg"></i><span>{{ $headerLoginText }}</span>
                   </a>
                 </li>
               @endif
@@ -210,7 +211,7 @@
             {{-- Heading --}}
             <div>
               <h2 class="lm-left-title">Bienvenido de nuevo</h2>
-              <p class="lm-left-desc" style="margin-top:0.5rem;">
+              <p class="lm-left-desc">
                 Ingresa a tu cuenta para continuar gestionando tus citas y servicios de forma rápida y segura.
               </p>
             </div>
@@ -288,7 +289,7 @@
             {{-- Alerts --}}
             @if(session('status'))
               <div class="lm-alert success">
-                <i class="ri-checkbox-circle-line" style="flex-shrink:0"></i>
+                <i class="ri-checkbox-circle-line"></i>
                 {{ session('status') }}
               </div>
             @endif
@@ -297,17 +298,17 @@
             @endif
             @if(session('auth_error'))
               <div class="lm-alert error">
-                <i class="ri-error-warning-line" style="flex-shrink:0"></i>
+                <i class="ri-error-warning-line"></i>
                 {{ session('auth_error') }}
               </div>
             @elseif($loginErrors->has('email'))
               <div class="lm-alert error">
-                <i class="ri-error-warning-line" style="flex-shrink:0"></i>
+                <i class="ri-error-warning-line"></i>
                 {{ $loginErrors->first('email') }}
               </div>
             @elseif($loginErrors->any())
               <div class="lm-alert error">
-                <i class="ri-error-warning-line" style="flex-shrink:0"></i>
+                <i class="ri-error-warning-line"></i>
                 Revisa tus datos e inténtalo nuevamente.
               </div>
             @endif

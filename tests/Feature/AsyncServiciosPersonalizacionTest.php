@@ -26,6 +26,7 @@ class AsyncServiciosPersonalizacionTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        config(['private_documents.disk' => 'r2_private']);
         Storage::fake('r2_private');
     }
 
@@ -64,8 +65,10 @@ class AsyncServiciosPersonalizacionTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('data-media-processing-overlay', false);
+        $response->assertSee('data-media-processing-icon-wrap', false);
         $response->assertSee('hidden', false);
-        $response->assertSee('style="display: none;"', false);
+        $response->assertDontSee('style="display: none;"', false);
+        $response->assertDontSee('style="width: 0%', false);
         $response->assertSee('Preparando imágenes...', false);
 
         $this->assertSame($initialBatchCount, MediaProcessingBatch::query()->count());
@@ -91,8 +94,10 @@ class AsyncServiciosPersonalizacionTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('data-media-processing-overlay', false);
+        $response->assertSee('data-media-processing-icon-wrap', false);
         $response->assertSee('hidden', false);
-        $response->assertSee('style="display: none;"', false);
+        $response->assertDontSee('style="display: none;"', false);
+        $response->assertDontSee('style="width: 0%', false);
 
         $this->assertSame($initialBatchCount, MediaProcessingBatch::query()->count());
         Queue::assertNothingPushed();

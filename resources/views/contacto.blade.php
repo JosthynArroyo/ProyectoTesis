@@ -4,240 +4,7 @@
 @section('title','Formulario de Contacto')
 
 @push('styles')
-<style>
-  /* ── Contacto page tokens ── */
-  .ct-section { padding: 2rem 0 3rem; }
-  .ct-grid {
-    display: grid;
-    gap: 1.5rem;
-    align-items: start;
-  }
-  @media (min-width: 1024px) {
-    .ct-grid { grid-template-columns: 0.9fr 1.1fr; }
-  }
-
-  /* ── Left card ── */
-  .ct-card {
-    background: rgba(255,255,255,0.97);
-    border: 1px solid rgba(148,163,184,0.55);
-    border-radius: 14px;
-    box-shadow: 0 10px 30px rgba(15,23,42,0.07);
-    padding: 1.75rem;
-  }
-  .ct-badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.3rem 0.875rem;
-    border-radius: 999px;
-    background: var(--accent-soft);
-    color: var(--accent);
-    font-size: 0.68rem;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    margin-bottom: 0.75rem;
-  }
-  .ct-title {
-    font-size: 1.5rem;
-    font-weight: 800;
-    color: var(--ink);
-    margin: 0 0 0.5rem;
-    line-height: 1.2;
-  }
-  .ct-subtitle {
-    font-size: 0.875rem;
-    color: var(--muted);
-    line-height: 1.65;
-    margin: 0 0 1.5rem;
-  }
-  /* Ilustración decorativa */
-  .ct-illustration {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.5rem;
-    margin-bottom: 1.5rem;
-  }
-  .ct-illustration span {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 3rem;
-    height: 3rem;
-    border-radius: 12px;
-    background: var(--accent-soft);
-    color: var(--accent);
-    font-size: 1.4rem;
-  }
-  /* Bloques de info */
-  .ct-info-list { display: flex; flex-direction: column; gap: 0; }
-  .ct-info-item {
-    display: flex;
-    align-items: center;
-    gap: 0.875rem;
-    padding: 0.875rem 0;
-    border-bottom: 1px solid rgba(148,163,184,0.28);
-    cursor: default;
-  }
-  .ct-info-item:last-child { border-bottom: none; }
-  .ct-info-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 2.5rem;
-    height: 2.5rem;
-    border-radius: 10px;
-    background: var(--accent-soft);
-    color: var(--accent);
-    font-size: 1.1rem;
-    flex-shrink: 0;
-  }
-  .ct-info-body { flex: 1; min-width: 0; }
-  .ct-info-label {
-    font-size: 0.8125rem;
-    font-weight: 700;
-    color: var(--ink);
-    margin: 0 0 0.15rem;
-  }
-  .ct-info-value {
-    font-size: 0.775rem;
-    color: var(--muted);
-    line-height: 1.5;
-    margin: 0;
-  }
-  .ct-info-arrow {
-    font-size: 1rem;
-    color: rgba(148,163,184,0.7);
-    flex-shrink: 0;
-  }
-  /* Info segura */
-  .ct-secure {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.75rem;
-    background: var(--accent-soft);
-    border-radius: 10px;
-    padding: 0.875rem 1rem;
-    margin-top: 1.25rem;
-  }
-  .ct-secure i { color: var(--accent); font-size: 1.1rem; flex-shrink: 0; margin-top: 2px; }
-  .ct-secure-title { font-size: 0.8125rem; font-weight: 700; color: var(--ink); margin: 0 0 0.15rem; }
-  .ct-secure-text  { font-size: 0.75rem; color: var(--muted); margin: 0; line-height: 1.5; }
-
-  /* ── Form card ── */
-  .ct-form-header {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-    margin-bottom: 1.5rem;
-  }
-  .ct-form-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.3rem 0.875rem;
-    border-radius: 999px;
-    background: var(--accent-soft);
-    border: 1px solid rgba(15,118,110,0.2);
-    color: var(--accent);
-    font-size: 0.72rem;
-    font-weight: 600;
-  }
-  /* Inputs */
-  .ct-field { display: flex; flex-direction: column; gap: 0.35rem; }
-  .ct-label {
-    font-size: 0.8125rem;
-    font-weight: 600;
-    color: var(--ink);
-  }
-  .ct-input, .ct-textarea {
-    width: 100%;
-    padding: 0.65rem 0.875rem;
-    border: 1.5px solid rgba(148,163,184,0.55);
-    border-radius: 8px;
-    font-size: 0.875rem;
-    color: var(--ink);
-    background: #fff;
-    outline: none;
-    transition: border-color 0.2s, box-shadow 0.2s;
-    box-sizing: border-box;
-    font-family: inherit;
-  }
-  .ct-input:focus, .ct-textarea:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(15,118,110,0.12);
-  }
-  .ct-input::placeholder, .ct-textarea::placeholder { color: #94a3b8; }
-  .ct-textarea { resize: vertical; min-height: 130px; }
-  .ct-help { font-size: 0.72rem; color: var(--muted); margin: 0.25rem 0 0; }
-  /* Submit */
-  .ct-submit {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    width: 100%;
-    padding: 0.85rem 1.5rem;
-    background: var(--accent);
-    color: #fff;
-    border: none;
-    border-radius: 8px;
-    font-size: 0.9375rem;
-    font-weight: 700;
-    cursor: pointer;
-    box-shadow: 0 10px 24px rgba(15,118,110,0.22);
-    transition: background 0.2s, transform 0.15s;
-    margin-top: 0.25rem;
-  }
-  .ct-submit:hover { background: var(--accent-strong); transform: translateY(-1px); }
-  .ct-submit:disabled,
-  .ct-submit[aria-disabled="true"] {
-    background: #64748b;
-    color: #f8fafc;
-    box-shadow: none;
-    cursor: not-allowed;
-    opacity: 0.72;
-    transform: none;
-    filter: grayscale(0.1);
-  }
-  .ct-submit:disabled:hover,
-  .ct-submit[aria-disabled="true"]:hover {
-    background: #64748b;
-    transform: none;
-  }
-
-  /* ── 3 bottom cards ── */
-  .ct-features { display: grid; grid-template-columns: repeat(3,1fr); gap: 1rem; margin-top: 1.5rem; }
-  .ct-feat {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.875rem;
-    background: rgba(255,255,255,0.97);
-    border: 1px solid rgba(148,163,184,0.55);
-    border-radius: 12px;
-    padding: 1.25rem;
-    box-shadow: 0 6px 18px rgba(15,23,42,0.05);
-  }
-  .ct-feat__icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 2.5rem;
-    height: 2.5rem;
-    border-radius: 10px;
-    background: var(--accent-soft);
-    color: var(--accent);
-    font-size: 1.1rem;
-    flex-shrink: 0;
-  }
-  .ct-feat__title { font-size: 0.875rem; font-weight: 700; color: var(--ink); margin: 0 0 0.2rem; }
-  .ct-feat__text  { font-size: 0.775rem; color: var(--muted); line-height: 1.5; margin: 0; }
-
-  /* ── Responsive ── */
-  @media (max-width: 1023px) { .ct-features { grid-template-columns: 1fr; } }
-  @media (max-width: 639px)  { .ct-features { grid-template-columns: 1fr; } }
-</style>
+  @vite('resources/css/contacto.css')
 @endpush
 
 @section('main')
@@ -291,7 +58,7 @@
     }
   @endphp
 
-  <div style="min-height:calc(100vh - 4.5rem); display:flex; flex-direction:column;">
+  <div class="ct-page-shell">
     <section class="ct-section">
       <div class="page-shell">
 
@@ -302,7 +69,7 @@
           <aside class="ct-card">
 
             {{-- Cabecera + ilustración --}}
-            <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; margin-bottom:1rem;">
+            <div class="ct-card-header">
               <div>
                 <span class="ct-badge">{{ $infoBadge }}</span>
                 <h2 class="ct-title">{{ $contactTitle }}</h2>
@@ -350,8 +117,8 @@
               @endif
 
               @if(filled($contactHours) || !empty($scheduleLines))
-                <div class="ct-info-item" style="align-items: flex-start;">
-                  <span class="ct-info-icon" style="margin-top: 0.2rem;"><i class="ri-time-line" aria-hidden="true"></i></span>
+                <div class="ct-info-item ct-info-item--top">
+                  <span class="ct-info-icon"><i class="ri-time-line" aria-hidden="true"></i></span>
                   <div class="ct-info-body">
                     <p class="ct-info-label">{{ $hoursLabel }}</p>
                     @if(count($scheduleLines) === 1)
@@ -376,7 +143,7 @@
 
             {{-- Mapa --}}
             @if(filled($mapEmbed))
-              <div style="margin-top:1.25rem; border-radius:10px; overflow:hidden; border:1px solid rgba(148,163,184,0.45);">
+              <div class="ct-map-wrap">
                 <iframe
                   title="{{ $mapTitle }}"
                   src="{{ $mapEmbed }}"
@@ -426,7 +193,7 @@
                 <input id="empresa" type="text" name="empresa" value="" tabindex="-1" autocomplete="off">
               </div>
 
-              <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+              <div class="ct-form-grid">
 
                 <div class="ct-field">
                   <label for="nombre" class="ct-label">{{ $nameLabel }}</label>
@@ -435,7 +202,7 @@
                     aria-invalid="{{ $contactErrors->has('nombre') ? 'true' : 'false' }}"
                     aria-describedby="{{ $contactErrors->has('nombre') ? 'err-nombre' : '' }}"
                     class="ct-input">
-                  @if($contactErrors->has('nombre'))<small id="err-nombre" class="ct-help" style="color:#e11d48;">{{ $contactErrors->first('nombre') }}</small>@endif
+                  @if($contactErrors->has('nombre'))<small id="err-nombre" class="ct-help ct-help--error">{{ $contactErrors->first('nombre') }}</small>@endif
                 </div>
 
                 <div class="ct-field">
@@ -445,7 +212,7 @@
                     aria-invalid="{{ $contactErrors->has('email') ? 'true' : 'false' }}"
                     aria-describedby="{{ $contactErrors->has('email') ? 'err-email' : '' }}"
                     class="ct-input">
-                  @if($contactErrors->has('email'))<small id="err-email" class="ct-help" style="color:#e11d48;">{{ $contactErrors->first('email') }}</small>@endif
+                  @if($contactErrors->has('email'))<small id="err-email" class="ct-help ct-help--error">{{ $contactErrors->first('email') }}</small>@endif
                 </div>
 
                 <div class="ct-field">
@@ -457,7 +224,7 @@
                     aria-invalid="{{ $contactErrors->has('telefono') ? 'true' : 'false' }}"
                     aria-describedby="{{ $contactErrors->has('telefono') ? 'err-telefono' : '' }}"
                     class="ct-input">
-                  @if($contactErrors->has('telefono'))<small id="err-telefono" class="ct-help" style="color:#e11d48;">{{ $contactErrors->first('telefono') }}</small>@endif
+                  @if($contactErrors->has('telefono'))<small id="err-telefono" class="ct-help ct-help--error">{{ $contactErrors->first('telefono') }}</small>@endif
                 </div>
 
                 <div class="ct-field">
@@ -467,10 +234,10 @@
                     aria-invalid="{{ $contactErrors->has('asunto') ? 'true' : 'false' }}"
                     aria-describedby="{{ $contactErrors->has('asunto') ? 'err-asunto' : '' }}"
                     class="ct-input">
-                  @if($contactErrors->has('asunto'))<small id="err-asunto" class="ct-help" style="color:#e11d48;">{{ $contactErrors->first('asunto') }}</small>@endif
+                  @if($contactErrors->has('asunto'))<small id="err-asunto" class="ct-help ct-help--error">{{ $contactErrors->first('asunto') }}</small>@endif
                 </div>
 
-                <div class="ct-field" style="grid-column:1/-1;">
+                <div class="ct-field ct-field--full">
                   <label for="mensaje" class="ct-label">{{ $messageLabel }}</label>
                   <textarea id="mensaje" name="mensaje" rows="6" required spellcheck="true"
                     maxlength="1000" placeholder="{{ $messagePlaceholder }}"
@@ -478,12 +245,12 @@
                     aria-describedby="help-mensaje{{ $contactErrors->has('mensaje') ? ' err-mensaje' : '' }}"
                     class="ct-textarea">{{ old('mensaje') }}</textarea>
                   <small id="help-mensaje" class="ct-help">{{ $messageHelp }}</small>
-                  @if($contactErrors->has('mensaje'))<small id="err-mensaje" class="ct-help" style="color:#e11d48;">{{ $contactErrors->first('mensaje') }}</small>@endif
+                  @if($contactErrors->has('mensaje'))<small id="err-mensaje" class="ct-help ct-help--error">{{ $contactErrors->first('mensaje') }}</small>@endif
                 </div>
 
               </div>
 
-              <button type="submit" class="ct-submit" id="btnSubmit" style="margin-top:1.25rem;">
+              <button type="submit" class="ct-submit" id="btnSubmit">
                 <span data-contacto-submit-label>{{ $submitText }}</span>
                 <i class="ri-send-plane-line" aria-hidden="true"></i>
               </button>

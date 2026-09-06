@@ -331,9 +331,10 @@ class CitaComprobanteFlowTest extends TestCase
         $response->assertSee($expectedProtected);
         $response->assertSee('Pendiente');
 
-        // 9. Un CSV inexistente devuelve 404
+        // 9. Un CSV inexistente redirige al formulario con mensaje amigable (UX-01)
         $this->get(route('documentos.verificar.show', ['csv' => 'XYZ-12345-ABC']))
-            ->assertStatus(404);
+            ->assertRedirect(route('documentos.verificar.form'))
+            ->assertSessionHasErrors('csv');
 
         // 10. El enlace heredado /cita/comprobante/{token} funciona públicamente
         $legacyResponse = $this->get(route('citas.comprobante.show', ['token' => $cita->token_validacion]));

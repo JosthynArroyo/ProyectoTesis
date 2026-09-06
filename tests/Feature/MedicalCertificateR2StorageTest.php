@@ -22,6 +22,7 @@ class MedicalCertificateR2StorageTest extends TestCase
     {
         parent::setUp();
         config(['private_documents.disk' => 'r2_private']);
+        config(['private_documents.recipe_disk' => 'r2_private']);
         config(['image_optimization.avatar_disk' => 'r2_private']);
         Storage::fake('r2_private');
         Storage::fake('local');

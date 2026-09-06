@@ -103,11 +103,11 @@
             @endif
             @if($canPersonalizacion)
               <a href="{{ route('admin.personalizacion.contacto.edit') }}" class="panel-subaction-button {{ request()->routeIs('admin.personalizacion.contacto.*') ? 'border-gray-200 bg-white text-teal-700 shadow-sm' : '' }}">
-                Contacto
+                Información de contacto
               </a>
             @else
               <button type="button" data-open-personalizacion class="panel-subaction-button">
-                Contacto
+                Información de contacto
               </button>
             @endif
           </div>
@@ -118,11 +118,11 @@
         </a>
 
         <a href="{{ route('admin.contacto.mensajes') }}" class="flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 transition-colors {{ request()->routeIs('admin.contacto.mensajes*') ? 'bg-gray-100 text-gray-900 font-medium' : 'text-gray-600 hover:bg-gray-50' }}">
-            <i class="ri-mail-line text-lg"></i> Notificaciones de contacto
+            <i class="ri-mail-line text-lg"></i> Mensajes recibidos
         </a>
 
         <form id="logout-form" action="{{ route('salir') }}" method="POST" class="hidden">@csrf</form>
-        <a href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();" class="mt-5 flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 text-rose-600 transition-colors hover:bg-rose-50">
+        <a href="#" data-logout-trigger class="mt-5 flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-2.5 text-rose-600 transition-colors hover:bg-rose-50">
             <i class="ri-logout-circle-r-line text-lg"></i> Cerrar sesión
         </a>
     </nav>

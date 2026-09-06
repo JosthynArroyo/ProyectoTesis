@@ -59,10 +59,6 @@ class PreventRequestsDuringMaintenance
             return true;
         }
 
-        if ($request->isMethod('POST') && $request->is('face/login')) {
-            return true;
-        }
-
         if ($request->isMethod('POST') && $request->is('salir')) {
             return true;
         }

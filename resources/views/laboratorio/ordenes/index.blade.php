@@ -1,7 +1,7 @@
 @extends('layouts.laboratorio')
-@section('title', 'Citas y resultados de laboratorio')
+@section('title', 'Citas de laboratorio')
 @section('activeSidebar', 'ordenes')
-@section('header-title','Citas y resultados')
+@section('header-title','Citas de laboratorio')
 @section('header-subtitle','Gestiona citas, muestras y resultados')
 
 @section('main')
@@ -15,7 +15,7 @@
           <option value="orden_creada" @selected(($estado ?? '') === 'orden_creada')>Solo orden creada</option>
           <option value="cita_programada" @selected(($estado ?? '') === 'cita_programada')>Pendiente de toma</option>
           <option value="muestra_tomada" @selected(($estado ?? '') === 'muestra_tomada')>Muestra tomada / analisis</option>
-          <option value="resultado_disponible" @selected(($estado ?? '') === 'resultado_disponible')>Resultado listo</option>
+          <option value="resultado_disponible" @selected(($estado ?? '') === 'resultado_disponible')>Resultados listos</option>
         </select>
       </div>
       <button class="btn btn-outline btn-sm" type="submit">
@@ -80,7 +80,13 @@
 
         <div class="mt-5 flex flex-wrap gap-3">
           @if($orden->download_url)
-            <a class="btn btn-outline" href="{{ $orden->download_url }}">
+            <a
+              class="btn btn-outline"
+              href="{{ $orden->download_url }}"
+              download
+              data-action-lock-ignore
+              data-skip-page-loader
+            >
               <i class="ri-download-line"></i> Descargar resultado
             </a>
           @endif

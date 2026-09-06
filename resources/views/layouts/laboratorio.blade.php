@@ -14,12 +14,13 @@
 @php
     $hasRight = $__env->hasSection('right');
     $activeSidebar = trim($__env->yieldContent('activeSidebar'));
-    $sidebarRoutes = ['laboratorio.dashboard', 'laboratorio.ordenes.index', 'laboratorio.horario.index'];
+    $sidebarRoutes = ['laboratorio.dashboard', 'laboratorio.ordenes.index', 'laboratorio.pedidos.index', 'laboratorio.horario.index'];
     $headerTitle = trim($__env->yieldContent('header-title')) ?: 'Panel laboratorio';
     $headerSubtitle = trim($__env->yieldContent('header-subtitle')) ?: 'Gestión de órdenes y resultados';
     $panelBackDefaultUrl = match (true) {
         request()->routeIs('laboratorio.horario.*') => route('laboratorio.horario.index'),
         request()->routeIs('laboratorio.ordenes.*', 'laboratorio.lab-orders.*') => route('laboratorio.ordenes.index'),
+        request()->routeIs('laboratorio.pedidos.*') => route('laboratorio.pedidos.index'),
         default => route('laboratorio.dashboard'),
     };
     $panelBackFallbackUrl = trim($__env->yieldContent('back-url')) ?: $panelBackDefaultUrl;

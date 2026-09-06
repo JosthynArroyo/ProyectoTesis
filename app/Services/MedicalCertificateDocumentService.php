@@ -15,7 +15,7 @@ class MedicalCertificateDocumentService
 {
     public function getCertificateDiskName(): string
     {
-        return config('private_documents.disk') ?: 'r2_private';
+        return (string) (config('private_documents.disk') ?: 'local');
     }
 
     public function resolveDisk(?string $pdfDisk = null): string
@@ -99,13 +99,15 @@ class MedicalCertificateDocumentService
 
     public function cleanupOldPdf(?string $oldPath, ?string $oldDisk): void
     {
-        if ($oldDisk === 'r2_private' && ! empty($oldPath)) {
+        $disk = $oldDisk === 'r2_private' ? 'r2_private' : 'local';
+        if (! empty($oldPath)) {
             try {
-                if (Storage::disk('r2_private')->exists($oldPath)) {
-                    Storage::disk('r2_private')->delete($oldPath);
+                if (Storage::disk($disk)->exists($oldPath)) {
+                    Storage::disk($disk)->delete($oldPath);
                 }
             } catch (\Throwable $e) {
-                Log::warning('Failed to delete old R2 medical certificate PDF', [
+                Log::warning('Failed to delete old medical certificate PDF', [
+                    'old_pdf_disk' => $disk,
                     'old_pdf_path' => $oldPath,
                     'error' => $e->getMessage(),
                 ]);

@@ -117,7 +117,9 @@
         preferredHour = '';
         horaSel.value = '';
         if (horaHelp) {
-          horaHelp.textContent = data.message || 'Ese horario ya no esta disponible. Elige otro.';
+          horaHelp.textContent = data.message || (response.status === 429
+            ? 'Has realizado demasiados intentos de reserva. Por favor espera un momento.'
+            : 'Ese horario ya no esta disponible. Elige otro.');
         }
         await loadSlots();
         return false;
@@ -147,7 +149,7 @@
 
       return false;
     } finally {
-      if (requestId === holdRequestId && horaSel.value) {
+      if (requestId === holdRequestId) {
         horaSel.disabled = false;
       }
     }

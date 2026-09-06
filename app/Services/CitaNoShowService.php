@@ -17,6 +17,14 @@ class CitaNoShowService
 
     public function marcarVencidas(string $tz = 'America/Guayaquil', int $duracionMin = 30): Collection
     {
+        if (! app()->runningInConsole() && ! app()->environment('testing')) {
+            $lastRun = \Illuminate\Support\Facades\Cache::get('citas:no_show:last_web_run');
+            if ($lastRun && (time() - (int) $lastRun) < 30) {
+                return collect();
+            }
+            \Illuminate\Support\Facades\Cache::put('citas:no_show:last_web_run', time(), 30);
+        }
+
         $threshold = Carbon::now($tz)->subMinutes($duracionMin);
         $fecha = $threshold->toDateString();
         $hora = $threshold->format('H:i:s');
@@ -112,12 +120,6 @@ class CitaNoShowService
 
     private function dispatchNoShowNotification(Cita $cita): void
     {
-        if (app()->runningInConsole()) {
-            NotificarCambioEstadoCitaJob::dispatch($cita, 'no_se_presento', 'sistema');
-
-            return;
-        }
-
-        NotificarCambioEstadoCitaJob::dispatchAfterResponse($cita, 'no_se_presento', 'sistema');
+        NotificarCambioEstadoCitaJob::dispatch($cita, 'no_se_presento', 'sistema');
     }
 }

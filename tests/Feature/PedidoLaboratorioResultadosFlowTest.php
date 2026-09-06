@@ -147,7 +147,8 @@ class PedidoLaboratorioResultadosFlowTest extends TestCase
             ->assertForbidden();
 
         $this->get(route('documentos.verificar.show', 'TOKEN-INVALIDO-123'))
-            ->assertNotFound();
+            ->assertRedirect(route('documentos.verificar.form'))
+            ->assertSessionHasErrors('csv');
     }
 
     public function test_resultado_publicado_se_corrige_con_nueva_version_y_reenvia_correo_solo_al_paciente(): void

@@ -219,4 +219,75 @@ class GlobalDniUniquenessTest extends TestCase
             'documentable_id' => 999,
         ]);
     }
+
+    /** 9. El componente document-fields usa class hidden condicional sin style inline */
+    #[Test]
+    public function document_fields_component_uses_declarative_hidden_class_without_inline_styles(): void
+    {
+        // 1. SSR con tipo cédula por defecto (nacionalidad con class="hidden")
+        $response = $this->actingAs($this->titular)->get(route('paciente.dependientes.create'));
+        $response->assertOk()
+            ->assertSee('data-nacionalidad-wrap', false)
+            ->assertSee('class="hidden" data-nacionalidad-wrap', false)
+            ->assertDontSee('style="display: none;"', false)
+            ->assertDontSee('style=""', false);
+
+        // 2. SSR tras error de validación con pasaporte (nacionalidad sin class="hidden")
+        $postResponse = $this->actingAs($this->titular)
+            ->from(route('paciente.dependientes.create'))
+            ->post(route('paciente.dependientes.store'), [
+                'nombre' => '', // Falla validación requerida
+                'tipo_documento' => 'pasaporte',
+                'nacionalidad' => 'US',
+                'dni' => 'AB123456',
+                'fecha_nacimiento' => '2015-05-10',
+                'sexo' => 'Femenino',
+                'parentesco' => 'hija',
+            ]);
+
+        $postResponse->assertRedirect(route('paciente.dependientes.create'))
+            ->assertSessionHasErrors(['nombre']);
+
+        $followResponse = $this->actingAs($this->titular)
+            ->get(route('paciente.dependientes.create'));
+
+        $followResponse->assertOk()
+            ->assertSee('class="" data-nacionalidad-wrap', false)
+            ->assertDontSee('style="display: none;"', false);
+
+        // 3. SSR tras error de validación con cédula (nacionalidad con class="hidden")
+        $postCedulaResponse = $this->actingAs($this->titular)
+            ->from(route('paciente.dependientes.create'))
+            ->post(route('paciente.dependientes.store'), [
+                'nombre' => '', // Falla validación requerida
+                'tipo_documento' => 'cedula',
+                'dni' => '1754504635',
+                'fecha_nacimiento' => '2015-05-10',
+                'sexo' => 'Femenino',
+                'parentesco' => 'hija',
+            ]);
+
+        $postCedulaResponse->assertRedirect(route('paciente.dependientes.create'))
+            ->assertSessionHasErrors(['nombre']);
+
+        $followCedulaResponse = $this->actingAs($this->titular)
+            ->get(route('paciente.dependientes.create'));
+
+        $followCedulaResponse->assertOk()
+            ->assertSee('class="hidden" data-nacionalidad-wrap', false)
+            ->assertDontSee('style="display: none;"', false)
+            ->assertDontSee('style=""', false);
+
+        // 4. Inspección estática de Blade y JS
+        $bladePath = resource_path('views/components/ui/document-fields.blade.php');
+        $this->assertFileExists($bladePath);
+        $blade = file_get_contents($bladePath);
+        $this->assertStringNotContainsString('style=', $blade);
+
+        $jsPath = resource_path('js/forms/document-fields.js');
+        $this->assertFileExists($jsPath);
+        $js = file_get_contents($jsPath);
+        $this->assertStringContainsString("nacWrap.classList.toggle('hidden', !isPasaporte)", $js);
+        $this->assertStringNotContainsString('style.display', $js);
+    }
 }

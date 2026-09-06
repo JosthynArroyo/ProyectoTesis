@@ -12,8 +12,8 @@ use App\Services\LayoutMetricsService;
 use App\Services\SiteSettingsService;
 use App\Support\DestructiveDatabaseGuard;
 use App\Support\ImageUrl;
-use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Foundation\Vite as ViteManager;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Blade;
@@ -31,10 +31,23 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(ImageUrl::class);
         $this->app->singleton(ClinicIdentityService::class);
         $this->app->singleton(LayoutMetricsService::class);
+        $this->app->singleton(\App\Services\Analytics\DashboardChartBuilder::class);
+        $this->app->singleton(\App\Services\Analytics\DashboardPeriodResolver::class);
+        $this->app->singleton(\App\Services\DemoExternalEffectsGuard::class);
     }
 
     public function boot(): void
     {
+        $applicationMode = $this->app->make(\App\Services\ApplicationModeService::class);
+        config(['session.cookie' => $applicationMode->sessionCookieName()]);
+
+        if ($applicationMode->isDemo()) {
+            config(['database.default' => $applicationMode->databaseConnectionName()]);
+            if (! $this->app->runningInConsole() && ! $this->app->environment('testing')) {
+                $applicationMode->assertDemoDatabaseIsolation();
+            }
+            $this->app->make(\App\Services\DemoExternalEffectsGuard::class)->apply();
+        }
         Blade::precompiler(function ($value) {
             static $property = null;
             if (! $property) {
@@ -55,10 +68,7 @@ class AppServiceProvider extends ServiceProvider
 
         if (! $this->app->runningInConsole()) {
             $request = $this->app['request'];
-            $host = $request->getSchemeAndHttpHost();
-            $requestHost = $request->getHost();
-            config(['app.url' => $host]);
-            URL::forceRootUrl($host);
+            $requestHost = (string) $request->header('host', '');
 
             $usesNgrokTunnel = str_contains($requestHost, 'ngrok-free.app') || str_contains($requestHost, 'ngrok.app');
 
@@ -131,12 +141,14 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('captcha.verify', function (Request $request) {
             $sessionId = $request->session()->getId() ?: $request->ip();
+
             return Limit::perMinute(10)->by($sessionId);
         });
 
         RateLimiter::for('chatbot.otp.send', function (Request $request) {
             $email = strtolower((string) $request->input('email', ''));
             $emailHash = hash('sha256', $email);
+
             return [
                 Limit::perMinute(1)->by($request->ip()),
                 Limit::perMinutes(10, 3)->by("send_otp:{$emailHash}"),
@@ -147,6 +159,7 @@ class AppServiceProvider extends ServiceProvider
             $email = strtolower((string) $request->input('email', ''));
             $emailHash = hash('sha256', $email);
             $sessionId = $request->session()->getId() ?: $request->ip();
+
             return [
                 Limit::perMinutes(10, 5)->by("verify_otp:{$sessionId}"),
                 Limit::perMinutes(10, 5)->by("verify_otp:{$emailHash}"),
@@ -157,14 +170,29 @@ class AppServiceProvider extends ServiceProvider
             $userId = $request->session()->get(\App\Support\ChatbotSessionKeys::SESSION_CHATBOT_USER_ID)
                 ?: optional($request->user())->id;
             $key = $userId ? "user:{$userId}" : $request->ip();
+
             return Limit::perMinute(30)->by($key);
         });
 
-        RateLimiter::for('face-enroll', function (Request $request) {
-            $userId = optional($request->user())->id;
-            $key = $userId ? "user:{$userId}" : $request->ip();
+        RateLimiter::for('slot-holds', function (Request $request) {
+            $user = $request->user();
+            $sessionId = $request->session()->getId();
+            $clientKey = $user ? "user:{$user->id}" : ($sessionId ?: $request->ip());
 
-            return Limit::perMinute(6)->by($key);
+            return [
+                Limit::perMinute(10)->by($clientKey)->response(function () {
+                    return response()->json([
+                        'ok' => false,
+                        'message' => 'Demasiadas solicitudes de reserva temporal. Por favor espera un momento.',
+                    ], 429);
+                }),
+                Limit::perMinute(30)->by($request->ip())->response(function () {
+                    return response()->json([
+                        'ok' => false,
+                        'message' => 'Demasiadas solicitudes de reserva temporal desde esta red. Por favor espera un momento.',
+                    ], 429);
+                }),
+            ];
         });
     }
 
@@ -188,19 +216,16 @@ class AppServiceProvider extends ServiceProvider
             'pdf.*',
             'citas.*',
             'demo.*',
+            'pagos.*',
+            'recibos.*',
         ], function ($view): void {
-            static $payload = null;
-
-            if ($payload === null) {
-                $payload = [
-                    'siteSettings' => app(SiteSettingsService::class),
-                    'landingWelcome' => app(LandingWelcomeService::class),
-                    'imageUrl' => app(ImageUrl::class),
-                    'clinicIdentity' => app(ClinicIdentityService::class),
-                ];
-            }
-
-            $view->with($payload);
+            $view->with([
+                'siteSettings' => app(SiteSettingsService::class),
+                'landingWelcome' => app(LandingWelcomeService::class),
+                'imageUrl' => app(ImageUrl::class),
+                'clinicIdentity' => app(ClinicIdentityService::class),
+                'applicationMode' => app(\App\Services\ApplicationModeService::class),
+            ]);
         });
     }
 }

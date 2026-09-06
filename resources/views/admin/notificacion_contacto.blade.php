@@ -43,7 +43,7 @@
     }
   @endphp
 
-  <div style="min-height:calc(100vh - 4.5rem);display:flex;flex-direction:column;">
+  <div class="flex min-h-[calc(100vh-4.5rem)] flex-col">
     <section class="section-pad section-pad--first">
       <div class="page-shell grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
         <aside class="card space-y-6 p-6">
